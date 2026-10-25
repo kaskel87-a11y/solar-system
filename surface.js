@@ -50,7 +50,7 @@ const BODIES = {
   },
   Venus: {
     g: 0.90, seed: 37, amp: 6, freq: 1 / 120, ridged: 0.6, craters: null,
-    low: C(0x3e2610), high: C(0xa8743c), slope: C(0x2e1c0c), crater: C(0x5a3a1c), rock: C(0x2a1a0e), rocksPerChunk: 26, patch: 0.26, shade: 1.5,
+    low: C(0x3e2610), high: C(0xa8743c), slope: C(0x2e1c0c), crater: C(0x5a3a1c), rock: C(0x553824), rocksPerChunk: 26, patch: 0.26, shade: 1.5,
     sky: 'gradient', top: 0x8a4a14, horizon: 0xe0a050, fog: { type: 'linear', color: 0xe0a050, near: 22, far: 150 }, sunSize: 0, sunElev: 0.6, light: 1.7, ambient: 0.45, hemi: [0xe0a060, 0x402010], lightColor: 0xffb070,
     poi: { kind: 'venera', name: 'Venera 13 lander', fact: 'The Soviet Venera 13 lander survived 127 minutes on Venus in 1982 and sent back the first color photos of its surface.' },
     flagFact: 'At 465 \u00b0C and 90 times Earth\u2019s air pressure, a flag here would char in minutes.',
@@ -1024,10 +1024,57 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateChunks(x, z, true); return true;
   }
 
+  // ----- travel helpers: summon the rover, warp to the rover, return to the ship (any distance; positions don't depend on loaded chunks) -----
+  const dry = (x, z) => cfg.water === undefined || height(x, z) > cfg.water + 0.4;
+  function freeSpot(cx, cz, yaw, r0) {
+    for (let k = 0; k < 16; k++) { const a = yaw + [-1.2, 1.2, -0.6, 0.6, -1.9, 1.9, 0, Math.PI][k % 8], r = r0 + Math.floor(k / 8) * 4, x = cx - Math.sin(a) * r, z = cz - Math.cos(a) * r; if (dry(x, z) && Math.hypot(x - SHIP.x, z - SHIP.z) > 11) return { x, z }; }
+    return { x: cx + 4, z: cz + 4 };
+  }
+  function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
+  function dogTo(x, z) { if (!dog || driving) return; dog.mode = 'follow'; dog.sniff = null; dog.x = x + 1.4; dog.z = z + 1.2; dog.y = height(dog.x, dog.z); dog.vy = 0; dog.nextSniff = 12; }
+  function dustRing(x, z, n = 70) { if (!dust) return; const y = height(x, z); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, sp = 3 + (i % 5); spawnDust(x + Math.cos(a) * 2.2, y + 0.4, z + Math.sin(a) * 2.2, Math.cos(a) * sp, 1.5 + (i % 3), Math.sin(a) * sp); } }
+  function summonRover() {
+    const b = travelBlocked(); if (b) return { ok: false, why: b };
+    if (driving) return { ok: false, why: 'you are already driving' };
+    const p = freeSpot(player.x, player.z, player.yaw + 0.9, 6);
+    rover.x = p.x; rover.z = p.z; rover.y = height(p.x, p.z); rover.yaw = Math.atan2(-(player.x - p.x), -(player.z - p.z)) + Math.PI / 2;
+    rover.vy = 0; rover.speed = 0; rover.steer = 0; rover.prevG = null; rover.air = false; rover.pitch = 0; rover.roll = 0;
+    rover.group.position.set(rover.x, rover.y, rover.z); rover.group.rotation.set(0, rover.yaw, 0);
+    updateChunks(player.x, player.z, true); dustRing(p.x, p.z);
+    return { ok: true, x: p.x, z: p.z };
+  }
+  function warpToRover() {
+    const b = travelBlocked(); if (b) return { ok: false, why: b };
+    if (driving) return { ok: false, why: 'you are already in the rover' };
+    const p = freeSpot(rover.x, rover.z, rover.yaw + Math.PI, 4.5);
+    player.x = p.x; player.z = p.z; player.y = height(p.x, p.z) + EYE; player.vy = 0;
+    player.yaw = Math.atan2(-(rover.x - p.x), -(rover.z - p.z)); player.faceYaw = player.yaw;
+    dogTo(p.x, p.z); updateChunks(p.x, p.z, true); dustRing(p.x, p.z, 40);
+    return { ok: true };
+  }
+  function returnToShip() {
+    if (!cfg || state.intro > 0 || game.isDown()) return { ok: false, why: 'busy' };
+    if (game.info.combat) return { ok: false, why: 'aliens are nearby! Clear them first.' };
+    if (driving) {
+      const p = freeSpot(SHIP.x, SHIP.z + 20, 0, 4);
+      rover.x = p.x; rover.z = p.z; rover.y = height(p.x, p.z); rover.speed = 0; rover.vy = 0; rover.prevG = null; rover.yaw = 0.4;
+      player.x = rover.x; player.z = rover.z; updateChunks(p.x, p.z, true); return { ok: true };
+    }
+    const x = SHIP.x - 10, z = SHIP.z + 12;
+    player.x = x; player.z = z; player.y = height(x, z) + EYE; player.vy = 0; player.yaw = 0.6; player.faceYaw = 0.6;
+    dogTo(x, z); updateChunks(x, z, true);
+    return { ok: true };
+  }
+  function roverNav() {
+    if (!rover) return null;
+    const dx = rover.x - player.x, dz = rover.z - player.z, a = Math.atan2(-dx, -dz) - viewYaw;
+    return { dist: Math.round(Math.hypot(dx, dz)), ang: Math.atan2(Math.sin(a), Math.cos(a)), ship: Math.round(Math.hypot(SHIP.x - player.x, SHIP.z - player.z)) };
+  }
   function debugPlace(x, z, yaw = player.yaw) { if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
+    summonRover, warpToRover, returnToShip, roverNav,
     // test hook: jump to just short of the active quest's current objective
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     waypoint() { const w = game.waypoint(); if (!w) return null; const a = Math.atan2(-(w.x - player.x), -(w.z - player.z)) - viewYaw; return { dist: Math.round(w.dist), ang: Math.atan2(Math.sin(a), Math.cos(a)), text: w.text }; },

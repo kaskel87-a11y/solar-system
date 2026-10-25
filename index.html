@@ -190,6 +190,14 @@
     body.surface #hpBox { top: calc(84px + var(--sat)); right: calc(8px + var(--sar)); width: 128px; padding: 5px 8px; font-size: 0.64rem; border-radius: 9px; }
     body.surface #hpBox .bar { height: 5px; margin: 1px 0 3px; }
     body.surface #bossBar { top: calc(150px + var(--sat)); }
+    #roverPill { display: none; }
+    body.surface #roverPill { top: calc(162px + var(--sat)); right: calc(8px + var(--sar)); display: flex; align-items: center; gap: 4px; }
+    body.surface.driving #roverPill { display: none; }
+    #roverArrow { display: inline-block; color: #ffd25a; font-size: 13px; transition: transform 0.15s linear; }
+    #roverMenu { position: fixed; z-index: 12; top: calc(198px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; width: 190px; box-sizing: border-box; background: rgba(8,10,20,0.9); }
+    #roverMenu.show { display: flex; } #roverMenu button { min-height: 40px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 6px 10px; }
+    #rmClose { text-align: center !important; }
+    @media (max-height: 440px) { body.surface #roverPill { top: calc(146px + var(--sat)); } #roverMenu { top: calc(8px + var(--sat)); right: calc(150px + var(--sar)); } }
     @media (max-height: 440px) {
       body.surface #discBtn, body.surface #viewBtn { top: calc(40px + var(--sat)); }
       body.surface #nextHint, body.surface #hpBox { top: calc(72px + var(--sat)); }
@@ -254,7 +262,7 @@
     <div id="nextHint" class="glass"><span id="nextArrow">➤</span><span id="nextText"></span></div>
     <div id="ctxBar"><button id="driveBtn">🚙 Drive</button><button id="petBtn">🐾 Pet</button></div>
     <div id="toast" class="glass"></div>
-    <div id="surfHelp" class="glass desk-only">WASD move · mouse look/aim · click or F fire · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
+    <div id="surfHelp" class="glass desk-only">WASD move · mouse look/aim · click or F fire · R summon rover (Shift+R warp to it) · H ship · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
     <div id="crosshair" class="desk-only"></div>
     <div id="hpBox" class="glass">
       <div>🛡 Shield</div><div class="bar" id="shBar"><i></i></div>
@@ -263,6 +271,8 @@
       <div id="rankLine"></div>
     </div>
     <div id="questTrack" class="glass"></div>
+    <button id="roverPill" class="pill"><span id="roverArrow">➤</span> <span id="roverText">🚙 Rover</span></button>
+    <div id="roverMenu" class="glass"><button id="rmSummon" class="btn">🚙 Summon rover here</button><button id="rmWarp" class="btn">✨ Warp to rover</button><button id="rmShip" class="btn">🚀 Return to ship</button><button id="rmClose" class="btn">✖</button></div>
     <button id="fireBtn">FIRE</button>
     <div id="bossBar" class="glass"><span id="bossName"></span><div class="bar"><i></i></div></div>
     <div id="radio"><div class="from">📻 MISSION CONTROL <span id="radioFic"></span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
@@ -893,7 +903,7 @@
       surface.takeOff();
       fadeEl.style.opacity = 1;
       factPanel.style.display = 'none';
-      radioEl.style.display = 'none'; downEl.style.display = 'none'; hurtEl.style.opacity = 0; touchBtns.fire = false; mouseAim.held = false;
+      radioEl.style.display = 'none'; roverMenu.classList.remove('show'); downEl.style.display = 'none'; hurtEl.style.opacity = 0; touchBtns.fire = false; mouseAim.held = false;
       document.body.classList.remove('combat', 'turret', 'quest');
       try { speechSynthesis.cancel(); } catch (e) { /* */ }
       setTimeout(() => {
@@ -1057,7 +1067,7 @@
         nextArrow.style.transform = `rotate(${(-i.next.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
         nextText.textContent = `Signal · ${i.next.dist} m`;
       } else if (i.disc.total) { nextHint.style.display = 'flex'; nextArrow.style.transform = ''; nextText.textContent = '🏆 All found here'; }
-      updateGameHud();
+      updateGameHud(); updateRoverPill();
       const p = surface.nearestPoi();
       if (p && p.dist < 120) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
     }
@@ -1080,6 +1090,29 @@
       if (g.boss) { bossBar.style.display = 'block'; document.getElementById('bossName').textContent = `👑 ${g.boss.name} (fiction)`; bossBar.querySelector('i').style.width = `${(100 * g.boss.hp / g.boss.max).toFixed(0)}%`; }
       else bossBar.style.display = 'none';
     }
+    // return to rover / summon rover / return to ship
+    const roverPill = document.getElementById('roverPill'), roverMenu = document.getElementById('roverMenu');
+    const fmtDist = d => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`;
+    function updateRoverPill() {
+      const n = surface.roverNav(); if (!n) return;
+      document.getElementById('roverText').textContent = `🚙 Rover · ${fmtDist(n.dist)}`;
+      document.getElementById('roverArrow').style.transform = `rotate(${(-n.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
+    }
+    function travel(kind) {
+      roverMenu.classList.remove('show');
+      const fn = { summon: surface.summonRover, warp: surface.warpToRover, ship: surface.returnToShip }[kind];
+      const pre = surface.game.info.combat ? { ok: false, why: 'aliens are nearby! Clear them first.' } : null;
+      if (pre) { toast(`🚫 Can't do that now: ${pre.why}`, 2500); return pre; }
+      if (kind === 'summon') { const r = fn(); toast(r.ok ? '🚙 Rover summoned! It beamed in right beside you.' : `🚫 ${r.why}`, 2500); if (r.ok) pickupSnd(); updateSurfHud(true); return r; }
+      fadeEl.style.transition = 'opacity 0.25s'; fadeEl.style.opacity = 1;
+      setTimeout(() => { const r = fn(); toast(r.ok ? (kind === 'warp' ? `✨ Warped to your rover, with ${dogName}!` : '🚀 Back at the Starship.') : `🚫 ${r.why}`, 2500); updateSurfHud(true); setTimeout(() => { fadeEl.style.opacity = 0; setTimeout(() => { fadeEl.style.transition = ''; }, 300); }, 120); }, 260);
+      return { ok: true, pending: true };
+    }
+    roverPill.onclick = () => { roverMenu.classList.toggle('show'); if (document.pointerLockElement) document.exitPointerLock(); };
+    document.getElementById('rmSummon').onclick = () => travel('summon');
+    document.getElementById('rmWarp').onclick = () => travel('warp');
+    document.getElementById('rmShip').onclick = () => travel('ship');
+    document.getElementById('rmClose').onclick = () => roverMenu.classList.remove('show');
     // desktop scroll-wheel zoom
     renderer.domElement.addEventListener('wheel', e => { if (!onSurface) return; e.preventDefault(); surface.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -200, 200) * 0.0025)); updateSurfHud(true); }, { passive: false });
 
@@ -1121,6 +1154,8 @@
         if (e.code === 'KeyP' && !e.repeat) surface.pet();
         if (e.code === 'KeyV' && !e.repeat) { surface.cycleView(); updateSurfHud(true); }
         if (e.code === 'KeyL' && !e.repeat) openLog();
+        if (e.code === 'KeyR' && !e.repeat) travel(e.shiftKey ? 'warp' : 'summon');
+        if (e.code === 'KeyH' && !e.repeat) travel('ship');
         if (e.code === 'KeyF' && !e.repeat && document.pointerLockElement) { mouseAim.x = 0; mouseAim.y = 0; }
         if (e.code === 'Equal' || e.code === 'NumpadAdd') surface.zoom(0.8);
         if (e.code === 'Minus' || e.code === 'NumpadSubtract') surface.zoom(1.25);
@@ -1366,7 +1401,7 @@
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       landOn, landAction, renderer, version: 'v6', sfx: () => sfxLog, dogNameGet: () => dogName,
-      get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim,
+      get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
 </body>
