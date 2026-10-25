@@ -62,9 +62,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     ok('ssxHooks', null, await G(() => ['registerDealerVehicle', 'dealerStock', 'configureDealer'].every(k => typeof window.SSX[k] === 'function') && typeof window.SSX.registerVehicle === 'function'));
     // a mod vehicle with just a price shows up (the Raccoon Mobile path), hidden ones don't
-    await G(() => { window.SSX.registerVehicle('test_mod', { name: 'Test Mod', vmax: 22, boost: 33, acc: 11, bacc: 16, turn: 1.6, r: 2.3, price: 3100, icon: '🦝' }); window.SSX.registerVehicle('test_hidden', { name: 'Hidden', vmax: 22, price: 10, hidden: true }); });
+    await G(async () => { window.SSX.registerVehicle('test_mod', { name: 'Test Mod', vmax: 22, boost: 33, acc: 11, bacc: 16, turn: 1.6, r: 2.3, price: 3100, icon: '🦝' }); if (!(await import('./world.js?v=7.5')).VEHICLES.raccoon_mobile) window.SSX.registerVehicle('raccoon_mobile', { name: 'Raccoon Mobile', icon: '🦝', price: 900, vmax: 21, boost: 33, acc: 13.5, bacc: 19, turn: 2.2, wy: 0.48, wr: 0.48, r: 2.1, airTurn: 1.3, offroad: 0.9, blurb: 'Scrappy, quick on its feet, smells faintly of bins.', dealer: { venue: 'depot', world: 'Mars', colony: 'Ares Junction' } }); /* Ben's PR #11 shape (stub when #11 isn't merged) */ window.SSX.registerVehicle('test_hidden', { name: 'Hidden', vmax: 22, price: 10, hidden: true }); });
     const stock = await G(() => window.SSX.dealerStock().map(s => s.kind));
-    ok('modVehicleListed', stock.join(','), stock.includes('test_mod') && !stock.includes('test_hidden') && stock.length >= 6);
+    ok('modVehicleListed', stock.join(','), stock.includes('test_mod') && stock.includes('raccoon_mobile') && !stock.includes('test_hidden') && stock.length >= 6);
     await toMars();
     const mig = await G(() => ({ g: window.__dealer.garage, c: window.__app.surface.game.progress.credits, xp: window.__app.surface.game.progress.xp }));
     ok('oldSaveMigrated', null, mig.g.rides.length === 1 && mig.g.active === 'stock' && mig.c === 9000 && mig.xp === 120);

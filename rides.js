@@ -3,7 +3,7 @@
 // Builders follow world.js VEHICLE_BUILDERS: fn({ R, mesh, build, sec }) -> { group, body, wheels, seat, paint }.
 // Geometry and the glow texture are cached and flagged userData.shared so surface.exit()'s dispose pass leaves them alone.
 import * as THREE from 'three';
-import { PAINTS, KITS, WHEELS, GLOWS } from './garagecore.js?v=7.4';
+import { PAINTS, KITS, WHEELS, GLOWS } from './garagecore.js?v=7.5';
 
 const G = {}; // geometry cache
 const sh = o => { o.userData.shared = true; return o; };
