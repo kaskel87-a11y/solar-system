@@ -84,6 +84,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 5. timeout: do nothing, he cuts you ----------
     ok('standoff5', null, await newMug(4));
     const h0 = await G(() => { const H = window.__app.surface.game.debug.H(); return { hp: H.hp + H.shield, hit: H.lastHit, inv: H.inv }; });
+    await sleep(300); await G(() => window.__danger.mugFastForward(1));
     const gotStabbed = await wait(() => window.__danger.state.stats.lastOutcome?.result === 'stabbed', 60000); R.timeoutOutcome = (await D()).stats.lastOutcome?.result;
     const h1 = await G(() => { const H = window.__app.surface.game.debug.H(); return { hp: H.hp + H.shield, hit: H.lastHit, inv: H.inv }; });
     ok('stabbedOnTimeout', `${JSON.stringify(h0)}->${JSON.stringify(h1)}`, gotStabbed && (h1.hit !== h0.hit || h1.hp < h0.hp));
@@ -143,7 +144,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await G(() => window.__app.surface.world.setWanted(0, 'test'));
     for (let i = 0; i < 60; i++) { const left = await G(() => { const s = window.__app.surface, p = s.info, hs = window.__danger.npcs().filter(n => n.alive && n.hostile); for (const n of hs.slice(0, 1)) s.world.hitWorld({ x: p.x, y: n.y + 1.3, z: p.z }, { x: n.x, y: n.y + 1.2, z: n.z }, { dmg: 1.5 }); const H = s.game.debug.H?.(); if (H) H.hp = 100; return hs.length; }); if (!left) break; await sleep(150); }
     ok('ambientWon', JSON.stringify(await G(() => window.__danger.ambient.state)), await wait(() => (window.__danger.ambient.state.ended.won || 0) >= 1, 8000));
-    ok('ambientCleansUp', null, await wait(() => !window.__danger.ambient.state.active, 20000));
+    ok('ambientCleansUp', null, await wait(() => !window.__danger.ambient.state.active, 45000)); // 6 game-s walk-off; slow under load
     // thief: chase choice = catch within 20 s
     await G(() => { window.__danger.clear(); window.__danger.skipGrace(); }); await rough(8); await sleep(300);
     const cr0 = await G(() => window.__app.surface.game.progress.credits);

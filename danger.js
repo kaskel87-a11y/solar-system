@@ -424,6 +424,7 @@ window.__danger = {
   get saltbloodHeat() { return saltbloodHeat; }, setSaltbloodHeat(v) { saltbloodHeat = v; },
   ambient: ambientDebug, ambientChoose: id => { const b = ui?.evBox?.querySelector(`[data-choice="${id}"]`); b?.__pick?.(); return !!b; },
   choose: c => commit(c), clear: clearAll, setEnabled(on) { settings.on = !!on; saveSettings(); if (ui?.menu) ui.menu.textContent = menuLabel(); if (!on) clearAll(); },
+  mugFastForward(sec = 1) { if (mug?.phase !== 'standoff') return false; mug.t = Math.max(mug.t, DC.MUG.standoff - sec); return true; }, // tests: swiftshader under load runs game time slowly
   setClock: h => DC.setClock(h), director: () => ({ t: director.t, grace: director.grace, log: director.log.slice(-10), active: director.active }), skipGrace() { director.grace = 0; director.last = -1e9; director.since = {}; },
   hitMugger(dmg = 1.2) { if (mug) hurtNpc(mug.n, dmg, 'shot', C.player); return mug ? mug.n.hp : null; },
   muggerFront(dist = 3, side = 0.35) { if (!mug || !C) return; const P = C.player, y = P.faceYaw ?? P.yaw ?? 0; mug.n.x = P.x - Math.sin(y + side) * dist; mug.n.z = P.z - Math.cos(y + side) * dist; },
