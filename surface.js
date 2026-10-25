@@ -1110,7 +1110,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       }
       else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
         const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
-        const blocked = (x, y, z) => world.camBlocked(x, y, z) || rockAt(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
+        const blocked = (x, y, z) => world.camBlocked(x, y, z) || rockAt(x, y, z) || !!window.__race?.camBlocked?.(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
         const N = 14; let hit = cd;
         for (let i = 1; i <= N; i++) { const t = cd * i / N; if (blocked(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { hit = Math.max(0.9, cd * (i - 1) / N - 0.25); break; } }
         camPull = hit < camPull ? hit : camPull + (hit - camPull) * (1 - Math.exp(-dt * 3));

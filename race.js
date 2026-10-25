@@ -362,10 +362,11 @@ function propPhysics(props, dt) {
     const ent = car || C.player, r = car ? (car.spec?.r || 2.4) * 0.75 : 0.45;
     const dx = ent.x - p.x, dz = ent.z - p.z; if (dx * dx + dz * dz > 144) continue;
     const along = dx * fx + dz * fz, lat = dx * lx + dz * lz, key = p, cd = (R?.cool || propCool).get(key) || 0;
-    if (p.t === 'barrier') {
-      if (Math.abs(lat) < 3 + r && Math.abs(along) < 0.4 + r) {
-        const push = (Math.sign(along) || 1) * (0.4 + r) - along; ent.x += fx * push; ent.z += fz * push;
-        if (car && Math.abs(car.speed) > 3) { if (now > cd) { sfx('crash'); (R?.cool || propCool).set(key, now + 400); } car.speed *= -0.3; }
+    if (p.t === 'barrier') { // race fix (BUGS-v7.4 M2): slide along the barrier instead of bouncing back into it and pinning
+      const s = RC.barrierSlide(car ? { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed } : { x: ent.x, z: ent.z }, p, r);
+      if (s) {
+        ent.x = s.x; ent.z = s.z;
+        if (car && s.hit) { car.yaw = s.yaw; car.speed = s.speed; if (s.impact > 3 && now > cd) { sfx('crash'); (R?.cool || propCool).set(key, now + 400); } }
       }
     } else if (car && now > cd) {
       if (p.t === 'ramp' && Math.abs(lat) < 3.2 && Math.abs(along) < 4 && (!car.air || car.y - H(car.x, car.z) < 0.9) && (car.vy || 0) < 2 && Math.abs(car.speed) > 3) {
@@ -379,6 +380,37 @@ function propPhysics(props, dt) {
   }
 }
 const propCool = new Map();
+// race fix (BUGS-v7.4 M1): the active race's solid geometry as camera blockers: barriers and ramps (exact shapes, see
+// RC.propCamHit) plus the gate gantries (legs, truss, lamps as padded oriented boxes; the 16 m chase boom used to end up
+// inside the truss of the gate behind the car). surface.js's third-person boom asks camBlocked (via window.__race)
+// alongside world.camBlocked, so the camera pulls in instead of clipping through.
+let camGates = null, camGatesFor = null;
+function gateBoxes() {
+  if (camGatesFor === raceG) return camGates;
+  camGatesFor = raceG; camGates = []; raceG.updateMatrixWorld(true);
+  for (const g of raceG.userData.gates) g.traverse(o => {
+    if (!o.isMesh || !o.visible || o.material.transparent || o.geometry.type === 'PlaneGeometry') return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox, sc = new THREE.Vector3().setFromMatrixScale(o.matrixWorld), c = b.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+    camGates.push({ inv: o.matrixWorld.clone().invert(), b: b.clone(), pad: [CAM_PAD / Math.abs(sc.x || 1), CAM_PAD / Math.abs(sc.y || 1), CAM_PAD / Math.abs(sc.z || 1)], c, r2: (b.getSize(new THREE.Vector3()).multiply(sc).length() / 2 + 1.5) ** 2 });
+  });
+  return camGates;
+}
+const camV = new THREE.Vector3(), CAM_PAD = 1.1; // lens clearance: closer than this and the prop fills the bottom/top of the frame
+export function raceCamBlockers() { return R && raceG ? { props: R.t.props.filter(p => p.t === 'barrier' || p.t === 'ramp'), gates: gateBoxes().length } : null; }
+export function camBlocked(x, y, z) {
+  if (!R || !raceG) return false;
+  for (const p of R.t.props) {
+    if (p.t === 'boost') continue; const dx = x - p.x, dz = z - p.z; if (dx * dx + dz * dz > 49) continue;
+    if (RC.propCamHit(p, x, y, z, H(p.x, p.z) - (p.t === 'ramp' ? 0.15 : 0), CAM_PAD)) return true;
+  }
+  for (const g of gateBoxes()) {
+    if (camV.set(x, y, z).distanceToSquared(g.c) > g.r2) continue;
+    camV.applyMatrix4(g.inv); const { min, max } = g.b, [px, py, pz] = g.pad;
+    if (camV.x > min.x - px && camV.x < max.x + px && camV.y > min.y - py && camV.y < max.y + py && camV.z > min.z - pz && camV.z < max.z + pz) return true;
+  }
+  return false;
+}
 
 // ---------- HUD ----------
 const CSS = `
@@ -555,6 +587,7 @@ window.__race = {
   place(x, z, yaw) { const c = myCar(); if (c) { c.x = x; c.z = z; if (yaw !== undefined) c.yaw = yaw; c.y = H(x, z); c.prevG = null; c.vy = 0; c.air = false; } else { C.player.x = x; C.player.z = z; } },
   car: () => { const c = myCar(); return c ? { x: c.x, z: c.z, y: c.y, yaw: c.yaw, speed: c.speed, air: !!c.air, vy: c.vy, lift: c.lift || 0, kind: c.kind } : null; },
   setCarSpeed(v) { const c = myCar(); if (c) c.speed = v; },
+  camBlocked, camBlockers: raceCamBlockers, // race fix (M1): surface.js's camera boom checks camBlocked each frame
   rivalPace(k) { if (R?.rival) R.rival.pace *= k; },
   counts: () => ({ root: root?.children.length || 0, idle: idleG?.children.length || 0, race: raceG?.children.length || 0, ctx: ui?.ctx.style.display })
 };
