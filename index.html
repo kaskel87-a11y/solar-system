@@ -7,6 +7,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
+  <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+  <meta name="app-version" content="v4">
   <title>Cinematic Universe Explorer</title>
   <style>
     :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
@@ -44,9 +46,15 @@
     body.surface #hudSpeed, body.surface #hudHint, body.surface #flyBtns, body.surface #flyBtn, body.surface #landBtn, body.surface #landMsg { display: none !important; }
     body.surface #fact-panel { top: calc(108px + var(--sat)); bottom: auto; }
     #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.85s ease; z-index: 15; }
-    #landBtn { position: fixed; top: calc(118px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; font-size: 1.05rem; padding: 12px 20px;
-      background: linear-gradient(135deg, #2f80ff, #36c2ff); border: none; box-shadow: 0 4px 22px rgba(50,150,255,0.5); white-space: nowrap; }
-    #landMsg { position: fixed; top: calc(118px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; padding: 9px 14px; border-radius: 12px; font-size: 0.85rem; text-align: center; width: max-content; max-width: calc(100vw - 40px); }
+    #landBtn { position: fixed; top: calc(112px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 9; font-size: 1.1rem; font-weight: 700; padding: 12px 22px; min-height: 54px; min-width: 200px;
+      max-width: calc(100vw - 32px - var(--sal) - var(--sar)); box-sizing: border-box; border-radius: 16px; line-height: 1.2; text-align: center;
+      background: linear-gradient(135deg, #2f80ff, #36c2ff); border: none; box-shadow: 0 4px 22px rgba(50,150,255,0.5); white-space: nowrap; pointer-events: auto; }
+    #landBtn small { display: block; font-size: 0.72rem; font-weight: 500; opacity: 0.9; margin-top: 2px; }
+    #landBtn.auto { background: linear-gradient(135deg, #6a4cff, #2f80ff); }
+    #factLand { display: none; margin: 12px auto 0; font-size: 1rem; font-weight: 700; padding: 11px 22px; min-height: 48px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #2f80ff, #36c2ff); box-shadow: 0 4px 18px rgba(50,150,255,0.45); }
+    .ver { font-size: 0.6em; opacity: 0.55; font-weight: 500; margin-left: 4px; }
+    #landMsg { position: fixed; top: calc(176px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; padding: 9px 14px; border-radius: 12px; font-size: 0.85rem; text-align: center; width: max-content; max-width: calc(100vw - 40px); }
     #surfHud { display: none; }
     body.surface #surfHud { display: block; }
     #surfInfo { position: fixed; top: calc(14px + var(--sat)); left: calc(14px + var(--sal)); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; z-index: 7; max-width: calc(100vw - 180px); }
@@ -64,12 +72,20 @@
     #flyBtns button { height: 56px; border-radius: 14px; font-size: 0.8rem; font-weight: 700; touch-action: none; }
     #flyBtns button.on { background: rgba(255,140,40,0.6); }
     #hudHint { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border: 2px solid rgba(255,255,255,0.35); border-radius: 50%; pointer-events: none; }
-    #hudSpeed { position: fixed; top: calc(70px + var(--sat)); left: 50%; transform: translateX(-50%); padding: 6px 12px; border-radius: 10px; font-size: 0.78rem; z-index: 7; text-align: center; }
+    #hudSpeed { position: fixed; top: calc(70px + var(--sat)); left: 50%; transform: translateX(-50%); padding: 6px 12px; border-radius: 10px; font-size: 0.78rem; z-index: 7; text-align: center; white-space: nowrap; }
     .touch-only { display: none !important; }
     body.touch .touch-only { display: revert !important; }
     body.touch #info small.touch-only, body.touch #info p.touch-only { display: block !important; }
     body.touch .desk-only { display: none !important; }
     body:not(.touch) #joy { display: none; }
+    @media (max-height: 440px) {
+      #hudSpeed { top: calc(14px + var(--sat)); }
+      #landBtn { top: calc(54px + var(--sat)); min-height: 48px; padding: 9px 18px; font-size: 1rem; }
+      #landMsg { top: calc(112px + var(--sat)); }
+      #joy { width: 112px; height: 112px; bottom: calc(18px + var(--sab)); }
+      #flyBtns { bottom: calc(18px + var(--sab)); }
+      #flyBtns button { height: 48px; }
+    }
     @media (max-width: 640px) {
       #info { max-width: calc(100vw - 150px); padding: 9px 12px; box-sizing: border-box; }
       #info.collapsed p, #info.collapsed small { display: none !important; }
@@ -92,11 +108,11 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe</h1>
+    <h1>🌌 Cinematic Universe<span class="ver">v4</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
-    <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Fly close to a rocky world and press <b>L</b> to land.</small>
-    <small class="touch-only">Pick a planet, tap 🚀 Fly, then Land to walk on it. Left stick moves, drag to steer.</small>
+    <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
+    <small class="touch-only">Tap Mercury, Venus, Earth, Moon or Mars, then 🛬 Land here to walk on it. Or tap 🚀 Fly and use the 🛬 button. Left stick moves, drag to steer.</small>
   </div>
 
   <div id="topright">
@@ -111,9 +127,10 @@
     <h2 id="fact-title"></h2>
     <p id="fact-text"></p>
     <div class="stats" id="fact-stats"></div>
+    <button id="factLand" class="btn">🛬 Land here</button>
   </div>
 
-  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></div>
+  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v4</div>
 
   <div id="hud">
     <div id="hudHint"></div>
@@ -162,7 +179,7 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE } from './surface.js';
+    import { createSurface, LANDABLE } from './surface.js?v=4';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -454,12 +471,17 @@
     let follow = null;          // mesh being followed
     let focusT = 0;             // >0 while the camera is zooming in
     let factTimer = null;
+    const factLandBtn = document.getElementById('factLand'); let factLandTarget = null;
     const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 
     function showFact(o) {
       factTitle.textContent = o.userData.name;
       factText.textContent = o.userData.fact;
       factStats.textContent = o.userData.stats || '';
+      const canLand = !!o.isObject3D && LANDABLE.includes(o.userData.name) && !onSurface;
+      factLandBtn.style.display = canLand ? 'block' : 'none';
+      factLandBtn.textContent = `🛬 Land on ${o.userData.name}`;
+      factLandTarget = canLand ? o : null;
       factPanel.style.display = 'block';
       clearTimeout(factTimer);
       factTimer = setTimeout(() => factPanel.style.display = 'none', 12000);
@@ -530,7 +552,7 @@
     function lockPointer() {
       try { const r = renderer.domElement.requestPointerLock?.(); r?.catch?.(() => {}); } catch (e) { /* drag-to-look still works */ }
     }
-    let onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null;
+    let onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null, autopilot = null, landTarget = null;
     const prevNearPos = new THREE.Vector3();
     function setFlying(on) {
       if (onSurface || transitioning) return;
@@ -553,12 +575,13 @@
           tmpV.copy(tmpV2).sub(rocket.position).normalize();
         }
         yaw = Math.atan2(-tmpV.x, -tmpV.z); pitch = Math.asin(THREE.MathUtils.clamp(tmpV.y, -1, 1));
-        nearBody = null;
+        nearBody = null; autopilot = null; landTarget = null;
         rocket.rotation.set(pitch, yaw, 0, 'YXZ');
+        updateLandUI(true);
         if (!isTouch) lockPointer();
       } else {
         if (document.pointerLockElement) document.exitPointerLock?.();
-        landBtn.style.display = landMsg.style.display = 'none';
+        landBtn.style.display = landMsg.style.display = 'none'; autopilot = null;
         controls.target.copy(rocket.position);
         controls.minDistance = 6;
         controls.update();
@@ -619,7 +642,50 @@
         setTimeout(() => { transitioning = false; }, 400);
       }, 950);
     }
-    landBtn.onclick = land;
+    // One button for everything: land if close, otherwise autopilot to the nearest rocky world, then land
+    function nearestLandable() {
+      let best = null, bd = Infinity;
+      for (const b of bodies) {
+        if (!LANDABLE.includes(b.name)) continue;
+        const d = b.mesh.getWorldPosition(tmpV).distanceTo(rocket.position) - (b.mesh.userData.r || 3) - (b.mesh === flyTarget ? 1e6 : 0);
+        if (d < bd) { bd = d; best = b.mesh; }
+      }
+      return best;
+    }
+    function landAction() {
+      if (!flying || onSurface || transitioning) return;
+      if (nearBody && LANDABLE.includes(nearBody.userData.name)) { autopilot = null; return land(); }
+      if (autopilot) { autopilot = null; updateLandUI(true); return; }
+      autopilot = landTarget || nearestLandable(); flyTarget = autopilot; updateLandUI(true);
+    }
+    function landOn(mesh) {
+      if (onSurface || transitioning || !mesh) return;
+      factPanel.style.display = 'none';
+      if (!flying) { follow = mesh; setFlying(true); nearBody = mesh; mesh.getWorldPosition(prevNearPos); return land(); }
+      flyTarget = autopilot = mesh; updateLandUI(true);
+    }
+    factLandBtn.onclick = e => { e.stopPropagation(); landOn(factLandTarget); };
+    function updateLandUI(force) {
+      if (!flying || onSurface) return;
+      if (transitioning || landAnim) { landBtn.style.display = 'none'; return; }
+      const nm = nearBody?.userData.name;
+      if (nearBody && LANDABLE.includes(nm)) {
+        landTarget = nearBody; landBtn.classList.remove('auto');
+        landBtn.innerHTML = `🛬 Land on ${nm}${isTouch ? '' : ' (L)'}`;
+        landMsg.style.display = 'none';
+      } else {
+        landTarget = autopilot || nearestLandable();
+        const tn = landTarget.userData.name, r = landTarget.userData.r || 3;
+        const dist = Math.max(0, Math.round(landTarget.getWorldPosition(tmpV).distanceTo(rocket.position) - r));
+        landBtn.classList.toggle('auto', !!autopilot);
+        landBtn.innerHTML = autopilot
+          ? `🛰️ Autopilot to ${tn}…<small>${dist} away · tap to cancel</small>`
+          : `🛬 Fly to ${tn} & land${isTouch ? '' : ' (L)'}<small>${dist} away</small>`;
+        if (nearBody && NO_SURFACE[nm]) { landMsg.textContent = NO_SURFACE[nm]; landMsg.style.display = 'block'; } else landMsg.style.display = 'none';
+      }
+      landBtn.style.display = 'block';
+    }
+    landBtn.onclick = landAction;
     document.getElementById('takeoffBtn').onclick = takeOff;
 
     // tap / click things on the surface for facts
@@ -643,7 +709,7 @@
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
         return;
       }
-      if (e.code === 'KeyL') land();
+      if (e.code === 'KeyL') landAction();
       if (e.code === 'KeyF') setFlying(!flying);
       if (e.code === 'Escape' && flying) setFlying(false);
       if (flying && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -706,6 +772,7 @@
     // ===== Animate =====
     const clock = new THREE.Clock();
     const move = new THREE.Vector3();
+    const apSeg = new THREE.Vector3(), apTmp = new THREE.Vector3();
     const lastFollowPos = new THREE.Vector3();
     let frame = 0;
     function animate() {
@@ -757,7 +824,27 @@
         if (keys['KeyE'] || touchBtns.up) move.y += 1;
         move.x += joy.x; move.z += joy.y;
         if (landAnim) move.set(0, 0, 0);
-        const thrust = Math.min(1, move.length());
+        if (autopilot && move.length() > 0.3) { autopilot = null; updateLandUI(true); }  // pilot took over
+        if (autopilot && !landAnim) {
+          const P = autopilot.getWorldPosition(tmpV2), r = autopilot.userData.r || 3;
+          const toR = tmpV.copy(rocket.position).sub(P); if (toR.lengthSq() < 1e-6) toR.set(0, 0, 1);
+          const goal = toR.setLength(r * 2.2 + 6).add(P);
+          // steer around the Sun if it is in the way
+          const sr = (sun.userData.r || 20) * 1.8, seg = apSeg.copy(goal).sub(rocket.position), sl2 = seg.lengthSq();
+          const t = sl2 > 0 ? THREE.MathUtils.clamp(-rocket.position.dot(seg) / sl2, 0, 1) : 0;
+          const closest = apTmp.copy(rocket.position).addScaledVector(seg, t);
+          if (t > 0.02 && t < 0.98 && closest.length() < sr) { if (closest.lengthSq() < 1) closest.set(0, 1, 0); closest.setLength(sr * 1.3); closest.y += sr; goal.copy(closest); }
+          const delta = goal.sub(rocket.position), dist = delta.length();
+          const step = Math.min(dist, Math.max(45, dist * 1.4) * realDt);
+          if (dist > 1e-3) rocket.position.addScaledVector(delta, step / dist);
+          // turn to face the body
+          const dir = tmpV.copy(P).sub(rocket.position).normalize();
+          const wantYaw = Math.atan2(-dir.x, -dir.z), wantPitch = Math.asin(THREE.MathUtils.clamp(dir.y, -1, 1));
+          const k = 1 - Math.pow(0.02, realDt);
+          yaw += Math.atan2(Math.sin(wantYaw - yaw), Math.cos(wantYaw - yaw)) * k; pitch += (wantPitch - pitch) * k;
+          rocket.rotation.set(pitch, yaw, 0, 'YXZ');
+        }
+        const thrust = autopilot ? 1 : Math.min(1, move.length());
         if (thrust > 0.02) {
           move.normalize().multiplyScalar(speed * thrust * realDt).applyQuaternion(rocket.quaternion);
           rocket.position.add(move);
@@ -787,17 +874,15 @@
         }
         if (best !== nearBody || (frame & 15) === 0) {
           nearBody = best;
-          const nm = best?.userData.name;
-          if (best && LANDABLE.includes(nm)) { landBtn.textContent = `🛬 Land on ${nm}${isTouch ? '' : ' (L)'}`; if (!transitioning) landBtn.style.display = 'block'; landMsg.style.display = 'none'; }
-          else if (best && NO_SURFACE[nm]) { landMsg.textContent = NO_SURFACE[nm]; landMsg.style.display = 'block'; landBtn.style.display = 'none'; }
-          else { landBtn.style.display = landMsg.style.display = 'none'; }
+          if (autopilot && best === autopilot && !transitioning) { autopilot = null; land(); }
+          updateLandUI();
         }
 
         const ideal = tmpV.set(0, 3.5, 11).applyQuaternion(rocket.quaternion).add(rocket.position);
         camera.position.lerp(ideal, 1 - Math.pow(0.0005, realDt));
         tmpV2.set(0, 0, -8).applyQuaternion(rocket.quaternion).add(rocket.position);
         camera.lookAt(tmpV2);
-        if ((frame++ & 7) === 0) hudSpeed.textContent = `🚀 ${boost ? 'BOOST' : 'Cruise'} · ${Math.round(rocket.position.length())} from the Sun`;
+        if ((frame++ & 7) === 0) hudSpeed.textContent = `🚀 ${boost ? 'BOOST' : 'Cruise'} · ${Math.round(rocket.position.length())}${innerWidth < 420 ? '' : ' from the Sun'}`;
       } else {
         if (follow) {
           follow.getWorldPosition(tmpV);
@@ -854,7 +939,8 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, info: surface.info }; } };
+      landOn, landAction, version: 'v4',
+      get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
 </body>
 </html>
