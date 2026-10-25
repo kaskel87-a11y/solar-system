@@ -20,7 +20,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   const tapAt = async sel => { const c = await center(sel); await page.touchscreen.tap(c.x, c.y); };
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7.1');
+    ok('version', await G(() => window.__app.version), /^v7\.[1-9]/.test(await G(() => window.__app.version)));
     await G(() => { localStorage.removeItem('ssx.game.v1'); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 60000);
     await sleep(1200);

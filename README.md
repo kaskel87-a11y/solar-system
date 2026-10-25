@@ -21,6 +21,58 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.2: fly the rover, bolt guns to it, and install it as an app
+
+**Air control.** Your rover now steers in the air. While it's airborne, from a jump, a crest or thrusters, push the stick left or right to yaw. It banks into the turn and the turn rate doesn't depend on speed. Stick forward or back noses it down or up a little. The chase cam swings after the heading softly, so banked turns read well. In first person the cockpit roll is halved and the gauge shows **ALT** instead of km/h.
+
+**Cold-gas thrusters (Roadster-style).** In your own rover, or a stolen hover bike, the **Jump** slot becomes **🚀 Thrust**:
+- Hold it to fire four belly pods and two tail nozzles. You climb at about 6 m/s, up to a 70 m ceiling.
+- Feather it to hover. Let go to glide down. Push the stick forward while thrusting to drive with the tail jets.
+- Fuel is the thin bar inside the button. A full tank lasts about 5 s of burn, and the bar turns orange below 25%.
+- Fuel recharges only with the wheels on the ground, starting 0.6 s after you stop burning (about 4 s from empty to full).
+- Landing at more than 13 m/s gives a hard thud. Above 17 m/s it hurts.
+- Thrusting hisses, kicks dust off the ground below you, and lights the pod rings.
+- On a keyboard, Space is Thrust while you drive.
+
+**Rover weapons (colony shop → "Rover weapons").** Tap the weapon chip while driving your rover to cycle the mounts you own. Your purchases are saved in localStorage.
+
+| Item | Price | What it does |
+|---|---|---|
+| Turret Mk II | 180 | Twin blaster with about 35% more damage, a faster cycle, and less heat |
+| Turret Mk III | 320 | Quad-linked heavy blaster with four barrels (needs Mk II) |
+| Rail cannon | 300 | 400 m/s slug that pierces everything in a line and leaves a beam tracer. Slow to cycle and hot |
+| Rocket pods | 280 | Twin dumb-fire rockets with a 5.5 m blast radius and smoke trails |
+| Plasma torch | 240 | Flamethrower-style short-range jet: wide, piercing, and constant |
+| EMP pulse | 260 | 25 m shockwave that stuns aliens for about 3 s, dazes colonists and fries security. 3 s recharge |
+
+The rover turret now works with **hostiles off** and **while flying**. When you're airborne, the turret can depress to shoot down at the ground. Splash and EMP damage on colony folk or security still counts as a crime.
+
+**Roadster kit (shop → "Rover body", 350).** A low, sleek two-seater shell in deep red (or your chosen paint) over the six-wheel chassis, with a rear spoiler, light bars and bigger thruster pods. It gives +30% fuel (130) and faster recharge. Tap it again in the shop to go back to the stock hull. The styling is generic, with no badges or logos.
+
+**Install it as an app (PWA).**
+- The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Starship-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
+- `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.2`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` is fetched network-first, so new releases still land.
+- The HUD already respects the notch and home-bar safe areas in standalone mode.
+- **On iPhone:** open https://kaskel87-a11y.github.io/solar-system/ in Safari, tap **Share (□↑) → Add to Home Screen → Add**. On iOS 16.4+ Chrome works too: **Share → Add to Home Screen**. Launch it from the home-screen icon for full screen with no browser bars.
+- **On Android or desktop Chrome:** use the ☰ menu → **📲 Add to Home Screen**, which triggers the install prompt, or use the browser's Install button.
+- The ☰ menu item has a small dot until you've opened it once. It hides itself when the game is already running as an installed app. There are no banners.
+
+**Share with friends (free, no App Store).**
+- ☰ menu → **🔗 Share with friends** opens the phone's share sheet (iMessage, WhatsApp, etc.). It sends the title, a one-line pitch and the clean link https://kaskel87-a11y.github.io/solar-system/.
+- Where there's no share sheet, as on most desktop browsers, it copies the link and shows a small "Link copied" toast.
+- The page carries Open Graph and Twitter card tags, with a 1200×630 gameplay card (`share-card.jpg`: the Roadster thrusting past the Starship). Links unfurl with a big preview in iMessage, Slack, Discord and X.
+- Everyone's progress is their own. Credits, unlocks, quests and settings live in that device's localStorage, so nothing is shared through the link. A friend opening it starts fresh, and so does an installed home-screen copy on a new phone.
+
+Tests: `tests/test-v72.js` covers:
+- air turns left and right, plus bank sign, with and without thrust;
+- thrust lift, fuel drain, empty tank and ground recharge;
+- turret fire with hostiles off while flying;
+- buying every mount, cycling them by tapping the chip, and each mount damaging a target;
+- the Roadster kit, and persistence across a reload;
+- the share item (share sheet and copy-link fallback) and the OG/Twitter meta tags;
+- a Chromium CDP multi-touch check (thumb on the stick plus Thrust);
+- manifest, icons, iOS meta tags and the service worker.
+
 ## v7.1: fists, a blade, and a Take button that works
 - **Take fixed on iPhone:** Take, Drive, Exit, Pet, Radio and the weapon chip now trigger on the touch itself. iOS WebKit (Safari and Chrome on iPhone) drops the tap's click event when your other thumb is on the joystick, so before this fix Take did nothing. Take also reaches a bit further than the distance at which the button appears. If you're too far, a toast says "Too far". Getting in plays a door clunk and a quick vignette.
 - **Fire on foot:** the **FIRE** button is always there on foot and in a stolen ride, where you shoot out the window.

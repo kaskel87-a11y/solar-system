@@ -1,8 +1,8 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.1';
-import { createGame } from './game.js?v=7.1';
-import { createWorld, VEHICLES } from './world.js?v=7.1';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.2';
+import { createGame } from './game.js?v=7.2';
+import { createWorld, VEHICLES } from './world.js?v=7.2';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -484,7 +484,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const ROVER_VIEW_KEY = 'ssx.view.rover.v1', FP_DRIVE_PITCH = -0.07;
   const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
   let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
-  let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
+  let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawS = null, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
   let car = null, astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
   let found = loadFound(), discItems = [];
   const saveView = () => { if (driving) driveGoal = camGoal; try { localStorage.setItem(driving ? ROVER_VIEW_KEY : VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
@@ -608,7 +608,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const game = createGame({
     scene, camera, isMobile, onEvent: gameEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
     st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
-    hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
+    hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
     respawn(why) {
@@ -645,7 +645,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     placeDiscoveries();
     // rover
     const rv = buildBuggy(); rv.group.rotation.order = 'YXZ';
-    rover = { ...rv, kind: 'rover', spec: VEHICLES.rover, x: -9, z: 0, yaw: 0.5, y: height(-9, 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0 };
+    rover = { ...rv, kind: 'rover', spec: VEHICLES.rover, x: -9, z: 0, yaw: 0.5, y: height(-9, 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0, fuel: 100, jet: 0, jetT: -9, thrusting: false };
+    rover.stockParts = rv.body.children.filter(o => o !== rv.seat);
+    rover.jets = buildThrusters(rv.body); rover.setKit = (on, paint) => setKit(rover, on, paint);
     Object.assign(rv.group.userData, { poi: true, rover: true, name: 'Your rover', fact: 'A six-wheeled pressurized rover with independent suspension and a full light bar. Walk up and tap Drive (or press E). Boost goes faster; low gravity means big hops.' });
     scene.add(rv.group); poiObjects.push(rv.group);
     dust = makeDust();
@@ -718,11 +720,80 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (player.grounded && len > 0.05) player.bob += dt * (running ? 13 : 8) * (cfg.g < 0.3 ? 0.6 : 1); else player.bob *= 0.9;
   }
 
+  // ----- v7.2 cold-gas thrusters: four belly pods for lift, two tail nozzles for push -----
+  // plume fade: bright at the nozzle (v=0), gone at the tip (v=1); additive, so black = invisible
+  const jetFade = (() => { const cv = document.createElement('canvas'); cv.width = 4; cv.height = 64; const x = cv.getContext('2d'); const gr = x.createLinearGradient(0, 0, 0, 64);
+    gr.addColorStop(0, '#000'); gr.addColorStop(0.55, '#333'); gr.addColorStop(0.9, '#bbb'); gr.addColorStop(1, '#fff'); x.fillStyle = gr; x.fillRect(0, 0, 4, 64); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const jetMat = new THREE.MeshBasicMaterial({ color: 0x6fb8ff, map: jetFade, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+  const jetCore = new THREE.MeshBasicMaterial({ color: 0xd8f0ff, map: jetFade, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const plumeGeo = (() => { const gg = new THREE.ConeGeometry(0.26, 1.8, 10, 1, true); gg.translate(0, -0.9, 0); gg.rotateX(Math.PI); gg.translate(0, -1.8, 0); return gg; })();
+  const coreGeo = (() => { const gg = new THREE.ConeGeometry(0.11, 0.9, 8, 1, true); gg.translate(0, -0.45, 0); gg.rotateX(Math.PI); gg.translate(0, -0.9, 0); return gg; })();
+  function buildThrusters(body, bike) {
+    const pods = [], dark = new THREE.MeshStandardMaterial({ color: 0x2a2c31, roughness: 0.6, metalness: 0.4, flatShading: true }), ring = new THREE.MeshBasicMaterial({ color: 0x5ad0ff });
+    const mk = (x, y, z, rear) => {
+      const pod = new THREE.Group(); pod.position.set(x, y, z); if (rear) pod.rotation.x = -Math.PI / 2; body.add(pod);
+      const h = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.27, 0.34, 10), dark); pod.add(h);
+      const rg = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.035, 5, 12), ring); rg.rotation.x = Math.PI / 2; rg.position.y = -0.17; pod.add(rg);
+      const plume = new THREE.Mesh(plumeGeo, jetMat), core = new THREE.Mesh(coreGeo, jetCore); plume.position.y = -0.17; core.position.y = -0.17; pod.add(plume, core);
+      plume.visible = core.visible = false; plume.frustumCulled = core.frustumCulled = false;
+      pods.push({ pod, plume, core, rear, ring: rg });
+    };
+    if (bike) { for (const sz of [-1, 1]) mk(0, 0.25, sz * 0.9, false); mk(0, 0.55, 1.35, true); }
+    else { for (const sx of [-1, 1]) for (const sz of [-1, 1]) mk(sx * 1.36, 0.86, sz * 2.75, false); for (const sx of [-1, 1]) mk(sx * 0.75, 1.3, 3.12, true); }
+    return pods;
+  }
+  function updateJets(r, dt) {
+    if (!r.jets) return;
+    const want = r.thrusting ? 1 : 0; r.jet += (want - r.jet) * Math.min(1, dt * (want ? 14 : 8));
+    const k = r.jet, flick = 0.85 + Math.random() * 0.3, big = r.kit ? 1.3 : 1;
+    for (const j of r.jets) {
+      const on = k > 0.03; j.plume.visible = j.core.visible = on; j.ring.material.color.setRGB(0.25 + k * 0.75, 0.6 + k * 0.4, 1);
+      if (!on) continue;
+      const len = (j.rear ? (0.5 + Math.max(0, r.thrFwd || 0) * 0.9) : 1) * k * flick * big;
+      j.plume.scale.set(big * (0.8 + k * 0.4), len, big * (0.8 + k * 0.4)); j.core.scale.set(big, len, big);
+    }
+    jetMat.opacity = (0.35 + 0.3 * k) * flick; jetCore.opacity = 0.55 + 0.35 * k;
+    // blast the ground under you when low
+    if (k > 0.3 && dust) { const gh = height(r.x, r.z), alt = r.y - gh; if (alt < 9 && Math.random() < dt * 40 * k * (1 - alt / 9)) { const a = Math.random() * 6.28, d = 1 + Math.random() * 2.5; spawnDust(r.x + Math.cos(a) * d, gh + 0.2, r.z + Math.sin(a) * d, Math.cos(a) * 9, 0.8 + Math.random() * 1.5, Math.sin(a) * 9); } }
+  }
+  // ----- v7.2 Roadster kit: a low, sleek two-seater shell over the chassis (generic: no badges, no logos) -----
+  function setKit(r, on, paint) {
+    r.kit = !!on;
+    if (on && !r.kitG) {
+      const g = new THREE.Group(), W = 2.62;
+      const pm = new THREE.MeshStandardMaterial({ color: 0x8a0f14, roughness: 0.22, metalness: 0.65 });
+      const glass = new THREE.MeshStandardMaterial({ color: 0x0b0f14, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.78 });
+      const ex = (pts, depth, m) => { const sh = new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y))); const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 2 }); geo.translate(0, 0, -depth / 2); geo.rotateY(-Math.PI / 2); return new THREE.Mesh(geo, m); };
+      g.add(ex([[-3.25, 0.82], [-3.32, 1.05], [-2.7, 1.22], [-1.1, 1.42], [1.4, 1.5], [2.85, 1.56], [3.1, 1.36], [3.08, 0.82]], W, pm));
+      const can = ex([[-1.15, 1.42], [-0.15, 1.98], [0.85, 2.02], [1.75, 1.5]], W - 0.7, glass); can.renderOrder = 2; g.add(can);
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(W - 0.2, 0.05, 0.34), pm); sp.position.set(0, 1.72, 2.92); sp.rotation.x = 0.12; g.add(sp);
+      for (const sx of [-1, 1]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.12), new THREE.MeshStandardMaterial({ color: 0x18181c })); st.position.set(sx * 0.9, 1.62, 2.9); g.add(st); }
+      const hd = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff })); hd.position.set(0, 1.08, -3.3); g.add(hd);
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 0.05), new THREE.MeshBasicMaterial({ color: 0xff2020 })); tl.position.set(0, 1.42, 3.12); g.add(tl);
+      const sk = new THREE.Mesh(new THREE.BoxGeometry(W + 0.12, 0.22, 5.9), new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.8 })); sk.position.y = 0.92; g.add(sk);
+      r.kitG = g; r.kitPaint = pm; r.body.add(g);
+    }
+    if (r.kitG) { r.kitG.visible = r.kit; if (paint !== undefined && r.kitPaint) r.kitPaint.color.setHex(paint && paint !== 0xb4b9c1 ? paint : 0x8a0f14); }
+    for (const o of r.stockParts || []) o.visible = !r.kit;
+    r.seat.position.y = r.kit ? 1.15 : 1.45;
+    for (const j of r.jets || []) j.pod.scale.setScalar(r.kit ? 1.3 : 1);
+  }
+  const FUEL_MAX = r => r.kit ? 130 : 100, FUEL_BURN = 20, ALT_CEIL = 70;
+  function thrustFuel(r, on, dt) {
+    if (r.fuel === undefined) { r.fuel = 100; r.jet = 0; r.jetT = -9; }
+    const mx = FUEL_MAX(r);
+    if (on) { r.fuel = Math.max(0, r.fuel - FUEL_BURN * dt); r.jetT = time; }
+    else if (!r.air && time - r.jetT > 0.6) r.fuel = Math.min(mx, r.fuel + (r.kit ? 34 : 25) * dt);
+  }
+  const canThrust = r => !!r && (r === rover || r.kind === 'hoverbike');
   function updateRover(dt, input, g, r = rover) {
     const sp = r.spec || VEHICLES.rover, me = driving && car === r;
     let thr = 0, st = 0;
     if (me) { [st, thr] = readMove(input); thr = clamp(thr, -1, 1); st = clamp(st, -1, 1); }
-    const boost = me && input.run, vmax = boost ? sp.boost : sp.vmax, grip = r.air ? 0.15 : 1;
+    // v7.2: hold Jump (Thrust on touch, Space on keys) for cold-gas lift; works on your rover and on a stolen hover bike
+    const wantThr = me && canThrust(r) && !!input.jump && state.intro <= 0 && r.fuel > 0.5;
+    r.thrusting = wantThr; r.thrFwd = me ? thr : 0; thrustFuel(r, wantThr, dt);
+    const boost = me && input.run, vmax = boost ? sp.boost : sp.vmax, grip = r.air ? (wantThr ? 0.65 : 0.22) : 1;
     if (thr * r.speed < -0.1) r.speed += thr * 26 * dt * grip;
     else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? sp.bacc : sp.acc) * dt * grip;
     else r.speed -= Math.sign(r.speed) * Math.min(Math.abs(r.speed), 5 * dt * grip);
@@ -731,6 +802,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     r.steer += (st - r.steer) * Math.min(1, dt * 8);
     const as = Math.abs(r.speed);
     if (!r.air) r.yaw -= r.steer * sp.turn * Math.min(1, as / 4) * (1 - 0.45 * Math.min(1, as / 30)) * Math.sign(r.speed || 1) * dt;
+    else r.yaw -= r.steer * (sp.airTurn || 1.5) * (wantThr ? 1.25 : 1) * dt; // v7.2 air control: yaw with the stick, at any speed
     const nx = r.x - Math.sin(r.yaw) * r.speed * dt, nz = r.z - Math.cos(r.yaw) * r.speed * dt;
     if (cfg.water !== undefined && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2;
     else {
@@ -739,11 +811,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
     }
     if (sp.hover) { // hover vehicles: ride a cushion above the ground, lean into turns
-      const gh = height(r.x, r.z), want = gh + sp.hover + Math.sin(time * 3) * 0.08;
-      r.y += (Math.max(want, gh + 0.4) - r.y) * Math.min(1, dt * 6); r.vy = 0; r.air = false; r.prevG = gh;
+      if (wantThr && !r.jets && r.body) r.jets = buildThrusters(r.body, true);
+      r.lift = Math.max(0, Math.min(18, (r.lift || 0) + (wantThr ? 7 : -5) * dt)); r.air = r.lift > 0.6; updateJets(r, dt);
+      const gh = height(r.x, r.z), want = gh + sp.hover + r.lift + Math.sin(time * 3) * 0.08;
+      r.y += (Math.max(want, gh + 0.4) - r.y) * Math.min(1, dt * 6); r.vy = 0; r.prevG = gh;
       const fx = -Math.sin(r.yaw), fz = -Math.cos(r.yaw);
       const tp = Math.atan2(height(r.x + fx * 2.5, r.z + fz * 2.5) - height(r.x - fx * 2.5, r.z - fz * 2.5), 5) * 0.6;
-      r.pitch += (tp - r.pitch) * Math.min(1, dt * 4); r.roll += (-r.steer * (sp.lean || 0.15) * Math.min(1, as / 10) - r.roll) * Math.min(1, dt * 5);
+      r.pitch += ((r.air ? -thr * 0.15 : tp) - r.pitch) * Math.min(1, dt * 4); r.roll += (-r.steer * (sp.lean || 0.15) * (r.air ? 1.2 : Math.min(1, as / 10)) - r.roll) * Math.min(1, dt * 5);
       r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
       if (dust && as > 4 && Math.random() < dt * as * 1.5) spawnDust(r.x + (Math.random() - 0.5) * 2, gh + 0.2, r.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 6, 1 + Math.random() * 2, (Math.random() - 0.5) * 6);
       return;
@@ -751,15 +825,22 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const gH = height(r.x, r.z);
     if (r.prevG === null) r.prevG = gH;
     const gv = (gH - r.prevG) / Math.max(dt, 1e-3); r.prevG = gH;
+    if (wantThr) { const alt = r.y - gH, fade = clamp((ALT_CEIL - alt) / 10, 0, 1); r.vy += (g + clamp((6 - r.vy) * 2.6, -g * 0.7, 15)) * fade * dt + g * (1 - fade) * dt * 0.98; }
     r.vy -= g * dt; r.y += r.vy * dt;
-    if (r.y <= gH) { if (r.vy < -2.5) r.susp = Math.min(0.45, -r.vy * 0.04); r.y = gH; r.vy = Math.min(Math.max(r.vy, gv), 14); r.air = false; }
+    if (r.y <= gH) { if (r.vy < -2.5) r.susp = Math.min(0.45, -r.vy * 0.04);
+      if (me && r.vy < -13) { onEvent('crash', { speed: -r.vy }); if (r.vy < -17) game.hurtPlayer((-r.vy - 17) * 2, null); }
+      r.y = gH; r.vy = Math.min(Math.max(r.vy, gv), 14); r.air = false; }
     else r.air = r.y - gH > 0.25;
     const fx = -Math.sin(r.yaw), fz = -Math.cos(r.yaw), rx = Math.cos(r.yaw), rz = -Math.sin(r.yaw);
     if (!r.air) {
       const tp = Math.atan2(height(r.x + fx * 2.1, r.z + fz * 2.1) - height(r.x - fx * 2.1, r.z - fz * 2.1), 4.2);
       const tr = Math.atan2(height(r.x + rx * 1.55, r.z + rz * 1.55) - height(r.x - rx * 1.55, r.z - rz * 1.55), 3.1);
       r.pitch += (tp - r.pitch) * Math.min(1, dt * 10); r.roll += (tr - r.roll) * Math.min(1, dt * 10);
-    } else { r.pitch += (clamp(r.vy * 0.03, -0.35, 0.35) - r.pitch) * Math.min(1, dt * 1.5); r.roll *= 1 - Math.min(1, dt); }
+    } else { // v7.2: bank into air turns, stick forward/back noses down/up a little
+      r.pitch += (clamp(r.vy * 0.025 - thr * 0.2, -0.4, 0.4) - r.pitch) * Math.min(1, dt * 3);
+      r.roll += (-r.steer * 0.42 - r.roll) * Math.min(1, dt * 4);
+    }
+    updateJets(r, dt);
     r.susp *= Math.exp(-dt * 6);
     r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
     r.body.position.y = -r.susp + (r.air ? 0.06 : Math.sin(time * 31) * 0.012 * Math.min(1, as / 17));
@@ -914,11 +995,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const gh = dashH * 0.7; cockpit.gauge.position.set(0, -hh + dashH * 0.48, -D); cockpit.gauge.scale.set(gh, gh, 1);
     const pw = W * 0.018; for (const [p, sgn] of [[cockpit.pL, -1], [cockpit.pR, 1]]) { p.position.set(sgn * (hw - pw * 0.3), 0, -D); p.scale.set(pw, H * 1.2, 1); p.rotation.z = sgn * 0.06; }
     cockpit.t -= dt; if (cockpit.t > 0) return; cockpit.t = 0.2;
-    const gi = game.info, txt = `${Math.round(Math.abs(car.speed) * 3.6)}|${gi.turret ? gi.heat : -1}|${gi.overheat}`;
+    const gi = game.info, alt = car.air ? Math.round(car.y - height(car.x, car.z)) : -1, txt = `${alt}|${Math.round(car.fuel ?? 0)}|${Math.round(Math.abs(car.speed) * 3.6)}|${gi.turret ? gi.heat : -1}|${gi.overheat}`;
     if (txt === cockpit.last) return; cockpit.last = txt;
     const x = cockpit.c.getContext('2d'); x.clearRect(0, 0, 256, 64);
     x.fillStyle = 'rgba(5,10,20,0.9)'; x.beginPath(); x.roundRect ? x.roundRect(2, 2, 252, 60, 12) : x.rect(2, 2, 252, 60); x.fill();
-    x.fillStyle = '#7dd3fc'; x.font = 'bold 30px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillText(`${Math.round(Math.abs(car.speed) * 3.6)} km/h`, 14, 33);
+    x.fillStyle = '#7dd3fc'; x.font = 'bold 30px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillText(alt >= 0 ? `ALT ${alt} m` : `${Math.round(Math.abs(car.speed) * 3.6)} km/h`, 14, 33);
     if (gi.turret) { x.fillStyle = 'rgba(255,255,255,0.18)'; x.fillRect(150, 26, 92, 14); x.fillStyle = gi.overheat ? '#ff2d55' : '#f59e0b'; x.fillRect(150, 26, 92 * gi.heat / 100, 14); x.fillStyle = '#fff'; x.font = 'bold 13px system-ui, sans-serif'; x.fillText(gi.overheat ? 'OVERHEAT' : 'PLASMA', 152, 15); }
     cockpit.tex.needsUpdate = true;
   }
@@ -931,13 +1012,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const first = camDist < 0.8;
     if (driving) {
       if (time - lastLook > 1.2) camYawOff *= Math.exp(-dt * 2);
-      viewYaw = car.yaw + camYawOff;
+      // v7.2: the chase cam swings after the car's heading (softer in the air, so banked turns read)
+      if (camYawS === null || first) camYawS = car.yaw;
+      else camYawS += Math.atan2(Math.sin(car.yaw - camYawS), Math.cos(car.yaw - camYawS)) * (1 - Math.exp(-dt * (car.air ? 3.5 : 9)));
+      viewYaw = camYawS + camYawOff;
       if (first) {
-        car.group.updateMatrixWorld(true); car.body.localToWorld(camT.set(-0.45, 2.15, -0.55));
-        camera.position.copy(camT); camera.rotation.set(player.pitch + car.pitch, viewYaw, car.roll, 'YXZ');
+        car.group.updateMatrixWorld(true); car.body.localToWorld(camT.set(-0.45, car.kit ? 1.85 : 2.15, -0.55));
+        camera.position.copy(camT); camera.rotation.set(player.pitch + car.pitch * (car.air ? 0.6 : 1), viewYaw, car.roll * (car.air ? 0.5 : 1), 'YXZ');
       } else camT.set(car.x, car.y + 2.0, car.z);
     } else {
-      viewYaw = player.yaw;
+      viewYaw = player.yaw; camYawS = null;
       if (first) {
         camera.position.set(player.x, player.y + introY + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
         camera.rotation.set(player.pitch - introP, player.yaw, 0);
@@ -1156,7 +1240,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
         view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
         nearVehicle: (() => { if (driving || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
-        nearContact: !driving ? (world.nearContact()?.name || null) : null, nearShop: !driving && world.nearShop(), wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
+        nearContact: !driving ? (world.nearContact()?.name || null) : null, nearShop: !driving && world.nearShop(), wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
+        carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,
+        thrust: (() => { const r = driving ? car : rover; const can = driving && canThrust(car); return { can, on: !!(can && r.thrusting), fuel: r ? Math.round(r.fuel ?? 100) : 0, max: r ? FUEL_MAX(r) : 100, jet: r?.jet || 0 }; })(), viewYaw,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
         nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,
         disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,

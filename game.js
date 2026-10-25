@@ -3,12 +3,12 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { mergeGeos } from './models.js?v=7.1';
+import { mergeGeos } from './models.js?v=7.2';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
 const DEFAULT_PROGRESS = () => ({
-  v: 1, xp: 0, credits: 0, badges: [], unlocks: ['paint:steel', 'bandana:none'], equip: { paint: 'steel', bandana: 'none', weapon: 'rifle' },
+  v: 1, xp: 0, credits: 0, badges: [], unlocks: ['paint:steel', 'bandana:none', 'kit:stock'], equip: { paint: 'steel', bandana: 'none', weapon: 'rifle', rover: 'cannon', kit: 'stock' },
   quests: {}, active: {}, rare: {}, settings: { aliens: true, voice: true, radio: 0 }, stats: { kills: 0, deaths: 0, shots: 0, busted: 0, stolen: 0 },
   inv: { medkits: 1, shells: 0 }, upgrades: []
 });
@@ -29,7 +29,9 @@ export const COSMETICS = {
   paint: { steel: { name: 'Stainless', color: 0xb4b9c1 }, lunar: { name: 'Lunar White', color: 0xeef2f6 }, rust: { name: 'Rust Red', color: 0xb0482a }, gold: { name: 'Venus Gold', color: 0xd8a838 }, shadow: { name: 'Shadow Black', color: 0x34363d }, neon: { name: 'Io Neon', color: 0x2fd4c0 },
     hazard: { name: 'Hazard Yellow', color: 0xe0b020, shop: 80 }, oxide: { name: 'Oxide Maroon', color: 0x5a1c1c, shop: 80 }, camo: { name: 'Dust Camo', color: 0x7a6a48, shop: 80 } },
   bandana: { none: { name: 'No bandana' }, red: { name: 'Classic Red', color: 0xd23b3b }, stars: { name: 'Star Blue', color: 0x2a5cd8 }, green: { name: 'Mission Green', color: 0x3cc060 }, galaxy: { name: 'Galaxy Purple', color: 0x8a3cf0 },
-    blackops: { name: 'Black Ops', color: 0x18181c, shop: 60 }, blaze: { name: 'Blaze Orange', color: 0xff6a00, shop: 60 } }
+    blackops: { name: 'Black Ops', color: 0x18181c, shop: 60 }, blaze: { name: 'Blaze Orange', color: 0xff6a00, shop: 60 } },
+  // v7.2: a low two-seater body shell with bigger cold-gas pods (generic styling, no badges)
+  kit: { stock: { name: 'Stock hull' }, roadster: { name: 'Roadster kit', color: 0x8a0f14, shop: 350 } }
 };
 // the colony shop: weapons, gear, upgrades and cosmetics (cosmetics come from COSMETICS[*].shop)
 export const SHOP = [
@@ -39,7 +41,14 @@ export const SHOP = [
   { id: 'armor', name: 'Suit armor plating', desc: '+25 max shield.', price: 200, kind: 'upgrade' },
   { id: 'blade', name: 'Vibro-machete', desc: 'Humming 60 cm blade. Melee hits land 3× harder and open things up. Select it on the weapon chip to slash with FIRE.', price: 220, kind: 'melee' },
   { id: 'heatsink', name: 'Blaster heat sink', desc: 'Plasma blaster runs 35% cooler.', price: 180, kind: 'upgrade' },
-  { id: 'roverarmor', name: 'Rover armor', desc: 'Your rover takes half damage.', price: 150, kind: 'upgrade' }
+  { id: 'roverarmor', name: 'Rover armor', desc: 'Your rover takes half damage.', price: 150, kind: 'upgrade' },
+  // v7.2 rover weapons: tiers upgrade the stock twin blaster; the rest are swappable mounts (weapon chip while driving)
+  { id: 'turret2', name: 'Turret Mk II', desc: 'Re-bored twin blaster: 35% more punch, faster cycle, runs cooler.', price: 180, kind: 'roverup' },
+  { id: 'turret3', name: 'Turret Mk III', desc: 'Quad-linked heavy blaster. Chews through armor. Needs Mk II.', price: 320, kind: 'roverup', needsUp: 'turret2' },
+  { id: 'rail', name: 'Rail cannon', desc: 'Magnetic slug at 400 m/s. Slow to cycle, punches through everything in a line.', price: 300, kind: 'roverwpn' },
+  { id: 'rockets', name: 'Rocket pods', desc: 'Twin dumb-fire rocket pods, 5 m blast radius. Do not fire at your own feet.', price: 280, kind: 'roverwpn' },
+  { id: 'torch', name: 'Plasma torch', desc: 'Flamethrower-style plasma jet. Short range, wide, nasty.', price: 240, kind: 'roverwpn' },
+  { id: 'emp', name: 'EMP pulse', desc: '25 m shockwave that stuns and fries anything nearby. Long recharge.', price: 260, kind: 'roverwpn' }
 ];
 
 // ---------- Missions ----------
@@ -142,6 +151,19 @@ export const WEAPONS = {
   shotgun: { name: 'Shotgun', cd: 0.8, dmg: 1.0, pellets: 8, spread: 0.075, speed: 85, color: 0xffb347, size: 0.75, ammo: 'shells', life: 0.4 },
   roverCannon: { name: 'Rover cannon', cd: 0.11, dmg: 1.5, speed: 120, color: 0xff5cf0, size: 1.7, heat: 6, twin: true, life: 1.1 }
 };
+// v7.2: rover mounts. cannon is tiered by the turret2/turret3 upgrades.
+export const ROVER_WEAPONS = {
+  cannon: { name: 'Twin blaster', short: 'Twin', icon: '🔫' },
+  rail: { name: 'Rail cannon', short: 'Rail', icon: '⚡', cd: 1.1, dmg: 9, speed: 420, color: 0x9fd8ff, size: 2.4, heat: 34, life: 0.45, pierce: true, beam: true, rail: true },
+  rockets: { name: 'Rocket pods', short: 'Rkts', icon: '🚀', cd: 0.5, dmg: 2, speed: 60, color: 0xff7a20, size: 2.2, heat: 18, twin: true, life: 2.2, splash: 5.5, splashDmg: 6, rocket: true },
+  torch: { name: 'Plasma torch', short: 'Torch', icon: '🔥', cd: 0.05, dmg: 0.5, pellets: 3, spread: 0.13, speed: 38, color: 0xffb347, size: 1.8, heat: 3.2, life: 0.5, flame: true, pierce: true },
+  emp: { name: 'EMP pulse', short: 'EMP', icon: '🌀', cd: 3.0, dmg: 2.5, heat: 0, emp: 25 }
+};
+const CANNON_TIERS = [
+  { ...{ name: 'Twin blaster', short: 'Twin' } },
+  { name: 'Twin blaster Mk II', short: 'Mk II', dmg: 2.05, cd: 0.09, heat: 4.8 },
+  { name: 'Quad blaster Mk III', short: 'Mk III', dmg: 2.7, cd: 0.075, heat: 4.2, size: 2.1, quad: true }
+];
 
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.15, ...o });
 const B = (color, o = {}) => new THREE.MeshBasicMaterial({ color, ...o });
@@ -227,7 +249,9 @@ function assets() {
   A.acidGeo = new THREE.SphereGeometry(0.24, 8, 6); A.mAcid = B(0x9dff3a, { transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   A.boltGeo = (() => { const g = new THREE.CylinderGeometry(0.07, 0.07, 1.6, 6); g.rotateX(Math.PI / 2); return g; })();
   const bm = c => B(c, { transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
-  A.mBolt = { 0x7fe9ff: bm(0x7fe9ff), 0xff5cf0: bm(0xff5cf0), 0xffb347: bm(0xffb347), 0xff3a2a: bm(0xff3a2a) };
+  A.mBolt = { 0x7fe9ff: bm(0x7fe9ff), 0xff5cf0: bm(0xff5cf0), 0xffb347: bm(0xffb347), 0xff3a2a: bm(0xff3a2a), 0x9fd8ff: bm(0x9fd8ff), 0xff7a20: bm(0xff7a20) };
+  A.beamGeo = (() => { const g = new THREE.CylinderGeometry(0.09, 0.09, 1, 6, 1, true); g.rotateX(Math.PI / 2); g.translate(0, 0, -0.5); return g; })();
+  A.empGeo = new THREE.RingGeometry(0.85, 1, 48);
   A.sparkTex = glowTex('rgba(255,255,255,1)', 'rgba(255,255,255,0.5)');
   A.flashMat = new THREE.SpriteMaterial({ map: glowTex('rgba(255,240,255,1)', 'rgba(255,90,240,0.6)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
   A.pickBeam = (() => { const g = new THREE.CylinderGeometry(0.25, 0.25, 30, 6, 1, true); g.translate(0, 15, 0); return g; })();
@@ -343,6 +367,16 @@ export function createGame(ctx) {
   const qState = id => (P.quests[id] ||= { status: 'new', step: 0, n: 0 });
   const isDone = id => !!P.quests[id]?.everDone;
   const aliensOn = () => P.settings.aliens !== false;
+  // ----- v7.2 rover mounts -----
+  const roverOwned = () => ['cannon', ...['rail', 'rockets', 'torch', 'emp'].filter(k => P.unlocks.includes('rover:' + k))];
+  const roverTier = () => P.upgrades.includes('turret3') ? 2 : P.upgrades.includes('turret2') ? 1 : 0;
+  const roverId = () => roverOwned().includes(P.equip.rover) ? P.equip.rover : 'cannon';
+  function roverWpn() {
+    const id = roverId();
+    if (id === 'cannon') { const t = CANNON_TIERS[roverTier()]; return { ...WEAPONS.roverCannon, ...t, icon: '🔫', id, tier: roverTier() }; }
+    return { ...ROVER_WEAPONS[id], id };
+  }
+  let fxs = [];
 
   // ----- sparkle bursts (one pooled Points buffer) -----
   function makeSparks() {
@@ -564,6 +598,7 @@ export function createGame(ctx) {
         if (dist < 15 && H.down <= 0 && st.intro <= 0) { a.burrow = false; a.aggro = true; a.y = height(a.x, a.z) - 0.5; a.vy = 7; burst(a.x, a.y + 1, a.z, 22, 6, DUSTC); onEvent('ambush', {}); }
         else continue;
       }
+      if (a.stun > 0) { a.stun -= dt; a.hit = Math.max(a.hit, 0.35 + Math.random() * 0.3); continue; } // EMP'd: twitching, not moving
       if (!a.aggro && dist < 48) a.aggro = true;
       const calm = H.down > 0 || !a.aggro || st.intro > 0;
       if (T.still) { // nest
@@ -745,14 +780,14 @@ export function createGame(ctx) {
   function muzzle() {
     const st = ctx.st();
     if (st.driving && !st.own) { const r = st.rover; return new THREE.Vector3(r.x - Math.cos(r.yaw) * 0.9, (r.y ?? height(r.x, r.z)) + 1.7, r.z + Math.sin(r.yaw) * 0.9); }
-    if (st.driving && st.own && turret) { turret.group.updateMatrixWorld(true); return (W.side ? turret.tipR : turret.tipL).getWorldPosition(new THREE.Vector3()); }
+    if (st.driving && st.own && turret) { turret.group.updateMatrixWorld(true); const md = turret.mods[roverId()], tips = md ? md.tips : [turret.tipL, turret.tipR]; return tips[W.side % tips.length].getWorldPosition(new THREE.Vector3()); }
     if (st.camDist < 0.8) return new THREE.Vector3(player.x, player.y - 0.35, player.z).addScaledVector(camera.getWorldDirection(tmpV), 0.6);
     const fy = player.yaw;
     return new THREE.Vector3(player.x + Math.cos(fy) * 0.45 - Math.sin(fy) * 0.4, player.y - 0.45, player.z - Math.sin(fy) * 0.45 - Math.cos(fy) * 0.4);
   }
   // fire once. aimAt = {x,y} in NDC to shoot along a screen ray, or null for auto-aim (phone Fire button)
   // own rover: the turret (aliens on). Stolen rides: your sidearm out the window. On foot: blaster or shotgun.
-  const curWeapon = () => { const st = ctx.st(); if (st.driving) return st.own ? (turret && aliensOn() ? WEAPONS.roverCannon : null) : (P.equip.weapon === 'shotgun' && P.unlocks.includes('weapon:shotgun') ? WEAPONS.shotgun : WEAPONS.rifle); return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
+  const curWeapon = () => { const st = ctx.st(); if (st.driving) return st.own ? (turret ? roverWpn() : null) : (P.equip.weapon === 'shotgun' && P.unlocks.includes('weapon:shotgun') ? WEAPONS.shotgun : WEAPONS.rifle); return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
   function fire(aimAt) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
@@ -761,7 +796,8 @@ export function createGame(ctx) {
     if (W.cd > 0 || (wpn.heat && W.over)) return false;
     if (wpn.ammo) { if (!P.inv[wpn.ammo]) { W.cd = 0.5; onEvent('dry', { weapon: wpn.name }); return false; } P.inv[wpn.ammo]--; }
     W.cd = wpn.cd; W.lastShot = time;
-    if (wpn.twin) W.side ^= 1;
+    if (wpn.emp) { empPulse(wpn); W.flash = 0.2; W.recoil = 1.4; P.stats.shots++; onEvent('zap', { heavy: true, emp: true, rover: true }); return true; }
+    if (wpn.twin || wpn.quad) W.side = (W.side + 1) % (wpn.quad ? 4 : 2);
     const from = muzzle(), useTurret = st.driving && st.own && turret;
     let to;
     if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
@@ -781,27 +817,68 @@ export function createGame(ctx) {
       const d = dir0.clone(); if (wpn.spread) { d.x += (Math.random() - 0.5) * wpn.spread * 2; d.y += (Math.random() - 0.5) * wpn.spread * 1.4; d.z += (Math.random() - 0.5) * wpn.spread * 2; d.normalize(); }
       const m = new THREE.Mesh(A.boltGeo, A.mBolt[wpn.color]);
       m.scale.setScalar(wpn.size); m.position.copy(from); m.lookAt(from.clone().add(d)); scene.add(m);
-      bolts.push({ mesh: m, v: d.multiplyScalar(wpn.speed), life: wpn.life || 1.1, dmg: wpn.dmg, heavy: !!wpn.twin, prev: from.clone() });
+      if (wpn.flame) m.scale.set(wpn.size * 2.2, wpn.size * 2.2, wpn.size * 0.6);
+      bolts.push({ mesh: m, v: d.multiplyScalar(wpn.speed), life: (wpn.life || 1.1) * (wpn.flame ? 0.75 + Math.random() * 0.5 : 1), dmg: wpn.dmg, heavy: !!(wpn.twin || useTurret), prev: from.clone(),
+        pierce: !!wpn.pierce, hitSet: wpn.pierce ? new Set() : null, splash: wpn.splash || 0, splashDmg: wpn.splashDmg || 0, rocket: !!wpn.rocket, flame: !!wpn.flame, grow: wpn.flame ? 1 : 0 });
     }
+    if (wpn.beam) { const bm = new THREE.Mesh(A.beamGeo, A.mBolt[wpn.color].clone()); bm.position.copy(from); bm.lookAt(from.clone().add(dir0)); bm.scale.set(2.2, 2.2, wpn.speed * wpn.life); scene.add(bm); fxs.push({ mesh: bm, life: 0.28, max: 0.28, kind: 'beam' }); }
     if (wpn.heat) { W.heat = Math.min(100, W.heat + wpn.heat * (wpn === WEAPONS.rifle && hasUp('heatsink') ? 0.65 : 1)); if (W.heat >= 100) { W.over = true; onEvent('overheat', {}); } }
     W.flash = 0.06; W.recoil = wpn.pellets ? 1.6 : 1;
     P.stats.shots++;
-    onEvent('zap', { heavy: !!wpn.twin, shotgun: !!wpn.pellets });
+    onEvent('zap', { heavy: !!(wpn.twin || wpn.quad), shotgun: !!wpn.pellets && !wpn.flame, rover: !!useTurret, rail: !!wpn.rail, rocket: !!wpn.rocket, torch: !!wpn.flame, tier: wpn.tier || 0 });
     return true;
   }
   // cycle blaster -> shotgun -> machete (whatever you own)
   function switchWeapon(id) {
+    const sw = ctx.st();
+    if (sw.driving && sw.own && turret) {
+      const owned = roverOwned(), next = id || owned[(owned.indexOf(roverId()) + 1) % owned.length];
+      if (!owned.includes(next) || (!id && owned.length < 2)) { onEvent('toast', { text: `🔫 ${roverWpn().name}. Rail cannon, rocket pods, plasma torch, EMP and turret tiers are sold at the colony shop.` }); return false; }
+      P.equip.rover = next; save(); setTurretLook(); onEvent('weapon', { id: 'rover:' + next, name: roverWpn().name, icon: roverWpn().icon, rover: true }); return true;
+    }
     const owned = ['rifle', ...(P.unlocks.includes('weapon:shotgun') ? ['shotgun'] : []), ...(hasBlade() ? ['blade'] : [])];
     const next = id || owned[(owned.indexOf(P.equip.weapon) + 1) % owned.length];
     if (!owned.includes(next) || (!id && owned.length < 2)) { onEvent('toast', { text: '🔫 Plasma blaster: unlimited, it just runs hot. Shotgun and machete are sold at the colony shop.' }); return false; }
     P.equip.weapon = next; save(); onEvent('weapon', { id: next, name: next === 'blade' ? 'Vibro-machete' : WEAPONS[next].name, shells: P.inv.shells }); return true;
   }
+  const SMOKE = [[0.55, 0.52, 0.5], [0.4, 0.38, 0.36], [1, 0.6, 0.25]];
+  function explode(p, b) {
+    if (b.exploded) return; b.exploded = true;
+    const R = b.splash, c = p.clone();
+    burst(c.x, c.y + 0.3, c.z, 40, 9, [[1, 0.75, 0.3], [1, 0.45, 0.15], [0.5, 0.45, 0.4], [1, 1, 0.8]]);
+    const fl = new THREE.Sprite(A.flashMat.clone()); fl.material.color.setRGB(1, 0.6, 0.25); fl.position.copy(c); fl.scale.setScalar(R * 1.6); scene.add(fl); fxs.push({ mesh: fl, life: 0.3, max: 0.3, kind: 'flash' });
+    for (const a of [...agents]) { if (a.burrow) continue; const d = center(a).distanceTo(c); if (d > R + a.T.r) continue; a.hp -= b.splashDmg * (1 - Math.min(1, d / (R + a.T.r))) * (1 - (a.T.armor || 0) * 0.5); a.aggro = true; a.hit = 1; if (a.hp <= 0) killAgent(a); }
+    ctx.blastWorld?.(c, R, b.splashDmg);
+    onEvent('boom', { x: c.x, z: c.z });
+  }
+  function empPulse(w) {
+    const st = ctx.st(), r = st.rover, c = new THREE.Vector3(r.x, (r.y ?? height(r.x, r.z)) + 1.2, r.z);
+    const ring = new THREE.Mesh(A.empGeo, B(0x8fe0ff, { transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.copy(c); scene.add(ring); fxs.push({ mesh: ring, life: 0.6, max: 0.6, kind: 'ring', R: w.emp });
+    burst(c.x, c.y + 1, c.z, 50, 14, [[0.6, 0.9, 1], [1, 1, 1], [0.4, 0.6, 1]]);
+    let n = 0;
+    for (const a of [...agents]) { if (a.burrow) continue; if (Math.hypot(a.x - c.x, a.z - c.z) > w.emp) continue; a.stun = 3.2; a.hp -= w.dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; n++; if (a.hp <= 0) killAgent(a); }
+    n += ctx.blastWorld?.(c, w.emp, 1.5, true) || 0;
+    W.lastEmp = { t: time, n };
+  }
+  function updateFx(dt) {
+    for (const f of [...fxs]) {
+      f.life -= dt; const k = Math.max(0, f.life / f.max);
+      if (f.kind === 'ring') { const s = f.R * (1 - k * k) + 0.5; f.mesh.scale.set(s, s, s); f.mesh.material.opacity = 0.85 * k; }
+      else if (f.mesh.material) f.mesh.material.opacity = k;
+      if (f.life <= 0) { scene.remove(f.mesh); f.mesh.material?.dispose?.(); fxs.splice(fxs.indexOf(f), 1); }
+    }
+  }
   const seg = new THREE.Vector3(), q = new THREE.Vector3();
   function updateBolts(dt) {
     for (const b of [...bolts]) {
       b.prev.copy(b.mesh.position); b.mesh.position.addScaledVector(b.v, dt); b.life -= dt;
+      if (b.flame) { b.v.multiplyScalar(Math.exp(-dt * 1.6)); b.v.y += dt * 3; b.mesh.scale.multiplyScalar(1 + dt * 2.2); }
+      if (b.rocket && Math.random() < 0.8) burst(b.mesh.position.x, b.mesh.position.y, b.mesh.position.z, 1, 0.6, SMOKE);
       const p0 = b.prev, p1 = b.mesh.position; let dead = b.life <= 0;
+      if (dead && b.splash) explode(p1, b);
       for (const a of agents) {
+        if (b.hitSet?.has(a)) continue;
         const c = center(a), r = a.T.r + (b.heavy ? 0.45 : 0.25);
         seg.copy(p1).sub(p0); const L2 = seg.lengthSq();
         const t = L2 ? THREE.MathUtils.clamp(tmpV.copy(c).sub(p0).dot(seg) / L2, 0, 1) : 0;
@@ -812,12 +889,14 @@ export function createGame(ctx) {
           burst(q.x, q.y, q.z, 5, 3, a.type === 'hunter' ? ICHOR_H : ICHOR); a.hit = 1;
           onEvent('hit', { boss: !!a.T.boss });
           if (a.hp <= 0) killAgent(a);
+          if (b.splash) explode(q, b);
+          if (b.pierce) { b.hitSet.add(a); continue; }
           dead = true; break;
         }
       }
-      if (!dead && ctx.hitWorld?.(p0, p1, b)) dead = true;
-      if (!dead && ctx.solidAt?.(p1.x, p1.y, p1.z)) { burst(p1.x, p1.y, p1.z, 4, 3, [[1, 0.8, 0.5]]); dead = true; }
-      if (!dead && p1.y < height(p1.x, p1.z)) { burst(p1.x, p1.y + 0.2, p1.z, 4, 3, [[1, 0.9, 0.6]]); dead = true; }
+      if (!dead && ctx.hitWorld?.(p0, p1, b) && !b.pierce) { dead = true; if (b.splash) explode(p1, b); }
+      if (!dead && ctx.solidAt?.(p1.x, p1.y, p1.z)) { burst(p1.x, p1.y, p1.z, 4, 3, [[1, 0.8, 0.5]]); dead = true; if (b.splash) explode(p1, b); }
+      if (!dead && p1.y < height(p1.x, p1.z)) { burst(p1.x, p1.y + 0.2, p1.z, b.flame ? 1 : 4, 3, [[1, 0.9, 0.6]]); dead = true; if (b.splash) explode(p1, b); }
       if (dead) { scene.remove(b.mesh); bolts.splice(bolts.indexOf(b), 1); }
     }
   }
@@ -843,13 +922,53 @@ export function createGame(ctx) {
       barrels.push(bg); tips.push(tip); flashes.push(fl);
     }
     const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 10), heatMat); tank.rotation.z = Math.PI / 2; tank.position.set(0, 0.64, 0.45); yawG.add(tank);
-    return { group: g, yawG, pitchG, barrels, tipL: tips[0], tipR: tips[1], flashes, heatMat, lock: null, yaw: 0, pitch: 0 };
+    // v7.2 swappable mounts (only one shows at a time) + Mk III extra barrels
+    const mods = {};
+    const mkTip = (parent, z, x = 0, y = 0, sc = 1.7, col) => { const t = new THREE.Object3D(); t.position.set(x, y, z); parent.add(t); const f = new THREE.Sprite(A.flashMat.clone()); if (col) f.material.color.set(col); f.scale.setScalar(sc); f.visible = false; t.add(f); return [t, f]; };
+    { const m = new THREE.Group(); pitchG.add(m); // rail: long slab rails with glowing coils
+      for (const s of [-1, 1]) { const rl = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.34, 3.2), dark); rl.position.set(s * 0.17, 0, -1.6); m.add(rl); }
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.2, 8), B(0x9fd8ff)); core.rotation.x = Math.PI / 2; core.position.z = -1.6; m.add(core);
+      for (let k = 0; k < 5; k++) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.08), heatMat); c.position.z = -0.4 - k * 0.6; m.add(c); }
+      const [t, f] = mkTip(m, -3.3, 0, 0, 2.4, 0x9fd8ff); mods.rail = { g: m, tips: [t], flashes: [f] }; }
+    { const m = new THREE.Group(); yawG.add(m); m.position.set(0, 0.45, -0.1); const tps = [], fls = []; // rockets: side pods with tube mouths
+      for (const s of [-1, 1]) { const pod = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.62, 1.4), M(0x3a3326, { flatShading: true })); pod.position.set(s * 0.95, 0, -0.2); m.add(pod);
+        for (let i = 0; i < 4; i++) { const tube = new THREE.Mesh(new THREE.CircleGeometry(0.1, 8), B(0x111111)); tube.position.set(s * 0.95 + ((i % 2) - 0.5) * 0.28, ((i >> 1) - 0.5) * 0.28, -0.91); tube.rotation.y = Math.PI; m.add(tube); }
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.08, 1.0), B(0xe0b020)); stripe.position.set(s * 0.95, 0.27, -0.2); m.add(stripe);
+        const [t, f] = mkTip(m, -1.1, s * 0.95, 0, 1.6, 0xffa050); tps.push(t); fls.push(f); }
+      mods.rockets = { g: m, tips: tps, flashes: fls }; }
+    { const m = new THREE.Group(); pitchG.add(m); // torch: stubby nozzle + fuel tanks
+      const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.32, 1.3, 10), dark); noz.rotation.x = Math.PI / 2; noz.position.z = -0.9; m.add(noz);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 6, 12), B(0xff8a30)); ring.position.z = -1.55; m.add(ring);
+      for (const s of [-1, 1]) { const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.9, 10), M(0x7a1e12, { roughness: 0.5 })); tk.rotation.x = Math.PI / 2; tk.position.set(s * 0.42, -0.05, 0.2); m.add(tk); }
+      const [t, f] = mkTip(m, -1.7, 0, 0, 1.4, 0xffa040); mods.torch = { g: m, tips: [t], flashes: [f] }; }
+    { const m = new THREE.Group(); yawG.add(m); m.position.set(0, 0.95, 0); // emp: coil mast + spinning emitter ring
+      const mastE = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.6, 8), dark); mastE.position.y = 0.0; m.add(mastE);
+      const spin = new THREE.Group(); spin.position.y = 0.35; spin.rotation.x = Math.PI / 2; m.add(spin);
+      const ringE = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.07, 6, 24), heatMat); spin.add(ringE);
+      for (let k = 0; k < 4; k++) { const pr = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.3), steel); const a = k / 4 * Math.PI * 2; pr.position.set(Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0); spin.add(pr); }
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), B(0x8fe0ff)); orb.position.y = 0.35; m.add(orb);
+      const [t, f] = mkTip(m, 0, 0, 0.35, 3, 0x8fe0ff); mods.emp = { g: m, tips: [t], flashes: [f], spin }; }
+    const quad = new THREE.Group(); pitchG.add(quad); const qTips = [], qFl = []; // Mk III: two more barrels under the pair
+    for (const s of [-1, 1]) { const brl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 1.9, 10), dark); brl.rotation.x = Math.PI / 2; brl.position.set(s * 0.3, -0.27, -0.95); quad.add(brl); const [t, f] = mkTip(quad, -2.05, s * 0.3, -0.27, 1.5); qTips.push(t); qFl.push(f); }
+    return { group: g, yawG, pitchG, barrels, tipL: tips[0], tipR: tips[1], flashes, heatMat, lock: null, yaw: 0, pitch: 0, mods, quad, qTips, qFl };
+  }
+  // show the equipped mount (and the Mk III quad barrels) on the turret
+  function setTurretLook() {
+    if (!turret) return;
+    const id = roverId(), tier = roverTier();
+    for (const [k, m] of Object.entries(turret.mods)) m.g.visible = k === id;
+    const cannon = id === 'cannon' || id === 'emp';
+    turret.barrels.forEach(b => b.visible = cannon); turret.quad.visible = id === 'cannon' && tier >= 2;
+    const glow = [0x220a33, 0x0a2433, 0x331a05][tier]; turret.heatMat.userData.base = glow;
+    if (id === 'cannon' && tier >= 2) { turret.mods.cannon = { g: turret.quad, tips: [turret.tipL, turret.tipR, ...turret.qTips], flashes: [...turret.flashes, ...turret.qFl], virtual: true }; turret.quad.visible = true; }
+    else delete turret.mods.cannon;
+    turret.group.position.y = P.equip.kit === 'roadster' && P.unlocks.includes('kit:roadster') ? 1.72 : 2.34;
   }
   function updateTurret(dt) {
     if (!turret) return;
-    const st = ctx.st(); turret.group.visible = aliensOn();
+    const st = ctx.st(); turret.group.visible = true;
     W.recoil = Math.max(0, W.recoil - dt * 9); W.flash -= dt;
-    if (!st.driving || !st.own || !aliensOn()) {
+    if (!st.driving || !st.own) {
       turret.yaw *= Math.exp(-dt * 3); turret.pitch *= Math.exp(-dt * 3);
       turret.yawG.rotation.y = turret.yaw; turret.pitchG.rotation.x = turret.pitch; turret.flashes.forEach(f => f.visible = false);
     } else {
@@ -861,13 +980,16 @@ export function createGame(ctx) {
       let wy = 0, wp = 0;
       if (aimP) {
         const local = turret.group.worldToLocal(aimP.clone());
-        wy = Math.atan2(-local.x, -local.z); wp = THREE.MathUtils.clamp(Math.atan2(local.y - 0.68, Math.hypot(local.x, local.z)), -0.3, 0.6);
+        wy = Math.atan2(-local.x, -local.z); wp = THREE.MathUtils.clamp(Math.atan2(local.y - 0.68, Math.hypot(local.x, local.z)), st.rover.air ? -1.0 : -0.3, 0.6);
       }
       const k = Math.min(1, dt * 10);
       turret.yaw += Math.atan2(Math.sin(wy - turret.yaw), Math.cos(wy - turret.yaw)) * k; turret.pitch += (wp - turret.pitch) * k;
       turret.yawG.rotation.y = turret.yaw; turret.pitchG.rotation.x = turret.pitch;
-      turret.barrels.forEach((b, i) => { b.position.z = i === W.side ? W.recoil * 0.3 : 0; });
-      turret.flashes.forEach((f, i) => { f.visible = W.flash > 0 && i === W.side; f.material.rotation = Math.random() * 6; });
+      const md = turret.mods[roverId()];
+      turret.barrels.forEach((b, i) => { b.position.z = i === W.side % 2 ? W.recoil * 0.3 : 0; });
+      turret.flashes.forEach((f, i) => { f.visible = !md && W.flash > 0 && i === W.side % 2; f.material.rotation = Math.random() * 6; });
+      for (const [k, m] of Object.entries(turret.mods)) m.flashes.forEach((f, i) => { f.visible = m === md && W.flash > 0 && i === W.side % m.flashes.length; f.material.rotation = Math.random() * 6; });
+      if (md?.spin) md.spin.rotation.z += dt * (2 + W.heat * 0.2);
     }
     const h = W.heat / 100; turret.heatMat.emissive.setRGB(0.13 + h * 0.87, 0.04 + h * (W.over ? 0.05 : 0.3), 0.2 + h * 0.35);
   }
@@ -1140,6 +1262,8 @@ export function createGame(ctx) {
   function applyCosmetics() {
     const st = ctx.st();
     if (st.ownRover?.paint) st.ownRover.paint.color.setHex(COSMETICS.paint[P.equip.paint]?.color ?? 0xb4b9c1);
+    st.ownRover?.setKit?.(P.equip.kit === 'roadster' && P.unlocks.includes('kit:roadster'), COSMETICS.paint[P.equip.paint]?.color);
+    setTurretLook();
     if (bandana) { bandana.userData.cleanup?.(); bandana.parent?.remove(bandana); bandana = null; }
     const b = COSMETICS.bandana[P.equip.bandana], body = st.dog?.parts?.body;
     if (b?.color && body) {
@@ -1168,15 +1292,17 @@ export function createGame(ctx) {
       let owned = false, ok = true, why = '';
       if (it.kind === 'weapon') owned = own('weapon:' + it.id);
       if (it.kind === 'melee') owned = own('melee:' + it.id);
-      if (it.kind === 'upgrade') owned = hasUp(it.id);
+      if (it.kind === 'upgrade' || it.kind === 'roverup') owned = hasUp(it.id);
+      if (it.kind === 'roverwpn') owned = own('rover:' + it.id);
+      if (it.needsUp && !hasUp(it.needsUp)) { ok = false; why = 'Needs Mk II'; }
       if (it.needs && !own(it.needs)) { ok = false; why = 'Needs the shotgun'; }
       if (it.kind === 'medkit' && P.inv.medkits >= 3) { ok = false; why = 'Carrying 3'; }
       if (it.kind === 'ammo' && P.inv.shells >= 48) { ok = false; why = 'Full'; }
-      return { id: it.id, name: it.name, desc: it.desc, price: it.price, owned, ok: ok && !owned, why, afford: P.credits >= it.price, group: it.kind === 'upgrade' ? 'Upgrades' : 'Gear' };
+      return { id: it.id, name: it.name, desc: it.desc, price: it.price, owned, ok: ok && !owned, why, afford: P.credits >= it.price, group: it.kind === 'upgrade' ? 'Upgrades' : it.kind === 'roverup' || it.kind === 'roverwpn' ? 'Rover weapons' : 'Gear' };
     });
-    for (const k of ['paint', 'bandana']) for (const [v, c] of Object.entries(COSMETICS[k])) if (c.shop) {
+    for (const k of ['kit', 'paint', 'bandana']) for (const [v, c] of Object.entries(COSMETICS[k])) if (c.shop) {
       const id = `${k}:${v}`, owned = own(id);
-      items.push({ id, name: (k === 'paint' ? 'Rover paint: ' : 'Frankie bandana: ') + c.name, desc: owned ? (P.equip[k] === v ? 'Equipped' : 'Owned. Tap to equip') : '', price: c.shop, owned, ok: true, why: '', afford: P.credits >= c.shop, group: k === 'paint' ? 'Rover paint' : 'Frankie gear', color: c.color });
+      items.push({ id, name: (k === 'paint' ? 'Rover paint: ' : k === 'kit' ? 'Rover body: ' : 'Frankie bandana: ') + c.name, desc: k === 'kit' ? (owned ? (P.equip.kit === v ? 'Fitted. Tap to go back to the stock hull' : 'Owned. Tap to fit') : 'Low, sleek two-seater shell over the chassis, bigger cold-gas pods: +30% thruster fuel, faster recharge.') : owned ? (P.equip[k] === v ? 'Equipped' : 'Owned. Tap to equip') : '', price: c.shop, owned, ok: true, why: '', afford: P.credits >= c.shop, group: k === 'paint' ? 'Rover paint' : k === 'kit' ? 'Rover body' : 'Frankie gear', color: c.color });
     }
     return { credits: P.credits, items, medkits: P.inv.medkits, shells: P.inv.shells };
   }
@@ -1184,6 +1310,7 @@ export function createGame(ctx) {
     const it = SHOP.find(x => x.id === id);
     if (!it) {
       const [k, v] = id.split(':'), c = COSMETICS[k]?.[v]; if (!c?.shop) return { ok: false, msg: 'Not for sale.' };
+      if (k === 'kit' && P.unlocks.includes(id) && P.equip.kit === v) { P.equip.kit = 'stock'; save(); applyCosmetics(); return { ok: true, msg: 'Stock hull back on.' }; }
       if (P.unlocks.includes(id)) { equip(k, v); return { ok: true, msg: `Equipped ${c.name}.` }; }
       if (P.credits < c.shop) return { ok: false, msg: `Short ${c.shop - P.credits} credits.` };
       P.credits -= c.shop; P.unlocks.push(id); P.equip[k] = v; save(); applyCosmetics(); onEvent('bought', { id, name: c.name });
@@ -1199,6 +1326,8 @@ export function createGame(ctx) {
     else if (it.kind === 'ammo') P.inv.shells = Math.min(48, P.inv.shells + 12);
     else if (it.kind === 'medkit') P.inv.medkits++;
     else if (it.kind === 'upgrade') { P.upgrades.push(it.id); applyUpgrades(); }
+    else if (it.kind === 'roverup') { P.upgrades.push(it.id); P.equip.rover = 'cannon'; setTurretLook(); }
+    else if (it.kind === 'roverwpn') { P.unlocks.push('rover:' + it.id); P.equip.rover = it.id; setTurretLook(); }
     save(); onEvent('bought', { id, name: it.name });
     return { ok: true, msg: `${it.name}: yours.` };
   }
@@ -1217,7 +1346,7 @@ export function createGame(ctx) {
     assets(); P = loadProgress(); world = name; cfg = ctx.st().cfg || {}; time = 0; applyUpgrades();
     H.hp = H.max; H.shield = H.smax; H.down = 0; H.inv = 0; H.lastHit = -99; W.heat = 0; W.over = false; W.cd = 0;
     sparks = makeSparks(); zone = makeZone(); RS.rover = RS.ship = -99; placeCrates();
-    const st = ctx.st(); turret = st.ownRover ? buildTurret(st.ownRover) : null;
+    const st = ctx.st(); turret = st.ownRover ? buildTurret(st.ownRover) : null; setTurretLook();
     applyCosmetics();
     quest = null;
     if (!resume()) offerTimers.push(setTimeout(() => { if (world === name) offerNext(); }, 4500));
@@ -1235,7 +1364,7 @@ export function createGame(ctx) {
     for (const d of debrisL) scene.remove(d.m); for (const d of splats) scene.remove(d.m); for (const d of pickups) scene.remove(d.obj); debrisL = []; splats = []; pickups = [];
     for (const c of crates) scene.remove(c.obj); crates = []; for (const s of swings) scene.remove(s.m); swings = [];
     if (gate) { scene.remove(gate); gate = null; }
-    agents = []; bolts = []; orbs = []; rares = []; quest = null; zone = null; outpost = null; sparks = null; turret = null; bandana = null; bossRef = null; world = null;
+    for (const f of fxs) scene.remove(f.mesh); fxs = []; agents = []; bolts = []; orbs = []; rares = []; quest = null; zone = null; outpost = null; sparks = null; turret = null; bandana = null; bossRef = null; world = null;
   }
   function update(dt, input) {
     if (!world) return;
@@ -1244,7 +1373,7 @@ export function createGame(ctx) {
     if (aliensOn()) { updateAgents(dt); updateOrbs(dt); }
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
     updateWeapons(dt, input);
-    updateBolts(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); updatePickups(dt); updateMelee(dt); updateResupply(); player.hasBlade = hasBlade();
+    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); updatePickups(dt); updateMelee(dt); updateResupply(); player.hasBlade = hasBlade();
     updateQuest(dt); updateRares(dt); updateZone(dt); updateDogWarn(dt);
   }
   // tapping a quest item or rare find picks it up; returns undefined when the object is not ours
@@ -1301,11 +1430,11 @@ export function createGame(ctx) {
       return {
         hp: Math.round(H.hp), hpMax: H.max, shield: Math.round(H.shield), shieldMax: H.smax, down: H.down > 0,
         combat: combat(), aliens: agents.length, aliensOn: aliensOn(), xp: P.xp, credits: P.credits, rank: r.name, rankNext: r.next, rankBase: r.base,
-        heat: Math.round(W.heat), overheat: W.over, turret: !!turret && !!st.driving && !!st.own && aliensOn(), turretYaw: turret?.yaw ?? 0, turretPitch: turret?.pitch ?? 0, recoil: W.recoil,
+        heat: Math.round(W.heat), overheat: W.over, turret: !!turret && !!st.driving && !!st.own, turretYaw: turret?.yaw ?? 0, turretPitch: turret?.pitch ?? 0, recoil: W.recoil,
         quest: quest ? { id: quest.def.id, title: quest.def.title, step: quest.step, steps: quest.def.steps.length, text: stepText(), fiction: !!quest.def.fiction, timer: questTimer() } : null,
         boss: bossRef ? { name: bossRef.T.name, hp: Math.max(0, bossRef.hp), max: bossRef.T.hp } : null,
         rares: rareCount(), raresHere: rares.length, kills: P.stats.kills, deaths: P.stats.deaths, badges: P.badges.length, busted: P.stats.busted,
-        weapon: st.driving ? (st.own && turret ? 'roverCannon' : null) : P.equip.weapon, weaponName: (!st.driving && P.equip.weapon === 'blade') ? 'Vibro-machete' : curWeapon()?.name || '', shells: P.inv.shells, medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),
+        weapon: st.driving ? (st.own && turret ? 'rover:' + roverId() : null) : P.equip.weapon, rover: (() => { const w = roverWpn(); return { id: w.id, name: w.name, short: w.short, icon: w.icon, tier: roverTier(), owned: roverOwned(), lastEmp: W.lastEmp || null }; })(), kit: P.equip.kit, weaponName: (!st.driving && P.equip.weapon === 'blade') ? 'Vibro-machete' : curWeapon()?.name || '', shells: P.inv.shells, medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),
         hasBlade: hasBlade(), canFire: !!curWeapon() || (!st.driving && P.equip.weapon === 'blade'), meleeNear: meleeNear(), meleeCd: MEL.cd, combo: MEL.combo,
         tracker: (() => { let d = 1e9; for (const a of agents) if (!a.T.still || true) d = Math.min(d, Math.hypot(a.x - player.x, a.z - player.z)); return d; })(),
         zone: zone ? { x: zone.x, z: zone.z, active: zone.active } : null
@@ -1316,6 +1445,7 @@ export function createGame(ctx) {
     mapGate: () => gate ? { x: gate.position.x, z: gate.position.z } : null,
     // test/debug hooks
     debug: {
+      cool() { W.heat = 0; W.over = false; W.cd = 0; },
       spawn(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(); const yaw = (st.driving ? st.rover.yaw : player.yaw) + ang; return !!spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: 'debug' }); },
       hurt(n) { hurt(n, null); },
       clear() { for (const a of [...agents]) removeAgent(a); },
@@ -1326,7 +1456,7 @@ export function createGame(ctx) {
       zone: () => zone && { x: zone.x, z: zone.z, active: zone.active, cool: zone.cool },
       calm(on) { for (const a of agents) a.T = on ? { ...AGENT_TYPES[a.type], speed: 0, cd: 999 } : AGENT_TYPES[a.type]; },
       skipTimer(s) { if (quest) { quest.t0 -= s; quest.st0 -= s; } },
-      credits(n) { P.credits += n; save(); }, P: () => P, H: () => H, debrisCount: () => debrisL.length + splats.length,
+      credits(n) { P.credits += n; save(); }, fxCount: () => fxs.length, bolts: () => bolts.length, P: () => P, H: () => H, debrisCount: () => debrisL.length + splats.length,
       advance() { if (quest) advance(); }, crates: () => crates.map(c => ({ x: c.x, z: c.z, cool: c.cool, cache: c.cache })), pickups: () => pickups.map(p => ({ kind: p.kind, x: p.x, z: p.z })),
       drop: (kind, x, z) => drop(kind, x, z), quest: () => quest && { id: quest.def.id, step: quest.step, gi: quest.gi, target: quest.target }
     }

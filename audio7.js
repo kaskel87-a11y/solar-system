@@ -120,10 +120,33 @@ export function createAudio7(getCtx) {
     punch() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 95, t, 0.14, 0.35, 45); hiss(a, a.destination, t, 0.06, 0.22, 900, 0.7, 'lowpass'); },
     blade() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.22, 0.32, 3200, 2.5); osc(a, a.destination, 'sawtooth', 240, t, 0.18, 0.08, 70); hiss(a, a.destination, t + 0.04, 0.25, 0.25, 600, 1.5); },
     crate() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'square', 300, t, 0.05, 0.06); osc(a, a.destination, 'square', 420, t + 0.07, 0.08, 0.06); hiss(a, a.destination, t, 0.1, 0.08, 2000, 1); },
-    door() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.4, 0.12, 700, 1); osc(a, a.destination, 'sine', 180, a.currentTime, 0.25, 0.06, 90); }
+    door() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.4, 0.12, 700, 1); osc(a, a.destination, 'sine', 180, a.currentTime, 0.25, 0.06, 90); },
+    // v7.2 rover mounts
+    rail() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sawtooth', 1800, t, 0.25, 0.12, 60); hiss(a, a.destination, t, 0.35, 0.3, 5000, 0.6, 'highpass'); osc(a, a.destination, 'sine', 70, t, 0.4, 0.4, 30); },
+    rocket() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.5, 0.28, 900, 0.6); osc(a, a.destination, 'triangle', 220, t, 0.3, 0.08, 90); },
+    torch() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.12, 0.12, 700, 0.5, 'lowpass'); },
+    emp() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 900, t, 0.8, 0.25, 40); osc(a, a.destination, 'square', 60, t, 0.6, 0.12, 25); hiss(a, a.destination, t, 0.7, 0.2, 3000, 4); },
+    boom() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 110, t, 0.7, 0.55, 28); hiss(a, a.destination, t, 0.9, 0.45, 500, 0.5, 'lowpass'); hiss(a, a.destination, t, 0.2, 0.2, 3000, 0.7); },
+    ignite() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.18, 0.22, 2400, 0.9); osc(a, a.destination, 'sine', 140, t, 0.15, 0.1, 70); }
   };
+  // v7.2 cold-gas thruster: a looped, filtered hiss + low rumble whose level follows the jets (0..1)
+  let thr = null;
+  function thruster(level) {
+    const a = getCtx(); if (!a) return;
+    if (!thr) {
+      if (level < 0.02) return;
+      const s = a.createBufferSource(); s.buffer = noise(a); s.loop = true;
+      const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 0.7;
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+      const g = a.createGain(), g2 = a.createGain(); g.gain.value = 0; g2.gain.value = 0;
+      s.connect(bp).connect(g).connect(a.destination); s.connect(lp).connect(g2).connect(a.destination); s.start();
+      thr = { s, g, g2, bp };
+    }
+    const t = a.currentTime, l = Math.max(0, Math.min(1, level));
+    thr.g.gain.setTargetAtTime(l * 0.16, t, 0.05); thr.g2.gain.setTargetAtTime(l * 0.5, t, 0.08); thr.bp.frequency.setTargetAtTime(1300 + l * 900, t, 0.1);
+  }
   return {
-    fx, startAmbient, stopAmbient, tick, tuneStatic,
+    fx, thruster, startAmbient, stopAmbient, tick, tuneStatic,
     get station() { return STATIONS[station]; }, get stationIndex() { return station; }, get playing() { return playing; },
     setStation(i, on) { station = ((i % STATIONS.length) + STATIONS.length) % STATIONS.length; tuneStatic(); setPlaying(on); return STATIONS[station]; },
     next(on) { return this.setStation(station + 1, on); },

@@ -427,13 +427,23 @@ export function createWorld(ctx) {
     }
     return false;
   }
+  // v7.2 rover rockets / EMP: area damage on colony folk and security. emp = stun people and stall drones too.
+  function blast(c, R, dmg, emp) {
+    if (!C) return 0; let n = 0;
+    for (const s of [...security]) { const d = Math.hypot(s.x - c.x, s.z - c.z); if (d > R) continue; n++; s.hp -= emp ? dmg * 2 : dmg * (1 - d / R);
+      if (s.hp <= 0) { recall(s); onEvent('secDown', { kind: s.kind }); crime(Math.min(5, wanted + 1), 'destroyed security'); } else crime(2, 'attacked security'); }
+    for (const p of people) { if (p.stun > 0 || p.kind === 'contact') continue; const d = Math.hypot(p.x - c.x, p.z - c.z); if (d > R) continue; n++;
+      if (emp) { p.stun = 5; } else { p.hp -= dmg * (1 - d / R); p.flee = 3; p.fx = Math.sign(p.x - c.x) || 1; p.fz = Math.sign(p.z - c.z) || 1; if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); } }
+      crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'attacked a guard' : 'attacked a colonist'); }
+    return n;
+  }
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   function nearShop() { if (!C) return false; const s = toW(C.shop); return Math.hypot(s.x - player.x, s.z - player.z) < 4.5; }
   function gate() { if (!C) return null; return { x: cx, z: cz - 24 }; }
 
   return {
-    layout, enter, exit, update, collide, solidAt, nearVehicle, nearestVehicle, take, leave, hitWorld, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
+    layout, enter, exit, update, collide, solidAt, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; },
     get colony() { return C ? { name: C.name, x: cx, z: cz, dist: distC() } : null; },

@@ -6,9 +6,32 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-title" content="Solar System">
+  <meta name="application-name" content="Solar System Explorer">
+  <meta name="description" content="Fly the solar system, land, drive and fight on the surface. Gritty three.js space sandbox.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#05060c">
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-  <meta name="app-version" content="v6">
+  <meta name="app-version" content="v7.2">
+  <link rel="canonical" href="https://kaskel87-a11y.github.io/solar-system/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Solar System Explorer">
+  <meta property="og:title" content="Solar System Explorer">
+  <meta property="og:description" content="Land on Mars, fly a thruster rover, bolt a rail gun to it and raise hell in the colonies. Free, in your browser, no App Store.">
+  <meta property="og:url" content="https://kaskel87-a11y.github.io/solar-system/">
+  <meta property="og:image" content="https://kaskel87-a11y.github.io/solar-system/share-card.jpg">
+  <meta property="og:image:secure_url" content="https://kaskel87-a11y.github.io/solar-system/share-card.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A red thruster rover banking over the Martian desert beside a landed Starship">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Solar System Explorer">
+  <meta name="twitter:description" content="Land on Mars, fly a thruster rover, bolt a rail gun to it and raise hell in the colonies. Free, in your browser, no App Store.">
+  <meta name="twitter:image" content="https://kaskel87-a11y.github.io/solar-system/share-card.jpg">
+  <meta name="twitter:image:alt" content="A red thruster rover banking over the Martian desert beside a landed Starship">
   <title>Cinematic Universe Explorer</title>
   <style>
     :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
@@ -67,6 +90,13 @@
     #dogRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); }
     #dogName { flex: 1; min-width: 120px; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); color: #fff; }
     body.driving #jumpBtn { display: none !important; }
+    /* v7.2: in your rover (or a stolen hover bike) Jump becomes Thrust, with a thin fuel bar inside the button */
+    body.touch.driving.canthrust #jumpBtn { display: block !important; }
+    #jumpBtn { position: relative; overflow: hidden; } #jumpBtn .fuel { display: none; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.18); }
+    #jumpBtn .fuel b { display: block; height: 100%; width: 100%; border-radius: 2px; background: #7dd3fc; transition: width 0.1s linear; }
+    body.canthrust #jumpBtn .fuel { display: block; } body.canthrust #jumpBtn.low .fuel b { background: #f97316; } body.canthrust #jumpBtn.on { background: rgba(125,211,252,0.5); }
+    #a2hsBtn .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #38bdf8; margin-left: 6px; vertical-align: middle; } #a2hsBtn.seen .dot { display: none; }
+    body.standalone #a2hsBtn { display: none !important; }
     #surfBtns button.on { background: rgba(80,160,255,0.6); }
     #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.8); box-shadow: 0 0 4px #000; pointer-events: none; z-index: 7; }
     #joy { position: fixed; left: calc(24px + var(--sal)); bottom: calc(28px + var(--sab)); width: 130px; height: 130px; border-radius: 50%; z-index: 7; touch-action: none; }
@@ -230,7 +260,7 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe<span class="ver">v7.1</span></h1>
+    <h1>🌌 Cinematic Universe<span class="ver">v7.2</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
@@ -294,6 +324,8 @@
       <button id="rmWarp" class="btn">✨ Warp to rover</button>
       <button id="rmShip" class="btn">🏠 Return to ship</button>
       <button id="hideHudBtn" class="btn">🎬 Hide HUD</button>
+      <button id="a2hsBtn" class="btn">📲 Add to Home Screen<span class="dot"></span></button>
+      <button id="shareBtn" class="btn">🔗 Share with friends</button>
       <button id="settingsBtn" class="btn">⚙️ Settings &amp; log</button>
       <button id="rmClose" class="btn">✖ Close</button>
     </div>
@@ -302,12 +334,12 @@
       <button id="petBtn" class="glass">🐾 Pet</button>
       <button id="driveBtn" class="glass">🚙 Drive</button>
       <button id="radioBtn" class="glass" aria-label="Next radio station">📻 Next</button>
-      <button id="jumpBtn" class="glass touch-only">Jump</button>
+      <button id="jumpBtn" class="glass touch-only"><span class="lbl">Jump</span><i class="fuel"><b></b></i></button>
       <button id="runBtn" class="glass touch-only">Run</button>
     </div>
     <button id="fireBtn">FIRE</button>
     <button id="meleeBtn" aria-label="Melee">👊</button>
-    <div id="surfHelp" class="glass desk-only">WASD move · mouse aim · click/F fire · E drive/take/talk/shop · C melee · Q weapon · X medkit · N radio · P pet · Tab/M menu · U hide HUD · H ship · L log</div>
+    <div id="surfHelp" class="glass desk-only">WASD move/steer (air too) · Space jump/thrust · mouse aim · click/F fire · E drive/take/talk/shop · C melee · Q weapon · X medkit · N radio · P pet · Tab/M menu · U hide HUD · H ship · L log</div>
     <div id="crosshair" class="desk-only"></div>
   </div>
   <div id="hurt"></div>
@@ -347,10 +379,10 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.1';
-    import { buildStarship } from './models.js?v=7.1';
-    import { COSMETICS } from './game.js?v=7.1';
-    import { createAudio7 } from './audio7.js?v=7.1';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.2';
+    import { buildStarship } from './models.js?v=7.2';
+    import { COSMETICS } from './game.js?v=7.2';
+    import { createAudio7 } from './audio7.js?v=7.2';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -823,7 +855,7 @@
     const pickupSnd = () => sfx('pickup', a => { tone(a, 'sine', 1320, 1330, 0, 0.18, 0.14); tone(a, 'sine', 1760, 1770, 0.08, 0.25, 0.12); });
     const overheatSnd = () => sfx('overheat', a => { tone(a, 'sawtooth', 600, 120, 0, 0.5, 0.08); });
     const growl = () => sfx('growl', a => { tone(a, 'sawtooth', 110, 90, 0, 0.35, 0.09); tone(a, 'square', 520, 230, 0.4, 0.12, 0.12); tone(a, 'square', 520, 230, 0.6, 0.12, 0.12); });
-    let lastZap = 0;
+    let lastZap = 0, lastTorch = 0;
 
     // ===== Dog name, discoveries popup, toasts =====
     const DOG_KEY = 'ssx.dogName';
@@ -900,7 +932,8 @@
       else if (type === 'melee') { if (ev.hit) { ev.blade ? au7.fx.blade() : au7.fx.punch(); sfxLog.push(ev.blade ? 'blade' : 'punch'); } else au7.fx.whoosh(); }
       else if (type === 'meleeHit') { /* world folk: sound comes from the melee event */ }
       else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '☣️ SPECIMEN' : '💎 RARE FIND', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
-      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }
+      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.emp) { sfxLog.push('emp'); au7.fx.emp(); } else if (ev.rail) { sfxLog.push('rail'); au7.fx.rail(); } else if (ev.rocket) { sfxLog.push('rocket'); au7.fx.rocket(); } else if (ev.torch) { if (now - lastTorch > 110) { lastTorch = now; sfxLog.push('torch'); au7.fx.torch(); } } else if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }
+      else if (type === 'boom') { au7.fx.boom(); sfxLog.push('boom'); }
       else if (type === 'poof') { au7.fx.squelch(ev.boss); sfxLog.push('squelch'); if (ev.boss) toast('👑 Queen down. Burn the nest before anything else hatches.', 3500); }
       else if (type === 'hurt') { hurtSnd(); hurtEl.style.transition = 'none'; hurtEl.style.opacity = ev.hp < 40 ? 1 : 0.7; clearTimeout(hurtTimer); hurtTimer = setTimeout(() => { hurtEl.style.transition = 'opacity 0.5s'; hurtEl.style.opacity = 0; }, 90); }
       else if (type === 'down') { document.getElementById('downText').textContent = ev.why === 'busted' ? '🚨 BUSTED. Security is processing you…' : '☠️ You\'re down. Med-evac inbound…'; downEl.style.display = 'flex'; hurtEl.style.opacity = 1; }
@@ -913,6 +946,7 @@
       else if (type === 'spit') { au7.fx.spit(); sfxLog.push('spit'); }
       else if (type === 'enemyShot' || type === 'secShot') { au7.fx.enemyShot(); sfxLog.push(type); }
       else if (type === 'dry') { au7.fx.dry(); sfxLog.push('dry'); toast(`💥 Click. Out of shells. ${isTouch ? 'Tap the weapon chip' : 'Q'} for the blaster. Green crates, kills, the shop and your rover refill shells.`, 2600); }
+      else if (type === 'weapon' && ev.rover) { au7.fx.dry(); toast(`${ev.icon} ${ev.name}`, 1800); updateSurfHud(true); }
       else if (type === 'weapon') { au7.fx.dry(); toast(ev.blade && ev.name === 'Vibro-machete' && ev.id !== 'blade' ? '🗡️ Vibro-machete: your melee now cuts. Tap the weapon chip to slash with FIRE.' : `${ev.id === 'blade' ? '🗡️' : ev.id === 'shotgun' ? '💥' : '🔫'} ${ev.name}${ev.id === 'shotgun' ? ` · ${ev.shells} shells` : ev.id === 'rifle' ? ' · unlimited, runs hot' : ''}`, 1800); updateSurfHud(true); }
       else if (type === 'medkit') { pickupSnd(); toast(`🩹 Patched up. ${ev.left} medkit${ev.left === 1 ? '' : 's'} left.`, 2000); }
       else if (type === 'bought') { au7.fx.cash(); sfxLog.push('cash'); }
@@ -944,6 +978,18 @@
     }
     onTap(document.getElementById('radioBtn'), nextStation);
     let ambTick = 0;
+    // v7.2 Thrust: Jump turns into Thrust in your rover / a stolen hover bike, fuel bar inside the button
+    const jumpBtnEl = document.getElementById('jumpBtn'), jumpLbl = jumpBtnEl.querySelector('.lbl'), fuelBar = jumpBtnEl.querySelector('.fuel b');
+    let thrWas = false, thrKey = '';
+    function updateThrustHud() {
+      const i = surface.info; if (!i) return;
+      const T = i.thrust || {}, can = !!(i.driving && T.can), pct = can ? Math.round(100 * T.fuel / T.max) : 100;
+      const k = `${can}|${pct}`;
+      if (k !== thrKey) { thrKey = k; document.body.classList.toggle('canthrust', can); jumpLbl.textContent = can ? '🚀 Thrust' : 'Jump'; fuelBar.style.width = pct + '%'; jumpBtnEl.classList.toggle('low', pct < 25); }
+      if (T.on && !thrWas) { au7.fx.ignite(); sfxLog.push('thrust'); }
+      thrWas = !!T.on; au7.thruster(i.driving ? T.jet || 0 : 0);
+    }
+    window.__thrustHud = () => ({ can: document.body.classList.contains('canthrust'), label: jumpLbl.textContent, bar: fuelBar.style.width });
     function tickAudio7(dt) {
       const i = surface.info, g = surface.game.info; if (!i) return;
       const ping = au7.tick(dt, { trackerDist: g.tracker ?? 1e9, hostiles: surface.game.progress.settings.aliens, driving: i.driving });
@@ -992,7 +1038,7 @@
       setTimeout(() => {
         surface.exit();
         onSurface = false;
-        document.body.classList.remove('surface', 'driving'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.classList.remove('on'); radioEl.style.display = 'none';
+        au7.thruster(0); document.body.classList.remove('surface', 'driving', 'canthrust'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.classList.remove('on'); radioEl.style.display = 'none';
         // put the rocket back in space on the sunlit side of the body, pointing away from it
         landedBody.getWorldPosition(tmpV2);
         const r = landedBody.userData.r || 3;
@@ -1206,7 +1252,7 @@
       if (wl > 0) { ws.textContent = '★'.repeat(wl); ws.classList.toggle('evade', !!si.evading); }
       const gc = document.getElementById('gearChip');
       // weapon + its ammo, then medkits: "🔫∞ ✚1" (blaster never runs dry), "💥12 ✚1" (shotgun shells), "🗡️ ✚1"
-      const wtxt = si?.driving && !si.stolen ? (g.turret ? '🔫 Cannon' : '🚙') : g.weapon === 'shotgun' ? `💥${g.shells}` : g.weapon === 'blade' ? '🗡️' : '🔫∞';
+      const wtxt = si?.driving && !si.stolen ? (g.turret ? `${g.rover.icon} ${g.rover.short}` : '🚙') : g.weapon === 'shotgun' ? `💥${g.shells}` : g.weapon === 'blade' ? '🗡️' : '🔫∞';
       const gtxt = `${wtxt}<span class="k">✚${g.medkits}</span>`;
       if (gc.dataset.t !== gtxt) { gc.dataset.t = gtxt; gc.innerHTML = gtxt; }
       document.body.classList.toggle('canfire', !!g.canFire && !(si?.driving && !si.stolen));
@@ -1284,6 +1330,34 @@
     document.getElementById('rmWarp').onclick = () => travel('warp');
     document.getElementById('rmShip').onclick = () => travel('ship');
     document.getElementById('rmClose').onclick = () => roverMenu.classList.remove('show');
+    // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
+    const a2hsBtn = document.getElementById('a2hsBtn'), A2HS_KEY = 'ssx.a2hs.seen';
+    const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+    document.body.classList.toggle('standalone', isStandalone());
+    if (localStorage.getItem(A2HS_KEY)) a2hsBtn.classList.add('seen');
+    let installEvt = null; window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; window.__installable = true; });
+    window.addEventListener('appinstalled', () => { installEvt = null; toast('📲 Installed. Launch it from your home screen.', 3000); });
+    a2hsBtn.onclick = async () => {
+      localStorage.setItem(A2HS_KEY, '1'); a2hsBtn.classList.add('seen'); roverMenu.classList.remove('show');
+      if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (_) {} installEvt = null; return; }
+      const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      toast(ios ? '📲 Tap Share (□↑) then “Add to Home Screen”. It opens full screen, no browser bars, and works offline after the first run.' : '📲 Use your browser menu → “Install app” / “Add to Home screen”.', 6000);
+    };
+    // v7.2 share with friends: native share sheet (iMessage etc.), else copy the clean link. Progress stays per device (localStorage), so friends start fresh.
+    const SHARE = { title: 'Solar System Explorer', text: 'Land on Mars, fly a thruster rover and raise hell in the colonies. Free, no App Store:', url: 'https://kaskel87-a11y.github.io/solar-system/' };
+    document.getElementById('shareBtn').onclick = async () => {
+      roverMenu.classList.remove('show'); window.__lastShare = null;
+      if (navigator.share) {
+        try { await navigator.share(SHARE); window.__lastShare = 'shared'; return; }
+        catch (e) { if (e && e.name === 'AbortError') { window.__lastShare = 'cancelled'; return; } }
+      }
+      let ok = false;
+      try { await navigator.clipboard.writeText(SHARE.url); ok = true; } catch (_) {
+        try { const t = document.createElement('textarea'); t.value = SHARE.url; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0;top:0'; document.body.appendChild(t); t.select(); t.setSelectionRange(0, 999); ok = document.execCommand('copy'); t.remove(); } catch (_) {}
+      }
+      window.__lastShare = ok ? 'copied' : 'shown';
+      toast(ok ? '🔗 Link copied. Paste it to a friend.' : '🔗 ' + SHARE.url, 3500);
+    };
     // desktop scroll-wheel zoom
     renderer.domElement.addEventListener('wheel', e => { if (!onSurface) return; e.preventDefault(); surface.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -200, 200) * 0.0025)); updateSurfHud(true); }, { passive: false });
 
@@ -1427,7 +1501,7 @@
         surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run,
           fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
-        tickAudio7(realDt);
+        tickAudio7(realDt); updateThrustHud();
         if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
         window.__frames = (window.__frames || 0) + 1;
         return;
@@ -1580,9 +1654,13 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v7.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.2', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
+<script>
+  // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.2').catch(() => {}));
+</script>
 </body>
 </html>
