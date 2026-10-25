@@ -4,7 +4,7 @@
 // world wanted via heisthooks.js, and the getaway is published as the `heist:escape` event for pursuit.js.
 //
 //   import { heist } from './heist.js?v=7.5.1'   (also window.SSX.heist / window.__app.heist once initHeist runs)
-//   heist.safeCrack({ tier, time, title })            -> Promise<{ success, reason, time, noise, tier, tumblers }>
+//   heist.safeCrack({ tier | difficulty, time, title }) -> Promise<{ success, ok, reason, time, noise, tier, tumblers }>
 //   heist.addCamera({ id, x, z, yaw, fov, range, sweep, level, world, rel }) / heist.removeCamera(id) / heist.disableCamera(id, s)
 //   heist.alarm(level, why)                            -> raises wanted (setWanted / crime), emits 'alarm'
 //   heist.registerHeist(def) / heist.startHeist(id)    -> Promise<{ success, loot, fail, stage, t }>
@@ -155,7 +155,7 @@ export function heistTick(dt, ctx) {
     if (dist(w.site) > d.escapeR) {
       const sec = securityNear(ctx.world, P.x, P.z, 120);
       const payload = escapePayload(run, { x: P.x, z: P.z, wanted: H.wanted, evading: H.evading, security: sec, vehicle: car ? (car.kind || 'rover') : null });
-      run.advance('clean'); emit('escape', payload); emitStage();
+      run.advance('clean'); emit('escape', { ...payload, name: payload.title }); emitStage(); // name: index.html's getaway toast reads d.name
       if (H.wanted === 0) return finish(true);
     }
   } else if (run.stage === 'clean') {
@@ -184,7 +184,12 @@ export const heist = {
   version: 1, log: [],
   on(evt, fn) { (listeners[evt] ||= []).push(fn); return () => heist.off(evt, fn); },
   off(evt, fn) { listeners[evt] = (listeners[evt] || []).filter(f => f !== fn); },
-  safeCrack(opts = {}) { ensureUi(); return safeCrack(opts); },
+  // also takes { difficulty } (game.crack's number: 0-1 easy, 2 medium, 3 hard, 4+ vault) and adds ok (= success) to the result
+  safeCrack(opts = {}) {
+    ensureUi(); const o = { ...opts };
+    if (!o.tier && Number.isFinite(o.difficulty)) o.tier = ['easy', 'easy', 'medium', 'hard'][o.difficulty] || 'vault';
+    return safeCrack(o).then(r => ({ ...r, ok: !!r.success }));
+  },
   addCamera: def => cams.add(def), removeCamera: id => cams.remove(id), disableCamera: (id, s) => cams.disable(id, s),
   cameras: () => cams.list().map(c => ({ id: c.id, heistId: c.heistId, x: c.wx ?? c.x, z: c.wz ?? c.z, yaw: c.yaw, meter: +c.meter.toFixed(3), disabled: c.disabledFor > 0, level: c.level })),
   // alarm(level, why): raise heat to `level` stars, or one star more if you're already that hot. Emits 'alarm'.
@@ -219,7 +224,13 @@ export const heist = {
     return new Promise(r => { runDone = r; });
   },
   abortHeist(why = 'abandoned') { if (run) finish(false, why); },
-  get active() { return run ? { id: run.def.id, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, loot: run.loot, w: run.w } : null; },
+  // active: null when idle, else the run info ({ id, stage, t, alarm, loot, w }). It is also callable, active(kind, name) -> bool,
+  // because game.heistAt(kind, name) (world.js interiors' heist()) calls SSX.heist.active?.(kind, name); a plain object threw.
+  get active() {
+    if (!run) return null; const d = run.def;
+    const fn = (kind, name) => !!run && (!kind || !d.kind || d.kind === kind) && (!name || !d.name || d.name === name);
+    return Object.assign(fn, { id: d.id, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, loot: run.loot, w: run.w });
+  },
   get action() { return actNow ? actNow.label : null; },
   act: () => doAction(),
   overview,
