@@ -21,6 +21,19 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.5: the Mars city
+Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Districts** to hop between them (lose your wanted stars first).
+
+- **Olympus Row**: downtown towers, the First Junction Trust bank (crack the vault in Kline's job), the Red Shift cantina and the precinct.
+- **Red Tape Flats**: Saltblood gang turf, the chop shop and dealer lots. Thugs here don't call the cops; they call their friends.
+- **Helios Heights**: four gated mansions. Case the camera grid, get in, hold still on the safe, and get out before private security arrives.
+- **The Ares Beltway**: the highway between them, with traffic, ramps, faction checkpoints and two chase missions.
+- **16 city missions** from Detective Vale, Marrow, Captain Rhee, Lita Quinn, Kline and Nyx, including a choice you can't take back. Ines's VIP room has a job board.
+- **Security fights back**: guards take cover and pop up to shoot, backup rolls in, heavies come at 4-5★. People bleed red; machines throw sparks.
+- **Also in v7.5**: 17 repeatable side jobs (with Static Hold'em poker) by Steve, four in-car radio stations and district soundscapes by Pumpkin, and 11 story missions for Rook, Vesna, Kestrel, Ines and Rusk by Jeff.
+- ☰ now works in space too.
+- Modders: see [API.md](API.md).
+
 ## v7.4: five new colonies, street races and barrel rolls
 - **Colonies on Venus, Mercury, Titan, Europa and Io** (merged from PR #1): Sulfur Gate, Shadowline Array, Kraken Landing, Conamara Station and Loki Forge. Each one has its own contacts, jobs, radio lines and a signature ride (acid crawler, sun skimmer, methane skiff, crevasse sled, lava runner). Every storefront is a walk-in interior. You get a world's travel permit by finishing a referral job, then fast travel from ☰ **🌍 Colonies** (40 cr the first time, free after that). The Titan methane skiff is amphibious and skims the methane seas.
 - **Street races and a track builder** (merged from PR #2): ☰ **🏁 Street races** has checkpoint gates, a 3-2-1 countdown, lap times, best-lap ghosts, an AI rival and a buy-in purse. ☰ **🛠 Track builder** lets you lay out your own gates and race them.

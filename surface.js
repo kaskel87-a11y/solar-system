@@ -623,7 +623,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
-    coverNear: (x, z, px, pz, r) => world.coverNear?.(x, z, px, pz, r), collide: (x, z, r) => world.collide?.(x, z, r), freeSpot: (x, z, r) => world.freeSpot?.(x, z, r), civHits: () => world.civHits || 0, caseCamera: id => world.caseCamera?.(id), // v7.5 city
+    coverNear: (x, z, px, pz, r) => world.coverNear?.(x, z, px, pz, r), collide: (x, z, r) => world.collide?.(x, z, r), freeSpot: (x, z, r) => world.freeSpot?.(x, z, r), civHits: () => world.civHits || 0, caseCamera: id => world.caseCamera?.(id), npcRefresh: () => world.npcRefresh?.(), // v7.5 city
     respawn(why) {
       if (indoor) leaveBuilding(true);
       if (driving) interact();

@@ -990,6 +990,7 @@ export function createWorld(ctx) {
     districts: () => sites.map(s => ({ id: s.id, name: s.name, kind: s.kind, x: s.x, z: s.z, r: s.r, fast: s.fast })), districtAt, get zone() { return actZone; },
     lots: (id) => sites.flatMap(s => s.lots || []).filter(l => !id || l.district === id || l.id === id).map(l => ({ ...l })),
     cameras: () => cams.map(c => ({ id: c.id, x: c.x, z: c.z, site: c.site, cased: c.cased > time })), caseCamera, nearCamera: () => { const c = nearCamera(); return c ? { id: c.id, x: c.x, z: c.z, cased: c.cased > time } : null; }, alarm,
+    npcRefresh: () => updateZones(true),
     coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },

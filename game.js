@@ -1348,7 +1348,8 @@ export function createGame(ctx) {
     const d = ctx.doorFor?.(s.building); return !d || d.kind === kind;
   }
   function hostiles(types, x, z, o = {}) { // spawn human hostiles around (x,z); returns how many made it under the cap
-    let n = 0; (types || []).forEach((t, k) => { const a = k / types.length * Math.PI * 2 + Math.random(); const ag = AGENT_TYPES[t]?.human && spawnAgent(t, x + Math.cos(a) * (o.r ?? 5), z + Math.sin(a) * (o.r ?? 5), { aggro: o.aggro !== false, src: o.src || 'city' }); if (ag) { ag.faction = o.faction || null; n++; } });
+    let n = 0; (types || []).forEach((t, k) => { const a = k / types.length * Math.PI * 2 + Math.random(); const ag = AGENT_TYPES[t]?.human && agents.reduce((m, b) => m + (b.T.human ? 1 : 0), 0) < (isMobile ? 8 : 24) && spawnAgent(t, x + Math.cos(a) * (o.r ?? 5), z + Math.sin(a) * (o.r ?? 5), { aggro: o.aggro !== false, src: o.src || 'city' }); if (ag) { ag.faction = o.faction || null; n++; } });
+    if (n) ctx.npcRefresh?.(); // ambient walkers shrink so phones stay under 12 people
     return n;
   }
   function checkStep() {
@@ -1690,7 +1691,7 @@ export function createGame(ctx) {
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
-    gore, hostiles, heistAt, crack, choose, crackable,
+    gore, hostiles, heistAt, crack, choose, crackable, humanCount: () => agents.reduce((n, a) => n + (a.T.human ? 1 : 0), 0),
     // v7.5 mission helpers for add-on step runners (storymars.js, activities/runner.js)
     advanceStep() { if (!quest) return false; advance(); return true; }, failStep(why) { if (!quest) return false; fail(why || 'Job failed.'); return true; },
     spawnWave(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(), yaw = (st.driving ? st.rover.yaw : player.yaw) + ang, a = spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: quest ? 'quest' : 'wave' }); return !!a; }, // quest-src kills count toward defeat steps jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
