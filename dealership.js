@@ -29,7 +29,31 @@ export function registerDealerVehicle(kind, opts = {}, builder) {
 }
 export function configureDealer(c = {}) { Object.assign(CFG, c, c.strip ? { strip: { ...CFG.strip, ...c.strip } } : {}); planet = null; return { ...CFG }; }
 export const dealerStock = () => GC.dealerStock(VEHICLES, EXPLICIT);
-export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer };
+// free grants for other modules (mission rewards, a mechanic's favour): no credits, no rep needed.
+// rideId: a garage ride id, or 'current' / undefined for the active ride. Returns { ok, msg, ... } and saves.
+const rideFor = id => (id == null || id === 'current') ? activeRide() : rideById(id);
+export function grantUpgrade(rideId = 'current', slot, levels = 1) {
+  const r = rideFor(rideId); if (!r) return { ok: false, msg: 'No such ride.' };
+  if (!GC.UPGRADES[slot]) return { ok: false, msg: `Unknown upgrade "${slot}" (${Object.keys(GC.UPGRADES).join(', ')}).` };
+  const from = r.up[slot] | 0, to = Math.min(GC.MAX_LVL, from + Math.max(1, levels | 0)); if (to === from) return { ok: false, maxed: true, msg: `${GC.UPGRADES[slot].name} is already maxed.` };
+  r.up[slot] = to; save(); return { ok: true, ride: r.id, slot, level: to, msg: `${GC.UPGRADES[slot].icon} ${GC.UPGRADES[slot].name} Lv ${to} fitted on the ${rideName(r)}. On the house.` };
+}
+export function grantPart(rideId = 'current', slot, value, fit = true) {
+  const r = rideFor(rideId), tbl = GC.COSMETIC_SLOTS[slot]; if (!r) return { ok: false, msg: 'No such ride.' };
+  if (!tbl?.[value]) return { ok: false, msg: `Unknown part ${slot}:${value}.` };
+  if (r.kind === 'rover' && (slot === 'paint' || slot === 'kit')) return { ok: false, msg: 'Stock rover paint and bodies are at Meridian Depot.' };
+  if (!r.owned[slot].includes(value)) r.owned[slot].push(value); if (fit) r[slot] = value; save();
+  return { ok: true, ride: r.id, slot, value, msg: `${tbl[value].name} ${fit ? 'fitted on' : 'stashed for'} the ${rideName(r)}. On the house.` };
+}
+// one call for either: grant('current', 'engine') / grant('current', 'glow:cyan') / grant(id, { slot: 'paint', value: 'gold' })
+export function grant(rideId, what, n) {
+  if (typeof what === 'object' && what) return what.value != null ? grantPart(rideId, what.slot, what.value, what.fit !== false) : grantUpgrade(rideId, what.slot, what.levels || n);
+  if (typeof what === 'string' && what.includes(':')) { const [sl, v] = what.split(':'); return grantPart(rideId, sl, v); }
+  return grantUpgrade(rideId, what, n);
+}
+export const GARAGE_API = { grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+  upgrades: Object.keys(GC.UPGRADES), parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
+export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
 // ---------- save ----------
 const migrated = new WeakSet();
@@ -143,10 +167,11 @@ function syncRover(dt) {
   // brakes upgrade: the surface brakes at 26 m/s²; add the extra on top when it's clearly braking
   if (C.car === rv && rv.spec?.brake > 1) {
     const ps = L?.ps ?? rv.speed, s = rv.speed, extra = GC.brakeExtra(rv.spec) * dt;
-    if (ps > 0.5 && s > 0 && ps - s > 18 * dt) rv.speed = Math.max(0, s - extra); else if (ps < -0.5 && s < 0 && s - ps > 18 * dt) rv.speed = Math.min(0, s + extra);
+    if (ps > 0.5 && s > 0 && ps - s > 18 * dt) { rv.speed = Math.max(0, s - extra); brakeAssist += s - rv.speed; } else if (ps < -0.5 && s < 0 && s - ps > 18 * dt) { rv.speed = Math.min(0, s + extra); brakeAssist += rv.speed - s; }
   }
   if (L) L.ps = rv.speed;
 }
+let brakeAssist = 0; // m/s of extra braking applied (tests)
 function hideStock(rv, hide) {
   for (const o of rv.stockParts || []) o.visible = !hide && !rv.kit; if (rv.kitG) rv.kitG.visible = !hide && !!rv.kit;
   for (const w of rv.wheels || []) w.pivot.visible = !hide;
@@ -404,7 +429,7 @@ export function dealerTick(dt, ctx) {
   meet?.tick(dt, me);
   clearRocks(dt);
   if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
-  ui.t -= dt; if (ui.t <= 0) { ui.t = 0.2; updateCtx(); }
+  const nowMs = performance.now(); if (nowMs - ui.t > 200) { ui.t = nowMs; updateCtx(); } // real-time throttle (slow phones still update promptly)
 }
 // the terrain scatters instanced boulders everywhere; tuck the ones sitting on our lots / the strip out of sight (visual only)
 const rockDone = new WeakSet(), rm = new THREE.Matrix4(), rp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); let rockT = 0;
@@ -435,7 +460,7 @@ setInterval(() => { if (!last || performance.now() - last < 700 || app()?.state?
 // ---------- test/debug hooks ----------
 window.__dealer = {
   get garage() { return garage(); }, get stock() { return dealerStock(); }, get spots() { return here() ? spots() : null; }, get sheet() { return sheet?.kind || null; },
-  get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
+  get brakeAssist() { return brakeAssist; }, get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
   tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }

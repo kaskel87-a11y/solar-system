@@ -98,7 +98,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('customised', JSON.stringify([rd.paint, rd.kit, rd.wheels, rd.glow]), rd.paint === 'candy' && rd.kit === 'widebody' && rd.wheels === 'chrome' && rd.glow === 'cyan');
     await tap('[data-tab="perf"]'); const s0 = await G(() => window.__dealer.ride.spec);
     await tap('[data-up="engine"]'); ok('upgradePreview', null, await G(() => /Tap again/.test(document.querySelector('[data-up="engine"]').textContent) && !!document.querySelector('#dlrSheet .bar b')));
-    await tap('[data-up="engine"]'); await tap('[data-up="brakes"]'); await tap('[data-up="brakes"]');
+    // second tap buys (a tap can land mid-frame on a loaded box: retry, then require the level)
+    const buyUp = async (slot, lvl) => { for (let i = 0; i < 3; i++) { if (await G(([s, l, id]) => window.__dealer.rideById(id).up[s] >= l, [slot, lvl, id])) return true; await tap(`[data-up="${slot}"]`); await sleep(150); } return G(([s, l, id]) => window.__dealer.rideById(id).up[s] >= l, [slot, lvl, id]); };
+    await tap('[data-up="engine"]'); ok('engineBought', null, await buyUp('engine', 1)); ok('brakesBought', null, await buyUp('brakes', 1));
     await sleep(300); const s1 = await G(() => window.__dealer.ride.spec);
     ok('upgradeChangesSpec', JSON.stringify({ v0: s0.vmax, v1: s1.vmax, b: s1.brake, t0: s0.turn, t1: s1.turn }), s1.vmax > s0.vmax && s1.acc > s0.acc && s1.brake === 1.35 && s1.turn > 1.85);
     await sleep(800); await shot('garage');
@@ -106,11 +108,11 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await releaseStick();
     // brakes: a braking car with the brakes upgrade stops harder than the stock 26 m/s²
     await G(() => { const st = window.__app.surface; st.debugMove(st.info.roverX, st.info.roverZ - 30, Math.PI); window.__race.setCarSpeed(20); });
-    const b0 = await G(() => ({ v: window.__race.car().speed, t: performance.now() })); await page.keyboard.down('s'); await sleep(300);
-    const b1 = await G(() => ({ v: window.__race.car().speed, t: performance.now() })); await page.keyboard.up('s');
-    const brk = { v0: b0.v, v: b1.v, dec: (b0.v - b1.v) / ((b1.t - b0.t) / 1000) };
-    R.brake = JSON.stringify(brk); ok('brakesStronger', null, brk.dec > 26 * 1.1 || (brk.v <= 0.01 && brk.v0 > 15));
-    await releaseStick();
+    const b0 = await G(() => { window.__app.joy.y = 1; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; }); // stick pulled back = brake
+    await G(() => new Promise(r => { let n = 0; const f = () => (++n >= 8 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
+    const b1 = await G(() => { window.__app.joy.y = 0; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; });
+    R.brake = JSON.stringify({ v0: b0.v, v1: b1.v, assist: +(b1.a - b0.a).toFixed(2) });
+    ok('brakesStronger', null, b1.v < b0.v && b1.a - b0.a > 0.2);
     // ---------- 4. save + reload ----------
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000); await toMars();
     const after = await G(() => ({ g: window.__dealer.garage }));
@@ -118,6 +120,11 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('savePersists', null, !!ra && after.g.active === ra.id && ra.paint === 'candy' && ra.up.engine === 1 && ra.up.brakes === 1 && ra.owned.glow.includes('cyan'));
     ok('rideReappliedAfterReload', null, await wait(() => window.__dealer.ride?.kind === 'red_comet' && window.__dealer.ride.spec.brake === 1.35, 5000));
     await G(() => window.__app.surface.game.debug.credits(2000));
+    // free grants for other modules (e.g. a mechanic's favour): no credits spent, saved
+    const gr = await G(() => { const c = window.__app.surface.game.progress.credits, g = window.SSX.garage;
+      const a = g.grantUpgrade('current', 'boost'), b = g.grantPart('current', 'glow', 'magenta'), c2 = g.grant('current', 'wheels:gold'), bad = g.grantUpgrade('current', 'nitro');
+      const r = g.rides.find(x => x.id === g.active); return { a: a.ok, b: b.ok, c: c2.ok, bad: bad.ok, cost: c - window.__app.surface.game.progress.credits, boost: r.up.boost, glow: r.glow, wheels: r.wheels, saved: JSON.parse(localStorage.getItem('ssx.progress.v1')).garage.rides.find(x => x.id === g.active).up.boost }; });
+    R.grant = JSON.stringify(gr); ok('grantFree', null, gr.a && gr.b && gr.c && !gr.bad && gr.cost === 0 && gr.boost === 1 && gr.glow === 'magenta' && gr.wheels === 'gold' && gr.saved === 1);
     // ---------- 5. car meet ----------
     await G(() => window.__dealer.skipToMeet()); ok('meetOn', null, await G(() => window.__dealer.meet.on));
     await drive(); await G(() => window.__dealer.tp('meet', 0));
