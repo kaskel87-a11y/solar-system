@@ -410,6 +410,18 @@ function tap(el, fn) {
   (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g);
 }
 const isTouch = () => document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
+// Phone hotkey button on the shared #ssxDock (v7.5.3: owned by mars/turf.js, right edge above Jump/Run, styles in
+// #ssxDockCss). We never create a dock: if #ssxDock isn't on the page yet we wait for it (turf may load after us) and
+// attach once it appears; with no dock at all this adds nothing. Bound with window.__onTap.
+function dockButton(id, label, aria, order, fn) {
+  const attach = () => {
+    const d = document.getElementById('ssxDock'); if (!d) return false;
+    if (document.getElementById(id)) return true;
+    const b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return true;
+  };
+  if (attach()) return;
+  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no observer: no dock button */ }
+}
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   hud = document.createElement('div'); hud.id = 'jobHud'; hud.innerHTML = '<div class="tx"><div class="l1"></div><div class="l2"></div></div><button id="jobStop" type="button" aria-label="Stop job">Stop</button>'; document.body.appendChild(hud);
@@ -421,6 +433,7 @@ function ui() {
   panel = document.createElement('div'); panel.id = 'jobPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Jobs"><div id="jobBody"></div><div class="msg" id="jobMsg"></div><div class="foot"><button id="jobClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); body = panel.querySelector('#jobBody'); msgEl = panel.querySelector('#jobMsg');
   tap(panel.querySelector('#jobClose'), close);
+  dockButton('dockJobs', '💼\nJobs', 'Jobs (J)', 2, () => panel.classList.contains('show') ? close() : open());
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
     if (e.code === 'KeyJ') { panel.classList.contains('show') ? close() : open(); }
