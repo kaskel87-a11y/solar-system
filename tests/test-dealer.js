@@ -128,6 +128,12 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       const a = g.grantVehicle('ares_brute', { noPlates: true, active: false }), bad = g.grantVehicle('nope'); const r = g.rides.find(x => x.id === a.ride);
       return { ok: a.ok, bad: bad.ok, n: g.rides.length - n, noPlates: r?.noPlates, act: g.active === act, cost: c - window.__app.surface.game.progress.credits,
         saved: !!JSON.parse(localStorage.getItem('ssx.progress.v1')).garage.rides.find(x => x.id === a.ride && x.noPlates) }; });
+    // Torque's barter ids (game.js SHOP rover gear), applied via game.buy at no net cost; turret3 needs turret2; Dutch's buggy
+    const gs = await G(() => { const g = window.SSX.garage, gm = window.__app.surface.game, c = gm.progress.credits;
+      const t3a = g.grantUpgrade('current', 'turret3'), arm = g.grantUpgrade('current', 'roverarmor'), t2 = g.grantUpgrade('current', 'turret2'), t3 = g.grant('current', 'turret3'), again = g.grantUpgrade('current', 'roverarmor'), suit = g.grantUpgrade('current', 'armor');
+      const bug = g.grantVehicle('buggy', { noPlates: true, active: false });
+      return { t3a: t3a.ok, arm: arm.ok, t2: t2.ok, t3: t3.ok, again: again.ok, suit: suit.ok, cost: c - gm.progress.credits, ups: ['roverarmor', 'turret2', 'turret3'].every(u => gm.progress.upgrades.includes(u)), ids: g.shopUpgrades.join(','), bug: bug.ok }; });
+    R.grantShop = JSON.stringify(gs); ok('grantShopIds', null, !gs.t3a && gs.arm && gs.t2 && gs.t3 && !gs.again && !gs.suit && gs.cost === 0 && gs.ups && gs.bug);
     R.grantVehicle = JSON.stringify(gv); ok('grantVehicle', null, gv.ok && !gv.bad && gv.n === 1 && gv.noPlates && gv.act && gv.cost === 0 && gv.saved);
     R.grant = JSON.stringify(gr); ok('grantFree', null, gr.a && gr.b && gr.c && !gr.bad && gr.cost === 0 && gr.boost === 1 && gr.glow === 'magenta' && gr.wheels === 'gold' && gr.saved === 1);
     // ---------- 5. car meet ----------

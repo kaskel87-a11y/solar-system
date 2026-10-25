@@ -33,10 +33,24 @@ export const dealerStock = () => GC.dealerStock(VEHICLES, EXPLICIT);
 // rideId: a garage ride id, or 'current' / undefined for the active ride. Returns { ok, msg, ... } and saves.
 const rideFor = id => (id == null || id === 'current') ? activeRide() : rideById(id);
 export function grantUpgrade(rideId = 'current', slot, levels = 1) {
+  if (!GC.UPGRADES[slot]) return grantShopUpgrade(slot);
   const r = rideFor(rideId); if (!r) return { ok: false, msg: 'No such ride.' };
-  if (!GC.UPGRADES[slot]) return { ok: false, msg: `Unknown upgrade "${slot}" (${Object.keys(GC.UPGRADES).join(', ')}).` };
   const from = r.up[slot] | 0, to = Math.min(GC.MAX_LVL, from + Math.max(1, levels | 0)); if (to === from) return { ok: false, maxed: true, msg: `${GC.UPGRADES[slot].name} is already maxed.` };
   r.up[slot] = to; save(); return { ok: true, ride: r.id, slot, level: to, msg: `${GC.UPGRADES[slot].icon} ${GC.UPGRADES[slot].name} Lv ${to} fitted on the ${rideName(r)}. On the house.` };
+}
+// existing game.js SHOP rover gear (roverarmor, turret2, turret3, rail, rockets, torch, emp): player-wide, not per ride. Applied through the shop's own
+// game.buy() so every side effect matches a purchase (P.upgrades, turret look, equip); the price is credited first, so it nets 0.
+const shopGrantable = i => i && (i.kind === 'roverup' || i.kind === 'roverwpn' || /^rover/.test(i.id) && i.kind === 'upgrade'); // rover gear only
+const gameRef = () => C?.game || app()?.surface?.game;
+export function shopGrantIds() { const g = gameRef(); return g?.shopList ? g.shopList(null, true).items.filter(shopGrantable).map(i => i.id) : []; }
+function grantShopUpgrade(id) {
+  const g = gameRef(), it = g?.shopItem?.(id);
+  if (!shopGrantable(it)) return { ok: false, msg: `Unknown upgrade "${id}". Use ${Object.keys(GC.UPGRADES).join(', ')} or a shop id (${shopGrantIds().join(', ')}).` };
+  if (it.owned) return { ok: false, owned: true, maxed: true, msg: `Already got ${it.name}.` };
+  if (!it.ok) return { ok: false, msg: `${it.name}: ${it.why || 'not available'}.` };
+  const P = g.progress; P.credits += it.price; const r = g.buy(id);
+  if (!r?.ok) { P.credits = Math.max(0, P.credits - it.price); save(); return { ok: false, msg: r?.msg || 'No dice.' }; }
+  return { ok: true, shop: true, id, msg: `🔧 ${it.name} fitted. On the house.` };
 }
 export function grantPart(rideId = 'current', slot, value, fit = true) {
   const r = rideFor(rideId), tbl = GC.COSMETIC_SLOTS[slot]; if (!r) return { ok: false, msg: 'No such ride.' };
@@ -64,7 +78,7 @@ export function grant(rideId, what, n) {
   return grantUpgrade(rideId, what, n);
 }
 export const GARAGE_API = { grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
-  upgrades: Object.keys(GC.UPGRADES), parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
+  upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
 // ---------- save ----------

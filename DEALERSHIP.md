@@ -72,3 +72,28 @@ SSX.garage.grantVehicle('dust_runner', { noPlates: true, active: false, up: { en
   - `paint`, `kit`, `wheels` and `glow` pre-fit parts.
 - It costs no credits and needs no rep. The ride is marked `gift: true` with `spent: 0`, so it sells for the base trade-in.
 - Returns `{ ok, ride, msg }`. `ok:false` with `full:true` means the garage is full (max 6 rides). Garage-full and unknown-id cases change nothing.
+
+### game.js shop rover gear through `grantUpgrade` (for barter.json `garage_upgrade`)
+
+`SSX.garage.grantUpgrade(any, id)` also accepts the existing game.js SHOP rover ids. These are player-wide, so `rideId` is ignored:
+
+| id | name | shop kind | note |
+|---|---|---|---|
+| `roverarmor` | Rover armor | upgrade | |
+| `turret2` | Turret Mk II | roverup | |
+| `turret3` | Turret Mk III | roverup | needs `turret2`, so it returns `ok:false, msg:"…Needs Mk II"` until then |
+| `rail` | Rail cannon | roverwpn | |
+| `rockets` | Rocket pods | roverwpn | |
+| `torch` | Plasma torch | roverwpn | |
+| `emp` | EMP pulse | roverwpn | |
+
+- These are applied the same way the shop applies them, through `game.buy(id)`: `P.upgrades` / `P.unlocks`, turret look, equip, save and the `bought` event. The price is credited first, so the net cost is 0. Nothing changes on failure.
+- Gear you already own returns `ok:false, owned:true`.
+- Suit and personal items (`armor`, `vital*`, `rig*`, `heatsink`) are refused because they aren't garage gear.
+- The live list is in `SSX.garage.shopUpgrades`.
+
+All valid `grantUpgrade` ids: the per-ride ids `engine`, `handling`, `brakes` and `boost` (+1 level each, max 3), plus the shop ids `roverarmor`, `turret2`, `turret3`, `rail`, `rockets`, `torch` and `emp`.
+
+barter.json shapes map 1:1:
+- `{ type: 'garage_upgrade', upgradeId }` becomes `SSX.garage.grantUpgrade('current', upgradeId)`. `needsUpgrade` is enforced by the shop rule as well.
+- `{ type: 'garage_vehicle', vehicleId, opts }` becomes `SSX.garage.grantVehicle(vehicleId, opts)`. `'rover'` and `'buggy'` are both valid ids.
