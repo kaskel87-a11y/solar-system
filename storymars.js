@@ -5,10 +5,10 @@
 // rrace, build, runtrack) from its own tick. Core touch points: one import + initStoryMars(window.__app) in index.html and the
 // registerAgentType hook in game.js. Import URLs must match the core's ?v= exactly (shared module instances).
 import * as THREE from 'three';
-import * as GM from './game.js?v=7.5.1.1';
-import * as W from './world.js?v=7.5.1.1';
-import { tap } from './planets/hooks.js?v=7.5.1.1';
-import { STORY } from './missions-data.js?v=7.5.1.1';
+import * as GM from './game.js?v=7.5.1';
+import * as W from './world.js?v=7.5.1';
+import { tap } from './planets/hooks.js?v=7.5.1';
+import { STORY } from './missions-data.js?v=7.5.1';
 
 // ---------- core shims: prefer a real core API when Grok Bot adds one, else the v7.4 debug/test surface ----------
 const nextStep = g => (typeof g.advanceStep === 'function' ? g.advanceStep() : g.debug.advance());
