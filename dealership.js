@@ -177,9 +177,11 @@ function syncRover(dt) {
     for (const t of L.turrets) t.position.y = L.turretY;
   }
   // brakes upgrade: the surface brakes at 26 m/s²; add the extra on top when it's clearly braking
-  if (C.car === rv && rv.spec?.brake > 1) {
-    const ps = L?.ps ?? rv.speed, s = rv.speed, extra = GC.brakeExtra(rv.spec) * dt;
-    if (ps > 0.5 && s > 0 && ps - s > 18 * dt) { rv.speed = Math.max(0, s - extra); brakeAssist += s - rv.speed; } else if (ps < -0.5 && s < 0 && s - ps > 18 * dt) { rv.speed = Math.min(0, s + extra); brakeAssist += rv.speed - s; }
+  if (C.car === rv && rv.spec?.brake > 1 && !rv.air) {
+    // same input surface.js reads (keys + stick); braking = throttle opposing the motion
+    const A = app(), k = A?.keys || {}, thr = Math.max(-1, Math.min(1, (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - (A?.joy?.y || 0)));
+    if (thr * rv.speed < -0.1 && Math.abs(rv.speed) > 0.5) { const s0 = rv.speed, e = GC.brakeExtra(rv.spec) * dt * Math.abs(thr);
+      rv.speed = s0 > 0 ? Math.max(0, s0 - e) : Math.min(0, s0 + e); brakeAssist += Math.abs(s0 - rv.speed); }
   }
   if (L) L.ps = rv.speed;
 }
