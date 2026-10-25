@@ -100,8 +100,10 @@ function wheelSet(g, body, list, r) {
   }
   return wheels;
 }
+// ext hook (planets/): extra vehicle kinds build here, usually as a stock body + livery. fn({ R, mesh, build, sec }) -> { group, body, wheels, seat, paint }
+export const VEHICLE_BUILDERS = {};
 export function buildVehicle(kind, sec = false) {
-  res();
+  res(); if (VEHICLE_BUILDERS[kind]) return VEHICLE_BUILDERS[kind]({ R, mesh, build: buildVehicle, sec });
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body); g.rotation.order = 'YXZ';
   const paint = sec ? R.paints.sec : R.paints[kind], seat = new THREE.Object3D(); body.add(seat);
   let wheels = [];
