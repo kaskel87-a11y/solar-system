@@ -24,7 +24,8 @@ import * as THREE from 'three';
  *  district()                      -> id of the district the player is standing in now, or null (off Mars / open desert)
  *  districtAt(x, z)                -> district id at AJ-relative metres, or null
  *  supplierPrice(item)             -> credits per unit at Blue's (Red Tape Flats)
- *  buyerPrice(item, district?)     -> credits per unit a street buyer pays right now (district default: current);
+ *  buyerPrice(item, district?, pos?) -> credits per unit a street buyer pays right now (district default: current);
+ *                                     x SSX.turf.priceMultiplier(district, pos) when turf wars are loaded (pos default: player)
  *                                     includes district multiplier, taste, saturation and your stash freshness
  *  stash()                         -> { items: { [id]: { qty, fresh } }, total, capacity, value }  (a copy)
  *  capacity()                      -> { used, max }
@@ -138,13 +139,22 @@ function addSat(item, d, n) { const k = d + '|' + item; S.sat[k] = { v: satVal(i
 const satMult = (item, d) => Math.max(SAT_FLOOR, 1 / (1 + satVal(item, d) / SAT_SOFT));
 const freshMult = id => 0.35 + 0.65 * (S.stash[id]?.qty ? S.stash[id].fresh : 1);
 function supplierPrice(item) { const I = ITEMS[itemId(item)]; return I ? I.supplier : null; }
-function buyerPrice(item, d = curDistrict()) {
+function buyerPrice(item, d = curDistrict(), pos) {
   item = itemId(item); d = distId(d);
   const I = ITEMS[item], D = d && districtList()[d]; if (!I || !D) return null;
   let v = I.base * D.mult; // built-in model: base x district multiplier
   if (I.vals) { const V = I.vals, mid = ((V['red-tape-flats'] ?? I.base) + (V['olympus-row'] ?? I.base)) / 2; // Steve's per-district values (barter.json items[])
     v = V[d] ?? (d === 'ares-junction' ? mid : d === 'ares-beltway' ? mid * 1.05 : I.base * D.mult); }
-  return Math.max(1, Math.round(v * (D.taste?.[item] || 1) * satMult(item, d) * freshMult(item)));
+  return Math.max(1, Math.round(v * (D.taste?.[item] || 1) * satMult(item, d) * freshMult(item) * turfMult(d, pos)));
+}
+// Turf wars (marsmania/turf, PR #15): selling on blocks you hold pays more. Guarded: 1 when SSX.turf is absent or throws.
+// pos = AJ-relative { x, z } of the sale; defaults to the player when pricing the district you're standing in.
+function turfMult(d, pos) {
+  try {
+    const f = window.SSX?.turf?.priceMultiplier; if (typeof f !== 'function') return 1;
+    if (!pos && d === curDistrict()) { const h = here(); if (h) pos = { x: h.x, z: h.z }; }
+    const m = Number(f(d, pos) ?? 1); return Number.isFinite(m) && m > 0 ? m : 1;
+  } catch (e) { return 1; }
 }
 
 // ---------- stash ops ----------
@@ -542,6 +552,17 @@ function tap(el, fn) {
   const g = e => { const n = performance.now(); if (e?.type === 'click' && n - lastTouchAct < 700) return; if (e?.type === 'pointerup') lastTouchAct = n; fn(e); };
   (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g);
 }
+// Phone hotkey dock, shared by the Marsmania add-ons (contraband B, jobs J, turf K, beltway …). Whichever loads first
+// creates #ssxDock on the right edge (between the top HUD and the Jump/Run column); each adds one 48px black button.
+// Shown only on touch devices on the surface, where there's no keyboard. Bound with window.__onTap.
+function dockButton(id, label, aria, order, fn) {
+  if (!document.getElementById('ssxDockCss')) { const st = document.createElement('style'); st.id = 'ssxDockCss'; st.textContent = `#ssxDock{position:fixed;z-index:12;right:calc(8px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));display:none;flex-direction:column;gap:8px;pointer-events:none}
+body.surface.touch #ssxDock{display:flex} @media (pointer:coarse){body.surface #ssxDock{display:flex}}
+#ssxDock button{pointer-events:auto;min-width:52px;min-height:48px;padding:3px 6px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 11px/1.15 system-ui,sans-serif;white-space:pre-line;touch-action:manipulation}`; document.head.appendChild(st); }
+  let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); }
+  let b = document.getElementById(id); if (b) return b;
+  b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return b;
+}
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   btn = document.createElement('button'); btn.id = 'cbBtn'; btn.type = 'button'; document.body.appendChild(btn);
@@ -549,6 +570,7 @@ function ui() {
   document.body.appendChild(panel); body = panel.querySelector('#cbBody'); msgEl = panel.querySelector('#cbMsg');
   tap(btn, () => open(modeFor()));
   tap(panel.querySelector('#cbClose'), close);
+  dockButton('dockStash', '🎒\nStash', 'Stash (B)', 1, () => panel.classList.contains('show') ? close() : open(modeFor()));
   addEventListener('keydown', e => { if (e.code !== 'KeyB' || e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return; if (!app()?.state?.onSurface) return; panel.classList.contains('show') ? close() : open(modeFor()); });
 }
 function setNear(nb) {
