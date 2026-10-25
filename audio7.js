@@ -36,7 +36,7 @@ export function createAudio7(getCtx) {
   function bus(a) {
     if (radioBus) return radioBus;
     const g = a.createGain(); g.gain.value = 0.0001; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200; const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 120;
-    g.connect(lp).connect(hp).connect(a.destination); return (radioBus = g);
+    g.connect(lp).connect(hp).connect(a.__ssxMusic || a.destination); return (radioBus = g); // __ssxMusic: mars-audio.js music slider
   }
   const N = n => 440 * Math.pow(2, (n - 69) / 12);
   function schedule() {
