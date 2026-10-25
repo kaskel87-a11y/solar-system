@@ -1,11 +1,19 @@
 // Venus: Sulfur Gate Refinery. A refrigerated refinery town on a lava plain; Gate Local 9 runs the coolant racket.
 export default {
   world: 'Venus',
+  // Pure layout data (no meshes): building/prop types are style keys, so the v8 look-dev pass can swap glTF in per type.
+  // planets/hooks.js compiles this into the v7.2 COLONIES shape (domes/blocks) until registerColony lands.
   colony: {
-    name: 'Sulfur Gate', a: 65, d: 210, tint: 0xffa030,
-    domes: [[0, 0, 13, 'SULFUR GATE', 0xffb020], [-24, -14, 8, 'BOILER', 0xff5020], [24, 8, 8]],
-    blocks: [[30, -18, 8, 5, 5, 'CHAPEL', 0x9aff3a], [-6, 24, 5, 3, 3, 'SUPPLY', 0x3cff8a], [-44, -12, 7, 4, 5, 'COOLANT', 0x6ad0ff], [42, 14, 4, 8, 7]],
-    pad: [-38, 12, 9], crates: [[-31, 18], [-48, -2], [36, -8], [12, 31], [-10, -26]],
+    name: 'Sulfur Gate', site: { a: 65, d: 210 }, palette: { tint: 0xffa030 },
+    buildings: [
+      { type: 'hub', at: [0, 0], r: 13, sign: 'SULFUR GATE', neon: 0xffb020 },
+      { type: 'boiler', at: [-24, -14], r: 8, sign: 'BOILER', neon: 0xff5020 },
+      { type: 'hab', at: [24, 8], r: 8 },
+      { type: 'chapel', at: [30, -18], size: [8, 5, 5], sign: 'CHAPEL', neon: 0x9aff3a },
+      { type: 'supply', at: [-6, 24], size: [5, 3, 3], sign: 'SUPPLY', neon: 0x3cff8a },
+      { type: 'depot', at: [-44, -12], size: [7, 4, 5], sign: 'COOLANT', neon: 0x6ad0ff }
+    ],
+    props: [{ type: 'vent-stack', at: [42, 14] }], pad: { at: [-38, 12], r: 9 }, crates: [[-31, 18], [-48, -2], [36, -8], [12, 31], [-10, -26]], lamps: 10,
     shop: [-6, 21.5],
     contacts: [
       { name: 'Dee Varga', at: [36, -27], blurb: 'Gate Local 9 shop steward. Runs the coolant racket.' },
@@ -13,7 +21,7 @@ export default {
       { name: 'Skids', at: [-25, 28], blurb: 'Crawler jockey. Burned hands, no fear.' }
     ],
     vehicles: [['acid_crawler', -14, 32, 0.4], ['acid_crawler', -52, -24, 1.6], ['buggy', 20, 30, -0.3], ['hauler', 46, -2, 2.2]],
-    guards: [[0, -22], [-26, 4]], colonists: 4, lamps: 10
+    guards: [[0, -22], [-26, 4]], colonists: 4
   },
   vehicles: ['acid_crawler'],
   cosmetics: { paint: { acid: { name: 'Acid Green', color: 0x8acc2a } } },

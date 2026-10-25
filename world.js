@@ -88,12 +88,12 @@ function wheelSet(g, body, list, r) {
   }
   return wheels;
 }
-// ext hook: extra vehicle kinds register a builder here (see planets/vehicles.js). fn({ R, body, seat, paint, mesh, wheels(list, r) }) -> wheels[]
+// ext hook (planets/): extra vehicle kinds build here, usually as a stock body + livery. fn({ R, mesh, build, sec }) -> { group, body, wheels, seat, paint }
 export const VEHICLE_BUILDERS = {};
 export function buildVehicle(kind, sec = false) {
-  res();
+  res(); if (VEHICLE_BUILDERS[kind]) return VEHICLE_BUILDERS[kind]({ R, mesh, build: buildVehicle, sec });
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body); g.rotation.order = 'YXZ';
-  const paint = sec ? R.paints.sec : R.paints[kind] || R.paints.buggy, seat = new THREE.Object3D(); body.add(seat);
+  const paint = sec ? R.paints.sec : R.paints[kind], seat = new THREE.Object3D(); body.add(seat);
   let wheels = [];
   if (kind === 'buggy') {
     body.add(mesh(R.box, paint, 0, 0.9, 0, 1.7, 0.4, 3.0), mesh(R.box, R.dark, 0, 1.25, 0.3, 1.5, 0.3, 1.2));
@@ -112,7 +112,7 @@ export function buildVehicle(kind, sec = false) {
     body.add(mesh(R.sph, paint, 0, 1.6, 0, 1.6, 1.0, 3.4), mesh(R.box, paint, 0, 1.4, 0.4, 6.0, 0.15, 1.6), mesh(R.sph, R.glass, 0, 2.2, -1.6, 0.9, 0.6, 1.1));
     for (const s of [-1, 1]) body.add(mesh(R.cyl, R.glowC, s * 2.6, 1.1, 0.6, 0.45, 0.2, 0.45), mesh(R.box, R.padLight, s * 3.0, 1.45, 0.4, 0.1, 0.1, 0.3));
     body.add(mesh(R.cyl, R.glowO, 0, 1.6, 3.3, 0.6, 0.3, 0.6)); seat.position.set(0.5, 2.2, 0.5);
-  } else if (VEHICLE_BUILDERS[kind]) wheels = VEHICLE_BUILDERS[kind]({ R, body, seat, paint, mesh, wheels: (list, r) => wheelSet(g, body, list, r) }) || [];
+  }
   if (sec) { const bar = new THREE.Group(); bar.position.set(0, kind === 'buggy' ? 2.45 : 1.3, 0.2); const l = mesh(R.box, R.red, -0.35, 0, 0, 0.5, 0.15, 0.2), r2 = mesh(R.box, R.blue, 0.35, 0, 0, 0.5, 0.15, 0.2); bar.add(l, r2); body.add(bar); g.userData.bar = [l, r2]; }
   return { group: g, body, wheels, seat, paint };
 }

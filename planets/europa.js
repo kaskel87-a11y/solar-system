@@ -1,11 +1,19 @@
 // Europa: Conamara Station. Halvorsen Ice & Water Co. (fictional) company town over a hidden ocean.
 export default {
   world: 'Europa',
+  // Pure layout data (no meshes): building/prop types are style keys, so the v8 look-dev pass can swap glTF in per type.
+  // planets/hooks.js compiles this into the v7.2 COLONIES shape (domes/blocks) until registerColony lands.
   colony: {
-    name: 'Conamara Station', a: -25, d: 210, tint: 0x8ad8ff,
-    domes: [[0, 0, 13, 'HALVORSEN', 0x6ad0ff], [-22, -16, 8, 'INFIRMARY', 0xff4a5a], [24, 8, 8, 'DRILL 4', 0xffd040]],
-    blocks: [[30, -18, 9, 5, 5, 'COMPANY STORE', 0x6ad0ff], [-6, 24, 5, 3, 3, 'SUPPLY', 0x3cff8a], [-44, -14, 6, 4, 5, 'BUNKS', 0xc0c8ff], [42, 20, 3, 3, 12]],
-    pad: [-38, 12, 9], crates: [[-31, 18], [-33, 23], [-48, -4], [36, -8], [12, 31]],
+    name: 'Conamara Station', site: { a: -25, d: 210 }, palette: { tint: 0x8ad8ff },
+    buildings: [
+      { type: 'hub', at: [0, 0], r: 13, sign: 'HALVORSEN', neon: 0x6ad0ff },
+      { type: 'infirmary', at: [-22, -16], r: 8, sign: 'INFIRMARY', neon: 0xff4a5a },
+      { type: 'drill-rig', at: [24, 8], r: 8, sign: 'DRILL 4', neon: 0xffd040 },
+      { type: 'store', at: [30, -18], size: [9, 5, 5], sign: 'COMPANY STORE', neon: 0x6ad0ff },
+      { type: 'supply', at: [-6, 24], size: [5, 3, 3], sign: 'SUPPLY', neon: 0x3cff8a },
+      { type: 'bunks', at: [-44, -14], size: [6, 4, 5], sign: 'BUNKS', neon: 0xc0c8ff }
+    ],
+    props: [{ type: 'drill-derrick', at: [42, 20] }], pad: { at: [-38, 12], r: 9 }, crates: [[-31, 18], [-33, 23], [-48, -4], [36, -8], [12, 31]], lamps: 12,
     shop: [-6, 21.5],
     contacts: [
       { name: 'Foreman Brask', at: [36, -27], blurb: 'Company man. Fines you for breathing loud.' },
@@ -13,7 +21,7 @@ export default {
       { name: 'Old Henrik', at: [12, 28], blurb: 'Retired driller. Says the ice sings.' }
     ],
     vehicles: [['crevasse_sled', -14, 33, 0.4], ['crevasse_sled', 46, 2, 2.0], ['hoverbike', 20, 34, -0.3], ['buggy', -52, -26, 1.6]],
-    guards: [[0, -22], [-26, 4], [22, -22]], colonists: 4, lamps: 12
+    guards: [[0, -22], [-26, 4], [22, -22]], colonists: 4
   },
   vehicles: ['crevasse_sled'],
   cosmetics: { paint: { glacier: { name: 'Glacier White', color: 0xe8eef4 } } },

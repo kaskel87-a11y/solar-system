@@ -1,18 +1,25 @@
 // Io: Loki Forge. A penal forge colony on the most volcanic world in the solar system.
 export default {
   world: 'Io',
+  // Pure layout data (no meshes): building/prop types are style keys, so the v8 look-dev pass can swap glTF in per type.
+  // planets/hooks.js compiles this into the v7.2 COLONIES shape (domes/blocks) until registerColony lands.
   colony: {
-    name: 'Loki Forge', a: -130, d: 210, tint: 0xff4a20,
-    domes: [[0, 0, 12, 'LOKI FORGE', 0xff3a2a], [24, 8, 8, 'FORGE', 0xff8a2a]],
-    blocks: [[-24, -16, 12, 7, 6, 'CELLBLOCK', 0xff2a2a], [30, -18, 7, 5, 5, 'WARDEN', 0xffd040], [-6, 24, 5, 3, 3, 'COMMISSARY', 0x3cff8a], [-44, 8, 3, 3, 10], [44, 22, 3, 3, 10]],
-    pad: [-40, -18, 9], crates: [[-31, 20], [-48, 0], [38, -6], [12, 31], [-8, -26]],
+    name: 'Loki Forge', site: { a: -130, d: 210 }, palette: { tint: 0xff4a20 },
+    buildings: [
+      { type: 'hub', at: [0, 0], r: 12, sign: 'LOKI FORGE', neon: 0xff3a2a },
+      { type: 'forge', at: [24, 8], r: 8, sign: 'FORGE', neon: 0xff8a2a },
+      { type: 'cellblock', at: [-24, -16], size: [12, 7, 6], sign: 'CELLBLOCK', neon: 0xff2a2a },
+      { type: 'office', at: [30, -18], size: [7, 5, 5], sign: 'WARDEN', neon: 0xffd040 },
+      { type: 'store', at: [-6, 24], size: [5, 3, 3], sign: 'COMMISSARY', neon: 0x3cff8a }
+    ],
+    props: [{ type: 'guard-tower', at: [-44, 8] }, { type: 'guard-tower', at: [44, 22] }], pad: { at: [-40, -18], r: 9 }, crates: [[-31, 20], [-48, 0], [38, -6], [12, 31], [-8, -26]], lamps: 12,
     shop: [-6, 21.5],
     contacts: [
       { name: 'Cinder', at: [-25, 27], blurb: 'Lifer. Escape artist. Runs the commissary black market.' },
       { name: 'Warden Okafor', at: [36, -27], blurb: 'Sells pardons. Loves a speech.' }
     ],
     vehicles: [['lava_runner', -14, 33, 0.4], ['lava_runner', 20, 33, -0.3], ['hauler', 50, -4, 2.2], ['buggy', -52, -34, 1.6]],
-    guards: [[0, -22], [-26, 4], [22, -24]], colonists: 3, lamps: 12
+    guards: [[0, -22], [-26, 4], [22, -24]], colonists: 3
   },
   vehicles: ['lava_runner'],
   cosmetics: { paint: { sulfur: { name: 'Sulfur Yellow', color: 0xe8d040 } }, bandana: { convict: { name: 'Convict Orange', color: 0xff7a10 } } },

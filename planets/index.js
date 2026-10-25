@@ -1,11 +1,8 @@
-// Multi-planet expansion (steve/multi-planet). Everything is data pushed into the core registries:
-//   world.js COLONIES / VEHICLES / VEHICLE_BUILDERS, game.js QUESTS / COSMETICS, audio7.js STATIONS (DJ lines only).
-// The only core touch points are one import + initPlanets(window.__app) in index.html and the VEHICLE_BUILDERS hook in world.js.
-// Import URLs must match the core's ?v= exactly so we share the same module instances.
-import { COLONIES, VEHICLES, VEHICLE_BUILDERS } from '../world.js?v=7.2';
-import { QUESTS, COSMETICS } from '../game.js?v=7.2';
-import { STATIONS } from '../audio7.js?v=7.2';
-import { EXT_VEHICLES, EXT_BUILDERS } from './vehicles.js?v=7.2';
+// Multi-planet expansion (steve/multi-planet). planets/*.js are pure data; planets/hooks.js is the ONLY file that touches core
+// (v7.3 registerColony / registerMission / menu hooks when present, v7.2 registries otherwise).
+// Core touch points: one import + initPlanets(window.__app) in index.html, and the VEHICLE_BUILDERS hook in world.js.
+import { registerColony, registerMission, registerCosmetics, registerVehicles, colonyOf, missionsFor, addMenuItem, tap, STATIONS } from './hooks.js?v=7.2';
+import { EXT_VEHICLES } from './vehicles.js?v=7.2';
 import venus from './venus.js?v=7.2';
 import mercury from './mercury.js?v=7.2';
 import titan from './titan.js?v=7.2';
@@ -17,22 +14,15 @@ export const PLANETS = [venus, mercury, titan, europa, io];
 const KEY = 'ssx.planets.v1', FEE = 40;
 
 // ---------- registration (runs at import, before any landing builds a colony) ----------
-Object.assign(VEHICLES, EXT_VEHICLES);
-Object.assign(VEHICLE_BUILDERS, EXT_BUILDERS);
-const haveQ = new Set(QUESTS.map(q => q.id));
-const addQ = q => { if (!haveQ.has(q.id)) { QUESTS.push(q); haveQ.add(q.id); } };
-referrals.forEach(addQ);
-for (const p of PLANETS) {
-  if (!COLONIES[p.world]) COLONIES[p.world] = p.colony;
-  for (const [kind, items] of Object.entries(p.cosmetics || {})) Object.assign(COSMETICS[kind] ||= {}, items);
-  p.quests.forEach(addQ);
-}
+registerVehicles(EXT_VEHICLES);
+referrals.forEach(registerMission);
+for (const p of PLANETS) { registerColony(p.world, p.colony); registerCosmetics(p.cosmetics); p.quests.forEach(registerMission); }
 
 // ---------- persistent travel state ----------
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
 let S = Object.assign({ visited: [] }, load());
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode */ } };
-const HOME = [{ world: 'Mars', colony: COLONIES.Mars }, { world: 'Moon', colony: COLONIES.Moon }].filter(h => h.colony);
+const HOME = [{ world: 'Mars', colony: colonyOf('Mars') }, { world: 'Moon', colony: colonyOf('Moon') }].filter(h => h.colony);
 
 export function initPlanets(app) {
   if (!app || app.__planets) return; app.__planets = true;
@@ -52,21 +42,9 @@ export function initPlanets(app) {
   const panel = document.createElement('div'); panel.id = 'colPanel';
   panel.innerHTML = '<div class="wrap"><button id="colClose" class="btn">✕ Close</button><h2>🌍 Colonies</h2><p class="sub">Fast travel: auto-flies you there and lands. Manual flight always works too.</p><div id="colList"></div></div>';
   document.body.appendChild(panel);
-  const menu = document.getElementById('roverMenu'), before = document.getElementById('settingsBtn');
-  const btn = document.createElement('button'); btn.id = 'colBtn'; btn.className = 'btn'; btn.textContent = '🌍 Colonies';
-  if (menu) menu.insertBefore(btn, before && before.parentNode === menu ? before : null);
-
-  // pointer-based tap: fires on pointerup of the same pointer, so a thumb resting on the joystick doesn't block it
-  const tap = (el, fn) => {
-    let id = null;
-    el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; e.preventDefault(); id = e.pointerId; });
-    el.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || e.pointerId !== id) return; e.preventDefault(); id = null; fn(e); });
-    el.addEventListener('pointercancel', () => { id = null; });
-    el.addEventListener('click', e => { if (e.pointerType && e.pointerType !== 'mouse') return; fn(e); });
-  };
   const close = () => { panel.style.display = 'none'; };
   tap(document.getElementById('colClose'), close);
-  tap(btn, () => { app.toggleMenu?.(false); open(); });
+  addMenuItem(app, { id: 'colBtn', label: '🌍 Colonies', onTap: () => open() });
 
   function entries() {
     return [...HOME.map(h => ({ world: h.world, colony: h.colony, home: true })), ...PLANETS.map(p => ({ world: p.world, colony: p.colony, p }))];
@@ -77,7 +55,7 @@ export function initPlanets(app) {
     for (const e of entries()) {
       const open_ = e.home || unlocked(e.p), visited = e.home || S.visited.includes(e.world), fee = visited ? 0 : FEE;
       const it = document.createElement('div'); it.className = 'item' + (here === e.world ? ' here' : '') + (open_ ? '' : ' locked'); it.dataset.world = e.world;
-      const jobs = QUESTS.filter(q => q.world === e.world && q.contact).length;
+      const jobs = missionsFor(e.world).filter(q => q.contact).length;
       it.innerHTML = `<b>${e.colony.name}</b> · ${e.world}<small>${e.p ? (e.p.colony.contacts || []).map(c => c.name).join(', ') + ' · ' : ''}${jobs} jobs${e.p ? ' · ride: ' + EXT_VEHICLES[e.p.vehicles[0]].name : ''}</small>`;
       const row = document.createElement('div'); row.className = 'row';
       const go = document.createElement('button'); go.className = 'btn'; go.dataset.go = e.world;
@@ -93,7 +71,7 @@ export function initPlanets(app) {
     const body = app.bodies.find(b => b.name === world); if (!body) return false;
     const st = app.state; if (st.transitioning || (st.onSurface && st.info?.name === world)) return false;
     if (fee) { const P = app.game?.progress; if (!P || P.credits < fee) return false; P.credits -= fee; app.game.save?.(); }
-    close(); app.toast?.(`🚀 Course set: ${COLONIES[world]?.name || world}`);
+    close(); app.toast?.(`🚀 Course set: ${colonyOf(world)?.name || world}`);
     if (!st.onSurface) { app.landOn(body.mesh); return true; }
     app.takeOff();
     const t0 = performance.now(), wait = () => {

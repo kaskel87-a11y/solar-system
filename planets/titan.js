@@ -1,11 +1,19 @@
 // Titan: Kraken Landing. Outlaw free port on the Kraken Mare shore; hydrocarbon bootleggers and smugglers.
 export default {
   world: 'Titan',
+  // Pure layout data (no meshes): building/prop types are style keys, so the v8 look-dev pass can swap glTF in per type.
+  // planets/hooks.js compiles this into the v7.2 COLONIES shape (domes/blocks) until registerColony lands.
   colony: {
-    name: 'Kraken Landing', a: -95, d: 210, tint: 0xff7a3a,
-    domes: [[0, 0, 12, 'FREE PORT', 0x7aff5a], [-22, -16, 8, 'TANK FARM', 0xff3ad0], [22, 10, 7]],
-    blocks: [[30, -18, 8, 5, 6, 'CHANDLERY', 0xff3ad0], [-6, 24, 5, 3, 3, 'SUPPLY', 0x3cff8a], [-44, -14, 6, 4, 5, 'NO QUESTIONS', 0xffd040], [40, 18, 5, 5, 8]],
-    pad: [-38, 12, 9], crates: [[-31, 18], [-33, 23], [-29, 23], [-48, -4], [38, -8], [12, 31], [-8, -26], [44, 6]],
+    name: 'Kraken Landing', site: { a: -95, d: 210 }, palette: { tint: 0xff7a3a },
+    buildings: [
+      { type: 'hub', at: [0, 0], r: 12, sign: 'FREE PORT', neon: 0x7aff5a },
+      { type: 'tank-farm', at: [-22, -16], r: 8, sign: 'TANK FARM', neon: 0xff3ad0 },
+      { type: 'hab', at: [22, 10], r: 7 },
+      { type: 'chandlery', at: [30, -18], size: [8, 5, 6], sign: 'CHANDLERY', neon: 0xff3ad0 },
+      { type: 'supply', at: [-6, 24], size: [5, 3, 3], sign: 'SUPPLY', neon: 0x3cff8a },
+      { type: 'bar', at: [-44, -14], size: [6, 4, 5], sign: 'NO QUESTIONS', neon: 0xffd040 }
+    ],
+    props: [{ type: 'fuel-tower', at: [40, 18] }], pad: { at: [-38, 12], r: 9 }, crates: [[-31, 18], [-33, 23], [-29, 23], [-48, -4], [38, -8], [12, 31], [-8, -26], [44, 6]], lamps: 10,
     shop: [-6, 21.5],
     contacts: [
       { name: 'Mags', at: [36, -27], blurb: 'Queen of the free port. Everybody\u2019s welcome. Leaving is extra.' },
@@ -13,7 +21,7 @@ export default {
       { name: 'Lark', at: [10, 28], blurb: 'Racer. Kestrel\u2019s cousin. Insufferable.' }
     ],
     vehicles: [['methane_skiff', -14, 33, 0.4], ['methane_skiff', 20, 32, -0.3], ['hoverbike', 46, -6, 2.4], ['hauler', -52, -26, 1.6], ['shuttle', -38, 12, 0.9]],
-    guards: [[0, -22], [24, -22]], colonists: 4, lamps: 10
+    guards: [[0, -22], [24, -22]], colonists: 4
   },
   vehicles: ['methane_skiff'],
   cosmetics: { paint: { kraken: { name: 'Kraken Rust', color: 0x8a4a22 } } },

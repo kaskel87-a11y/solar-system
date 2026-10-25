@@ -1,19 +1,26 @@
 // Mercury: Shadowline Array. A power town just behind the terminator, owned by Calloway Power & Light (fictional).
 export default {
   world: 'Mercury',
+  // Pure layout data (no meshes): building/prop types are style keys, so the v8 look-dev pass can swap glTF in per type.
+  // planets/hooks.js compiles this into the v7.2 COLONIES shape (domes/blocks) until registerColony lands.
   colony: {
-    name: 'Shadowline Array', a: -75, d: 210, tint: 0xfff0c0,
-    domes: [[0, 0, 12, 'SHADOWLINE', 0xffe070], [22, -12, 7, 'GRID', 0x6ae0ff], [-24, 10, 8]],
-    blocks: [[32, 14, 8, 4, 4, 'CANTEEN', 0xff2a5a], [-6, 24, 5, 3, 3, 'SUPPLY', 0x3cff8a], [-42, -16, 7, 5, 5, 'ICE HOUSE', 0x9ad8ff],
-      [12, -36, 10, 2, 1.2], [-14, -38, 10, 2, 1.2], [38, -30, 8, 2, 1.2]],
-    pad: [-40, 12, 9], crates: [[-33, 20], [-50, -2], [40, -6], [10, 31]],
+    name: 'Shadowline Array', site: { a: -75, d: 210 }, palette: { tint: 0xfff0c0 },
+    buildings: [
+      { type: 'hub', at: [0, 0], r: 12, sign: 'SHADOWLINE', neon: 0xffe070 },
+      { type: 'grid-control', at: [22, -12], r: 7, sign: 'GRID', neon: 0x6ae0ff },
+      { type: 'hab', at: [-24, 10], r: 8 },
+      { type: 'canteen', at: [32, 14], size: [8, 4, 4], sign: 'CANTEEN', neon: 0xff2a5a },
+      { type: 'supply', at: [-6, 24], size: [5, 3, 3], sign: 'SUPPLY', neon: 0x3cff8a },
+      { type: 'icehouse', at: [-42, -16], size: [7, 5, 5], sign: 'ICE HOUSE', neon: 0x9ad8ff }
+    ],
+    props: [{ type: 'solar-row', at: [12, -36] }, { type: 'solar-row', at: [-14, -38] }, { type: 'solar-row', at: [38, -30] }], pad: { at: [-40, 12], r: 9 }, crates: [[-33, 20], [-50, -2], [40, -6], [10, 31]], lamps: 10,
     shop: [-6, 21.5],
     contacts: [
       { name: 'Sunny Calloway', at: [34, 24], blurb: 'Owns the lights. Owns you, if you\u2019re not careful.' },
       { name: 'Dr. Takacs', at: [-30, -28], blurb: 'Rogue grid engineer. Paranoid, brilliant, skimming.' }
     ],
     vehicles: [['sun_skimmer', -14, 32, 0.4], ['sun_skimmer', 46, 4, 2.0], ['hoverbike', 20, 30, -0.3], ['hauler', -52, -28, 1.6]],
-    guards: [[0, -22], [22, -24]], colonists: 3, lamps: 10
+    guards: [[0, -22], [22, -24]], colonists: 3
   },
   vehicles: ['sun_skimmer'],
   cosmetics: { paint: { mirror: { name: 'Mirror Chrome', color: 0xdfe6f0 } } },
