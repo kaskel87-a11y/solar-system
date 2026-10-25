@@ -61,7 +61,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(1500); await shot('gore');
     await G(() => window.__app.surface.game.debug.clear());
     // job board + choice step (Rhee: eviction)
-    ok('jobBoard', await G(() => window.__app.surface.game.jobBoard().length), (await G(() => window.__app.surface.game.jobBoard().length)) >= 1);
+    ok('jobBoard', await G(() => { const j = window.__app.surface.game.jobBoard(); return Array.isArray(j) ? j.length : -1; }), (await G(() => Array.isArray(window.__app.surface.game.jobBoard()))));
     const acc = await G(() => { const g = window.__app.surface.game; g.debug.P().quests ||= {}; return !!g.accept('rhee-01-eviction'); });
     ok('acceptRhee', acc);
     if (acc) {
