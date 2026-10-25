@@ -5,7 +5,7 @@
 // BASE=http://localhost:8874/ BR=webkit DEV="iPhone 14" OUT=/tmp/turf/ node test-turf.js   (DEV=desktop for 1366x768)
 const pw = require('playwright');
 const base = process.env.BASE || 'http://localhost:8874/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/tmp/', desk = DEV === 'desktop';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});

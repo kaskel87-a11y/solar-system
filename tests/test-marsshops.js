@@ -3,7 +3,7 @@
 // BASE=http://localhost:8765/ DEV="iPhone 14" BR=webkit VP=393x852 node test-marsshops.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || 'iPhone 14';
-const out = process.env.SHOTS_DIR || process.env.OUT || '/tmp/', ONLY = process.env.ONLY, PFX = process.env.PFX || 'ms', VP = process.env.VP;
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', ONLY = process.env.ONLY, PFX = process.env.PFX || 'ms', VP = process.env.VP;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = (DEV + (VP ? '-' + VP : '')).replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {

@@ -6,7 +6,7 @@
 // BASE=http://localhost:8794/ DEV=393x852 BR=webkit node tests/test-dealer.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8777/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || '393x852';
-const out = process.env.OUT || '/tmp/dealer-shots/', PFX = process.env.PFX || 'dealer';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', PFX = process.env.PFX || 'dealer';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {

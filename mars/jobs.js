@@ -424,7 +424,7 @@ function ui() {
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
     if (e.code === 'KeyJ') { panel.classList.contains('show') ? close() : open(); }
-    else if (e.code === 'KeyG' && actBtn.classList.contains('show') && !document.getElementById('heistBtn')?.offsetParent) { // heist's G wins when both show e.preventDefault(); doAction(); }
+    else if (e.code === 'KeyG' && actBtn.classList.contains('show') && !document.getElementById('heistBtn')?.offsetParent) { e.preventDefault(); doAction(); } // heist's G wins when both show
   });
 }
 function actionFor() {
