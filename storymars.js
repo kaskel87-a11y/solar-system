@@ -3,12 +3,12 @@
 // this file only re-maps each job's steps onto what v7.4 can run, adds human wave types (goon, enforcer, guard, squad, sdrone)
 // through game.registerAgentType, and drives the step types the core doesn't know (hold, choice, tail, escort2, cleanexit,
 // rrace, build, runtrack) from its own tick. Core touch points: one import + initStoryMars(window.__app) in index.html and the
-// registerAgentType hook in game.js. Import URLs must match the core's ?v= exactly (shared module instances).
+// registerAgentType hook in game.js. Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
 import * as THREE from 'three';
-import * as GM from './game.js?v=7.5.1';
-import * as W from './world.js?v=7.5.1';
-import { tap } from './planets/hooks.js?v=7.5.1';
-import { STORY } from './missions-data.js?v=7.5.1';
+import * as GM from './game.js';
+import * as W from './world.js';
+import { tap } from './planets/hooks.js';
+import { STORY } from './missions-data.js';
 
 // ---------- core shims: prefer a real core API when Grok Bot adds one, else the v7.4 debug/test surface ----------
 const nextStep = g => (typeof g.advanceStep === 'function' ? g.advanceStep() : g.debug.advance());

@@ -7,12 +7,12 @@
 // Wiring (the only shared-code hooks): index.html imports DEALER_API and merges it into window.SSX; surface.js runs
 // window.SSX_TICKS once per surface frame with the same ctx race.js gets. Everything else is set up lazily from here.
 import * as THREE from 'three';
-import { registerVehicle, buildVehicle, VEHICLES } from './world.js?v=7.5.1';
-import { buildRover } from './models.js?v=7.5.1';
-import { addMenuItem } from './racehooks.js?v=7.5.1';
-import * as GC from './garagecore.js?v=7.5.1';
-import { buildRide, decorate, shapeOf } from './rides.js?v=7.5.1';
-import { createMeet } from './carmeet.js?v=7.5.1';
+import { registerVehicle, buildVehicle, VEHICLES } from './world.js';
+import { buildRover } from './models.js';
+import { addMenuItem } from './racehooks.js';
+import * as GC from './garagecore.js';
+import { buildRide, decorate, shapeOf } from './rides.js';
+import { createMeet } from './carmeet.js';
 
 // ---------- registration: our models are ordinary vehicle kinds with a price (so they also show up for other mods) ----------
 for (const [kind, m] of Object.entries(GC.MODELS)) registerVehicle(kind, { ...m }, () => buildRide(kind));

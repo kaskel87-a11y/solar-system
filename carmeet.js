@@ -3,7 +3,7 @@
 // or drive up to a car and tap 🏁 Race to challenge its driver to a quarter-mile drag on the strip. The drag itself runs on
 // race.js (startRace with a two-gate sprint def: grid hold, 3-2-1, GO, timer chip, rival car, finish, purse + result card);
 // this file adds the wager, the rival's pace from its car's stats, and rep. Phone cap: 8 cars + 3 spectators (≤ 12 NPCs).
-import { startRace } from './race.js?v=7.5.1';
+import { startRace } from './race.js';
 
 const NAMES = ['Nix Calder', 'Tamsin Vey', 'Big Oyelaran', 'Juno Park', 'Rustbucket Ray', 'Kira Sol', 'Dex Marlow', 'Fen Oduya', 'Bo Okafor', 'Sister Volt', 'Lalo Brandt', 'Marisol Quan'];
 const LINES = ['"Nice paint. Shame about the driver."', '"You lost, tourist? Meet’s for real cars."', '"Quarter mile. Loser buys the drinks and the tow."', '"I’ve seen faster ore haulers."', '"Line up or shut up."', '"My grandma’s hab heater has more horsepower."'];
