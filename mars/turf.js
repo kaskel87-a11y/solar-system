@@ -341,6 +341,7 @@ const isTouch = () => document.body.classList.contains('touch') || matchMedia('(
 function dockButton(id, label, aria, order, fn) {
   if (!document.getElementById('ssxDockCss')) { const st = document.createElement('style'); st.id = 'ssxDockCss'; st.textContent = `#ssxDock{position:fixed;z-index:12;right:calc(8px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));display:none;flex-direction:column;gap:8px;pointer-events:none}
 body.surface.touch #ssxDock{display:flex} @media (pointer:coarse){body.surface #ssxDock{display:flex}}
+body.danger-standoff #ssxDock{display:none!important}
 #ssxDock button{pointer-events:auto;min-width:52px;min-height:48px;padding:3px 6px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 11px/1.15 system-ui,sans-serif;white-space:pre-line;touch-action:manipulation}`; document.head.appendChild(st); }
   let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); }
   let b = document.getElementById(id); if (b) return b;

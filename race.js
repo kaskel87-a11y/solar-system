@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
+import { clearGate, segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
@@ -182,7 +183,12 @@ function disposeGroup(g) { if (!g) return; g.parent?.remove(g); g.traverse(o => 
 let questTracks = null;
 function allDefs() { questTracks ??= RC.questSprints(QUESTS); return [...RC.PRESETS, ...questTracks, ...data.tracks]; }
 function defsHere() { return allDefs().filter(d => d.world === planet); }
-function resolve(def) { return RC.resolveTrack(def, C?.world?.colony); }
+function resolve(def) { // v7.5.3: gates inside a building footprint move to the nearest open road point (Blue Lights gate 4/8)
+  const t = RC.resolveTrack(def, C?.world?.colony), W = C?.world; if (!W?.collide) return t;
+  let moved = false; for (const g of t.gates) { const q = clearGate(g, W); if (q.moved && isFinite(q.x)) { g.x = q.x; g.z = q.z; moved = true; } }
+  if (moved) { RC.orientGates(t.gates, t.loop); t.length = RC.trackLength ? RC.trackLength(t.gates, t.loop) : t.length; }
+  return t;
+}
 
 function setupPlanet() {
   disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
@@ -284,7 +290,7 @@ function updateRace(dt) {
   const pos = car ? { x: car.x, z: car.z } : { x: C.player.x, z: C.player.z };
   // ----- gates -----
   const g = t.gates[r.next];
-  if (car && RC.crossedGate(g, r.prev, pos)) {
+  if (car && (RC.crossedGate(g, r.prev, pos, RC.GATE_W, car.air ? 6 : 1.6) || segHit(r.prev, pos, g, 5))) { // v7.5.3: airborne gets wider slack; a jump through the gate's middle counts
     r.stall = 0; sfx('gate');
     if (t.loop) {
       if (r.next === 0) { // lap done

@@ -7,7 +7,8 @@ import { STORY } from './missions-data.js';
 import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
-import { kbOnly, KB_AIM_CONE } from './controlmode.js'; // v7.5.3 Keyboard-only mode: auto-aim locks to the nearest target in front
+import { kbOnly, KB_AIM_CONE } from './controlmode.js';
+import { clearGate, segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission race gates: off buildings, xz segment hits // v7.5.3 Keyboard-only mode: auto-aim locks to the nearest target in front
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -1212,7 +1213,8 @@ export function createGame(ctx) {
     const s = stepDef(); if (gate) { scene.remove(gate); gate = null; }
     if (!quest || s?.type !== 'race' || quest.gi >= s.pts.length) return;
     const p = ctx.colonyAt?.(s.pts[quest.gi]) || { x: quest.target.x, z: quest.target.z }, nx = s.pts[quest.gi + 1] ? ctx.colonyAt(s.pts[quest.gi + 1]) : null;
-    quest.target = { x: p.x, z: p.z, r: 6 };
+    { const W = ctx.gateWorld?.(), q = W ? clearGate(p, W) : null; if (q?.moved && isFinite(q.x)) { p.x = q.x; p.z = q.z; } }
+    quest.target = { x: p.x, z: p.z, r: CP_RADIUS }; quest.lastP = null;
     gate = new THREE.Group(); const ring = new THREE.Mesh(A.gateGeo, A.mGate); ring.position.y = 4.2; gate.add(ring);
     const beam = new THREE.Mesh(A.pickBeam, A.mPickBeam); beam.frustumCulled = false; gate.add(beam);
     gate.position.set(p.x, height(p.x, p.z), p.z); if (nx) gate.rotation.y = Math.atan2(nx.x - p.x, nx.z - p.z);
@@ -1397,7 +1399,8 @@ export function createGame(ctx) {
     }
     if (s.type === 'race') {
       if (s.pursuers && quest.chaseT > 0) { quest.chaseT -= dt; if (quest.chaseT <= 0) { const yaw = st.driving ? st.rover.yaw : player.yaw; s.pursuers.forEach((t, k) => { const a = spawnAgent(t, px + Math.sin(yaw) * (28 + k * 6) + (k - 1) * 4, pz + Math.cos(yaw) * (28 + k * 6), { aggro: true, src: 'chase' }); if (a) a.yaw = yaw; }); onEvent('chase', { n: s.pursuers.length }); } }
-      if (Math.hypot(tg.x - px, tg.z - pz) < tg.r + reach + 1) { quest.gi++; onEvent('chime', {}); if (quest.gi >= s.pts.length) { if (gate) { scene.remove(gate); gate = null; } for (const a of agents.filter(a => a.src === 'chase')) removeAgent(a); return advance(); } placeGate(); onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); }
+      const cur = { x: px, z: pz }, crossed = segHit(quest.lastP, cur, tg, tg.r + reach + 1); quest.lastP = cur; // v7.5.3: xz segment since last frame (airborne / fast frames)
+      if (crossed) { quest.gi++; onEvent('chime', {}); if (quest.gi >= s.pts.length) { if (gate) { scene.remove(gate); gate = null; } for (const a of agents.filter(a => a.src === 'chase')) removeAgent(a); return advance(); } placeGate(); onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); }
       if (gate) gate.children[0].rotation.z += dt; return;
     }
     if (s.type === 'goto' || s.type === 'return') {
