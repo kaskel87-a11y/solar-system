@@ -43,10 +43,10 @@ t('activeCheats / rewardsBlocked', () => {
   assert.deepEqual(D.activeCheats({ ...s, noCops: true, ammo: true }, { vehicle: 'buggy' }), ['noCops', 'ammo', 'vehicle']);
   assert.equal(D.rewardsBlocked({ ...s, invincible: true }, {}), true);
 });
-t('imports in modes/director*.js match main ?v=', () => {
-  const v = (fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').match(/jobs\.js\?v=([\d.]+)/) || [])[1];
-  assert.ok(v, 'index.html jobs.js ?v= (main core version)');
-  const src = fs.readFileSync(new URL('../modes/director.js', import.meta.url), 'utf8');
-  for (const m of src.matchAll(/from '(\.[^']+)'/g)) assert.ok(m[1].endsWith('?v=' + v), m[1]);
+t('v7.5.2 module rules: plain relative imports, hook src at the sw.js version', () => {
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), v = /sw\.js\?v=([0-9.]+)/.exec(html)[1];
+  const hooks = html.match(/modes\/director\.js[^"]*/g) || [];
+  assert.deepEqual(hooks, ['modes/director.js?v=' + v], 'exactly one director hook, versioned like main');
+  for (const f of ['director.js', 'directorcore.js']) { const src = fs.readFileSync(new URL('../modes/' + f, import.meta.url), 'utf8'); for (const m of src.matchAll(/(?:from|import)\s*\(?\s*'([^']+)'/g)) assert.ok(!m[1].includes('?v='), f + ': ' + m[1]); }
 });
 console.log(`${n} passed`);
