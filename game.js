@@ -366,6 +366,7 @@ function buildNest() {
   return { group: g, body, pods, kind: 'nest' };
 }
 const BUILDERS = { drone: buildSeeker, crawler: () => buildStalker(false), hunter: buildHunter, nest: buildNest, boss: () => buildStalker(true) };
+export function registerAgentType(type, T, build) { if (AGENT_TYPES[type] || BUILDERS[type]) return false; AGENT_TYPES[type] = T; BUILDERS[type] = build; return true; } // v7.5 hook: add-on wave types (storymars.js), never replaces a core type
 
 const ITEM_BUILD = {
   biomod() { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 10), M(0x30ff90, { emissive: 0x10a050, roughness: 0.2 })); c.rotation.z = 1.2; c.position.y = 0.3; g.add(c); const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), M(0x333333, { metalness: 0.7 })); cap.position.set(0.3, 0.42, 0); g.add(cap); return g; },

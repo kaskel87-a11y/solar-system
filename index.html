@@ -458,6 +458,7 @@
     import { registerInterior } from './interiors.js?v=7.4';
     import { createAudio7 } from './audio7.js?v=7.4';
     import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
+    import { initStoryMars } from './storymars.js?v=7.4'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1971,7 +1972,7 @@
       landOn, landAction, renderer, version: 'v7.4', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
-    initPlanets(window.__app);
+    initPlanets(window.__app); initStoryMars(window.__app);
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
