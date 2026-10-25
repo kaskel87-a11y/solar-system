@@ -2049,6 +2049,7 @@
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app);
     import('./mars-audio.js?v=7.5').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    import('./mars/grime.js?v=7.5').then(m => m.initGrime(window.__app)).catch(e => console.warn('grime', e)); // grime pass: decals, neon, camps, film look, street hassle
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
