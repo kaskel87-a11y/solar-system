@@ -199,13 +199,14 @@ export function createStreet(ctx) {
   // district and hour, with Pay / Fight / Run / Talk, loot, heat and backup. While it is loaded we never run our own
   // mugger; a forced one is handed to it. Our mugger below is only the fallback when danger.js isn't there.
   const danger = () => { const d = X().danger; return d && typeof d === 'object' ? d : null; };
+  // public API first (SSX.danger.startMugging, PR #19); if missing or it refuses, the __danger.force debug hook; else null -> local mugger
   function dangerMug(o = {}) {
-    const d = danger(); if (!d) return null; const opt = { dist: o.near ? 6 : o.dist, district: zoneHere(app.surface?.info || {}), src: 'grime' };
-    try { for (const k of ['startMugging', 'mugging', 'mug']) if (typeof d[k] === 'function') { const r = d[k](opt); counts.routed++; return r ? 'SSX.danger.' + k : null; }
-      if (typeof d.force === 'function') { const r = d.force('mugging', opt); counts.routed++; return r ? 'SSX.danger.force' : null; }
-      const dbg = window.__danger; if (dbg && typeof dbg.force === 'function') { const r = dbg.force('mugging', opt); counts.routed++; return r ? 'SSX.danger (via __danger.force)' : null; } } catch (e) { console.warn('grime: danger mugging', e); }
+    const d = danger(); const dbg = window.__danger; if (!d && !dbg) return null;
+    const opt = { force: true, dist: o.near ? 6 : o.dist, district: zoneHere(app.surface?.info || {}), src: 'grime' };
+    try { if (d && typeof d.startMugging === 'function') { counts.routed++; if (d.startMugging(opt)) return 'SSX.danger.startMugging'; } } catch (e) { console.warn('grime: danger startMugging', e); }
+    try { if (dbg && typeof dbg.force === 'function') { counts.routed++; if (dbg.force('mugging', opt)) return 'SSX.danger (via __danger.force)'; } } catch (e) { console.warn('grime: danger mugging', e); }
     return null; }
-  const dangerBusy = () => { try { return !!window.__danger?.state?.mug; } catch (e) { return false; } };
+  const dangerBusy = () => { try { const d = danger(); if (d && typeof d.isMugging === 'function') return !!d.isMugging(); if (d && d.mugging && typeof d.mugging === 'object') return !!d.mugging.phase; return !!window.__danger?.state?.mug; } catch (e) { return false; } };
   function zoneHere(i) { const d = W()?.districtAt?.(i.x, i.z); return d?.id || null; }
   function rate(zone) { if (!zone) return 0; const D = ctx.dcfg(zone); return (D.street ?? 0) * Math.min(1.35, ctx.mult()) * density * timeMult(); }
   function reserve(n) { if (n === reserved) return; reserved = n; try { X().city?.npcReserve?.('grime-street', n); } catch (e) { /* */ } }
@@ -282,7 +283,7 @@ export function createStreet(ctx) {
     enable() { enabled = true; cfg.street = true; ctx.save?.(); return true; }, disable() { enabled = false; cfg.street = false; clear(); ctx.save?.(); return false; },
     get enabled() { return enabled; },
     setNight(v) { nightOverride = v === true ? 23 : v === false ? 13 : v == null ? null : +v; return hour(); }, // force night / day for testing (default: the real clock)
-    trigger(type = 'mugger', o = {}) { const i = app.surface?.info; if (!i || !TYPES[type]) return null; if (type === 'mugger' && danger() && !o.local) return dangerMug(o); cool[type] = 0; const a = spawn(type, i); if (a) { const c = app.surface?.camera; let fx = Math.sin(i.faceYaw || 0), fz = Math.cos(i.faceYaw || 0); if (c) { fx = i.x - c.position.x; fz = i.z - c.position.z; const L = Math.hypot(fx, fz) || 1; fx /= L; fz /= L; } // in front of the player, as seen from the camera
+    trigger(type = 'mugger', o = {}) { const i = app.surface?.info; if (!i || !TYPES[type]) return null; if (type === 'mugger' && (danger() || window.__danger) && !o.local) { const r = dangerMug(o); if (r) return r; } cool[type] = 0; const a = spawn(type, i); if (a) { const c = app.surface?.camera; let fx = Math.sin(i.faceYaw || 0), fz = Math.cos(i.faceYaw || 0); if (c) { fx = i.x - c.position.x; fz = i.z - c.position.z; const L = Math.hypot(fx, fz) || 1; fx /= L; fz /= L; } // in front of the player, as seen from the camera
         const R0 = o.near ? TYPES[type].reach + 0.1 : 6; for (const side of o.near ? [0.9, -0.9, 0.5] : [0.35, -0.35, 0]) { const x = i.x + (fx * R0 - fz * side * R0), z = i.z + (fz * R0 + fx * side * R0); if (!solid(x, z)) { a.x = x; a.z = z; break; } } a.g.position.set(a.x, a.y, a.z); } return a ? a.name : null; },
     actors: () => actors.map(a => ({ type: a.type, name: a.name, state: a.state, x: +a.x.toFixed(1), z: +a.z.toFixed(1) })),
     stats: () => ({ ...counts, muggings: danger() ? 'SSX.danger' : 'grime fallback', nightSource: nightSource(), active: actors.length, pool: POOL, density, enabled, night: timeMult() > 1.5, camps: [...camps.values()].reduce((s, l) => s + l.length, 0) })
