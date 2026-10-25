@@ -5,7 +5,7 @@
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/';
 const TAG = process.env.TAG || 'after';
-const out = '/workspace/solar-system/shots/';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const strip = d => { const { defaultBrowserType, ...o } = d; return o; };
 const DEV = { se: 'iPhone SE (3rd gen)', i14: 'iPhone 14', promax: 'iPhone 14 Pro Max' };
 const browsers = (process.env.BROWSERS || 'webkit,chromium').split(','), devs = (process.env.DEVS || 'se,i14,promax').split(','), oris = (process.env.ORIS || 'portrait,landscape').split(',');

@@ -35,7 +35,7 @@ export function createStreet(ctx) {
   const POOL = PHONE ? 3 : 6, SPAWN_R = PHONE ? 16 : 20;
   let enabled = cfg.street !== false, paused = true, density = 1, nightOverride = null, actors = [], cool = {}, nextSpawn = 4, ui = null, uiFor = null, lastPos = null, stillT = 0, reserved = 0;
   let curY = 0; const camps = new Map(); // district id -> [{x, z, kind}] (sleepers / sitters: they mutter when you walk past)
-  const counts = { spawned: 0, encounters: 0, paid: 0, lifted: 0, fights: 0, shoves: 0 };
+  const counts = { spawned: 0, encounters: 0, paid: 0, lifted: 0, fights: 0, shoves: 0, routed: 0 };
   const W = () => app.surface?.world, solid = (x, z) => { try { return !!W()?.solidAt?.(x, curY + 0.8, z); } catch (e) { return false; } }, G = () => app.surface?.game, X = () => window.SSX || {};
 
   // ---------- materials for live actors (baked camp people use the shared vertex-colour cloth) ----------
@@ -190,12 +190,26 @@ export function createStreet(ctx) {
   const leave = a => { a.state = 'leave'; a.t = 8; }, flee = a => { a.state = 'flee'; a.t = 6; };
 
   // ---------- spawning / despawning the pool ----------
-  function hour() { return nightOverride ?? new Date().getHours(); }
-  function timeMult() { const h = hour(); return h >= 21 || h < 5 ? 1.8 : h >= 18 || h < 7 ? 1.3 : 1; }
+  // night: setNight() override > SSX.time.isNight() (game clock, when it exists) > the real clock
+  const gameTime = () => { const t = X().time; return t && typeof t.isNight === 'function' ? t : null; };
+  function hour() { if (nightOverride != null) return nightOverride; const t = gameTime(); if (t) { try { const h = typeof t.hour === 'function' ? +t.hour() : NaN; if (isFinite(h)) return h; return t.isNight() ? 23 : 13; } catch (e) { /* fall through */ } } return new Date().getHours(); }
+  function timeMult() { if (nightOverride == null) { const t = gameTime(); if (t) { try { if (t.isNight()) return 1.8; } catch (e) { /* */ } } } const h = hour(); return h >= 21 || h < 5 ? 1.8 : h >= 18 || h < 7 ? 1.3 : 1; }
+  const nightSource = () => nightOverride != null ? 'override' : gameTime() ? 'SSX.time' : 'clock';
+  // muggings belong to Chief of Staff's street danger (SSX.danger, PR #3): its director already rolls knife muggings by
+  // district and hour, with Pay / Fight / Run / Talk, loot, heat and backup. While it is loaded we never run our own
+  // mugger; a forced one is handed to it. Our mugger below is only the fallback when danger.js isn't there.
+  const danger = () => { const d = X().danger; return d && typeof d === 'object' ? d : null; };
+  function dangerMug(o = {}) {
+    const d = danger(); if (!d) return null; const opt = { dist: o.near ? 6 : o.dist, district: zoneHere(app.surface?.info || {}), src: 'grime' };
+    try { for (const k of ['startMugging', 'mugging', 'mug']) if (typeof d[k] === 'function') { const r = d[k](opt); counts.routed++; return r ? 'SSX.danger.' + k : null; }
+      if (typeof d.force === 'function') { const r = d.force('mugging', opt); counts.routed++; return r ? 'SSX.danger.force' : null; }
+      const dbg = window.__danger; if (dbg && typeof dbg.force === 'function') { const r = dbg.force('mugging', opt); counts.routed++; return r ? 'SSX.danger (via __danger.force)' : null; } } catch (e) { console.warn('grime: danger mugging', e); }
+    return null; }
+  const dangerBusy = () => { try { return !!window.__danger?.state?.mug; } catch (e) { return false; } };
   function zoneHere(i) { const d = W()?.districtAt?.(i.x, i.z); return d?.id || null; }
   function rate(zone) { if (!zone) return 0; const D = ctx.dcfg(zone); return (D.street ?? 0) * Math.min(1.35, ctx.mult()) * density * timeMult(); }
   function reserve(n) { if (n === reserved) return; reserved = n; try { X().city?.npcReserve?.('grime-street', n); } catch (e) { /* */ } }
-  function pickType(zone) { const mix = MIX[zone] || MIX.aj, t = timeMult(), e = Object.entries(mix).map(([k, w]) => [k, (cool[k] > 0 || actors.some(a => a.type === k) ? 0 : w) * (k === 'mugger' ? t * t / 2 : 1)]), tot = e.reduce((a, b) => a + b[1], 0); if (!tot) return null;
+  function pickType(zone) { const mix = MIX[zone] || MIX.aj, t = timeMult(), e = Object.entries(mix).map(([k, w]) => [k, (cool[k] > 0 || actors.some(a => a.type === k) || (k === 'mugger' && danger()) ? 0 : w) * (k === 'mugger' ? t * t / 2 : 1)]), tot = e.reduce((a, b) => a + b[1], 0); if (!tot) return null;
     let x = Math.random() * tot; for (const [k, w] of e) if ((x -= w) <= 0) return k; return null; }
   const NAMES = { panhandler: ['Coughing Teo', 'Old Brine', 'Wheezer', 'Ma Dusty'], hustler: ['Slick Orrin', 'Two-Tank Vic', 'Lungs Malloy'], yeller: ['Preacher Rust', 'Loud Ansel'], shover: ['Big Kettle', 'Knuckles Dray'], pickpocket: ['Fingers', 'Quiet Nim'], mugger: ['Shiv', 'Razor Pell', 'Knife Odo'] };
   const LABEL = { panhandler: 'Panhandler', hustler: 'Hustler', yeller: 'Street preacher', shover: 'Some asshole', pickpocket: 'Stranger', mugger: 'Mugger' };
@@ -224,7 +238,8 @@ export function createStreet(ctx) {
     if (lastPos && Math.hypot(i.x - lastPos.x, i.z - lastPos.z) < 0.02 * Math.max(1, dt * 60)) stillT += dt; else stillT = 0; lastPos = { x: i.x, z: i.z };
     // spawn
     nextSpawn -= dt;
-    if (nextSpawn <= 0) { nextSpawn = 1.5; if (rt > 0 && actors.length < Math.min(POOL, 1 + Math.ceil(rt * 2.2)) && Math.random() < Math.min(0.8, 0.13 * rt)) { const t = pickType(zone); if (t) spawn(t, i); } }
+    const dBusy = dangerBusy(); if (dBusy && uiFor) respond(uiFor, 'ignore'); // a danger.js mugging owns the screen; our hassle backs off
+    if (nextSpawn <= 0) { nextSpawn = 1.5; if (rt > 0 && !dBusy && actors.length < Math.min(POOL, 1 + Math.ceil(rt * 2.2)) && Math.random() < Math.min(0.8, 0.13 * rt)) { const t = pickType(zone); if (t) spawn(t, i); } }
     // the camp sleepers mutter when you walk right past
     if ((campBark -= dt) <= 0) { campBark = 2; for (const L of camps.values()) for (const c of L) if (Math.hypot(c.x - i.x, c.z - i.z) < 2.6 && Math.random() < 0.35) { say({ x: c.x, z: c.z, name: 'Sleeper' }, 'grime_sleeper', false); campBark = 12; break; } }
     for (const a of [...actors]) act(a, dt, i);
@@ -267,10 +282,10 @@ export function createStreet(ctx) {
     enable() { enabled = true; cfg.street = true; ctx.save?.(); return true; }, disable() { enabled = false; cfg.street = false; clear(); ctx.save?.(); return false; },
     get enabled() { return enabled; },
     setNight(v) { nightOverride = v === true ? 23 : v === false ? 13 : v == null ? null : +v; return hour(); }, // force night / day for testing (default: the real clock)
-    trigger(type = 'mugger', o = {}) { const i = app.surface?.info; if (!i || !TYPES[type]) return null; cool[type] = 0; const a = spawn(type, i); if (a) { const c = app.surface?.camera; let fx = Math.sin(i.faceYaw || 0), fz = Math.cos(i.faceYaw || 0); if (c) { fx = i.x - c.position.x; fz = i.z - c.position.z; const L = Math.hypot(fx, fz) || 1; fx /= L; fz /= L; } // in front of the player, as seen from the camera
+    trigger(type = 'mugger', o = {}) { const i = app.surface?.info; if (!i || !TYPES[type]) return null; if (type === 'mugger' && danger() && !o.local) return dangerMug(o); cool[type] = 0; const a = spawn(type, i); if (a) { const c = app.surface?.camera; let fx = Math.sin(i.faceYaw || 0), fz = Math.cos(i.faceYaw || 0); if (c) { fx = i.x - c.position.x; fz = i.z - c.position.z; const L = Math.hypot(fx, fz) || 1; fx /= L; fz /= L; } // in front of the player, as seen from the camera
         const R0 = o.near ? TYPES[type].reach + 0.1 : 6; for (const side of o.near ? [0.9, -0.9, 0.5] : [0.35, -0.35, 0]) { const x = i.x + (fx * R0 - fz * side * R0), z = i.z + (fz * R0 + fx * side * R0); if (!solid(x, z)) { a.x = x; a.z = z; break; } } a.g.position.set(a.x, a.y, a.z); } return a ? a.name : null; },
     actors: () => actors.map(a => ({ type: a.type, name: a.name, state: a.state, x: +a.x.toFixed(1), z: +a.z.toFixed(1) })),
-    stats: () => ({ ...counts, active: actors.length, pool: POOL, density, enabled, night: timeMult() > 1.5, camps: [...camps.values()].reduce((s, l) => s + l.length, 0) })
+    stats: () => ({ ...counts, muggings: danger() ? 'SSX.danger' : 'grime fallback', nightSource: nightSource(), active: actors.length, pool: POOL, density, enabled, night: timeMult() > 1.5, camps: [...camps.values()].reduce((s, l) => s + l.length, 0) })
   };
   return {
     api, get density() { return density; }, camps: campsBuild, dropCamps: id => camps.delete(id), update, pause(v) { paused = v; if (v) clear(); },

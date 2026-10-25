@@ -350,7 +350,7 @@ export const INTERIORS = {
       api.person({ top: 0x3a4a6a, bottom: 0x23252b, hairStyle: 'cap', skin: 0x7a5236, accent: 0x4a8aff }, w / 2 - 1.4, 2.6, -Math.PI / 2 - 0.4, (p, t) => guard(p, t));
       // v7.5: who sits at the desk comes from the district (Rusk at Ares Junction, Vale downtown, Porter at the Helios gate)
       const who = o.talk || o.desk || 'Rusk', short = who.replace(/^(Deputy|Detective|Captain|Mr\.|Ms\.)\s+/, '');
-      if (o.bribe !== false && who === 'Rusk') api.spot({ id: 'bribe', x: 0.2, z: -0.7, r: 1.0, label: '💰 Pay off Deputy Rusk', act: 'bribe', who: 'Rusk' });
+      if (o.bribe !== false && who === 'Rusk') api.spot({ id: 'bribe', x: 0.2, z: -1.2, r: 1.25, label: '💰 Pay off Deputy Rusk', act: 'bribe', who: 'Rusk' });
       api.spot({ id: 'talk', x: 1.8, z: -0.7, r: 0.9, label: '💬 ' + short, act: 'talk', who });
     }
   },
@@ -535,7 +535,7 @@ export function buildRoom(kind, opts = {}) {
       }
       return hit ? { x, z } : null;
     },
-    nearSpot(x, z) { let best = null, bd = 1e9; for (const s of api.spots) { if (s.cond && !s.cond()) continue; const dd = Math.hypot(s.x - x, s.z - z); if (dd < s.r && dd < bd) { bd = dd; best = s; } } return best; },
+    nearSpot(x, z) { let best = null, bd = 1e9; for (const s of api.spots) { if (s.cond && !s.cond()) continue; const dd = Math.hypot(s.x - x, s.z - z), w = dd + (s.act === 'leave' ? 0.9 : 0); if (dd < s.r && w < bd) { bd = w; best = s; } /* v7.5.1 (m8): the door spot loses ties to anything else in range */ } return best; },
     dispose() { api.disposables.forEach(o => o.dispose?.()); api.g.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); }
   };
 }

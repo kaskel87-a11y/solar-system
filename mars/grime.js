@@ -9,10 +9,10 @@
 // Everything hangs off ONE config object (GRIME_CONFIG) and the SSX.grime API, so the v8 realistic renderer can swap it.
 // Per-district work streams in/out by distance; one static draw per material per district (decals and props are baked).
 import * as THREE from 'three';
-import * as T from './grime-tex.js?v=7.5';
-import { BARK_PACKS, STREET_BARKS, PIRATE_STATION } from './grime-lines.js?v=7.5';
-import { districtsOf } from '../world.js?v=7.5';
-import { createStreet } from './grime-street.js?v=7.5';
+import * as T from './grime-tex.js';
+import { BARK_PACKS, STREET_BARKS, PIRATE_STATION } from './grime-lines.js';
+import { districtsOf } from '../world.js';
+import { createStreet } from './grime-street.js';
 
 const PHONE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || innerWidth < 800;
 const LEVELS = { off: 0, light: 0.5, med: 1, max: 1.35 };

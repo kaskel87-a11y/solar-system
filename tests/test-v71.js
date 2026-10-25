@@ -3,7 +3,7 @@
 // BASE=http://localhost:8765/ DEV="iPhone 14" BR=webkit node test-v71.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || 'iPhone 14';
-const out = process.env.OUT || '/workspace/solar-system/shots/', PFX = process.env.PFX || 'v71';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', PFX = process.env.PFX || 'v71';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {

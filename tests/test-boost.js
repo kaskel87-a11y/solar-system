@@ -1,7 +1,7 @@
 // v7.3 test: boost while driving on a laptop. Shift boosts the rover and a stolen buggy past their cruise speed,
 // and mouse-holding the ⚡ Boost button does too. BASE=http://localhost:8765/ node test-boost.js
 const { chromium } = require('playwright');
-const base = process.env.BASE || 'http://localhost:8765/', out = process.env.OUT || '/workspace/solar-system/shots/';
+const base = process.env.BASE || 'http://localhost:8765/', out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

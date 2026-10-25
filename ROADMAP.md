@@ -59,7 +59,10 @@ House rules for all of it:
 - [x] **☰ in space** and a 🏙 Districts fast-travel sheet. Phones keep the 12-NPC cap.
 - [x] **Add-on API** (API.md): `SSX.city` (districtAt, spawnPoints, npcBudget/npcReserve, lots, hostiles, alarms, cameras, choice), the `SSX.on/emit` event bus, mission helpers (advanceStep/failStep/spawnWave), `registerAgentModel` and material slots for v8.
 - [x] Merged in v7.5: Steve's 17 repeatable side activities incl. Static Hold'em (PR #4), Pumpkin's radio stations, district ambience and pedestrian barks (PR #5), Jeff's 11 story missions for Rook, Vesna, Kestrel, Ines and Rusk (PR #6).
-- Still to come in v7.5.x point releases: Ben's heist mechanics and raccoon scientist, Pumpkin's dealership and garages, Chief of Staff's street danger, Marsmania's contraband economy, Steve's ambient random events.
+- [x] **v7.5.1**: Ben's heist mechanics (PR #8): a one-thumb safe-cracking dial now drives every bank and mansion safe, with security cameras and view cones, alarms that raise your wanted level, informant tips and a heist escape event. Private security answers alarms, informant tips mark cameras and guards on the minimap, and there are new add-on helpers (player position, line of sight, safe spots, minimap marks, `registerSurfaceTick`).
+- [x] **v7.5.1**: Marsmania's contraband economy and barter (PR #9), Jeff's guarded barter hooks, and fixes from the v7.4 playtest (duel camera, rocks and crates blocking the camera, the Security pay-off spot, the world name in the top bar, 44 px race buttons, gentler builder pinch).
+- [x] **v7.5.2**: Chief of Staff's street danger (PR #3), Marsmania's taxi / paramedic / vigilante jobs (PR #12), Ben's Raccoon Mobile and Silas & Tam portal missions (PR #11), and a single import map that owns the module version (no more duplicate module copies).
+- Still to come in v7.5.x point releases: Ben's raccoon scientist, Pumpkin's dealership and garages, Chief of Staff's street danger, Marsmania's contraband economy, Steve's ambient random events.
 - Deferred: rook-05 (set on Ceres; Ceres stays out of scope for now).
 
 ## v8: realistic visuals

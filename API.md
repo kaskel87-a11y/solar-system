@@ -46,3 +46,26 @@ All add-ons import core modules with the **same `?v=` string as the core** (curr
 ## world (surface.world)
 
 `districts()`, `districtAt`, `spawnPoints`, `npcBudget`, `npcReserve`, `freeSpot`, `roadAhead`, `lots`, `cameras`, `caseCamera`, `alarm`, `coverNear(x, z, fromX, fromZ, maxD)`, `setMaterialSlot(role, material)`, `registerDistrict(world, id, def)` (additive) and `registerHighway(world, def)` (module exports).
+
+## v7.5.1 additions
+- `SSX.heist`: Ben's heist API (safeCrack, addCamera, alarm, registerHeist, startHeist, applyTip, on/off). See heist.js. `game.crack(id, difficulty)` maps difficulty to a tier (≤1 easy, 2 medium, 3 hard, 4+ vault) and calls `SSX.heist.safeCrack`; a noisy failure raises an alarm.
+- `SSX.city.player()` returns `{ x, z, y, driving, inside, world }`. `SSX.city.height(x, z)` returns the ground height.
+- `SSX.city.lineOfSight(x1, z1, x2, z2, y = 1.6)` returns false when a wall, dome or building blocks the line (`world.lineOfSight`).
+- `SSX.city.safeSpots(districtId)` lists the district's safe and vault spawn points.
+- `SSX.city.securityResponse(x, z, level)` spawns a private guard and drone wave. It is wired automatically to `heist:alarm:response`.
+- `SSX.minimap.addMarks(id, [{ x, z, color, r, clamp }])`, `clear(id?)` and `list()`. Informant `heist:tip` cameras and guards are drawn automatically and cleared on `heist:done`.
+- `SSX.registerSurfaceTick(fn)` calls `fn(dt, ctx)` every surface frame and returns an unregister function.
+- `SSX.radar` is an alias of `SSX.minimap`. `SSX.height(x, z)` returns the terrain height in world coordinates. `SSX.city.colony()` gives the colony origin, for callers that use colony-relative coordinates.
+- `registerDistrict` defs now carry `centre` (= origin, colony-relative) and `r`, and they are read back by `SSX.districtsOf('Mars')`.
+- `SSX.despawnVehicle()` scraps the stolen vehicle you are driving or standing next to (never your own rover). It is wired to Marsmania's `ssx:chop` event.
+- `SSX.contraband`: Marsmania's contraband economy and barter (mars/contraband.js, mars/barter.json).
+
+
+## Importing core modules (v7.5.2+)
+Import first-party modules with **plain relative paths, never a `?v=` query**: `import * as world from '../world.js'`, or the alias `import { registerMission } from 'ssx/game'`.
+`index.html` holds an import map that sends every module URL (and its `ssx/<path>` alias) to `<path>.js?v=<release>`, so each module loads exactly once.
+A hand-written `?v=` makes the browser load a second, separate copy of that module (its own QUESTS, world state, and so on).
+`tests/test-imports-unit.mjs` fails on any `?v=` import. After adding a new `.js` file, run `python3 tools/importmap.py` to add it to the map (release bumps run it too: `python3 tools/importmap.py 7.5.3`).
+
+- `SSX.city.radio(text, contact, offerId?)` (v7.5.2): with an offer id the card shows ✅ Accept / Later for that quest.
+- Buttons: bind with `window.__onTap(el, fn)` (or `window.__tapOf(el).fn = fn` to replace a handler like `onclick`). Plain `onclick` never fires on iPhone while a thumb is on the joystick.

@@ -1,10 +1,10 @@
 // THE ONE PLACE that talks to core. Everything else in planets/ is data.
 // v7.4: rebased onto the core modding API (world.registerColony / registerVehicle, game.registerMission, app.registerMenuItem).
-// Import URLs must match the core's ?v= exactly (shared module instances).
+// Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
 import * as THREE from 'three';
-import * as W from '../world.js?v=7.5';
-import * as GM from '../game.js?v=7.5';
-import * as AU from '../audio7.js?v=7.5';
+import * as W from '../world.js';
+import * as GM from '../game.js';
+import * as AU from '../audio7.js';
 
 // ---------- building / prop style keys -> v7.2 placeholder shape (v8: glTF per key) ----------
 // 'dome' reuses the core glass-dome renderer; 'block' reuses the core storefront renderer (same as Mars's SUPPLY/CANTINA).
