@@ -178,7 +178,7 @@
     .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
     #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 50px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
       background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-    #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
+    #surfInfo { flex: 1 1 auto; min-width: 4.6em; /* v7.5.1 (p1): the world name never shrinks to 'M' */ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
     #tbBars { flex: 0 0 74px; display: flex; flex-direction: column; justify-content: center; gap: 1px; } #tbBars .bar { height: 5px; margin: 0; flex: 1 1 auto; min-width: 0; }
     /* v7.4: labelled meters. Icons only on phones, short words + numbers on wider screens. Thrust shows only when you can thrust */
     .tbRow { display: flex; align-items: center; gap: 4px; height: 12px; } .tbL { flex: 0 0 auto; width: 13px; text-align: center; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 800; letter-spacing: 0.02em; } .tbL b { display: none; } .tbV { display: none; }
@@ -190,6 +190,8 @@
     #miniMap { position: fixed; z-index: 7; top: calc(60px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
     #stackR { position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
+    /* v7.5.1: on portrait phones a radio pill outranks a toast, so the right stack never reaches the screen centre */
+    @media (max-aspect-ratio: 1/1) { #stackR:has(> #radio[style*="block"]) > #toast { display: none !important; } }
     #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
     #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #questTrack { border-color: rgba(80,200,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -268,6 +270,7 @@
     #duelPanel { position: fixed; inset: 0; z-index: 60; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
     #duelPanel .wrap { width: min(420px, calc(100vw - 16px)); margin: 0 8px calc(10px + var(--sab)); padding: 14px; border-radius: 16px; background: #0b0f1c; color: #fff; border: 1px solid #ffb020; }
     #duelPanel h2 { margin: 0 0 4px; font-size: 1.05rem; } #duelPanel p { margin: 0 0 8px; font-size: 0.8rem; color: #d6dcef; } #duelPanel .lbl { font-size: 0.72rem; color: #d6dcef; margin: 6px 0 2px; }
+    body:has(#duelPanel[style*="flex"]) #joy, body:has(#duelPanel[style*="flex"]) #surfBtns { visibility: hidden; } /* v7.5.1 (m4) */
     #duelPanel .row { display: flex; gap: 6px; margin-bottom: 4px; } #duelPanel .btn { flex: 1; min-height: 44px; font-size: 0.82rem; }
     #duelPanel .chipb.on { outline: 2px solid #ffb020; background: rgba(255,176,32,0.25); } #duelPanel .chipb:disabled { opacity: 0.4; }
     #duelBanner { display: none; position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); max-width: 340px; margin-left: auto; padding: 4px 6px 4px 10px; border-radius: 10px; background: rgba(8,10,20,0.78); border: 1px solid rgba(255,176,32,0.6); color: #fff; font-size: 0.72rem; }
@@ -465,16 +468,17 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5';
-    import { buildStarship } from './models.js?v=7.5';
-    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5';
-    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5';
-    import { DEALER_API } from './dealership.js?v=7.5'; // Mars rover dealership, garages + car meets (adds SSX.registerDealerVehicle)
-    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5'; // v7.5 Mars city (Steve's pack)
-    import { registerInterior } from './interiors.js?v=7.5';
-    import { createAudio7 } from './audio7.js?v=7.5';
-    import { initPlanets } from './planets/index.js?v=7.5'; // multi-planet expansion (data-driven, planets/*.js)
-    import { initStoryMars } from './storymars.js?v=7.5'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5.1';
+    import { buildStarship } from './models.js?v=7.5.1';
+    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5.1';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5.1';
+    import { DEALER_API } from './dealership.js?v=7.5.1'; // Mars rover dealership, garages + car meets (adds SSX.registerDealerVehicle)
+    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5.1'; // v7.5 Mars city (Steve's pack)
+    import { registerInterior } from './interiors.js?v=7.5.1';
+    import { createAudio7 } from './audio7.js?v=7.5.1';
+    import { initPlanets } from './planets/index.js?v=7.5.1'; // multi-planet expansion (data-driven, planets/*.js)
+    import { initStoryMars } from './storymars.js?v=7.5.1'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { initHeist } from './heist.js?v=7.5.1'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1012,7 +1016,9 @@
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       // v7.3 (playtest m7): an offer during the landing reveal arrives as a one-line pill; tap it (or Enter) to read and accept
-      const early = radioOffer && performance.now() - landedAt < 12000 && performance.now() - talkedAt > 3000; // v7.4: you asked, so it opens if (early) radioEl.classList.add('mini');
+      // v7.5.1: anything you didn't ask for arrives as the one-line pill (offers everywhere, chatter on touch) so the centre stays clear; tap to read
+      const early = performance.now() - talkedAt > 3000 && (!!radioOffer || isTouch);
+      if (early) radioEl.classList.add('mini'); // v7.5.1 (m1): landing offers arrive as the mini pill, keeping the centre clear
       if (!isTouch) { document.getElementById('radioAccept').textContent = '✅ Accept (Enter)'; document.getElementById('radioLater').textContent = 'Later (⌫)'; }
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
       speak(ev.text);
@@ -1497,6 +1503,7 @@
     const fmtDist = d => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`;
     // heading-up radar: you in the middle, rover, ship, objective, next discovery, aliens and your dog as icons
     let mapLast = null;
+    const mapMarks = new Map(); // v7.5.1: id -> [{ x, z, color, r, clamp }] (world coords), drawn on the minimap
     function drawMiniMap() {
       const md = surface.mapData?.(); if (!md) return;
       const css = miniMap.clientWidth || 92, dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(css * dpr);
@@ -1532,6 +1539,7 @@
         const blink = (performance.now() / 250 | 0) % 2;
         for (const q of W7.security || []) { const p = proj(q.x, q.z, true); c.beginPath(); c.arc(p[0], p[1], 2.8 * dpr, 0, Math.PI * 2); c.fillStyle = blink ? '#ef4444' : '#3b82f6'; c.fill(); out.security = (out.security || 0) + 1; }
       }
+      for (const [, ms] of mapMarks) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (!p) continue; c.beginPath(); c.arc(p[0], p[1], (m.r || 2.6) * dpr, 0, Math.PI * 2); c.fillStyle = m.color || '#f59e0b'; c.fill(); if (m.ring) { c.strokeStyle = '#000'; c.lineWidth = dpr; c.stroke(); } out.marks = (out.marks || 0) + 1; } // v7.5.1 add-on blips (SSX.minimap)
       if (md.gate) { const p = proj(md.gate.x, md.gate.z, true); c.beginPath(); c.arc(p[0], p[1], 4 * dpr, 0, Math.PI * 2); c.strokeStyle = '#facc15'; c.lineWidth = 2 * dpr; c.stroke(); out.gate = true; }
       if (trackerFlash > 0.02) { c.beginPath(); c.arc(R, R, (R - 4 * dpr) * (1.05 - trackerFlash * 0.6), 0, Math.PI * 2); c.strokeStyle = `rgba(74,222,128,${(trackerFlash * 0.7).toFixed(2)})`; c.lineWidth = 2 * dpr; c.stroke(); trackerFlash *= 0.8; }
       c.save(); c.translate(R, R); c.beginPath(); c.moveTo(0, -6 * dpr); c.lineTo(4.5 * dpr, 5 * dpr); c.lineTo(0, 2.5 * dpr); c.lineTo(-4.5 * dpr, 5 * dpr); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
@@ -1662,9 +1670,10 @@
     function closeSheet() { sheetEl.classList.remove('show'); }
     function openChoice(ev) { openSheet('🤝 Your call', ev.prompt, ev.options.map(o => ({ label: o.label, fn: () => surface.game.choose(o.id) })), true); }
     function openJobBoard(who) {
-      const jobs = surface.game.jobBoard();
-      openSheet(`📋 ${who}’s job board`, jobs.length ? 'City work. Ines takes 10%, the contact pays the rest.' : 'Nothing on the board right now. Come back after you’ve made a name.',
-        jobs.slice(0, 8).map(j => ({ label: `${j.active ? '▶ ' : ''}${j.title} · ${j.contact} · ${j.credits} cr`, fn: () => { if (surface.game.accept(j.id)) toast(`📜 ${j.title}: ${j.contact} is expecting you.`, 2800); } })));
+      const all = surface.game.jobBoard(true), jobs = all.filter(j => !j.locked), locked = all.filter(j => j.locked).slice(0, Math.max(2, 6 - jobs.length));
+      openSheet(`📋 ${who}’s job board`, jobs.length ? 'City work. Ines takes 10%, the contact pays the rest.' : 'Nothing open for you yet. Make a name with the jobs below and Ines will call.',
+        [...jobs.slice(0, 8).map(j => ({ label: `${j.active ? '▶ ' : ''}${j.title} · ${j.contact} · ${j.credits} cr`, fn: () => { if (surface.game.accept(j.id)) toast(`📜 ${j.title}: ${j.contact} is expecting you.`, 2800); } })),
+         ...locked.map(j => ({ label: `🔒 ${j.title} · after ${j.needs[0] || 'more work'}`, disabled: true, fn: () => {} }))]);
     }
     function openDistricts() {
       const ds = surface.world.districts?.() || [];
@@ -1690,9 +1699,28 @@
         choice: (prompt, options) => new Promise(res => openSheet('🤝 Your call', prompt, options.map(o => ({ label: o.label, fn: () => res(o.id) })))),
         toast: (t, ms) => toast(t, ms), radio: (text, contact) => showRadio({ text, contact }),
         get zone() { return surface.world.zone; }, get wanted() { return surface.world.wanted; }, setWanted: (n, why) => surface.world.setWanted(n, why),
-        get quest() { return surface.game.info?.quest || null; }
-      }
+        get quest() { return surface.game.info?.quest || null; },
+        // v7.5.1 asks from Ben's heist PR
+        colony: () => { const c = surface.info?.colony; return c ? { x: c.x, z: c.z } : null; },
+        player: () => { const i = surface.info; return i ? { x: i.x, z: i.z, y: i.y, driving: !!i.driving, inside: !!i.inside, world: i.name } : null; },
+        height: (x, z) => surface.world.groundAt?.(x, z) ?? null,
+        lineOfSight: (x1, z1, x2, z2, y = 1.6) => surface.world.lineOfSight?.(x1, z1, x2, z2, y) ?? true,
+        safeSpots: id => (surface.world.spawnPoints?.(id) || []).filter(p => /safe|vault/.test(p.kind || '')),
+        securityResponse: (x, z, level = 2, o = {}) => surface.game.hostiles(level >= 4 ? ['guard', 'guard', 'enforcer', 'sdrone'] : level >= 3 ? ['guard', 'guard', 'sdrone'] : ['guard', 'sdrone'], x, z, { r: 14, src: 'heist', faction: 'private', ...o })
+      },
+      get radar() { return this.minimap; },
+      minimap: { addMarks(id, marks) { mapMarks.set(id, (marks || []).map(m => ({ ...m }))); }, clear(id) { id ? mapMarks.delete(id) : mapMarks.clear(); }, list: () => [...mapMarks.keys()] },
+      registerSurfaceTick: fn => surface.registerTick?.(fn),
+      height: (x, z) => surface.world.groundAt?.(x, z) ?? null, // world coords; colony-relative callers add SSX.city.colony()
+      despawnVehicle: () => surface.chopVehicle?.() || false,
     });
+    // Ben's heist: private security answers alarms; informant camera/patrol tips draw on the minimap
+    window.SSX.on('heist:alarm:response', d => { if (d && d.x != null && !surface.world.inside) window.SSX.city.securityResponse(d.x, d.z, d.wanted || 2); });
+    addEventListener('heist:alarm:response', e => window.SSX.emit('heist:alarm:response', e.detail));
+    addEventListener('heist:escape', e => window.SSX.emit('heist:escape', e.detail));
+    addEventListener('heist:tip', e => { const d = e.detail || {}; const pts = [...(d.cameras || []).map(c => ({ x: c.x, z: c.z, color: '#f43f5e', r: 2.4 })), ...(d.guards || []).map(g => ({ x: g.x, z: g.z, color: '#60a5fa', r: 2.4 }))]; if (pts.length) window.SSX.minimap.addMarks('tip:' + (d.id || 'heist'), pts); });
+    addEventListener('ssx:chop', () => window.SSX.despawnVehicle()); // Marsmania's chop shop scraps the stolen ride
+    addEventListener('heist:done', e => window.SSX.minimap.clear('tip:' + (e.detail?.id || 'heist')));
     window.SSX.on('heist:escape', d => { toast(`🏃 Clean getaway${d?.name ? ' from ' + d.name : ''}. Now lose the heat.`, 2600); updateSurfHud(true); });
     // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
     const a2hsBtn = document.getElementById('a2hsBtn'), A2HS_KEY = 'ssx.a2hs.seen';
@@ -2046,15 +2074,16 @@
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
-      landOn, landAction, renderer, version: 'v7.5', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.5.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
-    initPlanets(window.__app); initStoryMars(window.__app);
-    import('./mars-audio.js?v=7.5').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
+    import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
+  <script type="module" src="./mars/contraband.js?v=7.5.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.1').catch(() => {}));
 </script>
 </body>
 </html>

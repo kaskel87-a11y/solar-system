@@ -4,7 +4,7 @@
 // BASE=http://localhost:8843/ BR=webkit DEV="iPhone 14" node test-v75.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://localhost:8843/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/tmp/s74/', desk = DEV === 'desktop', PFX = process.env.PFX || 'v75';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop', PFX = process.env.PFX || 'v75';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
@@ -18,7 +18,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const shot = n => page.screenshot({ path: `${out}${PFX}-${tag}-${n}.png`, timeout: 120000 }).catch(e => console.log('shot', n, e.message.split('\n')[0]));
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 180000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7.5');
+    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) >= 'v7.5');
     // space ☰: visible in flight, opens the menu, hides surface-only items
     await G(() => window.__app.setFlying?.(true)); await wait(() => window.__app.state.flying, 15000);
     ok('spaceMenuBtn', await G(() => { const b = document.getElementById('spaceMenuBtn'); return !!b && getComputedStyle(b).display !== 'none' && b.getBoundingClientRect().height >= 44; }));
@@ -83,8 +83,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('bankInside', await G(() => !!window.__app.surface.info?.inside));
       await shot('bank');
       const t0 = Date.now();
-      const cr = await G(() => Promise.race([window.__app.surface.game.crack('test-vault', 0, { loot: 10 }), new Promise(r => setTimeout(() => r({ ok: false, why: 'timeout' }), 240000))]));
-      ok('crackFallback', JSON.stringify(cr) + ` ${Math.round((Date.now() - t0) / 1000)}s`, cr?.ok && (await G(() => window.__app.surface.game.flag('cracked:test-vault'))));
+      if (await G(() => !!window.SSX.heist?.safeCrack)) { // v7.5.1: Ben's dial minigame drives game.crack
+        await G(() => { window.__crk = window.__app.surface.game.crack('test-vault', 3, { loot: 10 }); });
+        ok('heistDialOpen', await wait(() => { const e = document.getElementById('hsSafe'); return !!e && getComputedStyle(e).display !== 'none'; }, 20000));
+        await shot('safecrack');
+        await page.keyboard.press('Escape');
+        const cr = await G(() => Promise.race([window.__crk, new Promise(r => setTimeout(() => r({ ok: 'hung' }), 20000))]));
+        ok('heistAbort', JSON.stringify(cr), cr && cr.ok === false);
+        ok('safeSpots', await G(() => window.SSX.city.safeSpots('mars-gated').length), (await G(() => window.SSX.city.safeSpots('mars-gated').length)) >= 1);
+        ok('lineOfSight', await G(() => typeof window.SSX.city.lineOfSight(0, 0, 5, 5) === 'boolean'));
+        ok('minimapMarks', await G(() => { window.SSX.minimap.addMarks('t', [{ x: 0, z: 0 }]); const n = window.SSX.minimap.list().includes('t'); window.SSX.minimap.clear('t'); return n; }));
+      } else {
+        const cr = await G(() => Promise.race([window.__app.surface.game.crack('test-vault', 0, { loot: 10 }), new Promise(r => setTimeout(() => r({ ok: false, why: 'timeout' }), 240000))]));
+        ok('crackFallback', JSON.stringify(cr) + ` ${Math.round((Date.now() - t0) / 1000)}s`, cr?.ok && (await G(() => window.__app.surface.game.flag('cracked:test-vault'))));
+      }
       await G(() => window.__app.surface.leaveBuilding());
     }
     // add-ons merged into v7.5

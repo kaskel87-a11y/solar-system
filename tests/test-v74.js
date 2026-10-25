@@ -4,7 +4,7 @@
 // BASE=http://localhost:8765/ BR=chromium DEV=desktop node test-v74.js   (DEV="iPhone 14" BR=webkit for touch)
 const pw = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/workspace/solar-system/shots/', desk = DEV === 'desktop';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});

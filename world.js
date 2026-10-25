@@ -3,7 +3,7 @@
 // security drones and patrol buggies. Everything here is game fiction. Cheap by design: shared geometry,
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
-import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.5';
+import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.5.1';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -40,6 +40,7 @@ export const DISTRICTS = {};
 export function registerDistrict(world, id, def) {
   if (!world || !id || !def || !(def.origin || def.centre)) throw new Error('registerDistrict(worldName, id, { name, origin: [x, z], domes, blocks, ... })');
   (DISTRICTS[world] = DISTRICTS[world] || {})[id] = { id, r1: 56, r2: 84, tint: 0xffa060, domes: [], blocks: [], crates: [], contacts: [], inside: {}, vehicles: [], guards: [], colonists: 3, lamps: 8, lots: [], ...def, origin: def.origin || def.centre };
+  { const D = DISTRICTS[world][id]; D.centre = D.centre || D.origin; D.r = D.r || D.r2; } // v7.5.1: centre/r for add-ons (contraband districtAt)
   return id;
 }
 export const districtsOf = world => Object.values(DISTRICTS[world] || {});
@@ -283,7 +284,7 @@ export function createWorld(ctx) {
     // landing pad with blinking edge lights
     if (D.pad) { const [x, z, r] = D.pad, X = ox + x, Z = oz + z; part(add(mesh(R.cyl, R.pad, X, y0 + 0.08, Z, r, 0.16, r)), 'pad'); add(mesh(R.ring, R.glowO, X, y0 + 0.2, Z, r * 0.7, r * 0.7, 1)).rotation.x = Math.PI / 2;
       for (let k = 0; k < 8; k++) { const l = add(mesh(R.sph, R.padLight, X + Math.cos(k * 0.785) * r, y0 + 0.25, Z + Math.sin(k * 0.785) * r, 0.18)); flick.push({ m: l, blink: k * 0.12 }); } }
-    for (const [x, z] of D.crates || []) for (let k = 0; k < 3; k++) { const X = ox + x + (k % 2) * 1.3, Z = oz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; camBoxes.push({ x: X, z: Z, y: y0 + 1.25 }); } // v7.4 (m3): crates stop the camera too
+    for (const [x, z] of D.crates || []) for (let k = 0; k < 3; k++) { const X = ox + x + (k % 2) * 1.3, Z = oz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; camBoxes.push({ x: X, z: Z, y: y0 + 1.6, h: 0.95 }); } // v7.4 (m3): crates stop the camera too
     // perimeter lamps; a few flicker like they're wired by the lowest bidder
     const lr = isColony ? 50 : (D.lampR || 44);
     for (let k = 0; k < (D.lamps || 0); k++) {
@@ -373,7 +374,7 @@ export function createWorld(ctx) {
   // v7.3: camera occlusion test (solid building boxes + full dome volumes), used to pull the chase camera in
   function camBlocked(x, y, z) {
     if (!C) return false;
-    for (const b of camBoxes) if (y < b.y && Math.abs(x - b.x) < 0.75 && Math.abs(z - b.z) < 0.75) return true;
+    for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
@@ -990,7 +991,8 @@ export function createWorld(ctx) {
     districts: () => sites.map(s => ({ id: s.id, name: s.name, kind: s.kind, x: s.x, z: s.z, r: s.r, fast: s.fast })), districtAt, get zone() { return actZone; },
     lots: (id) => sites.flatMap(s => s.lots || []).filter(l => !id || l.district === id || l.id === id).map(l => ({ ...l })),
     cameras: () => cams.map(c => ({ id: c.id, x: c.x, z: c.z, site: c.site, cased: c.cased > time })), caseCamera, nearCamera: () => { const c = nearCamera(); return c ? { id: c.id, x: c.x, z: c.z, cased: c.cased > time } : null; }, alarm,
-    npcRefresh: () => updateZones(true),
+    npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
+    lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
     coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },
