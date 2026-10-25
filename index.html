@@ -465,15 +465,16 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5';
-    import { buildStarship } from './models.js?v=7.5';
-    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5';
-    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5';
-    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5'; // v7.5 Mars city (Steve's pack)
-    import { registerInterior } from './interiors.js?v=7.5';
-    import { createAudio7 } from './audio7.js?v=7.5';
-    import { initPlanets } from './planets/index.js?v=7.5'; // multi-planet expansion (data-driven, planets/*.js)
-    import { initStoryMars } from './storymars.js?v=7.5'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5.1';
+    import { buildStarship } from './models.js?v=7.5.1';
+    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5.1';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5.1';
+    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5.1'; // v7.5 Mars city (Steve's pack)
+    import { registerInterior } from './interiors.js?v=7.5.1';
+    import { createAudio7 } from './audio7.js?v=7.5.1';
+    import { initPlanets } from './planets/index.js?v=7.5.1'; // multi-planet expansion (data-driven, planets/*.js)
+    import { initStoryMars } from './storymars.js?v=7.5.1'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { initHeist } from './heist.js?v=7.5.1'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1496,6 +1497,7 @@
     const fmtDist = d => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`;
     // heading-up radar: you in the middle, rover, ship, objective, next discovery, aliens and your dog as icons
     let mapLast = null;
+    const mapMarks = new Map(); // v7.5.1: id -> [{ x, z, color, r, clamp }] (world coords), drawn on the minimap
     function drawMiniMap() {
       const md = surface.mapData?.(); if (!md) return;
       const css = miniMap.clientWidth || 92, dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(css * dpr);
@@ -1531,6 +1533,7 @@
         const blink = (performance.now() / 250 | 0) % 2;
         for (const q of W7.security || []) { const p = proj(q.x, q.z, true); c.beginPath(); c.arc(p[0], p[1], 2.8 * dpr, 0, Math.PI * 2); c.fillStyle = blink ? '#ef4444' : '#3b82f6'; c.fill(); out.security = (out.security || 0) + 1; }
       }
+      for (const [, ms] of mapMarks) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (!p) continue; c.beginPath(); c.arc(p[0], p[1], (m.r || 2.6) * dpr, 0, Math.PI * 2); c.fillStyle = m.color || '#f59e0b'; c.fill(); if (m.ring) { c.strokeStyle = '#000'; c.lineWidth = dpr; c.stroke(); } out.marks = (out.marks || 0) + 1; } // v7.5.1 add-on blips (SSX.minimap)
       if (md.gate) { const p = proj(md.gate.x, md.gate.z, true); c.beginPath(); c.arc(p[0], p[1], 4 * dpr, 0, Math.PI * 2); c.strokeStyle = '#facc15'; c.lineWidth = 2 * dpr; c.stroke(); out.gate = true; }
       if (trackerFlash > 0.02) { c.beginPath(); c.arc(R, R, (R - 4 * dpr) * (1.05 - trackerFlash * 0.6), 0, Math.PI * 2); c.strokeStyle = `rgba(74,222,128,${(trackerFlash * 0.7).toFixed(2)})`; c.lineWidth = 2 * dpr; c.stroke(); trackerFlash *= 0.8; }
       c.save(); c.translate(R, R); c.beginPath(); c.moveTo(0, -6 * dpr); c.lineTo(4.5 * dpr, 5 * dpr); c.lineTo(0, 2.5 * dpr); c.lineTo(-4.5 * dpr, 5 * dpr); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
@@ -1688,9 +1691,23 @@
         choice: (prompt, options) => new Promise(res => openSheet('🤝 Your call', prompt, options.map(o => ({ label: o.label, fn: () => res(o.id) })))),
         toast: (t, ms) => toast(t, ms), radio: (text, contact) => showRadio({ text, contact }),
         get zone() { return surface.world.zone; }, get wanted() { return surface.world.wanted; }, setWanted: (n, why) => surface.world.setWanted(n, why),
-        get quest() { return surface.game.info?.quest || null; }
-      }
+        get quest() { return surface.game.info?.quest || null; },
+        // v7.5.1 asks from Ben's heist PR
+        player: () => { const i = surface.info; return i ? { x: i.x, z: i.z, y: i.y, driving: !!i.driving, inside: !!i.inside, world: i.name } : null; },
+        height: (x, z) => surface.world.groundAt?.(x, z) ?? null,
+        lineOfSight: (x1, z1, x2, z2, y = 1.6) => surface.world.lineOfSight?.(x1, z1, x2, z2, y) ?? true,
+        safeSpots: id => (surface.world.spawnPoints?.(id) || []).filter(p => /safe|vault/.test(p.kind || '')),
+        securityResponse: (x, z, level = 2, o = {}) => surface.game.hostiles(level >= 4 ? ['guard', 'guard', 'enforcer', 'sdrone'] : level >= 3 ? ['guard', 'guard', 'sdrone'] : ['guard', 'sdrone'], x, z, { r: 14, src: 'heist', faction: 'private', ...o })
+      },
+      minimap: { addMarks(id, marks) { mapMarks.set(id, (marks || []).map(m => ({ ...m }))); }, clear(id) { id ? mapMarks.delete(id) : mapMarks.clear(); }, list: () => [...mapMarks.keys()] },
+      registerSurfaceTick: fn => surface.registerTick?.(fn)
     });
+    // Ben's heist: private security answers alarms; informant camera/patrol tips draw on the minimap
+    window.SSX.on('heist:alarm:response', d => { if (d && d.x != null && !surface.world.inside) window.SSX.city.securityResponse(d.x, d.z, d.wanted || 2); });
+    addEventListener('heist:alarm:response', e => window.SSX.emit('heist:alarm:response', e.detail));
+    addEventListener('heist:escape', e => window.SSX.emit('heist:escape', e.detail));
+    addEventListener('heist:tip', e => { const d = e.detail || {}; const pts = [...(d.cameras || []).map(c => ({ x: c.x, z: c.z, color: '#f43f5e', r: 2.4 })), ...(d.guards || []).map(g => ({ x: g.x, z: g.z, color: '#60a5fa', r: 2.4 }))]; if (pts.length) window.SSX.minimap.addMarks('tip:' + (d.id || 'heist'), pts); });
+    addEventListener('heist:done', e => window.SSX.minimap.clear('tip:' + (e.detail?.id || 'heist')));
     window.SSX.on('heist:escape', d => { toast(`🏃 Clean getaway${d?.name ? ' from ' + d.name : ''}. Now lose the heat.`, 2600); updateSurfHud(true); });
     // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
     const a2hsBtn = document.getElementById('a2hsBtn'), A2HS_KEY = 'ssx.a2hs.seen';
@@ -2044,15 +2061,15 @@
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
-      landOn, landAction, renderer, version: 'v7.5', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.5.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
-    initPlanets(window.__app); initStoryMars(window.__app);
-    import('./mars-audio.js?v=7.5').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
+    import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.1').catch(() => {}));
 </script>
 </body>
 </html>

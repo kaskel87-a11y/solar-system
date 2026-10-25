@@ -2,12 +2,12 @@
 // soundscapes) and barks.js (pedestrian speech captions), plus a master / music / ambience mixer with mute.
 // Core touch points: ONE dynamic import in index.html (initMarsAudio(window.__app, { au7, audio, ctx })) and ONE
 // `a.__ssxMusic || a.destination` in audio7.js so the stock stations follow the music slider.
-import { STATIONS } from './audio7.js?v=7.5';
-import { districtsOf } from './world.js?v=7.5';
-import { MARS_STATIONS, STOCK_DJ, appendStations, resolveStation, rememberStation, addDjLines, createRadio } from './radio.js?v=7.5';
-import { AMBIENCE_CONFIG, zonesFrom, mixWeights, createAmbience, PROFILES } from './ambience.js?v=7.5';
-import { BARKS, chooseCategory, pickLine, createLimiter, lifeFor, placeCaption } from './barks.js?v=7.5';
-import { createVoicePool, babble } from './synth.js?v=7.5';
+import { STATIONS } from './audio7.js?v=7.5.1';
+import { districtsOf } from './world.js?v=7.5.1';
+import { MARS_STATIONS, STOCK_DJ, appendStations, resolveStation, rememberStation, addDjLines, createRadio } from './radio.js?v=7.5.1';
+import { AMBIENCE_CONFIG, zonesFrom, mixWeights, createAmbience, PROFILES } from './ambience.js?v=7.5.1';
+import { BARKS, chooseCategory, pickLine, createLimiter, lifeFor, placeCaption } from './barks.js?v=7.5.1';
+import { createVoicePool, babble } from './synth.js?v=7.5.1';
 
 export const MIX_DEFAULT = { master: 0.9, music: 0.8, amb: 0.8, mute: false };
 export function normMix(m) {

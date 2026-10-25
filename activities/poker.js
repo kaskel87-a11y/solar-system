@@ -1,9 +1,9 @@
 // Static Hold'em — phone-friendly Texas Hold'em modal for act-static-poker.
 // No new core hooks. Uses game credits via spend/debug.credits. Optional SSX.bark.
-import { tap } from '../racehooks.js?v=7.5';
+import { tap } from '../racehooks.js?v=7.5.1';
 import {
   freshDeck, evalBest, cmpScore, strength01, cardLabel, HAND_NAMES,
-} from './poker-eval.js?v=7.5';
+} from './poker-eval.js?v=7.5.1';
 
 const BUYINS = [50, 150, 400];
 const SMALL = 5, BIG = 10; // blinds in chips (= credits at 1:1)
@@ -469,5 +469,5 @@ export function pokerState() {
 
 // Debug
 if (typeof window !== 'undefined') {
-  window.__poker = { open: openPokerTable, close: closePokerTable, state: pokerState, eval: () => import('./poker-eval.js?v=7.5') };
+  window.__poker = { open: openPokerTable, close: closePokerTable, state: pokerState, eval: () => import('./poker-eval.js?v=7.5.1') };
 }

@@ -1,10 +1,11 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5';
-import { createGame } from './game.js?v=7.5';
-import { createWorld, VEHICLES } from './world.js?v=7.5';
-import { raceTick } from './race.js?v=7.5';
-import { activityTick } from './activities/runner.js?v=7.5';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5.1';
+import { createGame } from './game.js?v=7.5.1';
+import { createWorld, VEHICLES } from './world.js?v=7.5.1';
+import { raceTick } from './race.js?v=7.5.1';
+import { activityTick } from './activities/runner.js?v=7.5.1';
+import { heistTick } from './heist.js?v=7.5.1';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -172,6 +173,7 @@ export function loadFound() { try { return JSON.parse(localStorage.getItem(DISC_
 function saveFound(f) { try { localStorage.setItem(DISC_KEY, JSON.stringify(f)); } catch (e) { /* private mode */ } }
 
 export function createSurface({ renderer, textures, isMobile, onEvent = () => {} }) {
+  const extraTicks = []; // v7.5.1: add-on per-frame hooks (SSX.registerSurfaceTick)
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 2400);
   camera.rotation.order = 'YXZ';
@@ -1134,6 +1136,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateCamera(dt);
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
+    heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
@@ -1337,7 +1341,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
-    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel,
+    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air

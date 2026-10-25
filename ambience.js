@@ -1,7 +1,7 @@
 // Mars city ambience: per-district soundscapes that crossfade with the player's position.
 // Districts are AJ-relative (Ares Junction centre = origin, x east, z south), from the mars-city pack. When v7.5 registers
 // real districts (SSX.registerDistrict / districtsOf('Mars')), their centre/radius override these defaults by id or name.
-import { tone, burst, swell, babble, noiseBuf } from './synth.js?v=7.5';
+import { tone, burst, swell, babble, noiseBuf } from './synth.js?v=7.5.1';
 
 export const AMBIENCE_CONFIG = {
   world: 'Mars',

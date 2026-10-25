@@ -3,10 +3,10 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { STORY } from './missions-data.js?v=7.5';
-import { mergeGeos } from './models.js?v=7.5';
-import { buildHuman } from './interiors.js?v=7.5';
-import { buildVehicle } from './world.js?v=7.5';
+import { STORY } from './missions-data.js?v=7.5.1';
+import { mergeGeos } from './models.js?v=7.5.1';
+import { buildHuman } from './interiors.js?v=7.5.1';
+import { buildVehicle } from './world.js?v=7.5.1';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -1332,7 +1332,14 @@ export function createGame(ctx) {
     if (crackJob) return Promise.resolve({ ok: false, why: 'busy' });
     const done = ok => { crackJob = null; if (ok) { setFlag('cracked:' + id); const s = stepDef(); const pay = opts.loot ?? (s?.type === 'crack' ? s.loot ?? 0 : 120 + difficulty * 60); if (pay) gain(10 * difficulty, pay, true); onEvent('crack', { id, done: true, credits: pay }); if (s?.type === 'crack' && (!s.id || s.id === id)) advance(); } else onEvent('crack', { id, failed: true }); return { ok }; };
     const H2 = globalThis.SSX?.heist;
-    if (H2?.safeCrack) { crackJob = { id, p: 0, ext: true }; return Promise.resolve(H2.safeCrack({ id, difficulty, ...opts })).then(r => done(r === true || !!r?.ok), () => done(false)); }
+    if (H2?.safeCrack) { // v7.5.1: Ben's dial minigame (heist.js); the timed hold below only runs if heist.js failed to load
+      crackJob = { id, p: 0, ext: true }; const tier = opts.tier || (difficulty >= 4 ? 'vault' : difficulty >= 3 ? 'hard' : difficulty >= 2 ? 'medium' : 'easy');
+      return Promise.resolve(H2.safeCrack({ tier, title: opts.title || id.replace(/^safe:/, '').replace(/-/g, ' '), seed: opts.seed, time: opts.time })).then(r => {
+        const ok = r === true || !!r?.ok || !!r?.success;
+        if (!ok && r?.reason === 'noise') { H2.alarm?.(Math.min(5, Math.max(2, difficulty)), 'safe alarm'); onEvent('alarm', { level: 2, safe: true }); }
+        return done(ok);
+      }, () => done(false));
+    }
     return new Promise(res => { crackJob = { id, p: 0, t: 0, need: 2.5 + difficulty * 1.2, res: ok => res(done(ok)), wanted: opts.wanted ?? Math.min(3, 1 + Math.floor(difficulty / 2)) }; onEvent('crack', { id, start: true, secs: crackJob.need }); });
   }
   function updateCrack(dt, st) {
@@ -1694,7 +1701,8 @@ export function createGame(ctx) {
     gore, hostiles, heistAt, crack, choose, crackable, humanCount: () => agents.reduce((n, a) => n + (a.T.human ? 1 : 0), 0),
     // v7.5 mission helpers for add-on step runners (storymars.js, activities/runner.js)
     advanceStep() { if (!quest) return false; advance(); return true; }, failStep(why) { if (!quest) return false; fail(why || 'Job failed.'); return true; },
-    spawnWave(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(), yaw = (st.driving ? st.rover.yaw : player.yaw) + ang, a = spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: quest ? 'quest' : 'wave' }); return !!a; }, // quest-src kills count toward defeat steps jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
+    spawnWave(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(), yaw = (st.driving ? st.rover.yaw : player.yaw) + ang, a = spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: quest ? 'quest' : 'wave' }); return !!a; }, // quest-src kills count toward defeat steps
+    jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
     stash(id, perm, name) { if (flag('stash:' + id)) return false; setFlag('stash:' + id); P.credits += 40; grantPerm(perm, name || 'Stash'); return true; }, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
