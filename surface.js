@@ -70,6 +70,34 @@ const BODIES = {
     poi: { kind: 'rover', name: 'Perseverance rover', fact: 'NASA\u2019s Perseverance has explored Jezero Crater since 2021, drilling rock samples that may one day be flown back to Earth.' },
     flagFact: 'No human has stood on Mars yet. You would be the first!',
     facts: ['Mars looks red because its dust is full of iron oxide: rust.', 'Olympus Mons on Mars is about 22 km tall, nearly three times the height of Everest.', 'Sunsets on Mars are blue, the opposite of Earth\u2019s.', 'Dust storms on Mars can grow to cover the whole planet for weeks.']
+  },
+  Io: {
+    g: 0.183, seed: 83, amp: 6, freq: 1 / 130, ridged: 0.3, craters: null,
+    low: C(0xb88a2a), high: C(0xeedc6a), slope: C(0x8a5a20), crater: C(0xb88a2a), rock: C(0x5a3a18), rocksPerChunk: 16,
+    spots: { color: C(0x2a1a10), hot: C(0xd04a18) },
+    sky: 'space', fog: { type: 'linear', color: 0x000000, near: 70, far: 150 }, sunSize: 9, sunElev: 0.5, light: 2.0, ambient: 0.5, hemi: [0xffe0a0, 0x4a3010],
+    planetInSky: { tex: 'jupiter', size: 110, pos: [-160, 140, -400] },
+    poi: { kind: 'sign', sign: 'IO BASE CAMP', name: 'Io Base Camp', fact: 'NASA\u2019s Galileo (1995\u20132003) and Juno spacecraft have flown past Io. Jupiter\u2019s gravity squeezes Io as it orbits, heating its insides so much it erupts constantly.' },
+    flagFact: 'No spacecraft has ever landed on Io. Jupiter\u2019s radiation here would be deadly to an unprotected human within a day.',
+    facts: ['Io is the most volcanically active world in the solar system, with about 400 active volcanoes.', 'The yellow, orange and white colors on Io come from sulfur and frozen sulfur dioxide.', 'Io is a little bigger than Earth\u2019s Moon.', 'Jupiter looks about 40 times wider in Io\u2019s sky than the full Moon does in ours.']
+  },
+  Europa: {
+    g: 0.134, seed: 97, amp: 3, freq: 1 / 170, ridged: 0.7, craters: { cell: 120, p: 0.15, rmin: 4, rmax: 10 },
+    low: C(0xb8ad9a), high: C(0xf2efe6), slope: C(0x9a8670), crater: C(0xd0c8b8), rock: C(0xe2ddd2), rocksPerChunk: 14,
+    cracks: C(0x8a4a2a),
+    sky: 'space', fog: { type: 'linear', color: 0x000000, near: 70, far: 150 }, sunSize: 9, sunElev: 0.4, light: 2.3, ambient: 0.45, hemi: [0xc8d8ff, 0x50483e],
+    planetInSky: { tex: 'jupiter', size: 70, pos: [-200, 150, -380] },
+    poi: { kind: 'sign', sign: 'EUROPA BASE', name: 'Europa Base Camp', fact: 'NASA\u2019s Europa Clipper launched in October 2024 and is due to reach Jupiter in 2030, to study whether Europa\u2019s hidden ocean could support life.' },
+    flagFact: 'No spacecraft has landed on Europa yet. Your flag stands on ice that may float over a global ocean.',
+    facts: ['Europa\u2019s ice shell is probably 15\u201325 km thick, with a salty ocean beneath it.', 'Europa may hold about twice as much water as all of Earth\u2019s oceans.', 'Europa is slightly smaller than Earth\u2019s Moon.', 'Europa\u2019s surface is one of the smoothest in the solar system, with few big craters.']
+  },
+  Titan: {
+    g: 0.138, seed: 109, amp: 5, freq: 1 / 140, ridged: 0.2, craters: null, water: -1.2, padH: 2.2, liquid: 0x1a120a,
+    low: C(0x6a4a24), high: C(0x9a7440), slope: C(0x4a3418), crater: C(0x6a4a24), rock: C(0xa08a6a), sand: C(0x3a2a16), snow: C(0x9a7440), rocksPerChunk: 18,
+    sky: 'gradient', top: 0x9a5a1a, horizon: 0xd99a4a, fog: { type: 'exp2', color: 0xc8883a, density: 0.022 }, sunSize: 0, sunElev: 0.6, light: 1.0, ambient: 0.75, hemi: [0xe0a050, 0x3a2410], lightColor: 0xffc080,
+    poi: { kind: 'sign', sign: 'TITAN BASE', name: 'Titan Base Camp', fact: 'NASA\u2019s Dragonfly, a nuclear-powered drone helicopter, is planned to launch in 2028 and fly across Titan\u2019s dunes and craters in the 2030s.' },
+    flagFact: 'Titan\u2019s air is thick enough (and gravity low enough) that you could fly by flapping wings strapped to your arms.',
+    facts: ['Titan is the only moon with a thick atmosphere, mostly nitrogen, like Earth\u2019s.', 'At about \u2212179 \u00b0C, Titan is cold enough for methane to fall as rain.', 'The orange haze is made of organic molecules formed when sunlight breaks up methane.', 'Titan is bigger than the planet Mercury.']
   }
 };
 export const LANDABLE = Object.keys(BODIES);
@@ -83,32 +111,56 @@ export const DISCOVERIES = {
     { id: 'retro', kind: 'retro', a: 70, d: 120, name: 'Laser retroreflector', fact: 'Apollo 11, 14 and 15 left mirror arrays on the Moon. Observatories still bounce lasers off them, measuring the Moon\u2019s distance to within millimetres and showing it drifts about 3.8 cm farther from Earth every year.' },
     { id: 'golf', kind: 'golf', a: 150, d: 60, name: 'Alan Shepard\u2019s golf ball', fact: 'In February 1971, Apollo 14 commander Alan Shepard hit two golf balls on the Moon, using a six-iron club head attached to a tool for collecting samples.' },
     { id: 'ice', kind: 'ice', a: -110, d: 170, reach: 12, name: 'Ice in a shadowed crater', fact: 'Some craters near the Moon\u2019s poles never see sunlight and can be colder than \u2212230 \u00b0C. In 2018, data from NASA\u2019s Moon Mineralogy Mapper on India\u2019s Chandrayaan-1 confirmed water ice inside them.' },
-    { id: 'meteorite', kind: 'meteorite', a: 110, d: 240, name: 'Fresh impact', fact: 'With no air to slow them down, even tiny meteoroids hit the Moon at tens of kilometres per second. Hundreds of rocks blasted off the Moon by impacts have been found on Earth as lunar meteorites.' }
+    { id: 'meteorite', kind: 'meteorite', a: 110, d: 240, name: 'Fresh impact', fact: 'With no air to slow them down, even tiny meteoroids hit the Moon at tens of kilometres per second. Hundreds of rocks blasted off the Moon by impacts have been found on Earth as lunar meteorites.' },
+    { id: 'surveyor', kind: 'surveyor', a: -70, d: 130, name: 'Surveyor 3 probe', fact: 'In November 1969, Apollo 12 landed within walking distance of the robotic Surveyor 3 probe, which had been on the Moon since 1967. Astronauts brought its camera back to Earth.' },
+    { id: 'lunokhod', kind: 'lunokhod', a: 175, d: 200, name: 'Lunokhod rover', fact: 'The Soviet Lunokhod 1 became the first robotic rover on another world in November 1970. Drivers on Earth steered it by remote control for about 10 months.' }
   ],
   Mars: [
     { id: 'ingenuity', kind: 'ingenuity', a: 30, d: 70, name: 'Ingenuity helicopter', fact: 'Ingenuity rode to Mars under NASA\u2019s Perseverance rover. On 19 April 2021 it made the first powered, controlled flight on another planet, and it went on to fly 72 times.' },
     { id: 'riverbed', kind: 'riverbed', a: -60, d: 110, reach: 16, name: 'Ancient riverbed', fact: 'In 2012, NASA\u2019s Curiosity rover found rounded pebbles in Gale Crater that could only have been tumbled smooth by flowing water. Rivers and lakes existed on Mars billions of years ago.' },
     { id: 'icepatch', kind: 'icepatch', a: 140, d: 150, name: 'Buried ice', fact: 'Mars has water ice at its poles and just under the surface in many places. In 2008, NASA\u2019s Phoenix lander dug up bright chunks of ice that vanished (sublimated) within a few days.' },
     { id: 'dustdevil', kind: 'dustdevil', a: -150, d: 200, reach: 14, name: 'Dust devil', fact: 'Martian dust devils can be far bigger than Earth\u2019s. Their winds cleaned the dusty solar panels of the rovers Spirit and Opportunity, helping them keep working for years longer than planned.' },
-    { id: 'face', kind: 'face', a: 80, d: 280, reach: 30, name: '\u2018Face on Mars\u2019 mesa', fact: 'In 1976, NASA\u2019s Viking 1 orbiter photographed a mesa in the Cydonia region that looked like a face. Sharper images from Mars Global Surveyor in 1998 and 2001 showed it is just an eroded hill.' }
+    { id: 'face', kind: 'face', a: 80, d: 280, reach: 30, name: '\u2018Face on Mars\u2019 mesa', fact: 'In 1976, NASA\u2019s Viking 1 orbiter photographed a mesa in the Cydonia region that looked like a face. Sharper images from Mars Global Surveyor in 1998 and 2001 showed it is just an eroded hill.' },
+    { id: 'oppy', kind: 'oppy', a: -100, d: 230, name: 'Opportunity rover', fact: 'NASA\u2019s Opportunity rover was built to last 90 Martian days but kept going from 2004 to 2018, driving over 45 km, until a planet-wide dust storm covered its solar panels.' },
+    { id: 'blueberries', kind: 'blueberries', a: 175, d: 90, reach: 12, name: '\u2018Blueberries\u2019', fact: 'In 2004, Opportunity found millions of small grey spheres it nicknamed \u2018blueberries\u2019. They are made of hematite, an iron mineral that forms in water.' }
   ],
   Venus: [
     { id: 'lava', kind: 'lava', a: -50, d: 90, reach: 14, name: 'Lava flow', fact: 'Most of Venus is covered in volcanic plains. Its surface is surprisingly young, only about 300 to 600 million years old, probably because floods of lava repaved the planet.' },
     { id: 'balloon', kind: 'balloon', a: -140, d: 120, reach: 12, name: 'Vega balloon', fact: 'In June 1985, the Soviet Vega 1 and Vega 2 missions released balloons into Venus\u2019s clouds. They floated about 54 km up for around two days, the first balloons ever flown on another planet.' },
     { id: 'pancake', kind: 'pancake', a: 120, d: 160, reach: 20, name: 'Pancake dome', fact: 'Venus has flat-topped \u2018pancake domes\u2019 up to about 65 km wide but less than 1 km tall, made by thick, sticky lava that oozed out and spread slowly.' },
-    { id: 'volcano', kind: 'volcano', a: 20, d: 260, reach: 46, name: 'Volcano', fact: 'Venus has more volcanoes than any other planet, including over 1,600 major ones. In 2023, scientists found a vent near Maat Mons that changed shape between 1991 radar images, evidence of a recent eruption.' }
+    { id: 'volcano', kind: 'volcano', a: 20, d: 260, reach: 46, name: 'Volcano', fact: 'Venus has more volcanoes than any other planet, including over 1,600 major ones. In 2023, scientists found a vent near Maat Mons that changed shape between 1991 radar images, evidence of a recent eruption.' },
+    { id: 'tessera', kind: 'tessera', a: 170, d: 200, reach: 18, name: 'Tessera ridges', fact: 'Tesserae are Venus\u2019s oldest, most crumpled terrain, a jumble of crossing ridges and valleys. Scientists think they may hold clues to whether Venus once had oceans.' }
   ],
   Mercury: [
     { id: 'hollows', kind: 'hollows', a: 60, d: 70, reach: 12, name: 'Hollows', fact: 'NASA\u2019s MESSENGER found \u2018hollows\u2019 on Mercury: bright, shallow pits not seen on other rocky worlds. They seem to form as volatile material escapes from the rock.' },
     { id: 'polarice', kind: 'polarice', a: -30, d: 90, reach: 12, name: 'Ice in a polar crater', fact: 'Mercury is the closest planet to the Sun, yet it has water ice in polar craters that are always in shadow. NASA\u2019s MESSENGER spacecraft confirmed it in 2012.' },
     { id: 'scarp', kind: 'scarp', a: 170, d: 160, reach: 26, name: 'Lobate scarp', fact: 'As Mercury\u2019s iron core cooled, the whole planet shrank by up to about 7 km in radius, wrinkling the crust into giant cliffs called lobate scarps, some hundreds of kilometres long.' },
-    { id: 'caloris', kind: 'caloris', a: -120, d: 220, reach: 18, name: 'Caloris boulders', fact: 'The Caloris Basin is one of the largest impact craters in the solar system, about 1,550 km across. The impact was so violent it may have jumbled the ground on the opposite side of Mercury.' }
+    { id: 'caloris', kind: 'caloris', a: -120, d: 220, reach: 18, name: 'Caloris boulders', fact: 'The Caloris Basin is one of the largest impact craters in the solar system, about 1,550 km across. The impact was so violent it may have jumbled the ground on the opposite side of Mercury.' },
+    { id: 'rays', kind: 'rays', a: 110, d: 130, reach: 16, name: 'Rayed crater', fact: 'Young craters like Mercury\u2019s Kuiper crater are surrounded by bright streaks of thrown-out rock called rays. They fade over time as sunlight and micrometeorites darken them.' }
   ],
   Earth: [
     { id: 'fox', kind: 'fox', a: -30, d: 50, name: 'Red fox', fact: 'Red foxes have the widest range of any wild carnivore. Studies suggest they may even use Earth\u2019s magnetic field to aim their pounces on prey hidden under snow.' },
     { id: 'redwood', kind: 'redwood', a: 40, d: 90, reach: 14, name: 'Giant redwood', fact: 'Coast redwoods are the tallest trees on Earth. The tallest known, Hyperion in California, is about 116 m tall.' },
     { id: 'stones', kind: 'stones', a: 150, d: 140, reach: 16, name: 'Stone circle', fact: 'Stonehenge in England was built in stages starting about 5,000 years ago. Some of its smaller \u2018bluestones\u2019 were hauled from Wales, about 225 km away.' },
-    { id: 'hoba', kind: 'hoba', a: -120, d: 190, name: 'Hoba meteorite', fact: 'The Hoba meteorite in Namibia is the largest known meteorite on Earth. It weighs about 60 tonnes, is made mostly of iron and nickel, and has never been moved from where it fell.' }
+    { id: 'hoba', kind: 'hoba', a: -120, d: 190, name: 'Hoba meteorite', fact: 'The Hoba meteorite in Namibia is the largest known meteorite on Earth. It weighs about 60 tonnes, is made mostly of iron and nickel, and has never been moved from where it fell.' },
+    { id: 'barringer', kind: 'barringer', a: 90, d: 230, reach: 18, name: 'Impact crater', fact: 'Meteor Crater (Barringer Crater) in Arizona is about 1.2 km wide. It was blasted out roughly 50,000 years ago by an iron meteorite about 50 m across.' },
+    { id: 'tardigrade', kind: 'tardigrade', a: -70, d: 110, name: 'Tardigrades in the moss', fact: 'Tardigrades (\u2018water bears\u2019) are animals about half a millimetre long that live in moss. In 2007, some survived 10 days exposed to outer space on a satellite.' }
+  ],
+  Io: [
+    { id: 'lavalake', kind: 'lavalake', a: 40, d: 110, reach: 16, name: 'Lava lake', fact: 'Loki Patera on Io is a lava lake about 200 km across, the most powerful volcano in the solar system. Its surface crust sinks and overturns in waves.' },
+    { id: 'pele', kind: 'pele', a: -60, d: 170, reach: 24, name: 'Volcanic plume', fact: 'Io\u2019s volcano Pele shoots sulfur gas about 300 km into space. It falls back in a red ring more than 1,000 km wide, seen by NASA\u2019s Voyager and Galileo.' },
+    { id: 'sulfur', kind: 'sulfur', a: 150, d: 80, reach: 10, name: 'Sulfur frost', fact: 'Io\u2019s bright colors come from sulfur compounds. Sulfur dioxide gas from volcanoes freezes onto the cold surface as white frost.' }
+  ],
+  Europa: [
+    { id: 'lineae', kind: 'lineae', a: 30, d: 80, reach: 16, name: 'Lineae cracks', fact: 'Europa is covered in long reddish-brown cracks called lineae. Jupiter\u2019s tides flex the ice shell, splitting it, and material from below may color the cracks.' },
+    { id: 'chaos', kind: 'chaos', a: -80, d: 150, reach: 18, name: 'Chaos terrain', fact: 'In places like Conamara Chaos, Europa\u2019s ice is broken into rafts that drifted and refroze, a sign that warmer ice or water lies not far below.' },
+    { id: 'plume', kind: 'plume', a: 130, d: 200, reach: 22, name: 'Water vapor plume', fact: 'The Hubble Space Telescope saw signs of water vapor plumes rising from Europa in 2012 and 2016. If real, they could let a spacecraft sample the ocean without drilling.' },
+    { id: 'salt', kind: 'salt', a: -160, d: 110, reach: 10, name: 'Sea salt', fact: 'In 2019, scientists using the Hubble Space Telescope found sodium chloride (table salt) in Europa\u2019s yellowish regions, possibly from its ocean.' }
+  ],
+  Titan: [
+    { id: 'shore', kind: 'shore', a: 60, d: 90, reach: 14, name: 'Methane sea shore', fact: 'Titan is the only other world known to have liquid seas on its surface, but they are made of liquid methane and ethane. Kraken Mare is bigger than the Caspian Sea.' },
+    { id: 'huygens', kind: 'huygens', a: -40, d: 130, name: 'Huygens probe', fact: 'On 14 January 2005, the European Space Agency\u2019s Huygens probe parachuted onto Titan, the most distant landing ever made. It found rounded ice pebbles, like a dried riverbed.' },
+    { id: 'dunes', kind: 'dunes', a: 160, d: 180, reach: 22, name: 'Hydrocarbon dunes', fact: 'Titan has huge dune fields, with dunes up to about 100 m tall. The \u2018sand\u2019 is not rock but grains of frozen organic compounds.' }
   ]
 };
 const DISC_KEY = 'ssx.discoveries.v1';
@@ -198,6 +250,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         if (h < cfg.water + 0.7) tmpC.copy(cfg.sand);
         else if (h > cfg.amp * 2.1) tmpC.copy(cfg.snow);
       }
+      surfTint(x, z);
       const steep = smooth(0.92, 0.75, nrm.y);
       tmpC.lerp(cfg.slope, steep * 0.85);
       col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
@@ -276,6 +329,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     c.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); });
     c.pois.forEach(p => { const i = poiObjects.indexOf(p); if (i >= 0) poiObjects.splice(i, 1); p.userData.beacon?.geometry.dispose(); p.userData.beacon?.material.dispose(); });
   }
+  // Europa cracks, Io sulfur/lava spots
+  function surfTint(x, z) {
+    if (cfg.cracks) { const c = 1 - Math.abs(noise(x / 55, z / 55)), c2 = 1 - Math.abs(noise2(x / 23 + 7, z / 23)); tmpC.lerp(cfg.cracks, Math.max(smooth(0.955, 0.988, c), smooth(0.97, 0.992, c2) * 0.8)); }
+    if (cfg.spots) { const n2 = noise2(x / 40, z / 40); if (n2 > 0.5) tmpC.lerp(cfg.spots.color, smooth(0.5, 0.7, n2) * 0.85); const n3 = noise(x / 17 + 3, z / 17); if (n3 > 0.7) tmpC.lerp(cfg.spots.hot, smooth(0.7, 0.9, n3) * 0.7); }
+  }
   function updateChunks(px, pz, force, perFrame = 1) {
     const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK);
     const want = new Set();
@@ -319,6 +377,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlow('rgba(255,255,245,1)', 'rgba(255,200,120,0.35)'), fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending }));
       sun.position.copy(sunDir).multiplyScalar(480); sun.scale.setScalar(cfg.sunSize * 2.4); skyGroup.add(sun);
     }
+    if (cfg.planetInSky && textures[cfg.planetInSky.tex]) {
+      const P = cfg.planetInSky, e = new THREE.Mesh(new THREE.SphereGeometry(P.size, 40, 28), new THREE.MeshStandardMaterial({ map: textures[P.tex], fog: false, roughness: 1 }));
+      e.position.set(...P.pos); e.rotation.z = 0.05; e.userData.spin = true; skyGroup.add(e);
+    }
     if (cfg.earthInSky) {
       const e = new THREE.Mesh(new THREE.SphereGeometry(16, 32, 32), new THREE.MeshStandardMaterial({ map: textures.earth, fog: false, roughness: 1 }));
       e.position.set(-200, 170, -380); e.userData.spin = true; skyGroup.add(e);
@@ -328,7 +390,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dl = new THREE.DirectionalLight(cfg.lightColor ?? 0xffffff, cfg.light); dl.position.copy(sunDir).multiplyScalar(100); scene.add(dl); scene.add(dl.target);
     scene.add(new THREE.HemisphereLight(cfg.hemi[0], cfg.hemi[1], cfg.ambient * 2));
     if (cfg.water !== undefined) {
-      waterMesh = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), new THREE.MeshStandardMaterial({ color: 0x2a6aa8, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 }));
+      waterMesh = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), new THREE.MeshStandardMaterial({ color: cfg.liquid ?? 0x2a6aa8, roughness: cfg.liquid ? 0.05 : 0.15, metalness: 0.1, transparent: true, opacity: cfg.liquid ? 0.94 : 0.88 }));
       waterMesh.rotation.x = -Math.PI / 2; waterMesh.position.y = cfg.water; scene.add(waterMesh);
     }
   }
@@ -388,11 +450,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dish = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 6, 0, Math.PI * 2, 0, 1.1), metal(0xdddddd, 0.5, 0.5)); dish.position.set(-0.6, 1.2, 0); dish.rotation.z = 0.9; g.add(dish);
     return g;
   }
-  function buildSign() {
+  function buildSign(text = 'WELCOME HOME') {
     const g = new THREE.Group(), wood = metal(0x7a5230, 0, 0.9);
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), wood); post.position.y = 1.1; g.add(post);
     const c = document.createElement('canvas'); c.width = 256; c.height = 96; const x = c.getContext('2d');
-    x.fillStyle = '#a7743f'; x.fillRect(0, 0, 256, 96); x.fillStyle = '#2b1a0c'; x.font = 'bold 40px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText('WELCOME HOME', 128, 62);
+    x.fillStyle = '#a7743f'; x.fillRect(0, 0, 256, 96); x.fillStyle = '#2b1a0c'; x.font = `bold ${text.length > 12 ? 32 : 40}px system-ui, sans-serif`; x.textAlign = 'center'; x.fillText(text, 128, 62);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     const board = new THREE.Mesh(new THREE.BoxGeometry(2, 0.75, 0.08), [wood, wood, wood, wood, new THREE.MeshStandardMaterial({ map: t }), new THREE.MeshStandardMaterial({ map: t })]);
     board.position.y = 1.9; g.add(board); return g;
@@ -466,6 +528,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = noise(x / 31, z / 31) * 0.5;
       tmpC.copy(cfg.low).lerp(cfg.high, clamp(0.5 + h / (cfg.amp * 3.2) + n * 0.25, 0, 1));
       if (cfg.water !== undefined) { if (h < cfg.water + 0.7) tmpC.copy(cfg.sand); else if (h > cfg.amp * 2.1) tmpC.copy(cfg.snow); }
+      surfTint(x, z);
       col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
     }
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * n1 + i, b = a + 1, c = a + n1, d = c + 1; idx.push(a, c, b, b, c, d); }
@@ -525,7 +588,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // landing site
     const ship = place(buildRocket(), SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit.' }); ship.rotation.y = 0.5;
     const flag = place(buildFlag(), -6, -10, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
-    const special = place(builders[cfg.poi.kind](), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
+    const special = place(builders[cfg.poi.kind](cfg.poi.sign), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
     placeDiscoveries();
     // rover
     const rv = buildBuggy(); rv.group.rotation.order = 'YXZ';

@@ -172,7 +172,7 @@ export function buildRover() {
     wheels.push({ pivot, spin, x: s * 1.55, z: wz, front: wz < 0 });
   }
   const seat = new THREE.Object3D(); seat.position.set(0.55, 1.45, -1.0); body.add(seat);
-  return { group: g, body, wheels, seat };
+  return { group: g, body, wheels, seat, paint: steelM };
 }
 
 // ---------- Discoveries ----------
@@ -349,6 +349,133 @@ export const DISCOVERY_BUILDERS = {
   hoba(h) {
     const g = new THREE.Group();
     const b = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.9, 2.7), mat(0x4a3a30, { roughness: 0.5, metalness: 0.3, flatShading: true })); b.position.y = 0.3; b.rotation.y = 0.4; g.add(b);
+    return g;
+  },
+  // ---------- v6 discoveries ----------
+  surveyor(h) {
+    const g = new THREE.Group(), w = mat(0xd8d8d0), d = mat(0x444444);
+    const frame = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 1.1, 1.6, 3), w); frame.position.y = 1.4; g.add(frame);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 5), w); leg.position.set(Math.cos(a) * 1.1, 0.75, Math.sin(a) * 1.1); leg.rotation.set(Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6); g.add(leg); const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.08, 8), w); pad.position.set(Math.cos(a) * 1.6, 0.04, Math.sin(a) * 1.6); g.add(pad); }
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.9), mat(0x1f3a6a)); panel.position.set(0, 2.7, 0); panel.rotation.x = 0.5; g.add(panel);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5, 5), d); mast.position.y = 2.2; g.add(mast);
+    const cam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), w); cam.position.set(0.7, 1.4, 0); g.add(cam);
+    return g;
+  },
+  lunokhod(h) {
+    const g = new THREE.Group(), tub = mat(0xc0c4c8, { metalness: 0.25 }), d = mat(0x2a2a2a);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.9, 0.9, 16), tub); body.position.y = 1.05; body.scale.z = 1.3; g.add(body);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 0.06, 16), mat(0x1f3a6a)); lid.position.set(0, 1.62, 0.5); lid.rotation.x = -0.9; lid.scale.z = 1.3; g.add(lid);
+    for (const s of [-1, 1]) for (let k = 0; k < 4; k++) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 10), d); wh.rotation.z = Math.PI / 2; wh.position.set(s * 1.05, 0.4, -1.2 + k * 0.8); g.add(wh); }
+    const ant = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.9, 6), tub); ant.position.set(0.5, 1.9, -0.8); g.add(ant);
+    return g;
+  },
+  oppy(h) {
+    const g = new THREE.Group(), w = mat(0xcfc6b8), d = mat(0x2a2a2a), p = mat(0x1d3566, { roughness: 0.3 });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 1.4), w); box.position.y = 0.85; g.add(box);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.05, 1.8), p); deck.position.y = 1.15; g.add(deck);
+    for (const s of [-1, 1]) for (const z of [-0.6, 0, 0.6]) { const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.18, 10), d); wh.rotation.z = Math.PI / 2; wh.position.set(s * 0.85, 0.25, z); g.add(wh); }
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 5), w); mast.position.set(0.3, 1.6, -0.6); g.add(mast);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.18), w); head.position.set(0.3, 2.05, -0.6); g.add(head);
+    const dust = new THREE.Mesh(new THREE.BoxGeometry(2.32, 0.02, 1.82), mat(0xb0673a, { transparent: true, opacity: 0.55 })); dust.position.y = 1.18; g.add(dust);
+    return g;
+  },
+  blueberries(h) {
+    const g = new THREE.Group(), geo = new THREE.SphereGeometry(0.09, 6, 4), m = mat(0x3a3f4a, { roughness: 0.4 });
+    for (let i = 0; i < 70; i++) { const r = Math.sqrt(Math.random()) * 3, a = Math.random() * 6.28, x = Math.cos(a) * r, z = Math.sin(a) * r; const b = new THREE.Mesh(geo, m); b.position.set(x, h(x, z) + 0.05, z); g.add(b); }
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 1.4), stoneM(0xc8a070)); slab.position.set(0.6, 0.12, 0.4); slab.rotation.y = 0.5; g.add(slab);
+    return g;
+  },
+  tessera(h) {
+    const g = new THREE.Group(), m = stoneM(0x7a4e28);
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 3; j++) { const r = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2 + ((i * 7 + j * 3) % 5) * 0.6, 14), m); const x = (i - 4) * 2.6, z = (j - 1) * 4; r.position.set(x, h(x, z) + 0.6, z); r.rotation.set(0, 0.3 + j * 0.9, 0.12); g.add(r); }
+    return g;
+  },
+  rays(h) {
+    const g = new THREE.Group(), bright = mat(0xe8e2d8, { roughness: 1, emissive: 0x333028 });
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + (i % 3) * 0.1, L = 14 + (i % 4) * 5; const ray = new THREE.Mesh(new THREE.PlaneGeometry(1.6, L), bright); ray.rotation.set(-Math.PI / 2, 0, -a); const x = Math.sin(a) * (L / 2 + 4), z = Math.cos(a) * (L / 2 + 4); ray.position.set(x, h(x, z) + 0.08, z); g.add(ray); }
+    const pit = new THREE.Mesh(new THREE.CylinderGeometry(4, 2.5, 1.2, 16, 1, true), stoneM(0xbab2a6)); pit.position.y = 0.2; g.add(pit);
+    return g;
+  },
+  barringer(h) {
+    const g = new THREE.Group(), m = stoneM(0xb08a5a);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(14, 2.4, 6, 28), m); rim.rotation.x = Math.PI / 2; rim.scale.z = 0.6; rim.position.y = 0.6; g.add(rim);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(12, 24), mat(0xc9a46c, { roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.2; g.add(floor);
+    g.userData.beaconY = 3; return g;
+  },
+  tardigrade(h) {
+    const g = new THREE.Group(), moss = mat(0x4f8a2e, { roughness: 1, flatShading: true });
+    for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + (i % 3) * 0.2, 0), moss); m.position.set(Math.cos(i) * 1.4, 0.2, Math.sin(i * 1.3) * 1.4); m.scale.y = 0.5; g.add(m); }
+    // a big friendly "hologram" of the microscopic animal living in the moss
+    const holo = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+    const t = new THREE.Group(); t.position.y = 1.6; g.add(t);
+    for (let k = 0; k < 4; k++) { const seg = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), holo); seg.position.z = -0.45 + k * 0.3; t.add(seg); for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.3, 5), holo); leg.position.set(s * 0.28, -0.28, -0.45 + k * 0.3); t.add(leg); } }
+    g.userData.anim = (o, tt) => { t.rotation.y = tt * 0.6; t.position.y = 1.6 + Math.sin(tt * 2) * 0.1; };
+    return g;
+  },
+  lineae(h) {
+    const g = new THREE.Group(), m = mat(0x8a4a2a, { roughness: 1 });
+    for (let i = 0; i < 3; i++) { const geo = new THREE.PlaneGeometry(1.2 + i * 0.4, 60, 1, 1); const c = new THREE.Mesh(geo, m); c.rotation.set(-Math.PI / 2, 0, 0.3 + i * 0.7); c.position.set(i * 2 - 2, h(i * 2 - 2, 0) + 0.06 + i * 0.01, 0); g.add(c); }
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 50), mat(0xd9cfc0, { flatShading: true })); ridge.rotation.y = 0.3; ridge.position.set(-1.2, 0.2, 0); g.add(ridge);
+    return g;
+  },
+  chaos(h) {
+    const g = new THREE.Group(), m = mat(0xe9e4da, { roughness: 0.5, flatShading: true });
+    for (let i = 0; i < 12; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(3 + (i % 3), 1.5 + (i % 2), 3 + ((i + 1) % 3)), m); const a = i * 2.4, r = 3 + (i % 4) * 2.5, x = Math.cos(a) * r, z = Math.sin(a) * r; b.position.set(x, h(x, z) + 0.4, z); b.rotation.set((i % 3 - 1) * 0.25, a, (i % 2 - 0.5) * 0.4); g.add(b); }
+    const slush = new THREE.Mesh(new THREE.CircleGeometry(13, 20), mat(0x9a6a48, { roughness: 1 })); slush.rotation.x = -Math.PI / 2; slush.position.y = 0.05; g.add(slush);
+    return g;
+  },
+  plume(h) {
+    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(3 + i * 2.2, 0.4, 36 - i * 6, 12, 1, true), m); c.position.y = (36 - i * 6) / 2; g.add(c); }
+    const vent = new THREE.Mesh(new THREE.CircleGeometry(1.2, 12), mat(0x5a3a2a)); vent.rotation.x = -Math.PI / 2; vent.position.y = 0.05; g.add(vent);
+    g.userData.anim = (o, t) => { o.children.forEach((c, i) => { if (i < 3) { c.rotation.y = t * (1 + i); c.scale.x = c.scale.z = 1 + Math.sin(t * 3 + i) * 0.08; } }); };
+    g.userData.beaconY = 38; return g;
+  },
+  salt(h) {
+    const g = new THREE.Group(), m = mat(0xe8d27a, { roughness: 0.7, emissive: 0x2a2200 });
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(4, 16), m); patch.rotation.x = -Math.PI / 2; patch.position.y = 0.05; g.add(patch);
+    const cube = new THREE.BoxGeometry(0.35, 0.35, 0.35); for (let i = 0; i < 18; i++) { const c = new THREE.Mesh(cube, m); const a = i * 1.7, r = (i % 5) * 0.7; c.position.set(Math.cos(a) * r, 0.2, Math.sin(a) * r); c.rotation.y = a; g.add(c); }
+    return g;
+  },
+  shore(h) {
+    const g = new THREE.Group(), m = mat(0x8a6a3a);
+    const buoy = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8), mat(0xff8a20)); buoy.position.y = 0.6; g.add(buoy);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd080 })); lamp.position.y = 1.3; g.add(lamp);
+    for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 0.3), m); p.position.set(0, 0.04, -1 - i * 0.6); g.add(p); }
+    return g;
+  },
+  huygens(h) {
+    const g = new THREE.Group(), w = mat(0xd8c9a0, { metalness: 0.2 }), d = mat(0x6a5a40);
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(1.3, 18, 8, 0, Math.PI * 2, 0, 1.1), w); shell.scale.y = 0.45; shell.position.y = 0.35; g.add(shell);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.15, 0.35, 18), d); base.position.y = 0.2; g.add(base);
+    const chute = new THREE.Mesh(new THREE.SphereGeometry(2.4, 14, 6, 0, Math.PI * 2, 0, 1.2), mat(0xe86a30, { side: THREE.DoubleSide, roughness: 0.9 })); chute.scale.y = 0.25; chute.position.set(3.2, 0.25, 1); chute.rotation.z = 0.15; g.add(chute);
+    return g;
+  },
+  dunes(h) {
+    const g = new THREE.Group(), m = mat(0x4a3220, { roughness: 1 });
+    for (let i = 0; i < 6; i++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 40, 10, 1, false, 0, Math.PI), m); d.rotation.set(0, 0, Math.PI / 2); d.rotation.y = 0.2; d.scale.set(1, 1, 0.45); d.position.set(0, -0.4, (i - 2.5) * 6); d.rotation.x = Math.PI / 2; g.add(d); }
+    return g;
+  },
+  lavalake(h) {
+    const g = new THREE.Group(), hot = new THREE.MeshBasicMaterial({ color: 0xff5a14 }), crust = mat(0x1a1410, { roughness: 1, flatShading: true });
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(9, 24), hot); lake.rotation.x = -Math.PI / 2; lake.position.y = 0.06; g.add(lake);
+    for (let i = 0; i < 14; i++) { const p = new THREE.Mesh(new THREE.CircleGeometry(1 + (i % 3) * 0.7, 6), crust); p.rotation.x = -Math.PI / 2; const a = i * 2.2, r = 2 + (i % 4) * 1.6; p.position.set(Math.cos(a) * r, 0.09, Math.sin(a) * r); g.add(p); }
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(9.5, 0.9, 6, 24), crust); rim.rotation.x = Math.PI / 2; rim.position.y = 0.2; g.add(rim);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(10, 14, 6), new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.y = 0.25; g.add(glow);
+    g.userData.anim = (o, t) => { glow.material.opacity = 0.16 + Math.sin(t * 1.7) * 0.06; };
+    return g;
+  },
+  pele(h) {
+    const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(2, 0.6, 30, 12, 1, true), m); col.position.y = 15; g.add(col);
+    const umb = new THREE.Mesh(new THREE.SphereGeometry(18, 18, 6, 0, Math.PI * 2, 0, 1.2), m); umb.scale.y = 0.35; umb.position.y = 24; g.add(umb);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(10, 16, 28), mat(0xc84a20, { roughness: 1, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.07; g.add(ring);
+    g.userData.anim = (o, t) => { col.rotation.y = t; umb.rotation.y = -t * 0.3; umb.scale.x = umb.scale.z = 1 + Math.sin(t * 2) * 0.05; };
+    g.userData.beaconY = 32; return g;
+  },
+  sulfur(h) {
+    const g = new THREE.Group(), y = mat(0xf2e04a, { roughness: 0.6, emissive: 0x2a2400, flatShading: true }), w = mat(0xf6f2dc, { flatShading: true });
+    for (let i = 0; i < 16; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.3 + (i % 4) * 0.12, 0), i % 3 ? y : w); const a = i * 2.1, r = (i % 5) * 0.6; c.position.set(Math.cos(a) * r, 0.25, Math.sin(a) * r); c.scale.y = 1.8; c.rotation.set(i * 0.3, a, 0.2); g.add(c); }
     return g;
   }
 };
