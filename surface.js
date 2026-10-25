@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.2';
 import { createGame } from './game.js?v=7.2';
 import { createWorld, VEHICLES } from './world.js?v=7.2';
+import { raceTick } from './race.js?v=7.2';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1070,6 +1071,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
+    raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
