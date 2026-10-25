@@ -309,7 +309,8 @@ export function baseTick(dt, ctx) {
   }
   setAction(act);
 }
-function customizer() { const G = typeof window !== 'undefined' && window.SSX?.garage; const f = G && (G.openGarage || G.open || G.customize); return typeof f === 'function' ? () => f.call(G) : null; }
+// PR #7's SSX.garage has only grant*() today; a future open()/openGarage() lights the Customize action up
+function customizer() { const G = typeof window !== 'undefined' && window.SSX?.garage; const f = G && (G.open || G.openGarage || G.customize); return typeof f === 'function' ? () => f.call(G) : null; }
 function roverInBay(id, g, rv) { const l = toLocal(id, rv.x, rv.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r); return Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d; }
 function roverHome(id, g) {
   const c = BC.pieceCentre(g), w = toWorldXZ(id, c.x, c.z), [bx, bz] = BC.rotXZ(0, 1, g.r); // nose to the open front
