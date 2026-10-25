@@ -1973,6 +1973,7 @@
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app);
   </script>
+  <script type="module" src="./mars/contraband.js?v=7.4"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
   if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.4').catch(() => {}));
