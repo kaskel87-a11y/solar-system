@@ -121,6 +121,24 @@ Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js
 ```js
 ```
 
+## Mars city ambience (add-on: radio stations, district soundscapes, pedestrian barks)
+
+Files: `mars-audio.js` (glue, mixer, ☰ 🔊 panel), `radio.js`, `ambience.js`, `barks.js`, `synth.js`. Everything is synthesized with Web Audio: no samples, nothing downloaded, no licences to track.
+
+- **Radio:** four new stations join the stock three (after *Radio off*, so old saves keep their station): **RUST 103.5** (Red Tape hip-hop/industrial), **OLYMPUS 90.1** (Meridian talk & news: news, in-world ads and host banter as small captions over a TTS-free babble voice), **HELIOS 107.7** (Quiet Money lounge), **BELTWAY 99.9** (outrun darksynth). NPC_BARKS.md DJ lines are added to KRED/VOID/CERES. Switch with **📻 Next** while driving or from **☰ → 🔊 Sound & radio** (pick a station on foot and it plays on your next drive). Radio only plays in vehicles; the station is saved as `settings.radioId` + `settings.radio`.
+- **Mixer:** Master, Music and Ambience sliders plus Mute in the same panel, saved in `settings.mix`. Master/Mute cover every game sound.
+- **District soundscapes (Mars):** Ares Junction hum and PA, Olympus Row traffic, horns and crowds, Red Tape Flats sirens, dogs, arguments and far-off shots, Helios Heights fountain, chimes and drone flybys, Ares Beltway wind and pass-bys. They crossfade by your AJ-relative position, using the mars-city centres (`AMBIENCE_CONFIG` in ambience.js), and switch to `registerDistrict` centres/radii once v7.5 registers them. They're muffled in a vehicle and almost silent indoors. Phones play at most 2 beds and 5 one-shot voices.
+- **Barks:** short captions above nearby colonists and guards, triggered by being close, bumping into them, wanted level (guard lines scale with ★), gunfire, hits, stealing a car, speeding past or showing off a flashy ride. They're rate-limited (global, per NPC and per category gaps, at most 2 on screen), kept off the screen centre and the control band, and never take input.
+
+```js
+SSX.registerStation({ id: 'mine', name: 'MINE 88.8', tag: 'Test', bpm: 100, dj: ['Hi.'], step(x, t, s, bar, spb) { if (s % 4 === 0) x.osc('sine', 120, t, 0.2, 0.5, 40); } });
+SSX.bark(npc, 'flats')            // npc: people index | name | { x, z } | null (nearest); category from barks.js BARKS or literal text; { force: true } skips the rate limit
+SSX.registerBarks('heist', ['You\'re the Exchange guy!'])
+SSX.registerSoundscape('spaceport', { centre: [500, 0], r: 60, profile: 'downtown' })  // AJ-relative
+SSX.audio.mix.set({ master: 0.8, music: 0.5, amb: 1, mute: false }); SSX.audio.setRideFlash(info => 0.8) // garages: how flashy the current ride is (0..1)
+```
+Core hooks: one dynamic import line in `index.html`, `a.__ssxMusic || a.destination` in `audio7.js`, the new files in `sw.js` PRECACHE. Tests: `node tests/test-ambience-unit.mjs`, `BR=webkit VP=393x852 node tests/test-ambience.js`.
+
 ## v7.2: fly the rover, bolt guns to it, and install it as an app
 
 **Air control.** Your rover now steers in the air. While it's airborne, from a jump, a crest or thrusters, push the stick left or right to yaw. It banks into the turn and the turn rate doesn't depend on speed. Stick forward or back noses it down or up a little. The chase cam swings after the heading softly, so banked turns read well. In first person the cockpit roll is halved and the gauge shows **ALT** instead of km/h.
