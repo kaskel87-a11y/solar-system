@@ -108,10 +108,10 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await releaseStick();
     // brakes: a braking car with the brakes upgrade stops harder than the stock 26 m/s²
     await G(() => { const st = window.__app.surface, p = window.__dealer.spots.dealer; st.debugMove(p.x - 4, p.z + 14, Math.PI); window.__race.setCarSpeed(0); }); // flat dealer apron
-    await wait(() => !window.__race.car().air, 4000); await G(() => window.__race.setCarSpeed(20));
-    const b0 = await G(() => { window.__app.joy.y = 1; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; }); // stick pulled back = brake
+    await wait(() => { const c = window.__race.car(); return !!c && !c.air; }, 4000); // car() is null on foot / between swaps await G(() => window.__race.setCarSpeed(20));
+    const b0 = await G(() => { window.__app.joy.y = 1; return { v: window.__race.car()?.speed ?? NaN, a: window.__dealer.brakeAssist }; }); // stick pulled back = brake
     await G(() => new Promise(r => { let n = 0; const f = () => (++n >= 8 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
-    const b1 = await G(() => { window.__app.joy.y = 0; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; });
+    const b1 = await G(() => { window.__app.joy.y = 0; return { v: window.__race.car()?.speed ?? NaN, a: window.__dealer.brakeAssist }; });
     R.brake = JSON.stringify({ v0: b0.v, v1: b1.v, assist: +(b1.a - b0.a).toFixed(2) });
     ok('brakesStronger', null, b1.v < b0.v && b1.a - b0.a > 0.2);
     // ---------- 4. save + reload ----------

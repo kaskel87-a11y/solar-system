@@ -7,6 +7,7 @@ import { STORY } from './missions-data.js';
 import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
+import { kbOnly, KB_AIM_CONE } from './controlmode.js'; // v7.5.3 Keyboard-only mode: auto-aim locks to the nearest target in front
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -965,8 +966,8 @@ export function createGame(ctx) {
     let to;
     if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
     else {
-      const dir = st.driving ? new THREE.Vector3(-Math.sin(st.rover.yaw), 0, -Math.cos(st.rover.yaw)) : camera.getWorldDirection(new THREE.Vector3());
-      const t = autoTarget(from, dir, st.driving ? 1.05 : Math.PI);
+      const kb = kbOnly() && !st.driving, dir = st.driving ? new THREE.Vector3(-Math.sin(st.rover.yaw), 0, -Math.cos(st.rover.yaw)) : kb ? new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)) : camera.getWorldDirection(new THREE.Vector3());
+      const t = autoTarget(from, dir, st.driving ? 1.05 : kb ? KB_AIM_CONE : Math.PI);
       const wt = !t && ctx.worldTargets ? worldTarget(from, st.driving ? dir : new THREE.Vector3(-Math.sin(player.faceYaw ?? player.yaw), 0, -Math.cos(player.faceYaw ?? player.yaw)), st.driving ? 0.9 : 1.1) : null;
       if (t) to = center(t).clone();
       else if (wt) to = wt;

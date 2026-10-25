@@ -712,6 +712,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function readMove(input) {
     if (state.intro > 0 || state.outro > 0) return [0, 0];
     const k = input.keys;
+    if (input.kbOnly) return [(k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0) + input.joy.x, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - input.joy.y]; // v7.5.3 Keyboard only: arrows turn the camera
     return [(k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + input.joy.x, (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - input.joy.y];
   }
   function walk(dt, input, g) {
@@ -1147,7 +1148,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!indoor) updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
-    if (globalThis.SSX_TICKS) for (const f of globalThis.SSX_TICKS) f(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name }); // add-on per-frame hooks (dealership.js)
+    if (globalThis.SSX_TICKS?.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name }; // add-on per-frame hooks (dealership.js)
+      for (const f of globalThis.SSX_TICKS) { try { f(dt, tc); } catch (e) { if (!f.__warned) { f.__warned = true; console.warn('SSX_TICKS hook failed', e); } } } } // v7.5.3: one bad hook can't freeze the frame
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
