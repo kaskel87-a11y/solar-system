@@ -21,6 +21,24 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.1: fists, a blade, and a Take button that works
+- **Take fixed on iPhone:** Take, Drive, Exit, Pet, Radio and the weapon chip now trigger on the touch itself. iOS WebKit (Safari and Chrome on iPhone) drops the tap's click event when your other thumb is on the joystick, so before this fix Take did nothing. Take also reaches a bit further than the distance at which the button appears. If you're too far, a toast says "Too far". Getting in plays a door clunk and a quick vignette.
+- **Fire on foot:** the **FIRE** button is always there on foot and in a stolen ride, where you shoot out the window.
+  - Auto-aim picks the nearest hostile in front of you, then security, then guards once you're wanted.
+  - Firing near the colony, or hitting people or security, raises your wanted level. A quick tap always fires.
+- **Weapons and ammo:** tap the weapon chip in the top bar (desktop: Q) to cycle the blaster, the shotgun and the machete (whichever you own).
+  - **Plasma blaster:** never runs out of ammo, but it overheats.
+  - **Shotgun:** uses shells.
+  - **The chip:** `🔫∞` means the blaster is selected, `💥12` is your shotgun shells, `🗡️` means the machete is selected, and `✚1` is your medkits (tap the health bar or press X to use one).
+- **More shells:**
+  - Kills drop them.
+  - Green **ammo crates** (green squares on the radar) sit around Ares Junction and Freeport Tranquility, with bigger supply caches out in the wastes. Crates restock after 90 s.
+  - The shop sells them.
+  - Your rover and the ship's lockers top you up to 24 shells (and 1 medkit) once a minute.
+- **Melee:** a 👊 button appears next to FIRE when something is in reach (desktop: C).
+  - It runs a punch, punch, kick combo. The kick knocks things back and staggers them. Fists do little damage.
+  - **Vibro-machete** (220 cr at the shop, or sometimes dropped by hunters, nests and the Queen): it shows in your hand, sweeps everything in its arc, does 3× damage and leaves ichor everywhere. Select it on the chip to slash with FIRE.
+
 ## v7: darker, meaner, and a bit of GTA in space
 - **Tone:** this is a game for adults now. Mission Control and the colony contacts are dry and salty (mild swearing, no sexual content). The "(Fiction!)" tags are gone. The Log's Rewards tab has one quiet line noting which parts are fictional (hostiles, hives, colonies, contacts, security). Planet facts are still real science.
 - **Hostiles:** these are biomechanical crawlers that burrow and ambush, armored hunters that strafe and burst-fire, diving seekers, resin nests that keep hatching crawlers, and a much nastier Hive Queen who swipes and summons. They flank, lunge and hit hard. Kills burst ichor and chitin debris and leave splats on the ground.
@@ -58,6 +76,7 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
   | Grey dots | Colonists |
   | Blue dots | Guards |
   | Purple diamonds | Contacts |
+  | Green squares | Ammo crates (v7.1) |
   | Red/blue blinking | Security |
   | Yellow ring | Race gate |
 

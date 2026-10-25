@@ -3,7 +3,7 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { mergeGeos } from './models.js?v=7';
+import { mergeGeos } from './models.js?v=7.1';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -34,10 +34,11 @@ export const COSMETICS = {
 // the colony shop: weapons, gear, upgrades and cosmetics (cosmetics come from COSMETICS[*].shop)
 export const SHOP = [
   { id: 'shotgun', name: 'Breacher shotgun', desc: '8-pellet scattergun. Ruins anything up close. Comes with 12 shells.', price: 150, kind: 'weapon' },
-  { id: 'shells', name: 'Shotgun shells ×12', desc: 'Buckshot, plasma-tipped.', price: 30, kind: 'ammo', needs: 'weapon:shotgun' },
+  { id: 'shells', name: 'Shotgun shells ×12', desc: 'Buckshot, plasma-tipped. Also found in green ammo crates and on kills.', price: 30, kind: 'ammo' },
   { id: 'medkit', name: 'Trauma medkit', desc: 'Heals 50. Carry up to 3. Use with X or tap your health bar.', price: 40, kind: 'medkit' },
   { id: 'armor', name: 'Suit armor plating', desc: '+25 max shield.', price: 200, kind: 'upgrade' },
-  { id: 'heatsink', name: 'Rifle heat sink', desc: 'Plasma rifle runs 35% cooler.', price: 180, kind: 'upgrade' },
+  { id: 'blade', name: 'Vibro-machete', desc: 'Humming 60 cm blade. Melee hits land 3× harder and open things up. Select it on the weapon chip to slash with FIRE.', price: 220, kind: 'melee' },
+  { id: 'heatsink', name: 'Blaster heat sink', desc: 'Plasma blaster runs 35% cooler.', price: 180, kind: 'upgrade' },
   { id: 'roverarmor', name: 'Rover armor', desc: 'Your rover takes half damage.', price: 150, kind: 'upgrade' }
 ];
 
@@ -137,7 +138,7 @@ export const AGENT_TYPES = {
   boss: { name: 'Hive Queen', hp: 64, armor: 0.2, speed: 6.5, hover: 0, r: 3.2, cy: 2.5, scale: 2.6, attack: 'shoot', dmg: 18, swipe: 30, cd: 1.5, range: 46, keep: 14, xp: 150, credits: 120, boss: true }
 };
 export const WEAPONS = {
-  rifle: { name: 'Plasma rifle', cd: 0.13, dmg: 1.1, speed: 110, color: 0x7fe9ff, size: 1, heat: 6.5, life: 1.0 },
+  rifle: { name: 'Plasma blaster', cd: 0.13, dmg: 1.1, speed: 110, color: 0x7fe9ff, size: 1, heat: 6.5, life: 1.0 },
   shotgun: { name: 'Shotgun', cd: 0.8, dmg: 1.0, pellets: 8, spread: 0.075, speed: 85, color: 0xffb347, size: 0.75, ammo: 'shells', life: 0.4 },
   roverCannon: { name: 'Rover cannon', cd: 0.11, dmg: 1.5, speed: 120, color: 0xff5cf0, size: 1.7, heat: 6, twin: true, life: 1.1 }
 };
@@ -315,6 +316,8 @@ const ITEM_BUILD = {
   contraband() { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.8), A.mCrate); b.position.y = 0.4; g.add(b); const s = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.12, 0.82), B(0xff3a22)); s.position.y = 0.55; g.add(s); return g; },
   cargo() { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.6, 10), M(0x8a7a5a, { metalness: 0.5 })); c.rotation.z = Math.PI / 2; c.position.y = 0.55; g.add(c); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.57, 0.57, 0.2, 10), A.mGlowG); s.rotation.z = Math.PI / 2; s.position.set(0.3, 0.55, 0); g.add(s); return g; },
   medkit() { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.45), A.mWhite); b.position.y = 0.3; g.add(b); for (const [w, d] of [[0.42, 0.12], [0.12, 0.34]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), A.mRed); c.position.y = 0.48; g.add(c); } g.userData.spin = g; return g; },
+  blade() { const g = new THREE.Group(); const h = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.3), A.mCrate); h.position.set(0, 0.25, 0.3); g.add(h); const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.9), M(0xb8c4cc, { metalness: 0.8, roughness: 0.25, emissive: 0x0a3344 })); b.position.set(0, 0.27, -0.3); g.add(b); const e = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.02, 0.9), B(0x7fe9ff)); e.position.set(0, 0.2, -0.3); g.add(e); g.userData.spin = g; return g; },
+  ammoCrate() { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 0.62), M(0x3d4a2a, { roughness: 0.8 })); b.position.y = 0.28; g.add(b); const s = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.1, 0.64), B(0x3cff6a)); s.position.y = 0.42; g.add(s); for (const x of [-0.3, 0, 0.3]) { const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 6), A.mShell); sh.position.set(x, 0.66, 0); g.add(sh); } return g; },
   shells() { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.28, 6), A.mShell); s.position.set((i - 1.5) * 0.14, 0.2, 0); g.add(s); } g.userData.spin = g; return g; }
 };
 
@@ -377,7 +380,7 @@ export function createGame(ctx) {
 
   // ----- ichor, debris and splats (pooled, cheap) -----
   const ICHOR = [[0.55, 1, 0.18], [0.75, 1, 0.3], [0.3, 0.8, 0.08], [0.9, 1, 0.5]], ICHOR_H = [[1, 0.35, 0.12], [0.55, 1, 0.18], [1, 0.6, 0.2]], DUSTC = [[0.55, 0.45, 0.35], [0.4, 0.33, 0.25]];
-  let debrisL = [], splats = [], pickups = [];
+  let debrisL = [], splats = [], pickups = [], crates = [];
   function debris(c, n, mat, big = 1) {
     for (let k = 0; k < n && debrisL.length < 48; k++) {
       const m = new THREE.Mesh(A.debrisGeo, mat); m.position.copy(c); m.scale.setScalar((0.6 + Math.random() * 1.2) * Math.sqrt(big)); scene.add(m);
@@ -407,7 +410,8 @@ export function createGame(ctx) {
   function maybeDrop(x, z, a) {
     const r = Math.random(), big = a.T.boss || a.type === 'nest';
     if (big || r < 0.22) drop('medkit', x + 0.8, z);
-    if (P.unlocks.includes('weapon:shotgun') && (big || Math.random() < 0.3)) drop('shells', x - 0.8, z + 0.5);
+    if (big || Math.random() < (P.unlocks.includes('weapon:shotgun') ? 0.4 : 0.2)) drop('shells', x - 0.8, z + 0.5);
+    if (!P.unlocks.includes('melee:blade') && !pickups.some(p => p.kind === 'blade') && (big || (a.type === 'hunter' && Math.random() < 0.15))) drop('blade', x, z - 0.9);
   }
   function updatePickups(dt) {
     for (const p of [...pickups]) {
@@ -415,11 +419,111 @@ export function createGame(ctx) {
       const near = Math.hypot(p.x - player.x, p.z - player.z) < (ctx.st().driving ? 3.5 : 2.2);
       if (near || p.life <= 0) {
         scene.remove(p.obj); pickups.splice(pickups.indexOf(p), 1); if (!near) continue;
-        if (p.kind === 'medkit') { if (P.inv.medkits < 3) { P.inv.medkits++; onEvent('pickup', { name: `Medkit (${P.inv.medkits}/3)` }); } else { H.hp = Math.min(H.max, H.hp + 25); onEvent('pickup', { name: 'Patched up +25' }); } }
-        else { P.inv.shells = Math.min(48, P.inv.shells + 6); onEvent('pickup', { name: `Shells +6 (${P.inv.shells})` }); }
+        if (p.kind === 'blade') { if (!P.unlocks.includes('melee:blade')) P.unlocks.push('melee:blade'); onEvent('pickup', { name: 'Vibro-machete. Melee now cuts.', blade: true }); onEvent('weapon', { id: P.equip.weapon, name: 'Vibro-machete', shells: P.inv.shells, blade: true }); }
+        else if (p.kind === 'medkit') { if (P.inv.medkits < 3) { P.inv.medkits++; onEvent('pickup', { name: `Medkit (${P.inv.medkits}/3)` }); } else { H.hp = Math.min(H.max, H.hp + 25); onEvent('pickup', { name: 'Patched up +25' }); } }
+        else { P.inv.shells = Math.min(48, P.inv.shells + 6); onEvent('pickup', { name: `Shells +6 (${P.inv.shells})`, ammo: true }); }
         save();
       }
     }
+    // ammo crates around colonies and points of interest: walk into one, it restocks after a while
+    const st = ctx.st();
+    for (const c of crates) {
+      if (c.cool > 0) { c.cool -= dt; if (c.cool <= 0) c.obj.visible = true; continue; }
+      c.sp.material.opacity = 0.6 + Math.sin(time * 4) * 0.3;
+      if (H.down > 0 || Math.hypot(c.x - player.x, c.z - player.z) > (st.driving ? 3.6 : 2.4)) continue;
+      c.cool = 90; c.obj.visible = false;
+      const add = c.cache ? 12 : 8; P.inv.shells = Math.min(48, P.inv.shells + add); W.heat = 0; W.over = false;
+      let extra = ''; if (P.inv.medkits < 3 && Math.random() < (c.cache ? 0.6 : 0.3)) { P.inv.medkits++; extra = ' · medkit'; }
+      burst(c.x, height(c.x, c.z) + 0.8, c.z, 10, 3, [[0.4, 1, 0.5]]);
+      onEvent('pickup', { name: `${c.cache ? 'Supply cache' : 'Ammo crate'}: shells +${add} (${P.inv.shells})${extra}`, ammo: true, crate: true });
+      save();
+    }
+  }
+  function placeCrates() {
+    const spots = [];
+    const C0 = ctx.colonyAt?.([0, 0]);
+    if (C0) { const offs = world === 'Moon' ? [[-17, 12], [19, 9]] : [[-18, 12], [20, -6], [6, 26]]; for (const [ox, oz] of offs) spots.push({ x: C0.x + ox, z: C0.z + oz }); }
+    for (const [a, d] of [[40, 150], [160, 230], [280, 320]]) { const p = ctx.safePoint(a, d); spots.push({ ...p, cache: true }); }
+    for (const sp of spots) {
+      let { x, z } = sp; for (let k = 0; k < 8 && ctx.solidAt?.(x, height(x, z) + 0.5, z); k++) { x += 2.5; z += 1.5; }
+      const obj = ITEM_BUILD.ammoCrate(); obj.position.set(x, height(x, z), z); obj.rotation.y = Math.random() * 6; scene.add(obj);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: A.sparkTex, color: 0x3cff6a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); s.position.y = 1.2; s.scale.setScalar(1.6); obj.add(s);
+      crates.push({ obj, sp: s, x, z, cool: 0, cache: !!sp.cache });
+    }
+  }
+  // rover and ship lockers top you up (once a minute)
+  const RS = { rover: -99, ship: -99 };
+  function resupply(src) {
+    if (time - RS[src] < 60) return false;
+    const got = [];
+    if (P.inv.shells < 24) { P.inv.shells = 24; got.push('shells 24'); }
+    if (P.inv.medkits < 1) { P.inv.medkits = 1; got.push('a medkit'); }
+    if (!got.length) return false;
+    RS[src] = time; W.heat = 0; W.over = false; save();
+    onEvent('pickup', { name: `${src === 'ship' ? 'Ship' : 'Rover'} locker: ${got.join(' + ')}`, ammo: true });
+    return true;
+  }
+  function updateResupply() {
+    const st = ctx.st(); if (H.down > 0) return;
+    if (st.driving && st.own) resupply('rover');
+    else if (!st.driving && st.ownRover && Math.hypot(st.ownRover.x - player.x, st.ownRover.z - player.z) < 7.5) resupply('rover');
+    else if (!st.driving && ctx.SHIP && Math.hypot(ctx.SHIP.x - player.x, ctx.SHIP.z - player.z) < 13) resupply('ship');
+  }
+
+  // ----- melee: punch, punch, kick (knockback); the vibro-machete cuts much deeper -----
+  const MEL = { cd: 0, combo: 0, last: -9 };
+  let swings = [];
+  const hasBlade = () => P.unlocks.includes('melee:blade');
+  function melee() {
+    const st = ctx.st();
+    if (st.driving || H.down > 0 || st.intro > 0 || st.outro > 0 || MEL.cd > 0) return false;
+    const blade = hasBlade();
+    if (time - MEL.last > 1.1) MEL.combo = 0;
+    const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
+    const kick = step === 2, dmg = blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (blade ? 3.3 : 2.6) + (kick ? 0.3 : 0), knock = kick ? 2.4 : 0.9;
+    MEL.cd = kick ? 0.55 : blade ? 0.36 : 0.42;
+    // snap to the nearest thing in front so a phone thumb can't whiff
+    let yaw = player.faceYaw ?? player.yaw, best = null, bd = range + 2.5;
+    for (const a of agents) { if (a.burrow) continue; const dx = a.x - player.x, dz = a.z - player.z, d = Math.hypot(dx, dz) - a.T.r * 0.7; if (d < bd && Math.abs(a.y + (a.T.cy ?? 0.8) - player.y) < 4) { const ang = Math.abs(Math.atan2(Math.sin(Math.atan2(-dx, -dz) - yaw), Math.cos(Math.atan2(-dx, -dz) - yaw))); if (ang < 1.4 || d < 1.5) { bd = d; best = a; } } }
+    if (!best) { const w = ctx.meleeTarget?.(player.x, player.z, yaw, range + 2); if (w) yaw = Math.atan2(-(w.x - player.x), -(w.z - player.z)); }
+    else yaw = Math.atan2(-(best.x - player.x), -(best.z - player.z));
+    player.faceYaw = yaw;
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+    let hits = 0;
+    for (const a of [...agents]) {
+      if (a.burrow) continue;
+      const dx = a.x - player.x, dz = a.z - player.z, d = Math.hypot(dx, dz) - a.T.r * 0.7;
+      if (d > range || (dx * fx + dz * fz) < -0.3 || Math.abs(a.y + (a.T.cy ?? 0.8) - player.y) > 4) continue;
+      if (!blade && hits) break; // fists hit one thing, the blade sweeps
+      a.hp -= dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; hits++;
+      const c = center(a).clone();
+      burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, a.type === 'hunter' ? ICHOR_H : ICHOR);
+      if (blade) splat(a.x + fx, a.z + fz, 0.6);
+      if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1; a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, kick ? 1.2 : 0.6); if (!a.T.hover) a.vy = kick ? 5 : 2.5; }
+      if (a.hp <= 0) killAgent(a);
+    }
+    if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
+    swing(yaw, blade, kick); player.melee = { t: kick ? 0.32 : 0.22, max: kick ? 0.32 : 0.22, kick, blade, step };
+    W.recoil = kick ? 1.6 : 1; W.lastShot = time;
+    onEvent('melee', { hit: hits > 0, blade, kick, step });
+    return true;
+  }
+  function swing(yaw, blade, kick) {
+    const arc = blade ? 2.4 : kick ? 1.2 : 0.8;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? 1.7 : 1.1, blade ? 0.05 : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+    m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (kick ? 0.5 : 0.15), yaw, (MEL.combo % 2 ? 1 : -1) * 0.3);
+    m.geometry.rotateZ(Math.PI / 2 - arc / 2);
+    m.position.set(player.x - Math.sin(yaw) * 0.6, player.y - (kick ? 1.2 : 0.55), player.z - Math.cos(yaw) * 0.6); scene.add(m);
+    swings.push({ m, life: 0.18, max: 0.18 });
+  }
+  function updateMelee(dt) {
+    MEL.cd = Math.max(0, MEL.cd - dt);
+    for (const s of [...swings]) { s.life -= dt; s.m.material.opacity *= 0.86; s.m.scale.setScalar(1 + (1 - s.life / s.max) * 0.25); if (s.life <= 0) { scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); swings.splice(swings.indexOf(s), 1); } }
+  }
+  function meleeNear() {
+    const st = ctx.st(); if (st.driving) return false;
+    for (const a of agents) if (!a.burrow && Math.hypot(a.x - player.x, a.z - player.z) - a.T.r < 7) return true;
+    return !!ctx.meleeTarget?.(player.x, player.z, null, 4.5);
   }
 
   // ----- hostile AI: stalkers flank and lunge (some wait burrowed), hunters strafe and burst-fire from range,
@@ -627,31 +731,47 @@ export function createGame(ctx) {
     if (best) return { agent: best, point: center(best).clone() };
     return { agent: null, point: ray.ray.at(80, new THREE.Vector3()) };
   }
+  // colony security (and guards once you're wanted) for auto-aim, nearest in front
+  function worldTarget(from, dir, cone) {
+    let best = null, bs = Infinity;
+    for (const t of ctx.worldTargets()) {
+      const c = new THREE.Vector3(t.x, t.y, t.z), d = c.distanceTo(from); if (d > 70) continue;
+      const ang = tmpV.copy(c).sub(from).normalize().angleTo(dir); if (ang > cone) continue;
+      ndc.copy(c).project(camera); if (!(ndc.z < 1 && Math.abs(ndc.x) < 1.1 && Math.abs(ndc.y) < 1.1)) continue;
+      const s = d + ang * 30; if (s < bs) { bs = s; best = c; }
+    }
+    return best;
+  }
   function muzzle() {
     const st = ctx.st();
+    if (st.driving && !st.own) { const r = st.rover; return new THREE.Vector3(r.x - Math.cos(r.yaw) * 0.9, (r.y ?? height(r.x, r.z)) + 1.7, r.z + Math.sin(r.yaw) * 0.9); }
     if (st.driving && st.own && turret) { turret.group.updateMatrixWorld(true); return (W.side ? turret.tipR : turret.tipL).getWorldPosition(new THREE.Vector3()); }
     if (st.camDist < 0.8) return new THREE.Vector3(player.x, player.y - 0.35, player.z).addScaledVector(camera.getWorldDirection(tmpV), 0.6);
     const fy = player.yaw;
     return new THREE.Vector3(player.x + Math.cos(fy) * 0.45 - Math.sin(fy) * 0.4, player.y - 0.45, player.z - Math.sin(fy) * 0.45 - Math.cos(fy) * 0.4);
   }
   // fire once. aimAt = {x,y} in NDC to shoot along a screen ray, or null for auto-aim (phone Fire button)
-  const curWeapon = () => { const st = ctx.st(); if (st.driving) return st.own && turret ? WEAPONS.roverCannon : null; return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
+  // own rover: the turret (aliens on). Stolen rides: your sidearm out the window. On foot: blaster or shotgun.
+  const curWeapon = () => { const st = ctx.st(); if (st.driving) return st.own ? (turret && aliensOn() ? WEAPONS.roverCannon : null) : (P.equip.weapon === 'shotgun' && P.unlocks.includes('weapon:shotgun') ? WEAPONS.shotgun : WEAPONS.rifle); return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
   function fire(aimAt) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
-    if (!aliensOn() && !ctx.allowFire?.()) return false;
+    if (!st.driving && P.equip.weapon === 'blade' && hasBlade()) return melee();
     const wpn = curWeapon(); if (!wpn) return false;
     if (W.cd > 0 || (wpn.heat && W.over)) return false;
     if (wpn.ammo) { if (!P.inv[wpn.ammo]) { W.cd = 0.5; onEvent('dry', { weapon: wpn.name }); return false; } P.inv[wpn.ammo]--; }
     W.cd = wpn.cd; W.lastShot = time;
     if (wpn.twin) W.side ^= 1;
-    const from = muzzle(), useTurret = st.driving && turret;
+    const from = muzzle(), useTurret = st.driving && st.own && turret;
     let to;
     if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
     else {
       const dir = st.driving ? new THREE.Vector3(-Math.sin(st.rover.yaw), 0, -Math.cos(st.rover.yaw)) : camera.getWorldDirection(new THREE.Vector3());
       const t = autoTarget(from, dir, st.driving ? 1.05 : Math.PI);
+      const wt = !t && ctx.worldTargets ? worldTarget(from, st.driving ? dir : new THREE.Vector3(-Math.sin(player.faceYaw ?? player.yaw), 0, -Math.cos(player.faceYaw ?? player.yaw)), st.driving ? 0.9 : 1.1) : null;
       if (t) to = center(t).clone();
+      else if (wt) to = wt;
+      else if (st.driving && !useTurret) to = from.clone().addScaledVector(dir, 80);
       else if (useTurret) { to = new THREE.Vector3(0, 0, -80); turret.pitchG.localToWorld(to); }
       else to = from.clone().addScaledVector(camera.getWorldDirection(new THREE.Vector3()), 80);
     }
@@ -669,11 +789,12 @@ export function createGame(ctx) {
     onEvent('zap', { heavy: !!wpn.twin, shotgun: !!wpn.pellets });
     return true;
   }
+  // cycle blaster -> shotgun -> machete (whatever you own)
   function switchWeapon(id) {
-    const own = P.unlocks.includes('weapon:shotgun');
-    const next = id || (P.equip.weapon === 'shotgun' ? 'rifle' : 'shotgun');
-    if (next === 'shotgun' && !own) { onEvent('toast', { text: '🔫 No shotgun yet. The colony shop has one.' }); return false; }
-    P.equip.weapon = next; save(); onEvent('weapon', { id: next, name: WEAPONS[next].name, shells: P.inv.shells }); return true;
+    const owned = ['rifle', ...(P.unlocks.includes('weapon:shotgun') ? ['shotgun'] : []), ...(hasBlade() ? ['blade'] : [])];
+    const next = id || owned[(owned.indexOf(P.equip.weapon) + 1) % owned.length];
+    if (!owned.includes(next) || (!id && owned.length < 2)) { onEvent('toast', { text: '🔫 Plasma blaster: unlimited, it just runs hot. Shotgun and machete are sold at the colony shop.' }); return false; }
+    P.equip.weapon = next; save(); onEvent('weapon', { id: next, name: next === 'blade' ? 'Vibro-machete' : WEAPONS[next].name, shells: P.inv.shells }); return true;
   }
   const seg = new THREE.Vector3(), q = new THREE.Vector3();
   function updateBolts(dt) {
@@ -756,6 +877,7 @@ export function createGame(ctx) {
     if (W.over && W.heat < 35) { W.over = false; onEvent('cooled', {}); }
     if (input.fire) fire(input.fireAim || null);
     if (input.medkit) useMedkit();
+    if (input.melee) melee();
   }
 
   // ----- missions -----
@@ -1045,6 +1167,7 @@ export function createGame(ctx) {
     const items = SHOP.map(it => {
       let owned = false, ok = true, why = '';
       if (it.kind === 'weapon') owned = own('weapon:' + it.id);
+      if (it.kind === 'melee') owned = own('melee:' + it.id);
       if (it.kind === 'upgrade') owned = hasUp(it.id);
       if (it.needs && !own(it.needs)) { ok = false; why = 'Needs the shotgun'; }
       if (it.kind === 'medkit' && P.inv.medkits >= 3) { ok = false; why = 'Carrying 3'; }
@@ -1072,6 +1195,7 @@ export function createGame(ctx) {
     if (P.credits < it.price) return { ok: false, msg: `Short ${it.price - P.credits} credits.` };
     P.credits -= it.price;
     if (it.kind === 'weapon') { P.unlocks.push('weapon:' + it.id); P.inv.shells = Math.min(48, P.inv.shells + 12); P.equip.weapon = it.id; }
+    else if (it.kind === 'melee') { P.unlocks.push('melee:' + it.id); onEvent('weapon', { id: P.equip.weapon, name: it.name, shells: P.inv.shells, blade: true }); }
     else if (it.kind === 'ammo') P.inv.shells = Math.min(48, P.inv.shells + 12);
     else if (it.kind === 'medkit') P.inv.medkits++;
     else if (it.kind === 'upgrade') { P.upgrades.push(it.id); applyUpgrades(); }
@@ -1092,7 +1216,7 @@ export function createGame(ctx) {
   function enter(name) {
     assets(); P = loadProgress(); world = name; cfg = ctx.st().cfg || {}; time = 0; applyUpgrades();
     H.hp = H.max; H.shield = H.smax; H.down = 0; H.inv = 0; H.lastHit = -99; W.heat = 0; W.over = false; W.cd = 0;
-    sparks = makeSparks(); zone = makeZone();
+    sparks = makeSparks(); zone = makeZone(); RS.rover = RS.ship = -99; placeCrates();
     const st = ctx.st(); turret = st.ownRover ? buildTurret(st.ownRover) : null;
     applyCosmetics();
     quest = null;
@@ -1109,6 +1233,7 @@ export function createGame(ctx) {
     if (sparks) { scene.remove(sparks.pts); sparks.pts.geometry.dispose(); sparks.pts.material.dispose(); }
     if (turret) turret.group.parent?.remove(turret.group);
     for (const d of debrisL) scene.remove(d.m); for (const d of splats) scene.remove(d.m); for (const d of pickups) scene.remove(d.obj); debrisL = []; splats = []; pickups = [];
+    for (const c of crates) scene.remove(c.obj); crates = []; for (const s of swings) scene.remove(s.m); swings = [];
     if (gate) { scene.remove(gate); gate = null; }
     agents = []; bolts = []; orbs = []; rares = []; quest = null; zone = null; outpost = null; sparks = null; turret = null; bandana = null; bossRef = null; world = null;
   }
@@ -1119,7 +1244,7 @@ export function createGame(ctx) {
     if (aliensOn()) { updateAgents(dt); updateOrbs(dt); }
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
     updateWeapons(dt, input);
-    updateBolts(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); updatePickups(dt);
+    updateBolts(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); updatePickups(dt); updateMelee(dt); updateResupply(); player.hasBlade = hasBlade();
     updateQuest(dt); updateRares(dt); updateZone(dt); updateDogWarn(dt);
   }
   // tapping a quest item or rare find picks it up; returns undefined when the object is not ours
@@ -1157,7 +1282,7 @@ export function createGame(ctx) {
   }
 
   return {
-    enter, exit, update, fire, accept, useMedkit, switchWeapon, shopList, buy, talk, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
+    enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, buy, talk, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
     onDiscover() { gain(20, 10); },
@@ -1180,11 +1305,13 @@ export function createGame(ctx) {
         quest: quest ? { id: quest.def.id, title: quest.def.title, step: quest.step, steps: quest.def.steps.length, text: stepText(), fiction: !!quest.def.fiction, timer: questTimer() } : null,
         boss: bossRef ? { name: bossRef.T.name, hp: Math.max(0, bossRef.hp), max: bossRef.T.hp } : null,
         rares: rareCount(), raresHere: rares.length, kills: P.stats.kills, deaths: P.stats.deaths, badges: P.badges.length, busted: P.stats.busted,
-        weapon: st.driving ? (st.own && turret ? 'roverCannon' : null) : P.equip.weapon, weaponName: curWeapon()?.name || '', shells: P.inv.shells, medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),
+        weapon: st.driving ? (st.own && turret ? 'roverCannon' : null) : P.equip.weapon, weaponName: (!st.driving && P.equip.weapon === 'blade') ? 'Vibro-machete' : curWeapon()?.name || '', shells: P.inv.shells, medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),
+        hasBlade: hasBlade(), canFire: !!curWeapon() || (!st.driving && P.equip.weapon === 'blade'), meleeNear: meleeNear(), meleeCd: MEL.cd, combo: MEL.combo,
         tracker: (() => { let d = 1e9; for (const a of agents) if (!a.T.still || true) d = Math.min(d, Math.hypot(a.x - player.x, a.z - player.z)); return d; })(),
         zone: zone ? { x: zone.x, z: zone.z, active: zone.active } : null
       };
     },
+    mapCrates: () => crates.filter(c => c.cool <= 0).map(c => ({ x: c.x, z: c.z })),
     mapAliens: () => agents.filter(a => !a.burrow).map(a => ({ x: a.x, z: a.z, boss: !!a.T.boss, nest: a.type === 'nest' })),
     mapGate: () => gate ? { x: gate.position.x, z: gate.position.z } : null,
     // test/debug hooks
@@ -1200,7 +1327,8 @@ export function createGame(ctx) {
       calm(on) { for (const a of agents) a.T = on ? { ...AGENT_TYPES[a.type], speed: 0, cd: 999 } : AGENT_TYPES[a.type]; },
       skipTimer(s) { if (quest) { quest.t0 -= s; quest.st0 -= s; } },
       credits(n) { P.credits += n; save(); }, P: () => P, H: () => H, debrisCount: () => debrisL.length + splats.length,
-      advance() { if (quest) advance(); }, quest: () => quest && { id: quest.def.id, step: quest.step, gi: quest.gi, target: quest.target }
+      advance() { if (quest) advance(); }, crates: () => crates.map(c => ({ x: c.x, z: c.z, cool: c.cool, cache: c.cache })), pickups: () => pickups.map(p => ({ kind: p.kind, x: p.x, z: p.z })),
+      drop: (kind, x, z) => drop(kind, x, z), quest: () => quest && { id: quest.def.id, step: quest.step, gi: quest.gi, target: quest.target }
     }
   };
 }

@@ -17,7 +17,7 @@ const tag = (DEV ? DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : 'desktop') +
   const unlock = () => G(() => document.exitPointerLock?.());
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7');
+    ok('version', await G(() => window.__app.version), /^v7/.test(await G(() => window.__app.version)));
     await G(() => { localStorage.removeItem('ssx.game.v1'); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 60000);
     await sleep(1200); await unlock();

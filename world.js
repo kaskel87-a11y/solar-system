@@ -392,13 +392,48 @@ export function createWorld(ctx) {
     for (const p of people) { if (p.stun > 0) continue; const c = new THREE.Vector3(p.x, height(p.x, p.z) + 1.2, p.z); if (segHit(p0, p1, c, 0.6)) { p.hp -= b.dmg; p.flee = 2; p.fx = Math.sign(p.x - p0.x) || 1; p.fz = Math.sign(p.z - p0.z) || 1; if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); } crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'shot a guard' : 'shot a colonist'); return true; } }
     return false;
   }
+  // auto-aim candidates: security always (they only show up once you're wanted), guards while wanted
+  function targets() {
+    if (!C) return [];
+    const out = security.map(s => ({ x: s.x, y: s.y + (s.kind === 'drone' ? 0 : 1), z: s.z, kind: s.kind }));
+    if (wanted > 0) for (const p of people) if (p.kind === 'guard' && !p.stun) out.push({ x: p.x, y: height(p.x, p.z) + 1.2, z: p.z, kind: 'guard' });
+    return out;
+  }
+  // nearest hittable thing within reach (yaw = facing to require it in front, or null for any direction)
+  function meleeTarget(x, z, yaw, range) {
+    if (!C) return null;
+    let best = null, bd = range;
+    const consider = (o, kind) => { const dx = o.x - x, dz = o.z - z, d = Math.hypot(dx, dz); if (d > bd) return; if (yaw !== null) { const a = Math.atan2(-dx, -dz) - yaw; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > 1.4 && d > 1.5) return; } bd = d; best = { x: o.x, z: o.z, kind }; };
+    for (const p of people) if (!p.stun && p.kind !== 'contact') consider(p, p.kind);
+    for (const s of security) if (s.kind !== 'drone' || Math.abs(s.y - player.y) < 3) consider(s, s.kind);
+    return best;
+  }
+  // a punch/kick/blade hit on colony folk or security. Returns true if something was hit.
+  function meleeWorld(x, z, fx, fz, range, dmg, knock) {
+    if (!C) return false;
+    const inFront = o => { const dx = o.x - x, dz = o.z - z, d = Math.hypot(dx, dz); return d < range + 0.4 && (dx * fx + dz * fz) > -0.3 ? d || 1 : 0; };
+    for (const p of people) {
+      if (p.stun > 0 || p.kind === 'contact') continue; const d = inFront(p); if (!d) continue;
+      p.hp -= dmg; p.flee = 3; p.x += (p.x - x) / d * knock; p.z += (p.z - z) / d * knock; p.fx = Math.sign(p.x - x) || 1; p.fz = Math.sign(p.z - z) || 1;
+      if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); }
+      crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'assaulted a guard' : p.kind === 'contact' ? 'assaulted a fixer' : 'assaulted a colonist');
+      onEvent('meleeHit', { kind: p.kind }); return true;
+    }
+    for (const s of [...security]) {
+      if (s.kind === 'drone' && Math.abs(s.y - player.y) > 3) continue; const d = inFront(s); if (!d) continue;
+      s.hp -= dmg; if (s.kind !== 'buggy') { s.x += (s.x - x) / d * knock; s.z += (s.z - z) / d * knock; }
+      if (s.hp <= 0) { recall(s); onEvent('secDown', { kind: s.kind }); crime(Math.min(5, wanted + 1), 'destroyed security'); } else crime(2, 'attacked security');
+      onEvent('meleeHit', { kind: s.kind }); return true;
+    }
+    return false;
+  }
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   function nearShop() { if (!C) return false; const s = toW(C.shop); return Math.hypot(s.x - player.x, s.z - player.z) < 4.5; }
   function gate() { if (!C) return null; return { x: cx, z: cz - 24 }; }
 
   return {
-    layout, enter, exit, update, collide, solidAt, nearVehicle, nearestVehicle, take, leave, hitWorld, shotFired, nearContact, nearShop, gate, setWanted, crime,
+    layout, enter, exit, update, collide, solidAt, nearVehicle, nearestVehicle, take, leave, hitWorld, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; },
     get colony() { return C ? { name: C.name, x: cx, z: cz, dist: distC() } : null; },

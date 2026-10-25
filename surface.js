@@ -1,8 +1,8 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7';
-import { createGame } from './game.js?v=7';
-import { createWorld, VEHICLES } from './world.js?v=7';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.1';
+import { createGame } from './game.js?v=7.1';
+import { createWorld, VEHICLES } from './world.js?v=7.1';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -604,11 +604,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     scene, height: (x, z) => height(x, z), player, onEvent, isMobile, game: () => game,
     st: () => ({ driving, car, ownRover: rover })
   });
-  const gameEvent = (t, d) => { if (t === 'zap' && !driving) world.shotFired(); onEvent(t, d); };
+  const gameEvent = (t, d) => { if (t === 'zap' && (!driving || car !== rover)) world.shotFired(); onEvent(t, d); };
   const game = createGame({
     scene, camera, isMobile, onEvent: gameEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
     st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
-    hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
+    hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
     respawn(why) {
@@ -855,6 +855,21 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const sw = Math.sin(player.bob) * 0.6 * player.moving;
     if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; }
     else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; }
+    // v7.1 melee: the vibro-machete rides in the right hand once you own it; punches, kicks and slashes animate the limbs
+    if (player.hasBlade && !P.blade) {
+      const bl = new THREE.Group(); bl.position.set(0, -0.7, 0);
+      const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), new THREE.MeshStandardMaterial({ color: 0x3a2f22, roughness: 0.9 })); h.position.z = 0.02; bl.add(h);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.11, 0.72), new THREE.MeshStandardMaterial({ color: 0xb8c4cc, metalness: 0.8, roughness: 0.25, emissive: 0x0a3344 })); b.position.z = -0.45; bl.add(b);
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.72), new THREE.MeshBasicMaterial({ color: 0x7fe9ff })); e.position.set(0, -0.06, -0.45); bl.add(e);
+      P.armR.add(bl); P.blade = bl;
+    }
+    const m = player.melee;
+    if (m && m.t > 0) {
+      m.t -= dt; const k = Math.max(0, m.t / m.max), arc = Math.sin(k * Math.PI);
+      if (m.kick) { P.legR.rotation.x = 1.45 * arc; P.armL.rotation.x = -0.5 * arc; }
+      else if (m.blade) P.armR.rotation.x = 0.1 + 2.4 * k;
+      else (m.step % 2 ? P.armL : P.armR).rotation.x = 1.6 * arc;
+    }
   }
 
   // ----- first-person rover cockpit: hood, dashboard, pillars and a live gauge, drawn on top of the world -----
@@ -1026,13 +1041,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const was = car; if (car !== rover) world.leave(car); car = null;
       onEvent('vehicle', { on: false, kind: was.kind }); return 'exit';
     }
-    const nv = !nearRover() && world.nearVehicle(player.x, player.z);
+    // a little more reach than the button's show range so a tap at the edge never whiffs
+    const nv = !nearRover() && world.nearVehicle(player.x, player.z, 7);
     if (nearRover() || nv) {
       car = nv || rover; if (nv) world.take(nv);
       walkGoal = camGoal; saveView(); driving = true; camGoal = driveGoal; camYawOff = 0; player.pitch = camGoal < 0.8 ? FP_DRIVE_PITCH : Math.min(player.pitch, 0);
       onEvent('vehicle', { on: true, kind: car.kind, name: car.spec.name, stolen: car !== rover });
       return nv ? 'take' : 'drive';
     }
+    const far = world.nearVehicle(player.x, player.z, 16);
+    if (far) { onEvent('toast', { text: `Too far. Get right up to the ${far.spec?.name || far.kind}.` }); return 'far'; }
     return null;
   }
   function pet() {
@@ -1128,7 +1146,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = nearestUndiscovered(player.x, player.z), w = game.waypoint();
       return { x: driving ? car.x : player.x, z: driving ? car.z : player.z, yaw: viewYaw, driving, rover: rover ? { x: rover.x, z: rover.z } : null, ship: SHIP,
         wp: w ? { x: w.x, z: w.z } : null, next: n ? { x: n.it.x, z: n.it.z } : null, aliens: game.mapAliens(), dog: dog && !driving ? { x: dog.x, z: dog.z } : null,
-        world: world.mapData(), gate: game.mapGate() };
+        world: world.mapData(), gate: game.mapGate(), crates: game.mapCrates() };
     },
     waypoint() { const w = game.waypoint(); if (!w) return null; const a = Math.atan2(-(w.x - player.x), -(w.z - player.z)) - viewYaw; return { dist: Math.round(w.dist), ang: Math.atan2(Math.sin(a), Math.cos(a)), text: w.text }; },
     get info() {

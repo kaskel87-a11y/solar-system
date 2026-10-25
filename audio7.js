@@ -116,6 +116,10 @@ export function createAudio7(getCtx) {
     thud() { const a = getCtx(); if (!a) return; osc(a, a.destination, 'sine', 120, a.currentTime, 0.2, 0.25, 50); },
     dry() { const a = getCtx(); if (!a) return; osc(a, a.destination, 'square', 1800, a.currentTime, 0.03, 0.05); },
     cash() { const a = getCtx(); if (!a) return; const t = a.currentTime; [1568, 2093].forEach((f, i) => osc(a, a.destination, 'triangle', f, t + i * 0.07, 0.2, 0.09)); hiss(a, a.destination, t, 0.08, 0.05, 6000, 1); },
+    whoosh() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.12, 0.12, 1400, 0.8); },
+    punch() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 95, t, 0.14, 0.35, 45); hiss(a, a.destination, t, 0.06, 0.22, 900, 0.7, 'lowpass'); },
+    blade() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.22, 0.32, 3200, 2.5); osc(a, a.destination, 'sawtooth', 240, t, 0.18, 0.08, 70); hiss(a, a.destination, t + 0.04, 0.25, 0.25, 600, 1.5); },
+    crate() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'square', 300, t, 0.05, 0.06); osc(a, a.destination, 'square', 420, t + 0.07, 0.08, 0.06); hiss(a, a.destination, t, 0.1, 0.08, 2000, 1); },
     door() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.4, 0.12, 700, 1); osc(a, a.destination, 'sine', 180, a.currentTime, 0.25, 0.06, 90); }
   };
   return {
