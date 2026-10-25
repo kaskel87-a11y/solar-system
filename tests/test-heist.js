@@ -4,7 +4,7 @@
 // BASE=http://127.0.0.1:8851/ BR=webkit DEV="iPhone SE (3rd gen)" OUT=/workspace/pw-ben/shots/ node test-heist.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8851/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/workspace/pw-ben/shots/', desk = DEV === 'desktop';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop';
 const VP = process.env.VP; // e.g. 393x852: override the device viewport (same touch/UA settings)
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
