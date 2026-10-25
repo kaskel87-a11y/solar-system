@@ -8,6 +8,7 @@ import { activityTick } from './activities/runner.js';
 import { heistTick } from './heist.js';
 import { sciTick } from './scihooks.js'; // junkyard lab pack: Raccoon Mobile + scientist portal jobs
 import { dangerTick } from './danger.js'; // Chief of Staff's street danger (PR #3)
+import { modeTick } from './modes/hook.js'; // add-on modes (Rags to Riches) + generic SSX.raids (PR #13)
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1151,6 +1152,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     sciTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
+    modeTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     game.update(dt, input);
     dangerTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, inside: !!indoor, dog, intro: state.intro });
     updateCockpit(dt, driving && camDist < 0.8);
