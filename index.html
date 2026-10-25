@@ -190,6 +190,8 @@
     #miniMap { position: fixed; z-index: 7; top: calc(60px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
     #stackR { position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
+    /* v7.5.1: on portrait phones a radio pill outranks a toast, so the right stack never reaches the screen centre */
+    @media (max-aspect-ratio: 1/1) { #stackR:has(> #radio[style*="block"]) > #toast { display: none !important; } }
     #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
     #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #questTrack { border-color: rgba(80,200,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
