@@ -21,6 +21,12 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.5.2: street life
+- Street danger: knife muggings with Pay / Fight / Run / Talk, street fights, gang and junkie car chases, the Red Tape Run highway set-piece, and ambient street vignettes. Toggle it from ☰ (🔪 Street danger).
+- Side jobs: taxi, paramedic and vigilante runs with levels, across all four districts.
+- The Raccoon Mobile (900 cr at Meridian Depot) and Silas & Tam's junkyard lab: five portal missions.
+- Under the hood: one import map now owns the version, so every module loads exactly once (see API.md, "Importing core modules").
+
 ## v7.5.1: heists
 - Safes in the First Junction Trust bank and the Helios Heights mansions now use a cracking dial: drag anywhere to turn it, and stop on each notch while keeping the noise down. Too much noise trips the alarm.
 - Security cameras sweep view cones and raise your wanted level when they spot you. Private security responds to alarms.
