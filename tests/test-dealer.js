@@ -101,7 +101,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // second tap buys (a tap can land mid-frame on a loaded box: retry, then require the level)
     const buyUp = async (slot, lvl) => { for (let i = 0; i < 3; i++) { if (await G(([s, l, id]) => window.__dealer.rideById(id).up[s] >= l, [slot, lvl, id])) return true; await tap(`[data-up="${slot}"]`); await sleep(150); } return G(([s, l, id]) => window.__dealer.rideById(id).up[s] >= l, [slot, lvl, id]); };
     await tap('[data-up="engine"]'); ok('engineBought', null, await buyUp('engine', 1)); ok('brakesBought', null, await buyUp('brakes', 1));
-    await sleep(300); const s1 = await G(() => window.__dealer.ride.spec);
+    await wait(() => window.__dealer.ride?.spec?.brake === 1.35, 5000); const s1 = await G(() => window.__dealer.ride.spec); // re-applied on the next frame
     ok('upgradeChangesSpec', JSON.stringify({ v0: s0.vmax, v1: s1.vmax, b: s1.brake, t0: s0.turn, t1: s1.turn }), s1.vmax > s0.vmax && s1.acc > s0.acc && s1.brake === 1.35 && s1.turn > 1.85);
     await sleep(800); await shot('garage');
     await tap('[data-close="1"]'); await sleep(200);
@@ -153,7 +153,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // drag race: roll up to an NPC, challenge, wager, race
     const npc = await G(() => window.__dealer.meet.cars()[0]);
     await releaseStick();
-    await G(n => window.__app.surface.debugMove(n.x, n.z + (n.z > window.__dealer.spots.meet.z ? -5.5 : 5.5), 0), npc); ok('raceCtx', null, await ctxShown('Race'));
+    await G(n => { window.__app.joy.x = window.__app.joy.y = 0; window.__app.surface.debugMove(n.x, n.z + (n.z > window.__dealer.spots.meet.z ? -5.5 : 5.5), 0); window.__race.setCarSpeed?.(0); }, npc);
+    const rc = await ctxShown('Race'); if (!rc) R.raceDiag = JSON.stringify(await G(n => { const i = window.__app.surface.info; return { ctx: window.__dealer.ctx, me: [i.roverX, i.roverZ], npc: [n.x, n.z], joy: { ...window.__app.joy }, drag: window.__dealer.meet.drag, sheet: window.__dealer.sheet }; }, npc)); ok('raceCtx', null, rc);
     await sleep(900); await shot('meet');
     await tap('#dlrCtxBtn'); ok('challengeSheet', null, await sheetIs('challenge'));
     await tap('[data-wager="100"]'); ok('wagerPicked', null, await G(() => document.querySelector('[data-wager="100"]').classList.contains('on')));
