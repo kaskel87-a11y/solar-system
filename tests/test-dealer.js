@@ -145,16 +145,17 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('npcCap', sp.cars + sp.people, touch ? sp.cars + sp.people <= 12 : sp.cars + sp.people <= 16);
     // show off: lot edge, away from the parked cars
     await releaseStick();
-    await G(() => { const s = window.__dealer.spots.meet; window.__app.surface.debugMove(s.x - 17, s.z, 0); }); ok('showOffCtx', null, await ctxShown('Show off'));
+    await G(() => { const s = window.__dealer.spots.meet; window.__app.surface.debugMove(s.x - 26, s.z, 0); }); ok('showOffCtx', null, await ctxShown('Show off'));
     const rep0 = await G(() => window.__dealer.garage.rep); await tap('#dlrCtxBtn'); await sleep(300);
     const rep1 = await G(() => window.__dealer.garage.rep); ok('showOffRep', rep1 - rep0, rep1 - rep0 >= 20);
-    await sleep(1200); await tap('#dlrCtxBtn'); ok('showOffOncePerMeet', null, await G(r => window.__dealer.garage.rep === r, rep1));
-    await sleep(2600);
+    await sleep(1200); await G(() => window.__dealer.closeSheet()); await ctxShown('Show off'); await tap('#dlrCtxBtn'); ok('showOffOncePerMeet', null, await G(r => window.__dealer.garage.rep === r, rep1));
+    await sleep(2600); await G(() => window.__dealer.closeSheet()); // nothing left open before the race prompt
     // drag race: roll up to an NPC, challenge, wager, race
+    await G(() => { window.__evlog = []; const t0 = performance.now(); for (const ty of ['pointerdown', 'pointerup', 'click', 'touchend', 'keydown']) document.addEventListener(ty, e => window.__evlog.push([ty, e.pointerType || '', e.target?.id || e.target?.tagName, e.key || '', Math.round(performance.now() - t0), window.__dealer.sheet]), true); });
     const npc = await G(() => window.__dealer.meet.cars()[0]);
     await releaseStick();
     await G(n => { window.__app.joy.x = window.__app.joy.y = 0; window.__app.surface.debugMove(n.x, n.z + (n.z > window.__dealer.spots.meet.z ? -5.5 : 5.5), 0); window.__race.setCarSpeed?.(0); }, npc);
-    const rc = await ctxShown('Race'); if (!rc) R.raceDiag = JSON.stringify(await G(n => { const i = window.__app.surface.info; return { ctx: window.__dealer.ctx, me: [i.roverX, i.roverZ], npc: [n.x, n.z], joy: { ...window.__app.joy }, drag: window.__dealer.meet.drag, sheet: window.__dealer.sheet }; }, npc)); ok('raceCtx', null, rc);
+    const rc = await ctxShown('Race'); if (!rc) R.raceDiag = JSON.stringify(await G(n => { const i = window.__app.surface.info; return { ctx: window.__dealer.ctx, me: [i.roverX, i.roverZ], npc: [n.x, n.z], joy: { ...window.__app.joy }, drag: window.__dealer.meet.drag, sheet: window.__dealer.sheet, ev: window.__evlog.slice(0, 30) }; }, npc)); ok('raceCtx', null, rc);
     await sleep(900); await shot('meet');
     await tap('#dlrCtxBtn'); ok('challengeSheet', null, await sheetIs('challenge'));
     await tap('[data-wager="100"]'); ok('wagerPicked', null, await G(() => document.querySelector('[data-wager="100"]').classList.contains('on')));

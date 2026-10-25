@@ -255,9 +255,9 @@ let ghostUntil = 0;
 function pointerTap(el, fn) {
   let id = null, t = 0;
   el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; id = e.pointerId; });
-  el.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || e.pointerId !== id) return; e.preventDefault(); id = null; t = performance.now(); ghostUntil = t + 550; fn(e); });
+  el.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || e.pointerId !== id) return; e.preventDefault(); id = null; t = performance.now(); ghostUntil = t + 2500; fn(e); });
   el.addEventListener('pointercancel', () => { id = null; });
-  el.addEventListener('click', e => { if (performance.now() - t < 700) return; fn(e); });
+  el.addEventListener('click', e => { if (performance.now() - t < 5000) return; fn(e); }); // a slow phone can deliver the compat click late
 }
 function setCtx(label, act) {
   if (!ui) return; ui.act = act;
@@ -283,7 +283,7 @@ function openSheet(kind, render, cam) {
   // one delegated, pointer-based handler: touch acts on pointerup (a thumb on the stick can't block it), mouse on click
   let down = null, t = 0;
   el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const b = e.target.closest('button'); down = b ? { b, id: e.pointerId, x: e.clientX, y: e.clientY } : null; });
-  el.addEventListener('pointerup', e => { if (!down || e.pointerId !== down.id) return; const b = e.target.closest('button'); const ok = b === down.b && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 12; down = null; if (!ok || b.disabled) return; e.preventDefault(); t = performance.now(); ghostUntil = t + 550; onSheetTap(b); });
+  el.addEventListener('pointerup', e => { if (!down || e.pointerId !== down.id) return; const b = e.target.closest('button'); const ok = b === down.b && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 12; down = null; if (!ok || b.disabled) return; e.preventDefault(); t = performance.now(); ghostUntil = t + 2500; onSheetTap(b); });
   el.addEventListener('pointercancel', () => { down = null; });
   el.addEventListener('click', e => { if (performance.now() - t < 700) return; const b = e.target.closest('button'); if (b && !b.disabled) onSheetTap(b); });
   rerender(); return el;
