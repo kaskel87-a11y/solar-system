@@ -837,6 +837,7 @@ export function createGame(ctx) {
         zone: zone ? { x: zone.x, z: zone.z, active: zone.active } : null
       };
     },
+    mapAliens: () => agents.map(a => ({ x: a.x, z: a.z, boss: !!a.T.boss })),
     // test/debug hooks
     debug: {
       spawn(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(); const yaw = (st.driving ? st.rover.yaw : player.yaw) + ang; return !!spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: 'debug' }); },

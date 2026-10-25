@@ -21,6 +21,14 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v6.1: minimal phone HUD
+- **One slim top bar:** planet and gravity, shield and health bars, credits and XP, and a ☰ menu. The menu holds Take off, Discoveries/Log, View, Summon rover, Warp to rover, Return to ship, Hide HUD and Settings. On desktop it opens with Tab or M.
+- **Radar minimap (top-left):** heading-up. It shows your rover (blue), the Starship (orange), the quest objective (cyan), the next discovery (gold), aliens (red) and Frankie. A label gives the rover distance. Tap the radar for the rover/ship menu.
+- **Contextual buttons:** Pet appears only when Frankie is close, Drive only next to the rover, and FIRE only when aliens are around. They sit in the right-thumb area.
+- **Compact cards:** discoveries and facts appear as a one-line card that disappears after about 4 seconds. Tap it to read the full fact, which also stays in the log. Only one message shows at a time, and a pending Mission Control offer shrinks to a "tap to read" chip.
+- **Hide HUD (cinematic):** use ☰ → 🎬 Hide HUD, or U on desktop. Tap 👁 to bring it back.
+- **Layout test:** `test-hud.js` checks that no HUD elements overlap and that the middle 50% of the screen stays clear. It runs on iPhone SE, 14 and 14 Pro Max, in portrait and landscape, on WebKit and Chromium.
+
 ## v6: side quests, aliens and more to discover
 - **Side quests:** Mission Control radios you quest offers (with Quindar beeps and an optional voice). There are 14 quests across the Moon, Mars, Venus, Mercury, Earth, Io, Europa and Titan. Examples: recover a lost Apollo camera, scan ice in Shackleton, rescue a stranded rover, follow the Mars signal to an alien outpost and its Hive Queen boss, find the Venera capsule before it cooks, outrun the sunrise on Mercury, and play fetch with Frankie on Earth. A blue arrow and a beam point to each step. You earn XP, ranks, credits, badges, rover paints and bandanas for Frankie. Progress saves in your browser.
 - **Aliens (fiction!):** cartoony drones, crawlers and a boss. They go *zap* and poof into sparkles. Your shield recharges, and if you go down you're beamed back to the Starship with nothing lost. Frankie growls when aliens are near. Turn them off in **📜 Log → ⚙️ Settings** for peaceful exploring.

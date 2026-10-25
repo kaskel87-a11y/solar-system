@@ -1,7 +1,7 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=6';
-import { createGame } from './game.js?v=6';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=6.1';
+import { createGame } from './game.js?v=6.1';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1077,6 +1077,12 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     summonRover, warpToRover, returnToShip, roverNav,
     // test hook: jump to just short of the active quest's current objective
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
+    mapData() {
+      if (!cfg) return null;
+      const n = nearestUndiscovered(player.x, player.z), w = game.waypoint();
+      return { x: driving ? rover.x : player.x, z: driving ? rover.z : player.z, yaw: viewYaw, driving, rover: rover ? { x: rover.x, z: rover.z } : null, ship: SHIP,
+        wp: w ? { x: w.x, z: w.z } : null, next: n ? { x: n.it.x, z: n.it.z } : null, aliens: game.mapAliens(), dog: dog && !driving ? { x: dog.x, z: dog.z } : null };
+    },
     waypoint() { const w = game.waypoint(); if (!w) return null; const a = Math.atan2(-(w.x - player.x), -(w.z - player.z)) - viewYaw; return { dist: Math.round(w.dist), ang: Math.atan2(Math.sin(a), Math.cos(a)), text: w.text }; },
     get info() {
       if (!cfg) return null;
@@ -1085,7 +1091,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
         view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: rover ? rover.speed : 0, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
-        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 20,
+        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,
         disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,
         far: !!farMesh?.visible
       };

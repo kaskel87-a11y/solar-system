@@ -45,7 +45,6 @@
     body.flying #hud { display: block; }
     body.flying #planetBar, body.flying:not(.surface) #fact-panel, body.flying #speedbox, body.flying #info, body.flying #credits { display: none !important; }
     body.surface #hudSpeed, body.surface #hudHint, body.surface #flyBtns, body.surface #flyBtn, body.surface #landBtn, body.surface #landMsg { display: none !important; }
-    body.surface #fact-panel { top: calc(158px + var(--sat)); bottom: auto; }
     #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.85s ease; z-index: 15; }
     #landBtn { position: fixed; top: calc(112px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 9; font-size: 1.1rem; font-weight: 700; padding: 12px 22px; min-height: 54px; min-width: 200px;
       max-width: calc(100vw - 32px - var(--sal) - var(--sar)); box-sizing: border-box; border-radius: 16px; line-height: 1.2; text-align: center;
@@ -58,23 +57,7 @@
     #landMsg { position: fixed; top: calc(176px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; padding: 9px 14px; border-radius: 12px; font-size: 0.85rem; text-align: center; width: max-content; max-width: calc(100vw - 40px); }
     #surfHud { display: none; }
     body.surface #surfHud { display: block; }
-    #surfInfo { position: fixed; top: calc(14px + var(--sat)); left: calc(14px + var(--sal)); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; z-index: 7; max-width: calc(100vw - 180px); }
-    #surfInfo b { font-size: 1rem; }
-    #poiHint { position: fixed; top: calc(150px + var(--sat)); left: calc(14px + var(--sal)); padding: 6px 10px; border-radius: 10px; font-size: 0.76rem; z-index: 7; display: none; max-width: calc(100vw - 40px); }
     .pill { position: fixed; z-index: 8; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: #fff; border: 1px solid rgba(255,255,255,0.18); background: rgba(10,14,30,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); white-space: nowrap; }
-    #discBtn { top: calc(62px + var(--sat)); left: calc(14px + var(--sal)); }
-    #viewBtn { top: calc(62px + var(--sat)); right: calc(14px + var(--sar)); }
-    #nextHint { position: fixed; top: calc(110px + var(--sat)); left: calc(14px + var(--sal)); z-index: 7; padding: 5px 10px 5px 6px; border-radius: 10px; font-size: 0.8rem; display: none; align-items: center; gap: 6px; white-space: nowrap; }
-    #nextArrow { display: inline-block; width: 26px; height: 26px; line-height: 26px; text-align: center; font-size: 18px; color: #ffd25a; transition: transform 0.15s linear; }
-    #ctxBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(176px + var(--sab)); z-index: 8; display: flex; gap: 10px; }
-    #ctxBar button { min-height: 50px; padding: 10px 18px; font-size: 1rem; font-weight: 800; border-radius: 16px; display: none; touch-action: manipulation; }
-    #driveBtn { background: linear-gradient(135deg, #16a34a, #4ade80); border: none; color: #fff; box-shadow: 0 4px 18px rgba(40,200,100,0.4); }
-    #petBtn { background: linear-gradient(135deg, #b7791f, #f6ad55); border: none; color: #fff; }
-    #discPop { position: fixed; top: calc(120px + var(--sat)); left: 50%; transform: translateX(-50%) scale(0.9); width: min(420px, calc(100vw - 32px)); box-sizing: border-box; z-index: 12; padding: 14px 18px; border-radius: 18px; text-align: center; background: rgba(30,22,6,0.92); border: 1px solid rgba(255,210,90,0.6); box-shadow: 0 0 40px rgba(255,200,80,0.35); opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; }
-    #discPop.show { opacity: 1; transform: translateX(-50%) scale(1); pointer-events: auto; }
-    #discPop .t { color: #ffd25a; font-weight: 800; letter-spacing: 0.04em; font-size: 0.8rem; }
-    #discPop h3 { margin: 4px 0 6px; font-size: 1.15rem; } #discPop p { margin: 0; font-size: 0.9rem; line-height: 1.4; } #discPop small { display: block; margin-top: 8px; opacity: 0.7; }
-    #toast { position: fixed; left: 50%; bottom: calc(240px + var(--sab)); transform: translateX(-50%); z-index: 9; padding: 8px 14px; border-radius: 12px; font-size: 0.85rem; display: none; max-width: calc(100vw - 40px); text-align: center; }
     #logPanel { position: fixed; inset: 0; z-index: 14; display: none; background: rgba(4,6,16,0.94); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(24px + var(--sab)) calc(16px + var(--sal)); box-sizing: border-box; }
     #logPanel .wrap { max-width: 640px; margin: 0 auto; }
     #logPanel h2 { margin: 6px 0 10px; } #logPanel h3 { margin: 18px 0 6px; color: #93c5fd; font-size: 1rem; }
@@ -84,11 +67,7 @@
     #dogRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); }
     #dogName { flex: 1; min-width: 120px; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); color: #fff; }
     body.driving #jumpBtn { display: none !important; }
-    #takeoffBtn { position: fixed; top: calc(14px + var(--sat)); right: calc(14px + var(--sar)); z-index: 8; background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
-    #surfBtns { position: fixed; right: calc(20px + var(--sar)); bottom: calc(28px + var(--sab)); display: grid; grid-template-columns: 72px; gap: 12px; z-index: 7; }
-    #surfBtns button { height: 64px; border-radius: 16px; font-size: 0.9rem; font-weight: 700; touch-action: none; }
     #surfBtns button.on { background: rgba(80,160,255,0.6); }
-    #surfHelp { position: fixed; bottom: calc(14px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 7px 12px; border-radius: 10px; font-size: 0.75rem; z-index: 7; white-space: nowrap; opacity: 0.85; }
     #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.8); box-shadow: 0 0 4px #000; pointer-events: none; z-index: 7; }
     #joy { position: fixed; left: calc(24px + var(--sal)); bottom: calc(28px + var(--sab)); width: 130px; height: 130px; border-radius: 50%; z-index: 7; touch-action: none; }
     #joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.6); pointer-events: none; }
@@ -103,29 +82,19 @@
     body.touch .desk-only { display: none !important; }
     body:not(.touch) #joy { display: none; }
     /* v6: health, quests, radio, combat */
-    #hpBox { position: fixed; top: calc(110px + var(--sat)); right: calc(14px + var(--sar)); z-index: 7; width: 150px; padding: 7px 9px; border-radius: 12px; font-size: 0.7rem; box-sizing: border-box; }
     .bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; margin: 2px 0 4px; }
     .bar i { display: block; height: 100%; width: 100%; border-radius: 4px; transition: width 0.15s; }
     #shBar i { background: linear-gradient(90deg, #38bdf8, #7dd3fc); } #hpBar i { background: linear-gradient(90deg, #22c55e, #86efac); }
     #hpBar.low i { background: linear-gradient(90deg, #ef4444, #f87171); }
-    #heatRow { display: none; } body.turret #heatRow { display: block; }
     #heatBar i { background: linear-gradient(90deg, #f59e0b, #ef4444); } #heatBar.over i { background: #ff2d55; animation: blink 0.4s infinite alternate; }
     @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
     #rankLine { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #questTrack { position: fixed; top: calc(150px + var(--sat)); left: calc(14px + var(--sal)); z-index: 7; padding: 6px 10px; border-radius: 10px; font-size: 0.76rem; display: none; max-width: min(300px, calc(100vw - 190px)); border: 1px solid rgba(80,200,255,0.45); }
     #questTrack b { color: #7dd3fc; } #questTrack .tm { color: #fca5a5; font-weight: 800; }
-    body.quest #poiHint { display: none !important; }
     .fic { display: inline-block; font-size: 0.62rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; background: #7c3aed; color: #fff; margin-left: 4px; vertical-align: 1px; }
-    #nextHint.quest #nextArrow { color: #38bdf8; }
-    #radio { position: fixed; left: 50%; bottom: calc(296px + var(--sab)); transform: translateX(-50%); z-index: 11; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px; border-radius: 14px; display: none; background: rgba(6,20,30,0.92); border: 1px solid rgba(80,200,255,0.55); font-size: 0.85rem; line-height: 1.38; }
     #radio .from { color: #7dd3fc; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.06em; }
-    #radio .btns { display: flex; gap: 8px; margin-top: 8px; } #radio .btns button { flex: 1; min-height: 42px; font-weight: 800; border-radius: 12px; }
     #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
-    #fireBtn { position: fixed; right: calc(104px + var(--sar)); bottom: calc(36px + var(--sab)); width: 88px; height: 88px; border-radius: 50%; z-index: 8; display: none; font-size: 1rem; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.5); background: radial-gradient(circle at 40% 35%, #ff6b8b, #d1124a); box-shadow: 0 0 22px rgba(255,60,110,0.55); touch-action: none; }
     #fireBtn.on { transform: scale(0.93); background: radial-gradient(circle at 40% 35%, #ff9ab0, #ff2d6a); }
-    body.touch.combat #fireBtn, body.touch.turret #fireBtn { display: block; }
     body.combat #crosshair { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid rgba(255,120,160,0.9); }
-    #bossBar { position: fixed; top: calc(200px + var(--sat)); left: 50%; transform: translateX(-50%); width: min(320px, calc(100vw - 60px)); z-index: 8; display: none; text-align: center; font-size: 0.78rem; font-weight: 800; padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(200,80,255,0.6); }
     #bossBar .bar i { background: linear-gradient(90deg, #a855f7, #ec4899); }
     #hurt { position: fixed; inset: 0; pointer-events: none; z-index: 10; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,0,40,0) 45%, rgba(255,0,40,0.55) 100%); transition: opacity 0.35s; }
     #downMsg { position: fixed; inset: 0; z-index: 12; display: none; align-items: center; justify-content: center; text-align: center; font-size: 1.3rem; font-weight: 800; background: rgba(20,0,30,0.55); pointer-events: none; }
@@ -139,11 +108,6 @@
     .sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 8px; }
     .sw button { min-width: 74px; min-height: 40px; border-radius: 10px; font-weight: 800; }
     @media (max-height: 440px) {
-      #hpBox { top: calc(100px + var(--sat)); width: 140px; }
-      #questTrack { top: calc(138px + var(--sat)); }
-      #radio { bottom: auto; top: calc(8px + var(--sat)); width: min(400px, calc(100vw - 420px)); min-width: 260px; font-size: 0.8rem; padding: 8px 12px; }
-      #fireBtn { width: 76px; height: 76px; bottom: calc(22px + var(--sab)); right: calc(100px + var(--sar)); }
-      #bossBar { top: calc(14px + var(--sat)); }
       #hudSpeed { top: calc(14px + var(--sat)); }
       #landBtn { top: calc(54px + var(--sat)); min-height: 48px; padding: 9px 18px; font-size: 1rem; }
       #landMsg { top: calc(112px + var(--sat)); }
@@ -151,15 +115,6 @@
       #flyBtns { bottom: calc(18px + var(--sab)); }
       #flyBtns button { height: 48px; }
       .pill { min-height: 36px; padding: 6px 10px; }
-      #discBtn, #viewBtn { top: calc(56px + var(--sat)); }
-      #nextHint { top: calc(100px + var(--sat)); }
-      #poiHint { top: calc(138px + var(--sat)); }
-      #ctxBar { bottom: calc(18px + var(--sab)); }
-      #toast { bottom: calc(80px + var(--sab)); }
-      #discPop { top: calc(56px + var(--sat)); }
-      body.surface #fact-panel { top: calc(56px + var(--sat)); width: min(380px, calc(100vw - 32px)); }
-      #surfBtns { bottom: calc(18px + var(--sab)); gap: 8px; }
-      #surfBtns button { height: 52px; }
     }
     @media (max-width: 640px) {
       #info { max-width: calc(100vw - 150px); padding: 9px 12px; box-sizing: border-box; }
@@ -176,34 +131,74 @@
       #fact-panel { padding: 12px 16px 14px; }
       #fact-panel p { font-size: 0.88rem; }
     }
-    /* v6 compact surface HUD: small, readable pills stacked in the corners, middle of the screen kept clear */
-    body.surface #surfInfo, body.surface #nextHint, body.surface #poiHint, body.surface #questTrack, body.surface #hpBox, body.surface .pill {
-      background: rgba(8,10,20,0.78); border: 1px solid rgba(255,255,255,0.16); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
-    body.surface #surfInfo { top: calc(8px + var(--sat)); left: calc(8px + var(--sal)); padding: 4px 9px; font-size: 0.72rem; border-radius: 9px; max-width: calc(100vw - 150px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    body.surface #surfInfo b { font-size: 0.82rem; }
-    body.surface .pill { min-height: 30px; padding: 4px 10px; font-size: 0.74rem; border-radius: 9px; }
-    body.surface #takeoffBtn { top: calc(8px + var(--sat)); right: calc(8px + var(--sar)); min-height: 32px; box-sizing: border-box; background: linear-gradient(135deg, rgba(255,90,54,0.92), rgba(255,154,60,0.92)); }
-    body.surface #discBtn { top: calc(48px + var(--sat)); left: calc(8px + var(--sal)); }
-    body.surface #viewBtn { top: calc(48px + var(--sat)); right: calc(8px + var(--sar)); }
-    body.surface #nextHint { top: calc(84px + var(--sat)); left: calc(8px + var(--sal)); padding: 2px 9px 2px 4px; font-size: 0.74rem; border-radius: 9px; }
-    body.surface #nextArrow { width: 22px; height: 22px; line-height: 22px; font-size: 15px; }
-    body.surface #poiHint, body.surface #questTrack { top: calc(116px + var(--sat)); left: calc(8px + var(--sal)); padding: 4px 9px; font-size: 0.7rem; border-radius: 9px; max-width: calc(100vw - 160px); }
-    body.surface #hpBox { top: calc(84px + var(--sat)); right: calc(8px + var(--sar)); width: 128px; padding: 5px 8px; font-size: 0.64rem; border-radius: 9px; }
-    body.surface #hpBox .bar { height: 5px; margin: 1px 0 3px; }
-    body.surface #bossBar { top: calc(150px + var(--sat)); }
-    #roverPill { display: none; }
-    body.surface #roverPill { top: calc(162px + var(--sat)); right: calc(8px + var(--sar)); display: flex; align-items: center; gap: 4px; }
-    body.surface.driving #roverPill { display: none; }
-    #roverArrow { display: inline-block; color: #ffd25a; font-size: 13px; transition: transform 0.15s linear; }
-    #roverMenu { position: fixed; z-index: 12; top: calc(198px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; width: 190px; box-sizing: border-box; background: rgba(8,10,20,0.9); }
-    #roverMenu.show { display: flex; } #roverMenu button { min-height: 40px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 6px 10px; }
+    /* v6.1 minimal surface HUD: one slim top bar, a minimap, a right-hand stack for cards, thumb-zone buttons.
+       Nothing overlaps and the middle of the screen stays clear (checked by tests/test-hud.js). */
+    .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
+    #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 34px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
+      background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
+    #tbBars { flex: 0 0 64px; } #tbBars .bar { height: 5px; margin: 2px 0; }
+    #rankLine { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; opacity: 0.9; }
+    #menuBtn { flex: 0 0 auto; width: 34px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
+    #miniMap { position: fixed; z-index: 7; top: calc(46px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
+    #stackR { position: fixed; z-index: 9; top: calc(44px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
+    #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
+    #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } body.turret #rankLine { display: none; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
+    #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    #questTrack { border-color: rgba(80,200,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #questTrack b { color: #7dd3fc; } #questTrack .tm { color: #fca5a5; font-weight: 800; }
+    #bossBar { width: 200px; text-align: center; font-weight: 800; border-color: rgba(200,80,255,0.6); } #bossBar .bar i { background: linear-gradient(90deg, #a855f7, #ec4899); }
+    #toast { text-align: right; display: none; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } #toast.on { display: -webkit-box; }
+    #discPop:not(.open) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #radio.mini #radioText, #radio.mini .btns { display: none; } #radio.mini .from { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #radio.mini .from::after { content: ' · tap to read'; opacity: 0.7; font-weight: 600; }
+    #discPop { display: none; animation: popIn 0.25s ease-out; cursor: pointer; text-align: left; border-color: rgba(255,210,90,0.55); background: rgba(30,22,6,0.8); }
+    #discPop.show { display: block; } @keyframes popIn { from { opacity: 0; transform: translateY(-6px); } }
+    #discPop .t { color: #ffd25a; font-weight: 800; font-size: 0.62rem; letter-spacing: 0.04em; display: inline; margin-right: 6px; }
+    #discPop h3 { display: inline; margin: 0; font-size: 0.78rem; }
+    #discPop p, #discPop small { display: none; margin: 4px 0 0; font-size: 0.74rem; line-height: 1.35; }
+    #discPop small { opacity: 0.7; font-size: 0.66rem; }
+    #discPop:not(.open)::after { content: ' · tap for more'; opacity: 0.6; font-size: 0.62rem; }
+    #discPop.open p, #discPop.open small { display: block; }
+    #radio { border-color: rgba(80,200,255,0.5); background: rgba(6,20,30,0.82); width: 100%; cursor: pointer; }
+    #radio .from { color: #7dd3fc; font-weight: 800; font-size: 0.6rem; letter-spacing: 0.06em; }
+    #radioText { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #radio.open #radioText { -webkit-line-clamp: 12; }
+    #radio .btns { display: flex; gap: 6px; margin-top: 5px; } #radio .btns button { flex: 1; min-height: 28px; font-weight: 800; border-radius: 9px; font-size: 0.74rem; padding: 2px 8px; }
+    #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
+    #roverMenu { position: fixed; z-index: 12; top: calc(46px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
+    #roverMenu.show { display: flex; }
+    #roverMenu button { min-height: 38px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 5px 10px; white-space: nowrap; }
+    #roverMenu #takeoffBtn { background: linear-gradient(135deg, rgba(255,90,54,0.95), rgba(255,154,60,0.95)); border: none; box-shadow: none; }
     #rmClose { text-align: center !important; }
-    @media (max-height: 440px) { body.surface #roverPill { top: calc(146px + var(--sat)); } #roverMenu { top: calc(8px + var(--sat)); right: calc(150px + var(--sar)); } }
+    #hudShow { display: none; position: fixed; z-index: 9; top: calc(6px + var(--sat)); right: calc(8px + var(--sar)); width: 34px; height: 30px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,20,0.4); color: #fff; opacity: 0.6; padding: 0; }
+    #surfBtns { position: fixed; z-index: 7; right: calc(8px + var(--sar)); bottom: calc(22px + var(--sab)); display: grid; grid-template-columns: 64px; gap: 8px; }
+    #surfBtns button { height: 54px; border-radius: 14px; font-size: 0.82rem; font-weight: 700; touch-action: none; color: #fff; background: rgba(10,14,30,0.42); border: 1px solid rgba(255,255,255,0.22); padding: 0 4px; }
+    #surfBtns button.on { background: rgba(80,160,255,0.55); }
+    #petBtn, #driveBtn { display: none; height: 42px !important; font-size: 0.72rem !important; touch-action: manipulation !important; }
+    #driveBtn { background: rgba(22,163,74,0.6) !important; border-color: rgba(120,255,170,0.5) !important; } #petBtn { background: rgba(183,121,31,0.55) !important; }
+    body:not(.touch) #surfBtns { grid-template-columns: 110px; } body:not(.touch) #petBtn, body:not(.touch) #driveBtn { font-size: 0.8rem !important; }
+    #fireBtn { position: fixed; right: calc(82px + var(--sar)); bottom: calc(24px + var(--sab)); width: 78px; height: 78px; border-radius: 50%; z-index: 8; display: none; font-size: 0.92rem; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.45); background: radial-gradient(circle at 40% 35%, rgba(255,107,139,0.85), rgba(209,18,74,0.85)); box-shadow: 0 0 16px rgba(255,60,110,0.45); touch-action: none; }
+    #fireBtn.on { transform: scale(0.93); }
+    body.touch.combat #fireBtn, body.touch.turret #fireBtn { display: block; }
+    body.surface #joy { left: calc(14px + var(--sal)); bottom: calc(22px + var(--sab)); width: 120px; height: 120px; opacity: 0.85; }
+    #surfHelp { position: fixed; bottom: calc(10px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 9px; font-size: 0.7rem; z-index: 7; white-space: nowrap; opacity: 0.7; }
+    body.surface #fact-panel { display: none !important; }
+    /* cinematic: everything off except a faint restore button (the stick still works, just faded) */
+    body.cinematic #surfHud > *:not(#hudShow) { display: none !important; }
+    body.cinematic #hudShow { display: block; }
+    body.cinematic.surface #joy { opacity: 0.18; }
     @media (max-height: 440px) {
-      body.surface #discBtn, body.surface #viewBtn { top: calc(40px + var(--sat)); }
-      body.surface #nextHint, body.surface #hpBox { top: calc(72px + var(--sat)); }
-      body.surface #poiHint, body.surface #questTrack { top: calc(100px + var(--sat)); max-width: 260px; }
-      body.surface #bossBar { top: calc(8px + var(--sat)); }
+      #topBar { height: 30px; top: calc(4px + var(--sat)); }
+      #miniMap { top: calc(40px + var(--sat)); width: 80px; height: 80px; }
+      #stackR { top: calc(40px + var(--sat)); left: auto; width: calc(24vw - 8px); max-height: calc(100vh - 190px - var(--sat) - var(--sab)); }
+      #bossBar { width: 100%; }
+      #roverMenu { top: calc(40px + var(--sat)); width: 330px; display: none; flex-direction: row; flex-wrap: wrap; } #roverMenu.show { display: flex; }
+      #roverMenu button { flex: 1 1 140px; min-height: 34px; }
+      #surfBtns { grid-template-columns: 60px 60px; bottom: calc(14px + var(--sab)); gap: 6px; }
+      #surfBtns button { height: 48px; }
+      #petBtn, #driveBtn { height: 48px !important; }
+      #fireBtn { width: 70px; height: 70px; right: calc(142px + var(--sar)); bottom: calc(14px + var(--sab)); }
+      body.surface #joy { width: 104px; height: 104px; bottom: calc(14px + var(--sab)); }
     }
   </style>
 </head>
@@ -251,36 +246,45 @@
   </div>
 
   <div id="surfHud">
-    <div id="surfInfo" class="glass"></div>
-    <div id="poiHint" class="glass"></div>
-    <button id="takeoffBtn" class="btn">🚀 Take off</button>
+    <div id="topBar">
+      <div id="surfInfo"></div>
+      <div id="tbBars"><div class="bar" id="shBar"><i></i></div><div class="bar" id="hpBar"><i></i></div></div>
+      <div id="rankLine"></div>
+      <div id="heatRow"><span id="heatLbl">🔥</span><div class="bar" id="heatBar"><i></i></div></div>
+      <button id="menuBtn" aria-label="Menu">☰</button>
+    </div>
+    <canvas id="miniMap" aria-label="Minimap: tap for rover and ship options"></canvas>
+    <div id="stackR">
+      <div id="questTrack" class="glass"></div>
+      <div id="bossBar" class="glass"><span id="bossName"></span><div class="bar"><i></i></div></div>
+      <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
+      <div id="toast" class="glass"></div>
+      <div id="radio"><div class="from">📻 MISSION CONTROL <span id="radioFic"></span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
+    </div>
+    <div id="roverMenu" class="glass">
+      <button id="takeoffBtn" class="btn">🚀 Take off</button>
+      <button id="discBtn" class="btn">🔎 Discoveries 0/0</button>
+      <button id="viewBtn" class="btn">👁 Third person</button>
+      <button id="rmSummon" class="btn">🚙 Summon rover here</button>
+      <button id="rmWarp" class="btn">✨ Warp to rover</button>
+      <button id="rmShip" class="btn">🏠 Return to ship</button>
+      <button id="hideHudBtn" class="btn">🎬 Hide HUD</button>
+      <button id="settingsBtn" class="btn">⚙️ Settings &amp; log</button>
+      <button id="rmClose" class="btn">✖ Close</button>
+    </div>
+    <button id="hudShow" aria-label="Show HUD">👁</button>
     <div id="surfBtns">
+      <button id="petBtn" class="glass">🐾 Pet</button>
+      <button id="driveBtn" class="glass">🚙 Drive</button>
       <button id="jumpBtn" class="glass touch-only">Jump</button>
       <button id="runBtn" class="glass touch-only">Run</button>
     </div>
-    <button id="discBtn" class="pill">🔎 Discoveries 0/0</button>
-    <button id="viewBtn" class="pill">👁 Third person</button>
-    <div id="nextHint" class="glass"><span id="nextArrow">➤</span><span id="nextText"></span></div>
-    <div id="ctxBar"><button id="driveBtn">🚙 Drive</button><button id="petBtn">🐾 Pet</button></div>
-    <div id="toast" class="glass"></div>
-    <div id="surfHelp" class="glass desk-only">WASD move · mouse look/aim · click or F fire · R summon rover (Shift+R warp to it) · H ship · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
-    <div id="crosshair" class="desk-only"></div>
-    <div id="hpBox" class="glass">
-      <div>🛡 Shield</div><div class="bar" id="shBar"><i></i></div>
-      <div>❤️ Health</div><div class="bar" id="hpBar"><i></i></div>
-      <div id="heatRow"><div id="heatLbl">🔥 Plasma heat</div><div class="bar" id="heatBar"><i></i></div></div>
-      <div id="rankLine"></div>
-    </div>
-    <div id="questTrack" class="glass"></div>
-    <button id="roverPill" class="pill"><span id="roverArrow">➤</span> <span id="roverText">🚙 Rover</span></button>
-    <div id="roverMenu" class="glass"><button id="rmSummon" class="btn">🚙 Summon rover here</button><button id="rmWarp" class="btn">✨ Warp to rover</button><button id="rmShip" class="btn">🚀 Return to ship</button><button id="rmClose" class="btn">✖</button></div>
     <button id="fireBtn">FIRE</button>
-    <div id="bossBar" class="glass"><span id="bossName"></span><div class="bar"><i></i></div></div>
-    <div id="radio"><div class="from">📻 MISSION CONTROL <span id="radioFic"></span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
+    <div id="surfHelp" class="glass desk-only">WASD move · mouse aim · click/F fire · E drive · P pet · Tab/M menu · U hide HUD · R rover · H ship · V view · L log · T take off</div>
+    <div id="crosshair" class="desk-only"></div>
   </div>
   <div id="hurt"></div>
   <div id="downMsg"><div>💫 Ouch! Beaming you back to the Starship…</div></div>
-  <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
   <div id="logPanel"><div class="wrap">
     <button id="logClose" class="btn">✕ Close</button>
     <h2>🛰 Mission Log</h2>
@@ -315,9 +319,9 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=6';
-    import { buildStarship } from './models.js?v=6';
-    import { COSMETICS } from './game.js?v=6';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=6.1';
+    import { buildStarship } from './models.js?v=6.1';
+    import { COSMETICS } from './game.js?v=6.1';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -644,6 +648,7 @@
     const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 
     function showFact(o) {
+      if (onSurface) return noteCard('📍', o.userData.name, o.userData.fact, '');
       factTitle.textContent = o.userData.name;
       factText.textContent = o.userData.fact;
       factStats.textContent = o.userData.stats || '';
@@ -797,24 +802,24 @@
     const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const discPop = document.getElementById('discPop'), toastEl = document.getElementById('toast');
     let popTimer = 0, toastTimer = 0;
-    function showPop(ev) {
-      discPop.querySelector('.t').textContent = '✨ DISCOVERED!';
-      document.getElementById('discName').textContent = ev.name;
-      document.getElementById('discFact').textContent = ev.fact;
-      document.getElementById('discCount').textContent = ev.found === ev.total ? `🏆 All ${ev.total} discoveries on ${ev.world} found!` : `${ev.world} · ${ev.found}/${ev.total} discovered · saved in your log`;
-      factPanel.style.display = 'none';
-      discPop.classList.add('show'); clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show'), 7000);
-    }
-    discPop.addEventListener('click', () => discPop.classList.remove('show'));
-    // generic reward popup (quest complete, rare find, rank up) reusing the discovery card
-    function rewardPop(tag, title, body, foot, ms = 8000) {
+    // compact card in the right-hand stack: one line, auto-dismiss after ~4 s, tap to expand (full text is kept in the log)
+    let popMs = 4500;
+    function noteCard(tag, title, body, foot, ms = 4500) {
       discPop.querySelector('.t').textContent = tag;
       document.getElementById('discName').textContent = title;
-      document.getElementById('discFact').textContent = body;
-      document.getElementById('discCount').textContent = foot;
-      factPanel.style.display = 'none';
-      discPop.classList.add('show'); clearTimeout(popTimer); popTimer = setTimeout(() => { discPop.classList.remove('show'); discPop.querySelector('.t').textContent = '✨ DISCOVERED!'; }, ms);
+      document.getElementById('discFact').textContent = body || '';
+      document.getElementById('discCount').textContent = foot || '';
+      discPop.classList.remove('open'); discPop.classList.add('show'); popMs = ms; toastEl.classList.remove('on'); shrinkRadio();
+      clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show', 'open'), ms);
     }
+    function showPop(ev) {
+      noteCard('✨ DISCOVERED', ev.name, ev.fact, ev.found === ev.total ? `🏆 All ${ev.total} discoveries on ${ev.world} found!` : `${ev.world} · ${ev.found}/${ev.total} discovered · saved in your log`);
+    }
+    discPop.addEventListener('click', () => {
+      toastEl.classList.remove('on'); const open = discPop.classList.toggle('open');
+      clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show', 'open'), open ? 12000 : 2500);
+    });
+    function rewardPop(tag, title, body, foot, ms = 6000) { noteCard(tag, title, body, foot, ms); }
     // mission-control radio with optional quest offer and optional speech
     const radioEl = document.getElementById('radio'), radioText = document.getElementById('radioText'), radioBtns = document.getElementById('radioBtns');
     let radioTimer = 0, radioOffer = null;
@@ -833,15 +838,20 @@
       const def = radioOffer && surface.game.questList().find(q => q.id === radioOffer);
       document.getElementById('radioFic').innerHTML = (def?.fiction || ev.fiction) ? '<span class="fic">FICTION</span>' : '';
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
-      radioEl.style.display = 'block';
+      radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? 25000 : 9000);
       speak(ev.text);
     }
+    radioEl.addEventListener('click', e => { if (e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
     document.getElementById('radioAccept').onclick = () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); };
     document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Open the Log (📜/L) any time to start a quest.', 3000); };
     const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
     let hurtTimer = 0;
-    function toast(msg, ms = 4000) { toastEl.textContent = msg; toastEl.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.display = 'none', ms); }
+    function toast(msg, ms = 4000) {
+      if (!msg) return; toastEl.textContent = msg; toastEl.classList.add('on'); discPop.classList.remove('show', 'open'); shrinkRadio();
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.classList.remove('on'); }, ms);
+    }
+    function shrinkRadio() { if (radioEl.style.display === 'block') radioEl.classList.add('mini'); }
     const gameLog = [];
     function onSurfaceEvent(type, ev) {
       if (type !== 'zap' && type !== 'hit') { gameLog.push(type); if (gameLog.length > 300) gameLog.splice(0, 150); }
@@ -871,7 +881,7 @@
     }
     const surface = createSurface({ renderer, textures, isMobile, onEvent: onSurfaceEvent });
     const landBtn = document.getElementById('landBtn'), landMsg = document.getElementById('landMsg'), fadeEl = document.getElementById('fade');
-    const surfInfo = document.getElementById('surfInfo'), poiHint = document.getElementById('poiHint');
+    const surfInfo = document.getElementById('surfInfo');
     const NO_SURFACE = {
       Sun: 'The Sun is a ball of plasma at 5,500 °C. No landing here!',
       Jupiter: 'Jupiter has no solid surface. It\'s gas all the way down.',
@@ -905,12 +915,12 @@
       fadeEl.style.opacity = 1;
       factPanel.style.display = 'none';
       radioEl.style.display = 'none'; roverMenu.classList.remove('show'); downEl.style.display = 'none'; hurtEl.style.opacity = 0; touchBtns.fire = false; mouseAim.held = false;
-      document.body.classList.remove('combat', 'turret', 'quest');
+      document.body.classList.remove('combat', 'turret', 'quest', 'cinematic');
       try { speechSynthesis.cancel(); } catch (e) { /* */ }
       setTimeout(() => {
         surface.exit();
         onSurface = false;
-        document.body.classList.remove('surface', 'driving'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.style.display = 'none';
+        document.body.classList.remove('surface', 'driving'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.classList.remove('on'); radioEl.style.display = 'none';
         // put the rocket back in space on the sunlit side of the body, pointing away from it
         landedBody.getWorldPosition(tmpV2);
         const r = landedBody.userData.r || 3;
@@ -973,10 +983,11 @@
 
     // ===== Surface: view, rover, dog, discoveries log =====
     const viewBtn = document.getElementById('viewBtn'), discBtn = document.getElementById('discBtn'), driveBtn = document.getElementById('driveBtn'), petBtn = document.getElementById('petBtn');
-    const nextHint = document.getElementById('nextHint'), nextArrow = document.getElementById('nextArrow'), nextText = document.getElementById('nextText');
     const runBtnEl = document.getElementById('runBtn'), logPanel = document.getElementById('logPanel');
     const VIEW_LABEL = { first: '👁 First person', third: '👁 Third person', aerial: '🛰 Aerial view' };
     viewBtn.onclick = () => { surface.cycleView(); updateSurfHud(true); };
+    discBtn.addEventListener('click', () => roverMenu.classList.remove('show'));
+    document.getElementById('takeoffBtn').addEventListener('click', () => roverMenu.classList.remove('show'));
     function doInteract() { const r = surface.interact(); if (r === 'drive') toast(`🚙 Driving! ${isTouch ? 'Stick to steer and throttle, hold Boost to go fast.' : 'WASD to drive, Shift to boost, E to get out.'}`, 3500); updateSurfHud(true); }
     driveBtn.onclick = doInteract;
     petBtn.onclick = () => { surface.pet(); };
@@ -1044,7 +1055,7 @@
     function updateSurfHud(force) {
       const i = surface.info; if (!i) return;
       document.body.classList.toggle('driving', i.driving);
-      const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : ` · ${Math.round(i.walked)} m walked`;
+      const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : '';
       surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g${extra}`;
       const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName].join('|');
       if (force || key !== hudKey) {
@@ -1052,25 +1063,12 @@
         viewBtn.textContent = VIEW_LABEL[surface.info.camGoal < 0.8 ? 'first' : surface.info.camGoal < 60 ? 'third' : 'aerial'];
         discBtn.textContent = `🔎 Discoveries ${i.disc.found}/${i.disc.total}`;
         driveBtn.style.display = i.driving || i.nearRover ? 'block' : 'none';
-        driveBtn.textContent = i.driving ? '🚪 Exit rover' : `🚙 Drive${isTouch ? '' : ' (E)'}`;
-        petBtn.style.display = i.driving || i.nearDog ? 'block' : 'none';
-        petBtn.textContent = `🐾 Pet ${dogName}${isTouch ? '' : ' (P)'}`;
+        driveBtn.textContent = i.driving ? '🚪 Exit' : `🚙 Drive${isTouch ? '' : ' (E)'}`;
+        petBtn.style.display = !i.driving && i.nearDog ? 'block' : 'none';
+        petBtn.textContent = `🐾 Pet${isTouch ? '' : ' (P)'}`;
         runBtnEl.textContent = i.driving ? 'Boost' : 'Run';
       }
-      const wp = surface.waypoint();
-      nextHint.classList.toggle('quest', !!wp);
-      if (wp) {
-        nextHint.style.display = 'flex';
-        nextArrow.style.transform = `rotate(${(-wp.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
-        nextText.textContent = `Quest · ${wp.dist} m`;
-      } else if (i.next) {
-        nextHint.style.display = 'flex';
-        nextArrow.style.transform = `rotate(${(-i.next.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
-        nextText.textContent = `Signal · ${i.next.dist} m`;
-      } else if (i.disc.total) { nextHint.style.display = 'flex'; nextArrow.style.transform = ''; nextText.textContent = '🏆 All found here'; }
-      updateGameHud(); updateRoverPill();
-      const p = surface.nearestPoi();
-      if (p && p.dist < 120) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
+      updateGameHud(); drawMiniMap();
     }
     const shBar = document.querySelector('#shBar i'), hpBarEl = document.getElementById('hpBar'), hpBar = hpBarEl.querySelector('i'), heatBarEl = document.getElementById('heatBar'), heatBar = heatBarEl.querySelector('i');
     const rankLine = document.getElementById('rankLine'), questTrack = document.getElementById('questTrack'), bossBar = document.getElementById('bossBar');
@@ -1082,8 +1080,8 @@
       shBar.style.width = `${(100 * g.shield / g.shieldMax).toFixed(0)}%`;
       hpBar.style.width = `${(100 * g.hp / g.hpMax).toFixed(0)}%`; hpBarEl.classList.toggle('low', g.hp < 35);
       heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
-      document.getElementById('heatLbl').textContent = g.overheat ? '🔥 OVERHEATED! cooling…' : '🔥 Plasma heat';
-      rankLine.textContent = `⭐ ${g.rank} · ${g.xp} XP · 💰 ${g.credits}`;
+      document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
+      rankLine.textContent = `💰 ${g.credits} · ⭐ ${g.xp}`; rankLine.title = `${g.rank} · ${g.xp} XP`;
       if (g.quest) {
         questTrack.style.display = 'block';
         questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b>${g.quest.fiction ? '<span class="fic">FICTION</span>' : ''}<br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
@@ -1092,13 +1090,34 @@
       else bossBar.style.display = 'none';
     }
     // return to rover / summon rover / return to ship
-    const roverPill = document.getElementById('roverPill'), roverMenu = document.getElementById('roverMenu');
+    const roverMenu = document.getElementById('roverMenu'), miniMap = document.getElementById('miniMap'), mctx = miniMap.getContext('2d');
     const fmtDist = d => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`;
-    function updateRoverPill() {
-      const n = surface.roverNav(); if (!n) return;
-      document.getElementById('roverText').textContent = `🚙 Rover · ${fmtDist(n.dist)}`;
-      document.getElementById('roverArrow').style.transform = `rotate(${(-n.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
+    // heading-up radar: you in the middle, rover, ship, objective, next discovery, aliens and your dog as icons
+    let mapLast = null;
+    function drawMiniMap() {
+      const md = surface.mapData?.(); if (!md) return;
+      const css = miniMap.clientWidth || 92, dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(css * dpr);
+      if (miniMap.width !== W) { miniMap.width = W; miniMap.height = W; }
+      const c = mctx, R = W / 2, RANGE = 140, k = (R - 6 * dpr) / RANGE, cy = Math.cos(md.yaw), sy = Math.sin(md.yaw);
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, W);
+      c.beginPath(); c.arc(R, R, R - dpr, 0, Math.PI * 2); c.fillStyle = 'rgba(8,10,20,0.6)'; c.fill(); c.lineWidth = dpr; c.strokeStyle = 'rgba(255,255,255,0.28)'; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.1)'; c.beginPath(); c.arc(R, R, (R - 6 * dpr) / 2, 0, Math.PI * 2); c.stroke();
+      const proj = (x, z, clamp) => { const dx = x - md.x, dz = z - md.z; let sx = (dx * cy - dz * sy) * k, sz = (dx * sy + dz * cy) * k; const L = Math.hypot(sx, sz), max = R - 7 * dpr;
+        if (L > max) { if (!clamp) return null; sx *= max / L; sz *= max / L; } return [R + sx, R + sz, L > max]; };
+      const dot = (p, col, r) => { if (!p) return; c.beginPath(); c.arc(p[0], p[1], r * dpr, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
+      const out = { aliens: 0 };
+      for (const a of md.aliens) { const p = proj(a.x, a.z, false); if (p) { dot(p, a.boss ? '#ff2d6a' : '#ff4b4b', a.boss ? 4.2 : 2.6); out.aliens++; } }
+      if (md.dog) dot(proj(md.dog.x, md.dog.z, false), '#e8b06a', 2);
+      if (md.next) { const p = proj(md.next.x, md.next.z, true); dot(p, '#ffd25a', 3); out.next = !!p; }
+      if (md.ship) { const p = proj(md.ship.x, md.ship.z, true); c.save(); c.translate(p[0], p[1]); c.beginPath(); c.moveTo(0, -5 * dpr); c.lineTo(4 * dpr, 4 * dpr); c.lineTo(-4 * dpr, 4 * dpr); c.closePath(); c.fillStyle = '#ff8a3c'; c.fill(); c.restore(); out.ship = true; }
+      if (md.rover && !md.driving) { const p = proj(md.rover.x, md.rover.z, true); c.fillStyle = '#4fa8ff'; c.fillRect(p[0] - 3.5 * dpr, p[1] - 3.5 * dpr, 7 * dpr, 7 * dpr); out.rover = true; }
+      if (md.wp) { const p = proj(md.wp.x, md.wp.z, true); c.save(); c.translate(p[0], p[1]); c.rotate(Math.PI / 4); c.fillStyle = '#38e1ff'; c.fillRect(-3.5 * dpr, -3.5 * dpr, 7 * dpr, 7 * dpr); c.restore(); out.wp = true; }
+      c.save(); c.translate(R, R); c.beginPath(); c.moveTo(0, -6 * dpr); c.lineTo(4.5 * dpr, 5 * dpr); c.lineTo(0, 2.5 * dpr); c.lineTo(-4.5 * dpr, 5 * dpr); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
+      const label = md.driving ? `🚀 ${fmtDist(Math.round(Math.hypot(md.ship.x - md.x, md.ship.z - md.z)))}` : md.rover ? `🚙 ${fmtDist(Math.round(Math.hypot(md.rover.x - md.x, md.rover.z - md.z)))}` : '';
+      c.font = `700 ${Math.round(9 * dpr)}px system-ui, sans-serif`; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,0.9)'; c.shadowColor = '#000'; c.shadowBlur = 3 * dpr; c.fillText(label, R, W - 9 * dpr); c.shadowBlur = 0;
+      mapLast = out;
     }
+    function updateRoverPill() { drawMiniMap(); }
     function travel(kind) {
       roverMenu.classList.remove('show');
       const fn = { summon: surface.summonRover, warp: surface.warpToRover, ship: surface.returnToShip }[kind];
@@ -1109,7 +1128,12 @@
       setTimeout(() => { const r = fn(); toast(r.ok ? (kind === 'warp' ? `✨ Warped to your rover, with ${dogName}!` : '🚀 Back at the Starship.') : `🚫 ${r.why}`, 2500); updateSurfHud(true); setTimeout(() => { fadeEl.style.opacity = 0; setTimeout(() => { fadeEl.style.transition = ''; }, 300); }, 120); }, 260);
       return { ok: true, pending: true };
     }
-    roverPill.onclick = () => { roverMenu.classList.toggle('show'); if (document.pointerLockElement) document.exitPointerLock(); };
+    function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
+    miniMap.onclick = () => toggleMenu(); document.getElementById('menuBtn').onclick = () => toggleMenu();
+    function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
+    document.getElementById('hideHudBtn').onclick = () => setCinematic(true);
+    document.getElementById('hudShow').onclick = () => setCinematic(false);
+    document.getElementById('settingsBtn').onclick = () => { roverMenu.classList.remove('show'); openLog(); showTab('tabSettings'); };
     document.getElementById('rmSummon').onclick = () => travel('summon');
     document.getElementById('rmWarp').onclick = () => travel('warp');
     document.getElementById('rmShip').onclick = () => travel('ship');
@@ -1157,6 +1181,9 @@
         if (e.code === 'KeyL' && !e.repeat) openLog();
         if (e.code === 'KeyR' && !e.repeat) travel(e.shiftKey ? 'warp' : 'summon');
         if (e.code === 'KeyH' && !e.repeat) travel('ship');
+        if ((e.code === 'KeyM' || e.code === 'Tab') && !e.repeat) { e.preventDefault(); toggleMenu(); }
+        if (e.code === 'KeyU' && !e.repeat) setCinematic(!document.body.classList.contains('cinematic'));
+        if (e.code === 'Escape' && roverMenu.classList.contains('show')) roverMenu.classList.remove('show');
         if (e.code === 'KeyF' && !e.repeat && document.pointerLockElement) { mouseAim.x = 0; mouseAim.y = 0; }
         if (e.code === 'Equal' || e.code === 'NumpadAdd') surface.zoom(0.8);
         if (e.code === 'Minus' || e.code === 'NumpadSubtract') surface.zoom(1.25);
@@ -1401,7 +1428,7 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v6', sfx: () => sfxLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v6.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
