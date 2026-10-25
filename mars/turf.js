@@ -333,6 +333,17 @@ function tap(el, fn) {
   (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g);
 }
 const isTouch = () => document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
+// Phone hotkey dock, shared by the Marsmania add-ons (contraband B, jobs J, turf K, beltway …). Whichever loads first
+// creates #ssxDock on the right edge (between the top HUD and the Jump/Run column); each adds one 48px black button.
+// Shown only on touch devices on the surface, where there's no keyboard. Bound with window.__onTap.
+function dockButton(id, label, aria, order, fn) {
+  if (!document.getElementById('ssxDockCss')) { const st = document.createElement('style'); st.id = 'ssxDockCss'; st.textContent = `#ssxDock{position:fixed;z-index:12;right:calc(8px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));display:none;flex-direction:column;gap:8px;pointer-events:none}
+body.surface.touch #ssxDock{display:flex} @media (pointer:coarse){body.surface #ssxDock{display:flex}}
+#ssxDock button{pointer-events:auto;min-width:52px;min-height:48px;padding:3px 6px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 11px/1.15 system-ui,sans-serif;white-space:pre-line;touch-action:manipulation}`; document.head.appendChild(st); }
+  let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); }
+  let b = document.getElementById(id); if (b) return b;
+  b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return b;
+}
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   hud = document.createElement('div'); hud.id = 'turfHud'; hud.innerHTML = '<div class="tx"><div class="l1"></div><div class="l2"></div></div><button id="turfRetreat" type="button" aria-label="Retreat">Retreat</button>'; document.body.appendChild(hud);
@@ -342,6 +353,7 @@ function ui() {
   panel = document.createElement('div'); panel.id = 'turfPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Turf"><div id="turfBody"></div><div class="msg" id="turfMsg"></div><div class="foot"><button id="turfClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); body = panel.querySelector('#turfBody'); msgEl = panel.querySelector('#turfMsg');
   tap(panel.querySelector('#turfClose'), close);
+  dockButton('dockTurf', '🚩\nTurf', 'Turf (K)', 3, () => panel.classList.contains('show') ? close() : open());
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
     if (e.code === 'KeyK') { panel.classList.contains('show') ? close() : open(); }

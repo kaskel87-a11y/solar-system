@@ -38,7 +38,8 @@ Gang turf wars in Red Tape Flats (`mars-rough`). It's a self-contained add-on wi
   - Open it from ☰ **🚩 Turf**, the **K** key, or the **🗺️ TURF MAP** beacon in the Flats (local `[-8, 16]`, by the fast-travel point).
   - Each row shows the block's owner colour chip, cr/min, status, and an Attack or Track button. Track lights up that block's beacon.
 - **Wave HUD.** One line at the top centre, below the minimap on phones: mode, block, wave n/N, enemies left, a leash warning, and a 44 px **Retreat** button.
-- **Action button** (`#turfAct`, left side) appears near a flag or the map beacon.
+- **Action button** (`#turfAct`, left side) appears near a flag or the map beacon, exactly when **Y** works, on touch too.
+- **Phone dock:** on touch devices a 52×48 black **🚩 Turf** button (`#dockTurf`) in the shared right-edge `#ssxDock` (top 300 px, above Jump/Run) does what **K** does. Contraband adds 🎒 Stash (B) and jobs adds 💼 Jobs (J) to the same dock.
 
 ## Integration (all feature-detected)
 
