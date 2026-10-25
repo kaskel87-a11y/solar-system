@@ -469,6 +469,8 @@
   "ssx/city": "./city.js?v=7.5.2",
   "./citydata.js": "./citydata.js?v=7.5.2",
   "ssx/citydata": "./citydata.js?v=7.5.2",
+  "./clubdancers.js": "./clubdancers.js?v=7.5.2",
+  "ssx/clubdancers": "./clubdancers.js?v=7.5.2",
   "./danger.js": "./danger.js?v=7.5.2",
   "ssx/danger": "./danger.js?v=7.5.2",
   "./dangercore.js": "./dangercore.js?v=7.5.2",
@@ -1420,10 +1422,10 @@
         W.clubFx('rain', 24); au7.fx.cash();
         toast(pickL(['💸 You make it rain. The dancers work the poles harder and somebody whistles.', '💸 Credits flutter down. Jade catches one mid-spin without missing a beat.', '💸 Tiny, from the rope: “Big spender. Don’t get ideas.”', '💸 A chit lands in the drink of the guy next to you. He’s too drunk to care.']), 2800);
       } else if (s.act === 'private') {
-        if (!g.spend(50)) { toast('Nova: Fifty for a song, sugar. Come back when you’re liquid.', 2600); au7.fx.dry(); return; }
+        if (!g.spend(50)) { toast(`${s.who || 'Danny Alvarez'}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
         W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
-        toast('💃 Nova dances one song just for you. Costume stays on, hands stay on the armrests, Tiny watches from the rope.', 4200);
+        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song just for you. Costume stays on, hands stay on the armrests, Tiny watches from the rope.`, 4200);
       } else if (s.act === 'companion') {
         if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
         au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
