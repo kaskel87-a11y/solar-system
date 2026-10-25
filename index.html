@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-  <meta name="app-version" content="v5">
+  <meta name="app-version" content="v6">
   <title>Cinematic Universe Explorer</title>
   <style>
     :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
@@ -101,7 +101,48 @@
     body.touch #info small.touch-only, body.touch #info p.touch-only { display: block !important; }
     body.touch .desk-only { display: none !important; }
     body:not(.touch) #joy { display: none; }
+    /* v6: health, quests, radio, combat */
+    #hpBox { position: fixed; top: calc(110px + var(--sat)); right: calc(14px + var(--sar)); z-index: 7; width: 150px; padding: 7px 9px; border-radius: 12px; font-size: 0.7rem; box-sizing: border-box; }
+    .bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; margin: 2px 0 4px; }
+    .bar i { display: block; height: 100%; width: 100%; border-radius: 4px; transition: width 0.15s; }
+    #shBar i { background: linear-gradient(90deg, #38bdf8, #7dd3fc); } #hpBar i { background: linear-gradient(90deg, #22c55e, #86efac); }
+    #hpBar.low i { background: linear-gradient(90deg, #ef4444, #f87171); }
+    #heatRow { display: none; } body.turret #heatRow { display: block; }
+    #heatBar i { background: linear-gradient(90deg, #f59e0b, #ef4444); } #heatBar.over i { background: #ff2d55; animation: blink 0.4s infinite alternate; }
+    @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
+    #rankLine { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #questTrack { position: fixed; top: calc(150px + var(--sat)); left: calc(14px + var(--sal)); z-index: 7; padding: 6px 10px; border-radius: 10px; font-size: 0.76rem; display: none; max-width: min(300px, calc(100vw - 190px)); border: 1px solid rgba(80,200,255,0.45); }
+    #questTrack b { color: #7dd3fc; } #questTrack .tm { color: #fca5a5; font-weight: 800; }
+    body.quest #poiHint { display: none !important; }
+    .fic { display: inline-block; font-size: 0.62rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; background: #7c3aed; color: #fff; margin-left: 4px; vertical-align: 1px; }
+    #nextHint.quest #nextArrow { color: #38bdf8; }
+    #radio { position: fixed; left: 50%; bottom: calc(296px + var(--sab)); transform: translateX(-50%); z-index: 11; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px; border-radius: 14px; display: none; background: rgba(6,20,30,0.92); border: 1px solid rgba(80,200,255,0.55); font-size: 0.85rem; line-height: 1.38; }
+    #radio .from { color: #7dd3fc; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.06em; }
+    #radio .btns { display: flex; gap: 8px; margin-top: 8px; } #radio .btns button { flex: 1; min-height: 42px; font-weight: 800; border-radius: 12px; }
+    #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
+    #fireBtn { position: fixed; right: calc(104px + var(--sar)); bottom: calc(36px + var(--sab)); width: 88px; height: 88px; border-radius: 50%; z-index: 8; display: none; font-size: 1rem; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.5); background: radial-gradient(circle at 40% 35%, #ff6b8b, #d1124a); box-shadow: 0 0 22px rgba(255,60,110,0.55); touch-action: none; }
+    #fireBtn.on { transform: scale(0.93); background: radial-gradient(circle at 40% 35%, #ff9ab0, #ff2d6a); }
+    body.touch.combat #fireBtn, body.touch.turret #fireBtn { display: block; }
+    body.combat #crosshair { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid rgba(255,120,160,0.9); }
+    #bossBar { position: fixed; top: calc(200px + var(--sat)); left: 50%; transform: translateX(-50%); width: min(320px, calc(100vw - 60px)); z-index: 8; display: none; text-align: center; font-size: 0.78rem; font-weight: 800; padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(200,80,255,0.6); }
+    #bossBar .bar i { background: linear-gradient(90deg, #a855f7, #ec4899); }
+    #hurt { position: fixed; inset: 0; pointer-events: none; z-index: 10; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,0,40,0) 45%, rgba(255,0,40,0.55) 100%); transition: opacity 0.35s; }
+    #downMsg { position: fixed; inset: 0; z-index: 12; display: none; align-items: center; justify-content: center; text-align: center; font-size: 1.3rem; font-weight: 800; background: rgba(20,0,30,0.55); pointer-events: none; }
+    #logTabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; } #logTabs button { flex: 1; min-height: 40px; border-radius: 12px; font-weight: 800; }
+    #logTabs button.active { background: rgba(80,160,255,0.55); }
+    .tab { display: none; } .tab.active { display: block; }
+    #logPanel .item .row { display: flex; gap: 8px; margin-top: 8px; } #logPanel .item .row button { min-height: 38px; padding: 6px 12px; border-radius: 10px; font-weight: 700; }
+    #logPanel .item.done { border-left: 3px solid #22c55e; } #logPanel .item.active { border-left: 3px solid #38bdf8; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .chip { padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.82rem; min-height: 38px; }
+    .chip.on { border-color: #ffd25a; background: rgba(255,210,90,0.2); } .chip.lock { opacity: 0.4; }
+    .sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 8px; }
+    .sw button { min-width: 74px; min-height: 40px; border-radius: 10px; font-weight: 800; }
     @media (max-height: 440px) {
+      #hpBox { top: calc(100px + var(--sat)); width: 140px; }
+      #questTrack { top: calc(138px + var(--sat)); }
+      #radio { bottom: auto; top: calc(8px + var(--sat)); width: min(400px, calc(100vw - 420px)); min-width: 260px; font-size: 0.8rem; padding: 8px 12px; }
+      #fireBtn { width: 76px; height: 76px; bottom: calc(22px + var(--sab)); right: calc(100px + var(--sar)); }
+      #bossBar { top: calc(14px + var(--sat)); }
       #hudSpeed { top: calc(14px + var(--sat)); }
       #landBtn { top: calc(54px + var(--sat)); min-height: 48px; padding: 9px 18px; font-size: 1rem; }
       #landMsg { top: calc(112px + var(--sat)); }
@@ -141,11 +182,11 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe<span class="ver">v5</span></h1>
+    <h1>🌌 Cinematic Universe<span class="ver">v6</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
-    <small class="touch-only">Tap Mercury, Venus, Earth, Moon or Mars, then 🛬 Land here to walk on it. Or tap 🚀 Fly and use the 🛬 button. Left stick moves, drag to steer.</small>
+    <small class="touch-only">Tap Mercury, Venus, Earth, Moon, Mars, Io, Europa or Titan, then 🛬 Land here to walk on it. Or tap 🚀 Fly and use the 🛬 button. Left stick moves, drag to steer.</small>
   </div>
 
   <div id="topright">
@@ -163,7 +204,7 @@
     <button id="factLand" class="btn">🛬 Land here</button>
   </div>
 
-  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v5</div>
+  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v6 · Alien content in quests is fiction; science facts are real.</div>
 
   <div id="hud">
     <div id="hudHint"></div>
@@ -192,15 +233,33 @@
     <div id="nextHint" class="glass"><span id="nextArrow">➤</span><span id="nextText"></span></div>
     <div id="ctxBar"><button id="driveBtn">🚙 Drive</button><button id="petBtn">🐾 Pet</button></div>
     <div id="toast" class="glass"></div>
-    <div id="surfHelp" class="glass desk-only">WASD move · drag/mouse look · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
+    <div id="surfHelp" class="glass desk-only">WASD move · mouse look/aim · click or F fire · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
     <div id="crosshair" class="desk-only"></div>
+    <div id="hpBox" class="glass">
+      <div>🛡 Shield</div><div class="bar" id="shBar"><i></i></div>
+      <div>❤️ Health</div><div class="bar" id="hpBar"><i></i></div>
+      <div id="heatRow"><div id="heatLbl">🔥 Plasma heat</div><div class="bar" id="heatBar"><i></i></div></div>
+      <div id="rankLine"></div>
+    </div>
+    <div id="questTrack" class="glass"></div>
+    <button id="fireBtn">FIRE</button>
+    <div id="bossBar" class="glass"><span id="bossName"></span><div class="bar"><i></i></div></div>
+    <div id="radio"><div class="from">📻 MISSION CONTROL <span id="radioFic"></span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
   </div>
+  <div id="hurt"></div>
+  <div id="downMsg"><div>💫 Ouch! Beaming you back to the Starship…</div></div>
   <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
   <div id="logPanel"><div class="wrap">
     <button id="logClose" class="btn">✕ Close</button>
-    <h2>🔎 Discoveries <span id="logTotal"></span></h2>
-    <div id="dogRow">🐶 Your dog's name: <input id="dogName" maxlength="20" autocomplete="off" aria-label="Dog name"><button id="dogSave" class="btn">Save</button></div>
-    <div id="logList"></div>
+    <h2>🛰 Mission Log</h2>
+    <div id="logTabs"><button data-tab="tabQuests" class="glass">📜 Quests</button><button data-tab="tabDisc" class="glass">🔎 Finds <span id="logTotal"></span></button><button data-tab="tabRewards" class="glass">🏅 Rewards</button><button data-tab="tabSettings" class="glass">⚙️ Settings</button></div>
+    <div id="tabQuests" class="tab"></div>
+    <div id="tabDisc" class="tab"><div id="logList"></div></div>
+    <div id="tabRewards" class="tab"></div>
+    <div id="tabSettings" class="tab">
+      <div id="dogRow">🐶 Your dog's name: <input id="dogName" maxlength="20" autocomplete="off" aria-label="Dog name"><button id="dogSave" class="btn">Save</button></div>
+      <div id="settingsBody"></div>
+    </div>
   </div></div>
   <div id="fade"></div>
 
@@ -224,8 +283,9 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=5';
-    import { buildStarship } from './models.js?v=5';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=6';
+    import { buildStarship } from './models.js?v=6';
+    import { COSMETICS } from './game.js?v=6';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -373,8 +433,8 @@
       { name: 'Venus', r: 4.5, d: 58, s: 1.1, tex: textures.venus, fact: 'The hottest planet. Its thick CO₂ atmosphere traps heat, and it spins backwards.', stats: 'Surface ~465 °C · Year: 225 days · Moons: 0' },
       { name: 'Earth', r: 5, d: 82, s: 1.0, tex: textures.earth, fact: 'The only world known to host life. You would jump about 6× higher on the Moon.', stats: 'Day: 24 h · Year: 365 days · Moons: 1' },
       { name: 'Mars', r: 3, d: 112, s: 0.75, tex: textures.mars, fact: 'Home to Olympus Mons, the tallest volcano in the solar system, about 3× the height of Everest.', stats: 'Day: 24.6 h · Year: 687 days · Moons: 2' },
-      { name: 'Jupiter', r: 11.5, d: 175, s: 0.38, tex: textures.jupiter, fact: 'A gas giant more than twice as massive as all other planets combined. The Great Red Spot is a storm bigger than Earth.', stats: 'Day: 10 h · Year: 12 years · Moons: 95' },
-      { name: 'Saturn', r: 10, d: 245, s: 0.28, tex: textures.saturn, rings: true, fact: 'Saturn would float in water. Its rings are made of ice and rock.', stats: 'Day: 10.7 h · Year: 29 years · Moons: 146' },
+      { name: 'Jupiter', moons: ['Io', 'Europa'], r: 11.5, d: 175, s: 0.38, tex: textures.jupiter, fact: 'A gas giant more than twice as massive as all other planets combined. The Great Red Spot is a storm bigger than Earth.', stats: 'Day: 10 h · Year: 12 years · Moons: 95' },
+      { name: 'Saturn', moons: ['Titan'], r: 10, d: 245, s: 0.28, tex: textures.saturn, rings: true, fact: 'Saturn would float in water. Its rings are made of ice and rock.', stats: 'Day: 10.7 h · Year: 29 years · Moons: 146' },
       { name: 'Uranus', r: 6.5, d: 305, s: 0.2, tex: textures.uranus, tilt: 1.71, fact: 'Rotates on its side, possibly from an ancient collision.', stats: 'Day: 17 h · Year: 84 years · Moons: 28' },
       { name: 'Neptune', r: 6.3, d: 360, s: 0.16, tex: textures.neptune, fact: 'Strongest winds in the solar system, up to 2,000 km/h.', stats: 'Day: 16 h · Year: 165 years · Moons: 16' }
     ];
@@ -393,6 +453,30 @@
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), orbitMat));
     });
 
+    // procedural textures for the landable outer moons
+    function moonTex(kind) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+      let seed = kind.length * 977; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      if (kind === 'Io') {
+        x.fillStyle = '#e8d25a'; x.fillRect(0, 0, 256, 128);
+        for (let i = 0; i < 70; i++) { x.fillStyle = ['#f3e9a0', '#c98a2e', '#b5652a', '#fff4c0'][i % 4]; x.globalAlpha = 0.55; x.beginPath(); x.arc(rnd() * 256, rnd() * 128, 2 + rnd() * 9, 0, 7); x.fill(); }
+        x.globalAlpha = 1; for (let i = 0; i < 22; i++) { x.fillStyle = i % 3 ? '#2a1a10' : '#c0301a'; x.beginPath(); x.arc(rnd() * 256, rnd() * 128, 1 + rnd() * 2.5, 0, 7); x.fill(); }
+      } else if (kind === 'Europa') {
+        x.fillStyle = '#e9e4d8'; x.fillRect(0, 0, 256, 128);
+        for (let i = 0; i < 26; i++) { x.fillStyle = 'rgba(200,180,150,0.4)'; x.beginPath(); x.arc(rnd() * 256, rnd() * 128, 6 + rnd() * 18, 0, 7); x.fill(); }
+        x.strokeStyle = 'rgba(140,70,40,0.75)'; x.lineWidth = 1.2;
+        for (let i = 0; i < 40; i++) { x.beginPath(); let px = rnd() * 256, py = rnd() * 128; x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += (rnd() - 0.5) * 70; py += (rnd() - 0.5) * 24; x.lineTo(px, py); } x.stroke(); }
+      } else {
+        const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#d8a050'); g.addColorStop(0.5, '#e0aa58'); g.addColorStop(1, '#c08a40'); x.fillStyle = g; x.fillRect(0, 0, 256, 128);
+        for (let i = 0; i < 10; i++) { x.fillStyle = 'rgba(255,220,150,0.12)'; x.fillRect(0, rnd() * 128, 256, 3 + rnd() * 8); }
+      }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+    }
+    const OUTER_MOONS = {
+      Io: { r: 1.25, d: 18, s: 0.5, fact: 'Io is the most volcanic place in the solar system, with over 400 active volcanoes, squeezed and heated by Jupiter\u2019s gravity.', stats: 'Moon of Jupiter · Orbit 1.8 days · Gravity 0.18 g' },
+      Europa: { r: 1.1, d: 23.5, s: 0.36, fact: 'Under Europa\u2019s icy shell lies a salty ocean holding about twice as much water as all of Earth\u2019s oceans.', stats: 'Moon of Jupiter · Orbit 3.6 days · Gravity 0.13 g' },
+      Titan: { r: 1.6, d: 27, s: 0.22, fact: 'Titan is the only moon with a thick atmosphere and the only other world known to have lakes and seas on its surface, made of liquid methane.', stats: 'Moon of Saturn · Orbit 16 days · Gravity 0.14 g' }
+    };
     let earthGroup = null;
     planets.forEach(p => {
       const g = new THREE.Group();
@@ -446,6 +530,16 @@
         bodies.push({ name: 'Moon', mesh: moon, group: null, hidden: true });
       }
 
+      if (p.moons) {
+        g.userData.pivots = [];
+        p.moons.forEach((mn, i) => {
+          const M = OUTER_MOONS[mn], pivot = new THREE.Group(); pivot.rotation.y = i * 2.2 + 0.6; pivot.userData.speed = M.s; g.add(pivot);
+          const mesh = new THREE.Mesh(new THREE.SphereGeometry(M.r, 32, 24), new THREE.MeshStandardMaterial({ map: moonTex(mn), roughness: 1 }));
+          mesh.position.set(M.d, 0, 0); mesh.userData = { name: mn, fact: M.fact, stats: M.stats, r: M.r };
+          pivot.add(mesh); planetMeshes.push(mesh); bodies.push({ name: mn, mesh, group: null, hidden: true });
+          g.userData.pivots.push(pivot);
+        });
+      }
       if (p.rings) {
         const inner = p.r + 1.4, outer = p.r + 9.8;
         const ringGeo = new THREE.RingGeometry(inner, outer, 160, 1);
@@ -589,7 +683,8 @@
     const keys = {};
     let yaw = 0, pitch = 0;
     const joy = { x: 0, y: 0, id: null };
-    const touchBtns = { up: false, down: false, boost: false, jump: false, run: false };
+    const touchBtns = { up: false, down: false, boost: false, jump: false, run: false, fire: false };
+    const mouseAim = { x: 0, y: 0, has: false, held: false };
     const flyBtn = document.getElementById('flyBtn');
 
     function lockPointer() {
@@ -652,6 +747,17 @@
       sfxLog.push('bark'); const a = audio(); if (!a) return;
       [0, 0.2].forEach(t => { tone(a, 'square', 520, 210, t, 0.13, 0.12); tone(a, 'sawtooth', 300, 140, t, 0.12, 0.08); });
     }
+    const sfx = (name, fn) => { sfxLog.push(name); if (sfxLog.length > 400) sfxLog.splice(0, 200); const a = audio(); if (a) fn(a); };
+    const zap = () => sfx('zap', a => { tone(a, 'square', 1500, 320, 0, 0.09, 0.05); tone(a, 'sine', 2400, 900, 0, 0.06, 0.04); });
+    const plasma = () => sfx('plasma', a => { tone(a, 'sawtooth', 240, 55, 0, 0.2, 0.09); tone(a, 'square', 900, 140, 0, 0.1, 0.05); tone(a, 'sine', 70, 40, 0, 0.22, 0.14); });
+    const poofSnd = big => sfx('poof', a => { (big ? [523, 659, 784, 1047, 1319, 1568] : [784, 1047, 1319]).forEach((f, i) => tone(a, 'triangle', f, f * 1.02, i * 0.05, 0.22, 0.12)); });
+    const hurtSnd = () => sfx('hurt', a => { tone(a, 'sawtooth', 170, 70, 0, 0.22, 0.12); });
+    const quindar = (end) => sfx('quindar', a => tone(a, 'sine', end ? 2475 : 2525, end ? 2475 : 2525, 0, 0.25, 0.07));
+    const fanfare = () => sfx('fanfare', a => { [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.38], [784, 0.52], [1047, 0.62]].forEach(([f, t]) => { tone(a, 'triangle', f, f, t, 0.3, 0.14); tone(a, 'sine', f * 2, f * 2, t, 0.25, 0.04); }); });
+    const pickupSnd = () => sfx('pickup', a => { tone(a, 'sine', 1320, 1330, 0, 0.18, 0.14); tone(a, 'sine', 1760, 1770, 0.08, 0.25, 0.12); });
+    const overheatSnd = () => sfx('overheat', a => { tone(a, 'sawtooth', 600, 120, 0, 0.5, 0.08); });
+    const growl = () => sfx('growl', a => { tone(a, 'sawtooth', 110, 90, 0, 0.35, 0.09); tone(a, 'square', 520, 230, 0.4, 0.12, 0.12); tone(a, 'square', 520, 230, 0.6, 0.12, 0.12); });
+    let lastZap = 0;
 
     // ===== Dog name, discoveries popup, toasts =====
     const DOG_KEY = 'ssx.dogName';
@@ -660,6 +766,7 @@
     const discPop = document.getElementById('discPop'), toastEl = document.getElementById('toast');
     let popTimer = 0, toastTimer = 0;
     function showPop(ev) {
+      discPop.querySelector('.t').textContent = '✨ DISCOVERED!';
       document.getElementById('discName').textContent = ev.name;
       document.getElementById('discFact').textContent = ev.fact;
       document.getElementById('discCount').textContent = ev.found === ev.total ? `🏆 All ${ev.total} discoveries on ${ev.world} found!` : `${ev.world} · ${ev.found}/${ev.total} discovered · saved in your log`;
@@ -667,11 +774,68 @@
       discPop.classList.add('show'); clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show'), 7000);
     }
     discPop.addEventListener('click', () => discPop.classList.remove('show'));
+    // generic reward popup (quest complete, rare find, rank up) reusing the discovery card
+    function rewardPop(tag, title, body, foot, ms = 8000) {
+      discPop.querySelector('.t').textContent = tag;
+      document.getElementById('discName').textContent = title;
+      document.getElementById('discFact').textContent = body;
+      document.getElementById('discCount').textContent = foot;
+      factPanel.style.display = 'none';
+      discPop.classList.add('show'); clearTimeout(popTimer); popTimer = setTimeout(() => { discPop.classList.remove('show'); discPop.querySelector('.t').textContent = '✨ DISCOVERED!'; }, ms);
+    }
+    // mission-control radio with optional quest offer and optional speech
+    const radioEl = document.getElementById('radio'), radioText = document.getElementById('radioText'), radioBtns = document.getElementById('radioBtns');
+    let radioTimer = 0, radioOffer = null;
+    function speak(text) {
+      try {
+        if (!surface.game.progress.settings.voice || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/\(Fiction!?\)/g, ''));
+        u.rate = 1.05; u.pitch = 0.95; u.volume = 0.9; speechSynthesis.speak(u);
+      } catch (e) { /* no speech on this device */ }
+    }
+    function showRadio(ev) {
+      quindar(false); setTimeout(() => quindar(true), 900);
+      radioText.textContent = ev.text;
+      radioOffer = ev.offer || null;
+      const def = radioOffer && surface.game.questList().find(q => q.id === radioOffer);
+      document.getElementById('radioFic').innerHTML = (def?.fiction || ev.fiction) ? '<span class="fic">FICTION</span>' : '';
+      radioBtns.style.display = radioOffer ? 'flex' : 'none';
+      radioEl.style.display = 'block';
+      clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? 25000 : 9000);
+      speak(ev.text);
+    }
+    document.getElementById('radioAccept').onclick = () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); };
+    document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Open the Log (📜/L) any time to start a quest.', 3000); };
+    const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
+    let hurtTimer = 0;
     function toast(msg, ms = 4000) { toastEl.textContent = msg; toastEl.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.display = 'none', ms); }
+    const gameLog = [];
     function onSurfaceEvent(type, ev) {
+      if (type !== 'zap' && type !== 'hit') { gameLog.push(type); if (gameLog.length > 300) gameLog.splice(0, 150); }
       if (type === 'discover') { chime(); showPop(ev); updateSurfHud(true); }
-      else if (type === 'bark') bark();
-      else if (type === 'dogHint') toast(`🐶 ${dogName} is sniffing at something ${ev.dir}, ${ev.dist} m away!`);
+      else if (type === 'bark') { if (ev.warn) growl(); else bark(); }
+      else if (type === 'dogHint') toast(ev.quest ? `🐶 ${dogName} smells something for your quest ${ev.dir}, ${ev.dist} m away!` : `🐶 ${dogName} is sniffing at something ${ev.dir}, ${ev.dist} m away!`);
+      else if (type === 'radio') showRadio(ev);
+      else if (type === 'quest') {
+        if (ev.kind === 'accepted') toast(`📜 Quest started: ${ev.title}`, 3000);
+        else if (ev.kind === 'done') { fanfare(); rewardPop('🏁 QUEST COMPLETE!', ev.title, [ev.fact, ...ev.got].filter(Boolean).join('  ·  '), `+${ev.xp} XP · +${ev.credits} credits${ev.fiction ? ' · 👾 alien parts are fiction' : ''}`, 10000); }
+        else if (ev.kind === 'failed') { hurtSnd(); toast(`⏱ Quest failed: ${ev.title}. Try again from the Log!`, 4000); }
+        else if (ev.kind === 'step' && !ev.silent) { /* HUD shows it */ }
+        updateSurfHud(true);
+      }
+      else if (type === 'chime') pickupSnd();
+      else if (type === 'pickup') { pickupSnd(); toast(`✅ ${ev.name}`, 2500); }
+      else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '👾 RARE FIND (FICTION)' : '💎 RARE FIND!', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
+      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; ev.heavy ? plasma() : zap(); } }
+      else if (type === 'poof') { poofSnd(ev.boss); if (ev.boss) toast('👑 The Hive Queen went POOF! (Fiction!)', 3500); }
+      else if (type === 'hurt') { hurtSnd(); hurtEl.style.transition = 'none'; hurtEl.style.opacity = ev.hp < 40 ? 1 : 0.7; clearTimeout(hurtTimer); hurtTimer = setTimeout(() => { hurtEl.style.transition = 'opacity 0.5s'; hurtEl.style.opacity = 0; }, 90); }
+      else if (type === 'down') { downEl.style.display = 'flex'; hurtEl.style.opacity = 1; }
+      else if (type === 'respawn') { downEl.style.display = 'none'; hurtEl.style.opacity = 0; updateSurfHud(true); }
+      else if (type === 'alienWarn') toast(`🐶 ${dogName} growls: aliens about ${ev.dist} m away! (Fiction!)`, 3000);
+      else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
+      else if (type === 'overheat') { overheatSnd(); toast('🔥 Plasma blaster overheated! Cooling down…', 2200); }
+      else if (type === 'toast') toast(ev.text, 3500);
     }
     const surface = createSurface({ renderer, textures, isMobile, onEvent: onSurfaceEvent });
     const landBtn = document.getElementById('landBtn'), landMsg = document.getElementById('landMsg'), fadeEl = document.getElementById('fade');
@@ -708,6 +872,9 @@
       surface.takeOff();
       fadeEl.style.opacity = 1;
       factPanel.style.display = 'none';
+      radioEl.style.display = 'none'; downEl.style.display = 'none'; hurtEl.style.opacity = 0; touchBtns.fire = false; mouseAim.held = false;
+      document.body.classList.remove('combat', 'turret', 'quest');
+      try { speechSynthesis.cancel(); } catch (e) { /* */ }
       setTimeout(() => {
         surface.exit();
         onSurface = false;
@@ -789,7 +956,49 @@
       }
       document.getElementById('logList').innerHTML = html; document.getElementById('logTotal').textContent = `${f}/${t}`;
       document.getElementById('dogName').value = dogName;
+      renderLogTabs();
+      showTab(logTab);
       logPanel.style.display = 'block'; if (document.pointerLockElement) document.exitPointerLock();
+    }
+    let logTab = 'tabQuests';
+    function showTab(id) {
+      logTab = id;
+      document.querySelectorAll('#logTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+      document.querySelectorAll('#logPanel .tab').forEach(t => t.classList.toggle('active', t.id === id));
+    }
+    document.querySelectorAll('#logTabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+    const QUEST_WORLDS = ['Moon', 'Mars', 'Venus', 'Mercury', 'Earth', 'Io', 'Europa', 'Titan'];
+    function renderLogTabs() {
+      const G = surface.game, P = G.progress, here = onSurface ? surface.info?.name : null, gi = G.info;
+      // quests: this world first, then the rest
+      const worlds = here ? [here, ...QUEST_WORLDS.filter(w => w !== here)] : QUEST_WORLDS;
+      let qh = here ? '' : '<p style="opacity:.8">Land on a world to start its quests.</p>';
+      for (const w of worlds) {
+        const list = G.questList(w); if (!list.length) continue;
+        qh += `<h3>${esc(w)} · ${list.filter(q => q.done).length}/${list.length}</h3>` + list.map(q => {
+          const btn = w !== here ? '' : q.active ? `<button class="btn" data-abandon="${q.id}">✖ Abandon</button>` : `<button class="btn" data-accept="${q.id}">${q.done ? '🔁 Replay' : '▶ Start'}</button>`;
+          const need = q.needsAliens && !P.settings.aliens ? ' · 🕊 boss is skipped in peaceful mode' : '';
+          return `<div class="item${q.done ? ' done' : ''}${q.active ? ' active' : ''}"><b>${q.done ? '✅ ' : ''}${esc(q.title)}</b>${q.fiction ? '<span class="fic">FICTION</span>' : ''}<br><small>${q.steps} steps${q.limit ? ` · ⏱ ${q.limit} s` : ''} · +${q.reward.xp} XP${q.reward.badge ? ' · 🏅 ' + esc(q.reward.badge) : ''}${need}</small>${btn ? `<div class="row">${btn}</div>` : ''}</div>`;
+        }).join('');
+      }
+      const tq = document.getElementById('tabQuests'); tq.innerHTML = qh;
+      tq.querySelectorAll('[data-accept]').forEach(b => b.onclick = () => { G.accept(b.dataset.accept); logPanel.style.display = 'none'; updateSurfHud(true); });
+      tq.querySelectorAll('[data-abandon]').forEach(b => b.onclick = () => { G.abandon(); renderLogTabs(); updateSurfHud(true); });
+      // rewards
+      const r = gi;
+      const rareTotal = Object.values(P.rare || {}).reduce((n, a) => n + a.length, 0);
+      document.getElementById('tabRewards').innerHTML = `<div class="item"><b>⭐ ${esc(r.rank)}</b> · ${r.xp} XP${r.rankNext ? ` · next rank at ${r.rankNext} XP` : ' · top rank!'}<div class="bar" style="margin-top:6px"><i style="width:${r.rankNext ? Math.round(100 * (r.xp - r.rankBase) / (r.rankNext - r.rankBase)) : 100}%;background:#ffd25a"></i></div>💰 ${r.credits} credits · 👾 ${P.stats.kills} aliens poofed · 💎 ${rareTotal} rare finds</div>`
+        + `<h3>🏅 Badges (${P.badges.length})</h3>` + (P.badges.length ? `<div class="chips">${P.badges.map(b => `<span class="chip on">🏅 ${esc(b)}</span>`).join('')}</div>` : '<p style="opacity:.75">Finish quests to earn badges.</p>')
+        + `<p style="opacity:.75;font-size:.8rem">Aliens, drones, the Hive Queen and alien artifacts are made up for fun. Every planet fact is real science.</p>`;
+      // settings + cosmetics
+      const pick = kind => Object.entries(COSMETICS[kind]).map(([id, c]) => { const own = P.unlocks.includes(`${kind}:${id}`); return `<button class="chip${P.equip[kind] === id ? ' on' : ''}${own ? '' : ' lock'}" data-kind="${kind}" data-id="${id}">${own ? '' : '🔒 '}${esc(c.name)}</button>`; }).join('');
+      const sb = document.getElementById('settingsBody');
+      sb.innerHTML = `<div class="sw"><span>👾 Aliens &amp; combat<br><small style="opacity:.7">Off = peaceful exploring</small></span><button class="btn" id="setAliens">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
+        + `<div class="sw"><span>📻 Mission-control voice</span><button class="btn" id="setVoice">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
+        + `<h3>🎨 Rover paint</h3><div class="chips">${pick('paint')}</div><h3>🧣 ${esc(dogName)}'s bandana</h3><div class="chips">${pick('bandana')}</div>`;
+      sb.querySelector('#setAliens').onclick = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '👾 Aliens ON. Watch out! (Fiction!)' : '🕊 Peaceful mode: no aliens.', 2500); renderLogTabs(); updateSurfHud(true); };
+      sb.querySelector('#setVoice').onclick = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
+      sb.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Finish quests to unlock this one.', 2500); });
     }
     discBtn.onclick = openLog;
     document.getElementById('logClose').onclick = () => logPanel.style.display = 'none';
@@ -816,20 +1025,57 @@
         petBtn.textContent = `🐾 Pet ${dogName}${isTouch ? '' : ' (P)'}`;
         runBtnEl.textContent = i.driving ? 'Boost' : 'Run';
       }
-      if (i.next) {
+      const wp = surface.waypoint();
+      nextHint.classList.toggle('quest', !!wp);
+      if (wp) {
+        nextHint.style.display = 'flex';
+        nextArrow.style.transform = `rotate(${(-wp.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
+        nextText.textContent = `Quest · ${wp.dist} m`;
+      } else if (i.next) {
         nextHint.style.display = 'flex';
         nextArrow.style.transform = `rotate(${(-i.next.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
         nextText.textContent = `Signal · ${i.next.dist} m`;
       } else if (i.disc.total) { nextHint.style.display = 'flex'; nextArrow.style.transform = ''; nextText.textContent = '🏆 All found here'; }
+      updateGameHud();
       const p = surface.nearestPoi();
       if (p && p.dist < 120) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
+    }
+    const shBar = document.querySelector('#shBar i'), hpBarEl = document.getElementById('hpBar'), hpBar = hpBarEl.querySelector('i'), heatBarEl = document.getElementById('heatBar'), heatBar = heatBarEl.querySelector('i');
+    const rankLine = document.getElementById('rankLine'), questTrack = document.getElementById('questTrack'), bossBar = document.getElementById('bossBar');
+    function updateGameHud() {
+      const g = surface.game.info;
+      document.body.classList.toggle('combat', g.combat);
+      document.body.classList.toggle('turret', g.turret);
+      document.body.classList.toggle('quest', !!g.quest);
+      shBar.style.width = `${(100 * g.shield / g.shieldMax).toFixed(0)}%`;
+      hpBar.style.width = `${(100 * g.hp / g.hpMax).toFixed(0)}%`; hpBarEl.classList.toggle('low', g.hp < 35);
+      heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
+      document.getElementById('heatLbl').textContent = g.overheat ? '🔥 OVERHEATED! cooling…' : '🔥 Plasma heat';
+      rankLine.textContent = `⭐ ${g.rank} · ${g.xp} XP · 💰 ${g.credits}`;
+      if (g.quest) {
+        questTrack.style.display = 'block';
+        questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b>${g.quest.fiction ? '<span class="fic">FICTION</span>' : ''}<br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
+      } else questTrack.style.display = 'none';
+      if (g.boss) { bossBar.style.display = 'block'; document.getElementById('bossName').textContent = `👑 ${g.boss.name} (fiction)`; bossBar.querySelector('i').style.width = `${(100 * g.boss.hp / g.boss.max).toFixed(0)}%`; }
+      else bossBar.style.display = 'none';
     }
     // desktop scroll-wheel zoom
     renderer.domElement.addEventListener('wheel', e => { if (!onSurface) return; e.preventDefault(); surface.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -200, 200) * 0.0025)); updateSurfHud(true); }, { passive: false });
 
     // tap / click things on the surface for facts
     let sDown = null, lastPinch = 0;
-    renderer.domElement.addEventListener('pointerdown', e => { if (onSurface) sDown = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+    renderer.domElement.addEventListener('pointerdown', e => {
+      if (!onSurface) return;
+      sDown = { x: e.clientX, y: e.clientY, t: performance.now() };
+      if (e.pointerType === 'mouse' && e.button === 0 && document.pointerLockElement && surface.game.info.combat) mouseAim.held = true;
+    });
+    window.addEventListener('pointerup', () => { mouseAim.held = false; });
+    // desktop aiming: crosshair when the mouse is locked, else the mouse pointer
+    window.addEventListener('mousemove', e => {
+      if (!onSurface || isTouch) return;
+      if (document.pointerLockElement) { mouseAim.x = 0; mouseAim.y = 0; } else { mouseAim.x = (e.clientX / innerWidth) * 2 - 1; mouseAim.y = -(e.clientY / innerHeight) * 2 + 1; }
+      mouseAim.has = true; surface.aim(mouseAim.x, mouseAim.y, true);
+    });
     renderer.domElement.addEventListener('pointerup', e => {
       if (!onSurface || !sDown) return;
       const moved = Math.hypot(e.clientX - sDown.x, e.clientY - sDown.y), dtp = performance.now() - sDown.t; sDown = null;
@@ -837,6 +1083,7 @@
       const locked = !!document.pointerLockElement;
       const hit = locked ? surface.tap(0, 0) : surface.tap((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
       if (performance.now() - lastPinch < 400) return;
+      if (hit && hit.fired) return;
       if (hit && hit.pet) return updateSurfHud(true);
       if (hit && hit.discovered) return;
       if (hit) showFact({ userData: hit });
@@ -853,6 +1100,7 @@
         if (e.code === 'KeyP' && !e.repeat) surface.pet();
         if (e.code === 'KeyV' && !e.repeat) { surface.cycleView(); updateSurfHud(true); }
         if (e.code === 'KeyL' && !e.repeat) openLog();
+        if (e.code === 'KeyF' && !e.repeat && document.pointerLockElement) { mouseAim.x = 0; mouseAim.y = 0; }
         if (e.code === 'Equal' || e.code === 'NumpadAdd') surface.zoom(0.8);
         if (e.code === 'Minus' || e.code === 'NumpadSubtract') surface.zoom(1.25);
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -916,7 +1164,7 @@
     joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
 
     // Hold buttons
-    [['upBtn', 'up'], ['downBtn', 'down'], ['boostBtn', 'boost'], ['jumpBtn', 'jump'], ['runBtn', 'run']].forEach(([id, k]) => {
+    [['upBtn', 'up'], ['downBtn', 'down'], ['boostBtn', 'boost'], ['jumpBtn', 'jump'], ['runBtn', 'run'], ['fireBtn', 'fire']].forEach(([id, k]) => {
       const el = document.getElementById(id);
       const on = e => { e.preventDefault(); touchBtns[k] = true; el.classList.add('on'); try { el.setPointerCapture?.(e.pointerId); } catch (_) {} };
       const off = () => { touchBtns[k] = false; el.classList.remove('on'); };
@@ -939,7 +1187,10 @@
       const dt = realDt * timeSpeed;
 
       if (onSurface) {
-        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run });
+        if (document.pointerLockElement && !isTouch) { mouseAim.x = 0; mouseAim.y = 0; surface.aim(0, 0, true); }
+        const fireHeld = !!(keys['KeyF'] || touchBtns.fire || mouseAim.held);
+        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run,
+          fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
         if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
         window.__frames = (window.__frames || 0) + 1;
@@ -950,6 +1201,7 @@
         g.userData.orbitAngle += g.userData.orbitSpeed * dt * 0.18;
         g.position.set(Math.cos(g.userData.orbitAngle) * g.userData.orbitDist, 0, Math.sin(g.userData.orbitAngle) * g.userData.orbitDist);
         if (g.userData.moonPivot) g.userData.moonPivot.rotation.y += dt * 0.9;
+        if (g.userData.pivots) g.userData.pivots.forEach(pv => pv.rotation.y += dt * pv.userData.speed);
       });
       spinners.forEach(m => m.rotation.y += (0.2 + (m.userData.spinExtra || 0)) * dt);
       sun.rotation.y += 0.03 * dt;
@@ -1092,7 +1344,8 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v5', sfx: () => sfxLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v6', sfx: () => sfxLog, dogNameGet: () => dogName,
+      get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
 </body>
