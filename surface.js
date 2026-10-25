@@ -1,6 +1,7 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=5';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=6';
+import { createGame } from './game.js?v=6';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -320,13 +321,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         group.add(m); poiObjects.push(m); chunkPois.push(m);
       }
     }
+    const rare = game.rareFor(ix, iz, CHUNK);
+    if (rare) group.add(rare);
     scene.add(group);
-    return { group, pois: chunkPois, geo };
+    return { group, pois: chunkPois, geo, rare };
   }
   function disposeChunk(c) {
     scene.remove(c.group);
     c.geo.dispose();
     c.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); });
+    if (c.rare) c.rare.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); if (o.material && !o.material.userData.shared) o.material.dispose(); });
     c.pois.forEach(p => { const i = poiObjects.indexOf(p); if (i >= 0) poiObjects.splice(i, 1); p.userData.beacon?.geometry.dispose(); p.userData.beacon?.material.dispose(); });
   }
   // Europa cracks, Io sulfur/lava spots
@@ -479,15 +483,20 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const glintMat = new THREE.SpriteMaterial({ map: makeGlow('rgba(255,240,190,1)', 'rgba(255,190,60,0.45)'), fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending });
   const isFound = id => !!found[name]?.includes(id);
   function discCount() { const l = DISCOVERIES[name] || []; return { found: l.filter(d => isFound(d.id)).length, total: l.length }; }
+  // a spot at compass angle a (deg) and distance d from the landing site, nudged out of any water
+  function safePoint(aDeg, d0) {
+    let a = aDeg * Math.PI / 180, dist = d0, x = 0, z = 0;
+    for (let k = 0; k < 30; k++) {
+      x = Math.sin(a) * dist; z = -Math.cos(a) * dist;
+      if (cfg.water === undefined || height(x, z) > cfg.water + 1.2) break;
+      dist += 15; if (k % 6 === 5) { a += 0.45; dist = d0; }
+    }
+    return { x, z };
+  }
   function placeDiscoveries() {
     found = loadFound(); discItems = [];
     for (const d of DISCOVERIES[name] || []) {
-      let a = d.a * Math.PI / 180, dist = d.d, x = 0, z = 0;
-      for (let k = 0; k < 30; k++) {
-        x = Math.sin(a) * dist; z = -Math.cos(a) * dist;
-        if (cfg.water === undefined || height(x, z) > cfg.water + 1.2) break;
-        dist += 15; if (k % 6 === 5) { a += 0.45; dist = d.d; }
-      }
+      const { x, z } = safePoint(d.a, d.d);
       const y0 = height(x, z);
       const obj = DISCOVERY_BUILDERS[d.kind]((dx, dz) => height(x + dx, z + dz) - y0);
       obj.position.set(x, y0, z);
@@ -505,6 +514,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function discover(it, how) {
     if (isFound(it.d.id)) return false;
     (found[name] ||= []).push(it.d.id); saveFound(found); setBeacon(it, true);
+    game.onDiscover();
     const c = discCount();
     onEvent('discover', { id: it.d.id, name: it.d.name, fact: it.d.fact, world: name, found: c.found, total: c.total, how });
     return true;
@@ -575,6 +585,24 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     d.pts.geometry.attributes.position.needsUpdate = true; d.pts.geometry.attributes.color.needsUpdate = true;
   }
 
+  // v6 game layer: quests, aliens, blasters, rewards (see game.js)
+  const game = createGame({
+    scene, camera, isMobile, onEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
+    st: () => ({ name, cfg, driving, rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
+    respawn() {
+      if (driving) interact();
+      const x = SHIP.x - 10, z = SHIP.z + 12;
+      player.x = x; player.z = z; player.y = height(x, z) + EYE; player.vy = 0; player.yaw = 0.6; player.faceYaw = 0.6;
+      if (dog) { dog.mode = 'follow'; dog.x = x + 1.5; dog.z = z + 1.5; dog.y = height(dog.x, dog.z); }
+      updateChunks(x, z, true);
+    },
+    dogAlert(x, z) {
+      if (!dog) return;
+      dog.wag = 1.5;
+      if (!driving) { if (dog.mode === 'sniff') { dog.mode = 'follow'; dog.nextSniff = 15; } dog.yaw = Math.atan2(-(x - dog.x), -(z - dog.z)); dog.idle = 0; if (!dog.air) dog.vy = 2.6; }
+      onEvent('bark', { warn: true });
+    }
+  });
   function enter(bodyName) {
     cfg = BODIES[bodyName]; name = bodyName;
     noise = makeNoise(cfg.seed); noise2 = makeNoise(cfg.seed * 7 + 3);
@@ -604,15 +632,17 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     driving = false; camYawOff = 0; driven = 0;
     player.x = 0; player.z = 6; player.yaw = 0; player.pitch = -0.08; player.vy = 0; player.walked = 0; player.faceYaw = 0;
     player.y = height(0, 6) + EYE;
-    updateChunks(player.x, player.z, true);
     state = { intro: 1.8, outro: 0 };
+    game.enter(bodyName);
+    updateChunks(player.x, player.z, true);
     camDist = camGoal;
     updateRover(0.016, { keys: {}, joy: { x: 0, y: 0 } }, cfg.g * 9.81); updateDog(0.016, cfg.g * 9.81); updateAstro(0.016); updateCamera(0.016);
   }
   function exit() {
+    game.exit();
     for (const c of chunks.values()) disposeChunk(c);
     chunks.clear();
-    scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && ![rockGeo, trunkGeo, leafGeo, meteorGeo, beamGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if ([beamOn, beamOff, glintMat].includes(m)) return; if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
+    scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && !o.geometry.userData.shared && ![rockGeo, trunkGeo, leafGeo, meteorGeo, beamGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (!m || m.userData.shared || [beamOn, beamOff, glintMat].includes(m)) return; if (m.map?.userData?.shared) { m.dispose(); return; } if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
     [terrainMat, rockMat, trunkMat, leafMat, meteorMat].forEach(m => m?.dispose());
     scene.clear(); poiObjects.length = 0; waterMesh = null; skyGroup = null; scene.fog = null;
     farMesh = null; farCenter = null; rover = null; dog = null; astro = null; dust = null; discItems = []; driving = false;
@@ -727,7 +757,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       let tx = player.x + rxp * 1.3 - fxp * 1.0, tz = player.z + rzp * 1.3 - fzp * 1.0, stopAt = 0.7;
       if (d.mode === 'sniff' && d.sniff) {
         tx = d.sniff.x; tz = d.sniff.z; stopAt = 0.8;
-        if (Math.hypot(player.x - d.x, player.z - d.z) > 35 || isFound(d.sniff.id)) d.mode = 'follow';
+        if (Math.hypot(player.x - d.x, player.z - d.z) > 35 || d.sniff.done()) d.mode = 'follow';
       }
       const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
       if (dist > 60 && d.mode === 'follow') { d.x = tx; d.z = tz; d.y = height(tx, tz); }
@@ -742,12 +772,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       d.idle = (v < 0.3 && d.mode === 'follow') ? d.idle + dt : 0;
       d.nextSniff -= dt;
       if (d.mode === 'follow' && d.nextSniff <= 0 && state.intro <= 0) {
-        d.nextSniff = 22 + Math.random() * 18;
-        const n = nearestUndiscovered(player.x, player.z);
-        if (n && n.dist < 130) {
-          const k = n.dist < 17 ? (n.dist - 3) / n.dist : 14 / n.dist;
-          d.sniff = { x: player.x + (n.it.x - player.x) * k, z: player.z + (n.it.z - player.z) * k, id: n.it.d.id }; d.mode = 'sniff'; d.sniffT = 2.5;
-          onEvent('dogHint', { dist: Math.round(n.dist), dir: relDir(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw) });
+        // quest items and rare finds first, then undiscovered sites
+        const q = game.sniffTarget(player.x, player.z), n = nearestUndiscovered(player.x, player.z);
+        const t = q ? { x: q.x, z: q.z, id: q.id, done: q.done, dist: Math.hypot(q.x - player.x, q.z - player.z), quest: true }
+          : n && n.dist < 130 ? { x: n.it.x, z: n.it.z, id: n.it.d.id, done: () => isFound(n.it.d.id), dist: n.dist } : null;
+        d.nextSniff = q ? 12 + Math.random() * 6 : 22 + Math.random() * 18;
+        if (t) {
+          const k = t.dist < 17 ? Math.max(0, t.dist - 3) / t.dist : 14 / t.dist;
+          d.sniff = { x: player.x + (t.x - player.x) * k, z: player.z + (t.z - player.z) * k, id: t.id, done: t.done }; d.mode = 'sniff'; d.sniffT = 2.5;
+          onEvent('dogHint', { dist: Math.round(t.dist), dir: relDir(Math.atan2(-(t.x - player.x), -(t.z - player.z)) - viewYaw), quest: !!t.quest });
         }
       }
       const gh = height(d.x, d.z);
@@ -825,12 +858,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     time += dt;
     const g = cfg.g * 9.81;
     if (state.intro > 0) state.intro = Math.max(0, state.intro - dt);
+    if (game.isDown()) input = { keys: {}, joy: { x: 0, y: 0 } }; // knocked out: wait for the beam-back
     if (!driving) walk(dt, input, g);
     updateRover(dt, input, g);
     if (driving) { player.x = rover.x; player.z = rover.z; player.y = rover.y + EYE; player.grounded = !rover.air; if (state.outro > 0) state.outro -= dt; }
     updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
+    game.update(dt, input);
     const px = player.x, pz = player.z;
     updateChunks(px, pz, false, driving ? 2 : 1);
     // far terrain for high views
@@ -854,11 +889,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!cfg) return null;
     ray.far = camDist + 90;
     ray.setFromCamera({ x: nx, y: ny }, camera);
-    const targets = dog && !driving ? [...poiObjects, dog.group] : poiObjects;
+    const targets = [...poiObjects, ...game.tapTargets()]; if (dog && !driving) targets.push(dog.group);
     const hits = ray.intersectObjects(targets, true);
+    const combat = game.combat;
     for (const h of hits) {
       let o = h.object; while (o && !o.userData.poi && o !== dog?.group) o = o.parent;
       if (!o) continue;
+      const gr = game.tapObject(o);
+      if (gr !== undefined) { if (gr) return gr; continue; }
+      if (combat && !o.userData.disc) break; // in a fight, taps on scenery shoot instead
       if (o === dog?.group) { pet(); return { pet: true }; }
       if (o.userData.disc) {
         const it = discItems.find(i => i.d.id === o.userData.disc);
@@ -869,6 +908,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       }
       return { name: o.userData.name, fact: o.userData.fact, rover: !!o.userData.rover };
     }
+    if (combat) { game.fire({ x: nx, y: ny }); return { fired: true }; }
     return null;
   }
   function nearestPoi() {
@@ -926,7 +966,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
 
   function debugPlace(x, z, yaw = player.yaw) { if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
   return {
-    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace,
+    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game,
+    aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
+    // test hook: jump to just short of the active quest's current objective
+    debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
+    waypoint() { const w = game.waypoint(); if (!w) return null; const a = Math.atan2(-(w.x - player.x), -(w.z - player.z)) - viewYaw; return { dist: Math.round(w.dist), ang: Math.atan2(Math.sin(a), Math.cos(a)), text: w.text }; },
     get info() {
       if (!cfg) return null;
       const n = nearestUndiscovered(player.x, player.z), c = discCount();

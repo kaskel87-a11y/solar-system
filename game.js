@@ -128,6 +128,7 @@ function assets() {
   // the surface tears down its scene on exit and disposes everything; mark shared stuff so it can opt out
   for (const k in A) { const v = A[k]; if (v && (v.isBufferGeometry || v.isMaterial)) v.userData.shared = true; }
   for (const k in A.mBolt) A.mBolt[k].userData.shared = true;
+  A.sparkTex.userData.shared = true; A.flashMat.map.userData.shared = true;
   return A;
 }
 
@@ -809,7 +810,7 @@ export function createGame(ctx) {
   }
 
   return {
-    enter, exit, update, fire, accept, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
+    enter, exit, update, fire, accept, isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
     onDiscover() { gain(20, 10); },
