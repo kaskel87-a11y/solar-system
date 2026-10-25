@@ -27,6 +27,8 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - Informant tips mark cameras and guard posts on your minimap.
 - The street economy: buy low in one district and sell high in another, barter with fixers for guns, tips and backup, and watch out for undercover busts. Chop shops scrap hot rides.
 - Fixes: the duel camera finds a clear side, rocks and crate stacks no longer swallow the camera, and the Security pay-off spot is easier to hit.
+- Radio messages you didn't ask for arrive as a one-line pill (tap to read), and on portrait phones the pill replaces the toast, so the centre of the screen stays clear.
+- Fixed: the Mars story pack loaded a second copy of the game module.
 
 ## v7.5: the Mars city
 Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Districts** to hop between them (lose your wanted stars first).
