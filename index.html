@@ -475,6 +475,8 @@
   "ssx/dangercore": "./dangercore.js?v=7.5.2",
   "./dangerhooks.js": "./dangerhooks.js?v=7.5.2",
   "ssx/dangerhooks": "./dangerhooks.js?v=7.5.2",
+  "./dust.js": "./dust.js?v=7.5.2",
+  "ssx/dust": "./dust.js?v=7.5.2",
   "./game.js": "./game.js?v=7.5.2",
   "ssx/game": "./game.js?v=7.5.2",
   "./heist.js": "./heist.js?v=7.5.2",
@@ -491,6 +493,10 @@
   "ssx/missions-data": "./missions-data.js?v=7.5.2",
   "./models.js": "./models.js?v=7.5.2",
   "ssx/models": "./models.js?v=7.5.2",
+  "./night.js": "./night.js?v=7.5.2",
+  "ssx/night": "./night.js?v=7.5.2",
+  "./pit.js": "./pit.js?v=7.5.2",
+  "ssx/pit": "./pit.js?v=7.5.2",
   "./portals.js": "./portals.js?v=7.5.2",
   "ssx/portals": "./portals.js?v=7.5.2",
   "./pursuit.js": "./pursuit.js?v=7.5.2",
@@ -503,6 +509,8 @@
   "ssx/racecore": "./racecore.js?v=7.5.2",
   "./racehooks.js": "./racehooks.js?v=7.5.2",
   "ssx/racehooks": "./racehooks.js?v=7.5.2",
+  "./radio-extra.js": "./radio-extra.js?v=7.5.2",
+  "ssx/radio-extra": "./radio-extra.js?v=7.5.2",
   "./radio.js": "./radio.js?v=7.5.2",
   "ssx/radio": "./radio.js?v=7.5.2",
   "./safecrack.js": "./safecrack.js?v=7.5.2",
@@ -513,6 +521,8 @@
   "ssx/scientists": "./scientists.js?v=7.5.2",
   "./scihooks.js": "./scihooks.js?v=7.5.2",
   "ssx/scihooks": "./scihooks.js?v=7.5.2",
+  "./songs.js": "./songs.js?v=7.5.2",
+  "ssx/songs": "./songs.js?v=7.5.2",
   "./storymars.js": "./storymars.js?v=7.5.2",
   "ssx/storymars": "./storymars.js?v=7.5.2",
   "./streetdata.js": "./streetdata.js?v=7.5.2",
@@ -2200,6 +2210,7 @@
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    import('./radio-extra.js').then(m => m.initRadioExtra(window.__app, { au7, ctx: () => actx })).catch(e => console.warn('radio-extra', e)); // PIT 66.6, DUST 98.3, MY MUSIC
   </script>
   <script type="module" src="./mars/contraband.js?v=7.5.2"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
   <script type="module" src="./mars/jobs.js?v=7.5.2"></script> <!-- v7.5.2 Mars side jobs (window.SSX.jobs); ticked by activities/runner.js -->
