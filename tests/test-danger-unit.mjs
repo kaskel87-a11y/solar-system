@@ -168,4 +168,29 @@ ok('los solid blocks', !DC.lineOfSight({ x: 0, y: 1.5, z: 0 }, { x: 100, y: 1, z
   ok('ambient: broke for donation', AC.planChoice(byId('ev-street-preacher'), 'donate', { credits: 5 }).kind === 'broke');
   ok('ambient: every runnable event has a no-cost way out', A.events.filter(e => e._c.support !== 'stub').every(e => e._c.choices.some(id => { const o = e.choices.find(c => c.id === id).outcome; return !o.wanted && !(o.credits < 0) && !o.fight; })));
 }
+
+{ // heist:escape payload (PR #8) and gang backup
+  const full = { id: 'quinn-villa', title: 'Quinn Villa', world: 'Mars', pos: { x: 1, z: 2 }, site: { x: 0, z: 0, r: 40 }, heat: 3, evading: false, security: 2, alarm: true, loot: { credits: 2000, item: 'jewels' }, t: 120, vehicle: 'rover' };
+  const r = DC.escapeRequest(full, 'Mars');
+  ok('escape: PR #8 payload maps', r && r.n === 3 && r.title === 'Quinn Villa' && r.loot === 2000 && r.item === 'jewels' && r.pos.x === 1 && r.vehicle === 'rover');
+  ok('escape: quiet job is 1 car', DC.escapeRequest({ ...full, alarm: false, heat: 0, loot: null }).n === 1);
+  ok('escape: alarm adds a car', DC.escapeRequest({ ...full, alarm: true, heat: 1, loot: { credits: 10 } }).n === 2);
+  ok('escape: other world ignored', DC.escapeRequest(full, 'Luna') === null);
+  ok('escape: garbage safe', DC.escapeRequest(null) === null && DC.escapeRequest('x') === null && DC.escapeRequest({ heat: 'lots', loot: 5, pos: 'here' }).n === 1);
+  const g = { type: 'gang_backup', faction: 'saltblood', count: 3, durationSec: 180, armed: 'pistols' };
+  const p = DC.backupPlan(g, 10, true);
+  ok('backup: marrow 3 for 180 s', p.ok && p.n === 3 && p.dur === 180 && p.kind === 'thug' && p.weapon === 'pipe');
+  ok('backup: phone cap 4', DC.backupPlan({ ...g, count: 5 }, 10, true).n === 4 && DC.backupPlan({ ...g, count: 5 }, 10, false).n === 5);
+  ok('backup: trimmed to budget room', DC.backupPlan(g, 2, true).n === 2 && DC.backupPlan(g, 2, true).trimmed);
+  ok('backup: no room refuses', DC.backupPlan(g, 0, true).why === 'budget');
+  ok('backup: unknown faction refuses', DC.backupPlan({ ...g, faction: 'colsec' }, 9, true).why === 'faction');
+  ok('backup: duration clamped', DC.backupPlan({ ...g, durationSec: 99999 }, 9, true).dur === 600 && DC.backupPlan({ ...g, durationSec: 1 }, 9, true).dur === 20);
+  ok('backup: stays inside the 12 cap', [0, 4, 8, 11, 12].every(w => { const room = DC.npcBudget(w, 0, true); const q = DC.backupPlan({ ...g, count: 5 }, room, true); return w + (q.ok ? q.n : 0) <= 12; }));
+  const sl = [0, 1, 2, 3].map(i => DC.escortSlot(i, 4, 0, 0, 0));
+  ok('backup: slots flank the player on both sides', Math.sign(sl[0].x) !== Math.sign(sl[1].x) && sl.every(q => Math.abs(q.x) > 2) && sl[2].z > sl[0].z);
+  ok('backup: target nearest hostile in range', DC.escortTarget({ x: 0, z: 0 }, { x: 0, z: 0 }, [{ x: 30, z: 0 }, { x: 5, z: 0 }, { x: 2, z: 0, alive: false }]).x === 5 && DC.escortTarget({ x: 0, z: 0 }, { x: 0, z: 0 }, [{ x: 40, z: 0 }]) === null);
+  const B = JSON.parse(readFileSync(new URL('../data/barter.json', import.meta.url)));
+  const gb = B.offers.filter(o => o.gives?.type === 'gang_backup');
+  ok('backup: every barter gang_backup offer plans on desktop', gb.length >= 2 && gb.every(o => DC.backupPlan(o.gives, 12, false).ok));
+}
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

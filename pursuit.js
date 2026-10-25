@@ -96,14 +96,14 @@ let pendingEscape = null;
 function onHeistEscape(e) {
   try {
     if (!e || e.__ssxGetaway) return; try { e.__ssxGetaway = true; } catch (_) {}
-    const d = (e.detail && typeof e.detail === 'object') ? e.detail : {};
-    const n = Math.max(1, Math.min(3, Number.isFinite(+d.pursuers) && +d.pursuers > 0 ? Math.round(+d.pursuers) : 2));
-    pendingEscape = { at: performance.now(), n, title: typeof d.title === 'string' ? d.title.slice(0, 60) : null };
+    const r = DC.escapeRequest(e.detail && typeof e.detail === 'object' ? e.detail : {}, null); if (!r) return;
+    pendingEscape = { at: performance.now(), ...r };
   } catch (_) { /* never let a foreign event break the game loop */ }
 }
 try { if (typeof window !== 'undefined') window.addEventListener('heist:escape', onHeistEscape); if (typeof document !== 'undefined') document.addEventListener('heist:escape', onHeistEscape); } catch (_) {}
 function heistTick(ctx, enabled) {
   if (!pendingEscape) return;
+  if (pendingEscape.world && ctx.name && pendingEscape.world.toLowerCase() !== String(ctx.name).toLowerCase()) { S.log.push('heist:otherWorld'); pendingEscape = null; return; }
   if (performance.now() - pendingEscape.at > 30000) { S.log.push('heist:expired'); pendingEscape = null; return; }
   if (!enabled || ctx.inside || ctx.world?.inDuel) return;
   if (S.active) { if (S.kind === 'setpiece' || S.kind === 'getaway') { pendingEscape = null; return; } stop('heist'); return; }

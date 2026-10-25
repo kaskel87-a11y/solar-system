@@ -160,7 +160,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await G(() => { window.__danger.clear(); window.__app.surface.world.setWanted(0, 'test'); }); await rough(3); await sleep(300);
     const w1 = await G(() => window.__app.surface.world.wanted);
     await G(() => { window.dispatchEvent(new CustomEvent('heist:escape', { detail: 'garbage' })); }); // bad detail must not throw
-    await G(() => { document.dispatchEvent(new CustomEvent('heist:escape', { bubbles: true, detail: { title: 'Helios vault', pursuers: 2 } })); });
+    await G(() => { document.dispatchEvent(new CustomEvent('heist:escape', { bubbles: true, detail: { id: 'quinn-villa', title: 'Quinn Villa', world: 'Mars', pos: { x: 0, z: 0 }, site: { x: 0, z: 0, r: 40 }, heat: 2, evading: false, security: 1, alarm: true, loot: { credits: 900, item: 'jewels' }, t: 140, vehicle: null } })); });
     ok('getawayStarts', JSON.stringify(await G(() => window.__danger.pursuit.state)), await wait(() => window.__danger.pursuit.state?.active && window.__danger.pursuit.state.kind === 'getaway' && window.__danger.pursuit.state.units >= 1, 15000));
     ok('getawayNoStars', await G(() => window.__app.surface.world.wanted), (await G(() => window.__app.surface.world.wanted)) === w1);
     ok('getawayNotPolice', null, await G(() => window.__danger.pursuit.units().every(u => u.kind !== 'police')));

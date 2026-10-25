@@ -179,7 +179,7 @@ function startMugging(force) {
 function onMuggerDown(how) {
   const m = mug; if (!m) return; say(m.n, 'junkieDown', null, 2400);
   const gun = how === 'shot' || how === 'blast';
-  const heat = DC.heatForMugger({ phase: m.phase, killed: true, gun, witnessed: inColony(m.n.x, m.n.z), inColony: inColony(m.n.x, m.n.z) });
+  const heat = how === 'escort' ? null : DC.heatForMugger({ phase: m.phase, killed: true, gun, witnessed: inColony(m.n.x, m.n.z), inColony: inColony(m.n.x, m.n.z) });
   if (heat) C.world.crime?.(heat.min, heat.why);
   const loot = DC.muggerLoot(Math.random, m.paid), P = C.game.progress;
   P.credits += loot.credits; P.xp += 12; C.game.save?.();
@@ -352,8 +352,98 @@ function ensureUI() {
 }
 const menuLabel = () => settings.on ? '🔪 Street danger: on' : '😇 Street danger: off';
 
+// ---------- gang backup escorts (Marrow's barter offers; SSX.danger.spawnBackup) ----------
+// Friendly Saltblood follow you, jump whoever turns hostile near you (muggers, brawlers, ambient fights) and leave when
+// time is up. They're ours, so they count against the same NPC budget (≤12 on a phone). Your bullets pass through them.
+let backup = null; // { faction, dur, t, escorts, leaving, n }
+const backupStats = { spawned: 0, refused: {}, kills: 0, last: null };
+function spawnBackup(g = {}) {
+  try {
+    if (!C || !root) return refuseBackup('noSurface');
+    if (C.world?.inDuel) return refuseBackup('duel');
+    if (C.inside) return refuseBackup('inside');
+    if (backup && !backup.leaving) { const ext = DC.backupPlan(g, 99, isTouch()); if (ext.ok) { backup.dur = Math.max(backup.dur - backup.t, ext.dur); backup.t = 0; } return { ok: true, extended: true, n: backup.escorts.filter(e => e.alive).length, durationSec: backup.dur }; }
+    if (backup) endBackup(true);
+    const plan = DC.backupPlan(g, budget(), isTouch()); if (!plan.ok) return refuseBackup(plan.why);
+    const P = C.player, yaw = P.yaw ?? 0, escorts = [];
+    for (let i = 0; i < plan.n; i++) {
+      const sl = DC.escortSlot(i, plan.n, P.x, P.z, yaw, 6 + i);
+      const e = spawnNpc(plan.kind, sl.x, sl.z, { hp: plan.hp, escort: true, role: 'escort', faction: plan.faction, slot: i });
+      giveWeapon(e, plan.weapon); if (e.weaponMesh) e.weaponMesh.visible = true; e.weapon = plan.weapon;
+      e.onDeath = () => { if (backup) backup.lost = (backup.lost || 0) + 1; };
+      escorts.push(e);
+    }
+    backup = { faction: plan.faction, dur: plan.dur, t: 0, escorts, leaving: 0, n: plan.n };
+    backupStats.spawned += plan.n; backupStats.last = { n: plan.n, want: plan.want, dur: plan.dur };
+    say(escorts[0], 'escortArrive', null, 2600, '#ff8a3a');
+    toast(`🩸 Saltblood backup: ${plan.n} for ${Math.max(1, Math.round(plan.dur / 60))} min${plan.trimmed ? ' (all Marrow could spare)' : ''}`, 2600);
+    return { ok: true, n: plan.n, durationSec: plan.dur, trimmed: plan.trimmed };
+  } catch (e) { console.warn('spawnBackup', e); return refuseBackup('error'); }
+}
+function refuseBackup(why) { backupStats.refused[why] = (backupStats.refused[why] || 0) + 1; return { ok: false, why }; }
+function endBackup(now) {
+  if (!backup) return;
+  if (now) { for (const e of backup.escorts) { if (e.alive) removeNpc(e); else e.despawn = Math.min(e.despawn ?? 20, 20); } backup = null; return; }
+  if (backup.leaving) return; backup.leaving = 0.001; const e = backup.escorts.find(x => x.alive); if (e) say(e, 'escortLeave', null, 2600, '#ff8a3a');
+}
+function backupTargets() {
+  const t = npcs.filter(n => n.alive && !n.escort && (n.hostile || n.role === 'aggressor'));
+  if (mug?.n?.alive && mug.phase !== 'fleeing' && !t.includes(mug.n)) t.push(mug.n);
+  return t;
+}
+function updateBackup(dt) {
+  if (!backup) return; const P = C.player, B = backup; B.t += dt;
+  const alive = B.escorts.filter(e => e.alive);
+  if (!alive.length) { endBackup(true); return; }
+  if (!B.leaving && (B.t >= B.dur || C.world?.inDuel)) endBackup(false);
+  if (B.leaving) { B.leaving += dt; for (const e of alive) { const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; moveTo(e, e.x + dx / d * 4, e.z + dz / d * 4, 3, dt); } if (B.leaving > 5) endBackup(true); return; }
+  const targets = backupTargets(), yaw = P.yaw ?? 0;
+  for (const e of alive) {
+    const dp = Math.hypot(e.x - P.x, e.z - P.z);
+    if (dp > DC.BACKUP.leash) { const sl = DC.escortSlot(e.slot, B.n, P.x, P.z, yaw, 8); e.x = sl.x; e.z = sl.z; e.y = C.height(e.x, e.z); e.g.position.set(e.x, e.y, e.z); continue; } // you drove off: they catch up off-screen
+    const tgt = C.car ? null : DC.escortTarget(e, P, targets);
+    if (tgt) {
+      const d = Math.hypot(tgt.x - e.x, tgt.z - e.z);
+      if (d > 1.4) moveTo(e, tgt.x, tgt.z, 4.6, dt); else { e.speed = 0; face(e, tgt.x, tgt.z, dt); }
+      e.swingCd = (e.swingCd ?? 0.3) - dt;
+      if (d < 1.7 && e.swingCd <= 0) {
+        e.swingCd = 0.55 + Math.random() * 0.4; e.swingT = 0.35;
+        if (Math.random() < 0.75) { if (Math.random() < 0.25) say(e, 'escortFight', null, 1300, '#ff8a3a'); escortHit(tgt, DC.swing(e.weapon || 'pipe'), e); }
+      }
+    } else {
+      const sl = DC.escortSlot(e.slot, B.n, P.x, P.z, yaw), d = Math.hypot(sl.x - e.x, sl.z - e.z);
+      if (d > 0.8) moveTo(e, sl.x, sl.z, d > 8 ? 6 : 3.2, dt); else { e.speed = 0; face(e, P.x - Math.sin(yaw) * 10, P.z - Math.cos(yaw) * 10, dt, 3); }
+    }
+  }
+}
+function escortHit(n, dmg, from) { // not the player's hit: no crime, no kill stat
+  if (!n.alive) return; n.hp -= dmg; bloodSpray(n.x, n.y + 1.3, n.z); n.byEscort = true;
+  const d = Math.hypot(n.x - from.x, n.z - from.z) || 1; n.x += (n.x - from.x) / d * 0.25; n.z += (n.z - from.z) / d * 0.25;
+  if (mug && mug.n === n && (mug.phase === 'approach' || mug.phase === 'standoff')) commit('fight', { attacked: true });
+  if (n.hp <= 0) { backupStats.kills++; killNpc(n, 'escort'); }
+}
+// Marsmania's contraband (if installed): a give handler for "gang_backup", else Marrow's offers with onTrade. Guarded, idempotent.
+let contrabandHooked = false, barterOffers = null;
+function hookContraband() {
+  if (contrabandHooked) return; const X = typeof window !== 'undefined' ? window.SSX?.contraband : null; if (!X) return;
+  try {
+    const fn = gives => spawnBackup(gives || {});
+    for (const k of ['registerGiveHandler', 'registerGive', 'onGive']) if (typeof X[k] === 'function') { X[k]('gang_backup', fn); contrabandHooked = k; return; }
+    if (typeof X.registerOffer === 'function') {
+      if (!barterOffers) { barterOffers = []; fetch(new URL('./data/barter.json', import.meta.url)).then(r => r.ok ? r.json() : null).then(b => { barterOffers = (b?.offers || []).filter(o => o.gives?.type === 'gang_backup'); }).catch(() => {}); return; }
+      if (!barterOffers.length) return;
+      for (const o of barterOffers) { if (X.getOffer?.(o.id) || X.offers?.[o.id]) continue; X.registerOffer({ id: o.id, npc: o.npc, district: o.district, wants: o.wants, gives: o.gives, onTrade: () => spawnBackup(o.gives) }); }
+      contrabandHooked = 'registerOffer';
+    }
+  } catch (e) { contrabandHooked = 'error'; console.warn('contraband hook', e); }
+}
+const SSX_DANGER = { spawnBackup: g => spawnBackup(g), get backup() { return backup ? { faction: backup.faction, alive: backup.escorts.filter(e => e.alive).length, left: Math.max(0, backup.dur - backup.t), leaving: !!backup.leaving } : null; } };
+// someone may replace window.SSX after we load, so (re)attach from the tick
+function ensureSSX() { try { const X = window.SSX || (window.SSX = {}); if (!X.danger) X.danger = SSX_DANGER; else if (X.danger !== SSX_DANGER && !X.danger.spawnBackup) Object.defineProperties(X.danger, Object.getOwnPropertyDescriptors(SSX_DANGER)); } catch (_) {} }
+ensureSSX();
+
 function clearAll() {
-  if (mug) end('cleared'); for (const f of [...fights]) endFight(f); ambientClear();
+  if (mug) end('cleared'); for (const f of [...fights]) endFight(f); ambientClear(); endBackup(true);
   for (const n of [...npcs]) removeNpc(n); for (const s of splats) root?.remove(s.m); splats = [];
   if (ui) { setChoices(false); setChip(null); }
   pursuitReset(C, !!C);
@@ -365,11 +455,11 @@ export function dangerTick(dt, ctx) {
   dt = Math.min(dt, 0.1); time += dt;
   C = ctx; lastTick = performance.now();
   if (!root || root.parent !== ctx.scene || planet !== ctx.name) { // new planet / new surface session
-    root = new THREE.Group(); root.name = 'danger'; ctx.scene.add(root); planet = ctx.name; npcs = []; splats = []; mug = null; fights = []; director = DC.createDirector(); pursuitReset(ctx, true);
+    root = new THREE.Group(); root.name = 'danger'; ctx.scene.add(root); planet = ctx.name; npcs = []; splats = []; mug = null; fights = []; backup = null; director = DC.createDirector(); pursuitReset(ctx, true);
   }
   if (ctx.name === 'Mars') ambientLoad();
   ensureUI(); setNpcBudget(() => budget()); pursuitOnGangKill(k => { if (k !== 'junkie') saltbloodHeat += 1.5; });
-  patchWorld(ctx.world, [() => npcs.map(n => n.hittable), () => pursuitHittables()]);
+  patchWorld(ctx.world, [() => npcs.filter(n => !n.escort).map(n => n.hittable), () => pursuitHittables()]);
   const P = ctx.player, d = ctx.dog; C.dogNear = !!d && Math.hypot(d.x - P.x, d.z - P.z) < 8;
   const col = ctx.world.colony; C.district = DC.districtAt(P.x, P.z, col, { city: ctx.name === 'Mars' ? MARS_CITY : null, driving: !!ctx.car, speed: ctx.car ? Math.abs(ctx.car.speed) : 0 });
   saltbloodHeat = Math.max(0, saltbloodHeat - dt / 300);
@@ -395,6 +485,7 @@ export function dangerTick(dt, ctx) {
   if (mug) updateMugging(dt);
   for (const f of [...fights]) updateFight(f, dt);
   ambientTick(dt);
+  updateBackup(dt); ensureSSX(); if ((time % 1) < dt) hookContraband();
   runOver(dt);
   for (const n of [...npcs]) { animate(n, dt); if (!n.alive && n.despawn !== undefined && (n.despawn -= dt) <= 0) removeNpc(n); }
   for (const s of [...splats]) { s.t += dt;
@@ -425,6 +516,7 @@ window.__danger = {
   ambient: ambientDebug, ambientChoose: id => { const b = ui?.evBox?.querySelector(`[data-choice="${id}"]`); b?.__pick?.(); return !!b; },
   choose: c => commit(c), clear: clearAll, setEnabled(on) { settings.on = !!on; saveSettings(); if (ui?.menu) ui.menu.textContent = menuLabel(); if (!on) clearAll(); },
   mugFastForward(sec = 1) { if (mug?.phase !== 'standoff') return false; mug.t = Math.max(mug.t, DC.MUG.standoff - sec); return true; }, // tests: swiftshader under load runs game time slowly
+  spawnBackup: g => spawnBackup(g), get backup() { return { state: window.SSX?.danger?.backup ?? null, stats: { ...backupStats, refused: { ...backupStats.refused } }, contraband: contrabandHooked, escorts: npcs.filter(n => n.escort).map(n => ({ x: n.x, z: n.z, alive: n.alive, hp: n.hp })) }; }, endBackup: () => endBackup(false),
   setClock: h => DC.setClock(h), director: () => ({ t: director.t, grace: director.grace, log: director.log.slice(-10), active: director.active }), skipGrace() { director.grace = 0; director.last = -1e9; director.since = {}; },
   hitMugger(dmg = 1.2) { if (mug) hurtNpc(mug.n, dmg, 'shot', C.player); return mug ? mug.n.hp : null; },
   muggerFront(dist = 3, side = 0.35) { if (!mug || !C) return; const P = C.player, y = P.faceYaw ?? P.yaw ?? 0; mug.n.x = P.x - Math.sin(y + side) * dist; mug.n.z = P.z - Math.cos(y + side) * dist; },

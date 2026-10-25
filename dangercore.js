@@ -119,6 +119,9 @@ export const BARKS = {
   fightStart: ['You spilled my fuckin\u2019 drink!', 'That\u2019s for my brother, you piece of shit!', 'Saltblood owns this corner, bitch!', 'You owe me forty credits, Dale!', 'Look at me again. Look at me AGAIN.'],
   fightMid: ['Get off me!', 'Hit him! HIT HIM!', 'My tooth! You knocked out my tooth!', 'Somebody call security! No, don\u2019t!'],
   fightEnd: ['Stay down. STAY DOWN.', 'That\u2019s what you get.', 'Oh shit, is he breathing?'],
+  escortArrive: ['Marrow sent us. Point, and we hurt it.', 'Red tape\u2019s got your back, spacer.', 'Who we stomping?'],
+  escortFight: ['Get some!', 'Saltblood, motherfucker!', 'Stay down!'],
+  escortLeave: ['Clock\u2019s up. Don\u2019t call us, we call you.', 'Marrow says that\u2019s all you paid for.'],
   bystander: ['Holy shit!', 'Not again, man. Not again.', 'Somebody stop them!', 'I\u2019m filming this!'],
   gangChase: ['Saltblood! That\u2019s the motherfucker!', 'Run him off the road!', 'Box him in! BOX HIM IN!', 'You\u2019re in Red Tape now, bitch!'],
   gangLost: ['Where\u2019d he go? WHERE\u2019D HE GO?', 'Fuck! Lost him.', 'Marrow\u2019s gonna skin us.'],
@@ -277,4 +280,38 @@ export function ramImpulse(cop, car, carVel) {
   const cv = { x: -Math.sin(cop.yaw) * cop.speed, z: -Math.cos(cop.yaw) * cop.speed };
   const closing = (cv.x - carVel.x) * nx + (cv.z - carVel.z) * nz;
   return { closing, nx, nz, hard: closing > 6, shove: Math.max(0, closing) * 0.18 };
+}
+
+// ---------- heist:escape payload (Ben's PR #8) ----------
+// { id, title, world, pos:{x,z}, site:{x,z,r}, heat 0-5, evading, security, alarm, loot:{credits,item}|null, t, vehicle }
+// -> a getaway request, or null if the payload is garbage or not for this world. The fence's crew wants the loot back:
+// 1 car, +1 if the alarm went, +1 at 3★+ or a big score (≥ 1500 cr). Max 3.
+export function escapeRequest(d, worldName) {
+  if (!d || typeof d !== 'object') return null;
+  if (typeof d.world === 'string' && worldName && d.world.toLowerCase() !== String(worldName).toLowerCase()) return null;
+  const heat = Number.isFinite(+d.heat) ? Math.max(0, Math.min(5, +d.heat)) : 0, cr = d.loot && Number.isFinite(+d.loot.credits) ? +d.loot.credits : 0;
+  let n = 1 + (d.alarm ? 1 : 0) + (heat >= 3 || cr >= 1500 ? 1 : 0);
+  if (Number.isFinite(+d.pursuers) && +d.pursuers > 0) n = Math.round(+d.pursuers); // explicit override (older drafts)
+  const pos = d.pos && Number.isFinite(+d.pos.x) && Number.isFinite(+d.pos.z) ? { x: +d.pos.x, z: +d.pos.z } : null;
+  return { id: typeof d.id === 'string' ? d.id.slice(0, 40) : null, title: typeof d.title === 'string' ? d.title.slice(0, 60) : null, n: Math.max(1, Math.min(3, n)),
+    heat, alarm: !!d.alarm, loot: cr, item: d.loot && typeof d.loot.item === 'string' ? d.loot.item : null, vehicle: typeof d.vehicle === 'string' ? d.vehicle : null, pos, world: typeof d.world === 'string' ? d.world : null };
+}
+
+// ---------- gang backup escorts (barter.json gives.type "gang_backup": {faction, count, durationSec, armed, vehicle?}) ----------
+export const BACKUP = { factions: { saltblood: { kind: 'thug', hp: 6 } }, maxPhone: 4, maxDesktop: 6, minDur: 20, maxDur: 600, follow: 3.2, leash: 45, engage: 24 };
+const ARMED = { pistols: 'pipe', smgs: 'pipe', knives: 'knife', fists: 'fists' }; // NPC ranged attacks need an engine export; escorts melee for now
+export function backupPlan(g, room, mobile) {
+  if (!g || typeof g !== 'object') return { ok: false, why: 'bad' };
+  const faction = String(g.faction || 'saltblood').toLowerCase(), F = BACKUP.factions[faction]; if (!F) return { ok: false, why: 'faction' };
+  const want = Math.max(1, Math.round(Number.isFinite(+g.count) ? +g.count : 3)), cap = mobile ? BACKUP.maxPhone : BACKUP.maxDesktop;
+  const n = Math.max(0, Math.min(want, cap, room)); if (!n) return { ok: false, why: 'budget' };
+  const dur = Math.max(BACKUP.minDur, Math.min(BACKUP.maxDur, Number.isFinite(+g.durationSec) ? +g.durationSec : 180));
+  return { ok: true, faction, kind: F.kind, hp: F.hp, n, want, dur, weapon: ARMED[g.armed] || 'pipe', vehicle: g.vehicle || null, trimmed: n < want };
+}
+// follow slot i of n: flanking you, alternating left/right and fanning back (so the chase camera actually sees them)
+// yaw: player facing, forward = (-sin, -cos)
+export function escortSlot(i, n, x, z, yaw, r = BACKUP.follow) { const side = i % 2 ? 1 : -1, rank = Math.floor(i / 2), a = yaw + side * (1.05 + rank * 0.45), rr = r + rank * 0.8; return { x: x - Math.sin(a) * rr, z: z - Math.cos(a) * rr }; }
+// nearest live hostile within range of the escort or the player
+export function escortTarget(e, P, targets, range = BACKUP.engage) {
+  let best = null, bd = Infinity; for (const t of targets || []) { if (!t || t.alive === false) continue; const dp = Math.hypot(t.x - P.x, t.z - P.z); if (dp > range) continue; const d = Math.hypot(t.x - e.x, t.z - e.z); if (d < bd) { bd = d; best = t; } } return best;
 }
