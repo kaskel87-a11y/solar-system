@@ -57,6 +57,18 @@ SSX.garage.grant('current', { slot: 'paint', value: 'gold' });
 - On the stock rover, paint and kit are refused (those stay with Meridian Depot). Use an upgrade, wheels or glow instead.
 - Read-only: `SSX.garage.rides`, `SSX.garage.active`, `SSX.garage.rep`.
 
+### Opening the garage from anywhere: `SSX.garage.open(rideId?)`
+
+```js
+SSX.garage.open();          // the garage sheet on your active ride
+SSX.garage.open('r3');      // ...with that ride selected (a garage ride id, or 'current'); unknown ids fall back to the active ride
+```
+
+- Works from anywhere: in space, on another planet, or across Mars. There is no lock-up range check and no `navTo` waypoint. Returns `true` once the sheet is open.
+- The showroom camera and the 3D bay only join in when you're within 40 m of the lock-ups. Elsewhere it's just the sheet, and every button in it works.
+- Selecting a ride doesn't make it your active ride (use the sheet's 🚗 Drive this). `SSX.garage.selected` is the ride shown while the garage sheet is open, else `null`.
+- Ben's base garage (PR #24) shows its Customize button once `SSX.garage.open` exists. Tested by `tests/test-garage-open.js`.
+
 ### Free vehicles: `SSX.garage.grantVehicle(vehicleId, opts)`
 
 ```js
