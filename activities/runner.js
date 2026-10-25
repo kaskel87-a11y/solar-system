@@ -5,6 +5,7 @@
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
 import { addMenuItem, tap } from '../racehooks.js';
 import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
+import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -551,6 +552,7 @@ function watchActive() {
 // ---------- tick ----------
 export function activityTick(dt, ctx) {
   C = ctx; lastTick = performance.now();
+  try { jobsTick(dt, ctx); } catch (e) { console.warn('jobsTick', e); }
   if (ctx.name !== 'Mars') {
     if (ui) ui.ctx.style.display = 'none';
     if (active) { active = null; setChip(null); }
