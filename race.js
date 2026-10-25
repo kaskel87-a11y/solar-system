@@ -2,12 +2,11 @@
 // best laps + best-lap ghost in localStorage, an AI rival on a spline, credits purse with a buy-in) and the hooks for the
 // track builder (trackbuilder.js). Pure track maths lives in racecore.js.
 //
-// Wiring: surface.js calls raceTick(dt, ctx) once at the end of every surface update (the only hook). Everything else
-// (DOM, ☰ menu entries, the context button, minimap gate) is set up lazily from here. All geometry and materials are
+// Wiring: surface.js calls raceTick(dt, ctx) once per surface update (the only hook). Core access goes through
+// racehooks.js (same shim pattern as planets/hooks.js). Everything else (DOM, ☰ menu entries, the context button, minimap gate) is set up lazily from here. All geometry and materials are
 // flagged userData.shared so surface.exit()'s dispose pass leaves them alone; we re-add our root after scene.clear().
 import * as THREE from 'three';
-import { buildVehicle, VEHICLES } from './world.js?v=7.2';
-import { QUESTS } from './game.js?v=7.2';
+import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js';
 import * as RC from './racecore.js';
 import { createBuilder } from './trackbuilder.js';
 
@@ -409,11 +408,8 @@ function ensureUI() {
   const count = document.createElement('div'); count.id = 'raceCount'; document.getElementById('surfHud')?.appendChild(count);
   const ctx = document.createElement('button'); ctx.id = 'raceCtxBtn'; ctx.className = 'glass'; ctx.style.display = 'none'; ctx.textContent = '\ud83c\udfc1 Race';
   btns?.prepend(ctx); tapButton(ctx, () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } });
-  const mRace = document.createElement('button'); mRace.id = 'rmRaces'; mRace.className = 'btn'; mRace.textContent = '\ud83c\udfc1 Street races';
-  const mBuild = document.createElement('button'); mBuild.id = 'rmBuilder'; mBuild.className = 'btn'; mBuild.textContent = '\ud83d\udee0 Track builder';
-  const before = document.getElementById('settingsBtn'); if (menu) { menu.insertBefore(mRace, before); menu.insertBefore(mBuild, before); }
-  mRace.addEventListener('click', () => { menu.classList.remove('show'); if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); });
-  mBuild.addEventListener('click', () => { menu.classList.remove('show'); openBuilder(); });
+  const mRace = addMenuItem(app(), { id: 'rmRaces', label: '\ud83c\udfc1 Street races', onTap: () => { if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); } });
+  const mBuild = addMenuItem(app(), { id: 'rmBuilder', label: '\ud83d\udee0 Track builder', onTap: () => openBuilder() });
   const panel = document.createElement('div'); panel.id = 'racePanel'; document.body.appendChild(panel);
   panel.addEventListener('click', onPanelClick);
   // keys stay ours while a race panel or the builder is open (Escape closes)
@@ -458,7 +454,7 @@ function showResult(res) {
   tapButton(ui.res.querySelector('#raceResClose'), () => showResult(null));
   ui.resLeft = 12; // seconds of game time, so a slow frame rate never hides it before you can tap Rematch
 }
-function updateMenuLabels() { if (!ui) return; ui.mRace.textContent = R ? '\ud83c\udff3 Quit race' : '\ud83c\udfc1 Street races'; }
+function updateMenuLabels() { if (!ui?.mRace) return; ui.mRace.textContent = R ? '\ud83c\udff3 Quit race' : '\ud83c\udfc1 Street races'; }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // ---------- race list panel ----------
