@@ -6,7 +6,7 @@ import { STATIONS } from './audio7.js';
 import { districtsOf } from './world.js';
 import { MARS_STATIONS, STOCK_DJ, appendStations, resolveStation, rememberStation, addDjLines, createRadio } from './radio.js';
 import { AMBIENCE_CONFIG, zonesFrom, mixWeights, createAmbience, PROFILES } from './ambience.js';
-import { BARKS, chooseCategory, pickLine, createLimiter, lifeFor, placeCaption } from './barks.js';
+import { BARKS, chooseCategory, pickLine, createLimiter, lifeFor, placeCaption, resolveBark } from './barks.js';
 import { createVoicePool, babble } from './synth.js';
 
 export const MIX_DEFAULT = { master: 0.9, music: 0.8, amb: 0.8, mute: false };
@@ -226,16 +226,20 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
     registerStation(def) { const [i] = appendStations(STATIONS, [def]); builtFor = 0; renderPanel(); return i; },
     addDjLines(id, lines) { addDjLines(STATIONS.find(s => s.id === id), lines); },
     stations: () => STATIONS.map((s, i) => ({ i, id: s.id, name: s.name, tag: s.tag, procedural: typeof s.step === 'function' })),
-    // npc: index into world people | name | { x, z, kind? } | null (nearest). what: a BARKS category or literal text.
-    bark(npc, what = 'street', { force = false, blip = true } = {}) {
+    // npc: index into world people | name | { x, z, kind? } | null (nearest). what: a BARKS category, a caller key
+    // (barks.js BARK_ALIASES / suffix rules) or literal text. opts: { force, blip, line } or a fallback line string.
+    // v7.5.3: a snake_case key that resolves to nothing returns null (one console.warn) instead of showing the raw key.
+    bark(npc, what = 'street', opts = {}) {
+      const { force = false, blip = true } = opts && typeof opts === 'object' ? opts : {};
+      const r = resolveBark(what, opts); if (!r) return null;
       const info = app.surface?.info; if (!info || !app.state?.onSurface) return null;
       const ps = people().map((p, i) => ({ ...p, i }));
       let p = typeof npc === 'number' ? ps[npc] : typeof npc === 'string' ? ps.find(q => q.name === npc) : npc && isFinite(npc.x) ? { kind: npc.kind || 'colonist', name: npc.name, x: npc.x, z: npc.z, i: -1 } : null;
       if (!p) p = ps.sort((a, b) => Math.hypot(a.x - info.x, a.z - info.z) - Math.hypot(b.x - info.x, b.z - info.z))[0];
       if (!p) return null; const key = `${p.kind}:${p.name || p.i}`, t = now();
-      const line = BARKS[what] ? pickLine(what, recent) : String(what).slice(0, 90);
-      if (!force && !limiter.can(t, key, BARKS[what] ? what : 'street')) return null;
-      return showBark(p, line, BARKS[what] ? what : 'custom', { key, blip, dist: Math.hypot(p.x - info.x, p.z - info.z) });
+      const cat = r.cat === 'custom' ? 'street' : r.cat, line = r.line || pickLine(r.cat, recent); if (!line) return null;
+      if (!force && !limiter.can(t, key, cat)) return null;
+      return showBark(p, line, r.cat, { key, blip, dist: Math.hypot(p.x - info.x, p.z - info.z) });
     },
     registerBarks(cat, lines) { if (!cat || !Array.isArray(lines)) throw new Error('registerBarks(category, [lines])'); (BARKS[cat] ||= []).push(...lines.map(l => String(l).slice(0, 90))); return BARKS[cat].length; },
     setRideFlash(fn) { rideFlash = typeof fn === 'function' ? fn : null; }, // garage/dealership: () => 0..1 "how flashy is this ride"
