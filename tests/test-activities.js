@@ -89,7 +89,8 @@ function measure() {
     const playable = await G(() => window.__activities.playable());
     const deferred = await G(() => window.__activities.deferred());
     R.playable = playable; R.deferred = deferred;
-    ok('pokerDeferred', deferred, deferred.includes('act-static-poker'));
+    ok('pokerPlayable', playable, playable.includes('act-static-poker'));
+    ok('pokerNotDeferred', deferred, !deferred.includes('act-static-poker'));
     ok('pitPlayable', playable, playable.includes('act-pit-fight'));
     ok('trialPlayable', playable, playable.includes('act-beltway-trial'));
     ok('taxiPlayable', playable, playable.includes('act-beltway-taxi')); // degraded, still listed
@@ -102,7 +103,7 @@ function measure() {
     const panelText = await G(() => document.getElementById('actPanel')?.innerText || '');
     ok('panelListsDoor', panelText, /Door Shift/.test(panelText));
     ok('panelListsPit', panelText, /The Pit/.test(panelText));
-    ok('panelMarksDeferred', panelText, /Deferred|Hold'em|Holdem/i.test(panelText));
+    ok('panelListsHoldem', panelText, /Hold'?em|Static Hold/i.test(panelText));
     await shot('panel');
     await hudCheck('panel'); // panel is fullscreen overlay — skip center? we SKIP actPanel in measure; check no widget overlap under it
     await G(() => window.__activities.closePanel()); await sleep(200);
