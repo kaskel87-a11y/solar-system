@@ -1,9 +1,9 @@
 // v7.5 Mars city: Olympus Row (downtown), Red Tape Flats (rough), Helios Heights (gated) and the Ares Beltway,
 // built from Steve's pack (citydata.js) through the public modding API. Everything here is additive: registerDistrict /
 // registerHighway / registerMission. Swap geometry or materials for v8 with world.setMaterialSlot / registerAgentModel.
-import { registerDistrict, registerHighway } from './world.js?v=7.4';
-import { registerMission, storyToQuest } from './game.js?v=7.4';
-import { DISTRICT_DATA, BELTWAY_DATA, CITY_MISSIONS } from './citydata.js?v=7.4';
+import { registerDistrict, registerHighway } from './world.js?v=7.5';
+import { registerMission, storyToQuest } from './game.js?v=7.5';
+import { DISTRICT_DATA, BELTWAY_DATA, CITY_MISSIONS } from './citydata.js?v=7.5';
 
 export const CITY_WORLD = 'Mars';
 const ORIGIN = { downtown: [0, -430], rough: [-280, -40], gated: [320, 80] };

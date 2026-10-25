@@ -465,14 +465,14 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.4';
-    import { buildStarship } from './models.js?v=7.4';
-    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.4';
-    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.4';
-    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.4'; // v7.5 Mars city (Steve's pack)
-    import { registerInterior } from './interiors.js?v=7.4';
-    import { createAudio7 } from './audio7.js?v=7.4';
-    import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5';
+    import { buildStarship } from './models.js?v=7.5';
+    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5';
+    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5'; // v7.5 Mars city (Steve's pack)
+    import { registerInterior } from './interiors.js?v=7.5';
+    import { createAudio7 } from './audio7.js?v=7.5';
+    import { initPlanets } from './planets/index.js?v=7.5'; // multi-planet expansion (data-driven, planets/*.js)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -2043,15 +2043,15 @@
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
-      landOn, landAction, renderer, version: 'v7.4', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.5', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app);
-    import('./mars-audio.js?v=7.4').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    import('./mars-audio.js?v=7.5').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.4').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5').catch(() => {}));
 </script>
 </body>
 </html>

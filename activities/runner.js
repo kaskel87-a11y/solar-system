@@ -3,7 +3,7 @@
 // ONE shared tick hook: surface.js calls activityTick(dt, ctx) next to raceTick.
 // Districts resolved by distance to AJ-relative centres until registerDistrict lands.
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
-import { addMenuItem, tap } from '../racehooks.js?v=7.4';
+import { addMenuItem, tap } from '../racehooks.js?v=7.5';
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {

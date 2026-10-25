@@ -6,9 +6,9 @@
 // racehooks.js (same shim pattern as planets/hooks.js). Everything else (DOM, ☰ menu entries, the context button, minimap gate) is set up lazily from here. All geometry and materials are
 // flagged userData.shared so surface.exit()'s dispose pass leaves them alone; we re-add our root after scene.clear().
 import * as THREE from 'three';
-import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js?v=7.4';
-import * as RC from './racecore.js?v=7.4';
-import { createBuilder } from './trackbuilder.js?v=7.4';
+import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js?v=7.5';
+import * as RC from './racecore.js?v=7.5';
+import { createBuilder } from './trackbuilder.js?v=7.5';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 let C = null;                       // latest surface context from the hook

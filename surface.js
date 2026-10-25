@@ -1,10 +1,10 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.4';
-import { createGame } from './game.js?v=7.4';
-import { createWorld, VEHICLES } from './world.js?v=7.4';
-import { raceTick } from './race.js?v=7.4';
-import { activityTick } from './activities/runner.js?v=7.4';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5';
+import { createGame } from './game.js?v=7.5';
+import { createWorld, VEHICLES } from './world.js?v=7.5';
+import { raceTick } from './race.js?v=7.5';
+import { activityTick } from './activities/runner.js?v=7.5';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {

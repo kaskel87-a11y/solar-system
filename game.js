@@ -3,10 +3,10 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { STORY } from './missions-data.js?v=7.4';
-import { mergeGeos } from './models.js?v=7.4';
-import { buildHuman } from './interiors.js?v=7.4';
-import { buildVehicle } from './world.js?v=7.4';
+import { STORY } from './missions-data.js?v=7.5';
+import { mergeGeos } from './models.js?v=7.5';
+import { buildHuman } from './interiors.js?v=7.5';
+import { buildVehicle } from './world.js?v=7.5';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -383,6 +383,7 @@ function buildNest() {
   body.add(new THREE.Mesh(A.nestGeo, A.mResin)); const pods = new THREE.Mesh(A.podGeo, A.mPod); body.add(pods);
   return { group: g, body, pods, kind: 'nest' };
 }
+const bloodOf = a => a.T.blood ? (Array.isArray(a.T.blood[0]) ? a.T.blood : [a.T.blood]) : null; // v7.5: per-type blood colour [[r,g,b]]; humans use gore() (red)
 const BUILDERS = { drone: buildSeeker, crawler: () => buildStalker(false), hunter: buildHunter, nest: buildNest, boss: () => buildStalker(true) };
 
 const ITEM_BUILD = {
@@ -638,7 +639,7 @@ export function createGame(ctx) {
       if (!blade && hits) break; // fists hit one thing, the blade sweeps
       a.hp -= dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; hits++;
       const c = center(a).clone();
-      if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, a.type === 'hunter' ? ICHOR_H : ICHOR);
+      if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
       if (blade) splat(a.x + fx, a.z + fz, 0.6); }
       if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1; a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, kick ? 1.2 : 0.6); if (!a.T.hover) a.vy = kick ? 5 : 2.5; }
       if (a.hp <= 0) killAgent(a);
@@ -671,7 +672,7 @@ export function createGame(ctx) {
   //       seekers circle and dive, nests birth stalkers, the queen spits acid, swipes and calls her brood -----
   function spawnAgent(type, x, z, opts = {}) {
     if (agents.length >= CAP || (!aliensOn() && !AGENT_TYPES[type]?.human)) return null;
-    const T = AGENT_TYPES[type], m = AGENT_MODELS[type] ? AGENT_MODELS[type]() : T.human ? buildHumanAgent(type, T) : BUILDERS[type]();
+    const T = AGENT_TYPES[type], m = AGENT_MODELS[type] ? AGENT_MODELS[type]() : BUILDERS[type] ? BUILDERS[type]() : buildHumanAgent(type, T); // add-on builders (registerAgentType) win over the stock human kit
     if (T.scale) m.group.scale.setScalar(T.scale);
     const burrow = !!opts.burrow && !T.hover && !T.still;
     const y = height(x, z) + T.hover - (burrow ? 3 : 0);
@@ -721,7 +722,7 @@ export function createGame(ctx) {
       return;
     }
     const c = center(a).clone(), big = a.T.boss ? 3 : a.type === 'nest' ? 2.2 : a.type === 'hunter' ? 1.4 : 1;
-    burst(c.x, c.y, c.z, Math.round(38 * big), 7 * Math.sqrt(big), a.type === 'hunter' ? ICHOR_H : ICHOR);
+    burst(c.x, c.y, c.z, Math.round(38 * big), 7 * Math.sqrt(big), bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
     debris(c, Math.round(6 * big), a.type === 'hunter' ? A.mArmor : a.type === 'nest' ? A.mResin : A.mChitin, big);
     splat(c.x, c.z, 1.1 * big);
     removeAgent(a);
@@ -1055,7 +1056,7 @@ export function createGame(ctx) {
           if (a.crouch && a.cov && Math.hypot(p0.x - a.x, p0.z - a.z) > 4 && ((a.cov.sx - a.x) * (p0.x - a.x) + (a.cov.sz - a.z) * (p0.z - a.z)) > 0) { burst(q.x, q.y, q.z, 4, 3, [[1, 0.8, 0.5]]); dead = true; break; } // v7.5: it hit their cover
           const head = a.T.human && !a.T.mech && q.y > a.y + 1.7 * (a.T.scale || 1);
           a.hp -= b.dmg * (head ? 2.5 : 1) * (1 - (a.T.armor || 0)); a.aggro = true;
-          if (a.T.human && !a.T.mech) gore(q.x, q.y, q.z, { n: head ? 1 : 0.4, spray: true }); else burst(q.x, q.y, q.z, 5, 3, a.T.mech ? [[1, 0.8, 0.4]] : a.type === 'hunter' ? ICHOR_H : ICHOR); a.hit = 1;
+          if (a.T.human && !a.T.mech) gore(q.x, q.y, q.z, { n: head ? 1 : 0.4, spray: true }); else burst(q.x, q.y, q.z, 5, 3, a.T.mech ? [[1, 0.8, 0.4]] : bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR)); a.hit = 1;
           onEvent('hit', { boss: !!a.T.boss, head });
           if (a.hp <= 0) killAgent(a, { gib: !!(b.rail || b.splash) || (head && b.dmg >= 6) });
           if (b.splash) explode(q, b);
@@ -1224,7 +1225,7 @@ export function createGame(ctx) {
     if (s.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, s.wanted), 'job');
     if (s.type === 'race') { quest.gi = 0; placeGate(); if (s.pursuers) quest.chaseT = 3; }
     quest.civ0 = ctx.civHits?.() || 0;
-    if (s.type === 'choice') onEvent('choice', { id: quest.def.id, prompt: s.prompt || s.text, options: (s.options || []).map(o => ({ id: o.id, label: o.label })) });
+    if (s.type === 'choice' && !quest.def.storymars) onEvent('choice', { id: quest.def.id, prompt: s.prompt || s.text, options: (s.options || []).map(o => ({ id: o.id, label: o.label })) });
     if (s.type === 'goto' && s.item) quest.items.push({ obj: placeItem(s.item, tg.x, tg.z, { name: s.text, quest: true }), x: tg.x, z: tg.z, id: `${quest.def.id}-${quest.step}`, keep: !!s.keep, pick: !s.keep });
     if (s.outpost) addOutpost(tg);
     if (s.type === 'collect') {
@@ -1370,7 +1371,7 @@ export function createGame(ctx) {
       return;
     }
     if (s.type === 'crack') { if (flag('cracked:' + (s.id || ''))) advance(); else if (!st.inside) { const d = ctx.doorFor?.(s.building); if (d) { quest.target.x = d.x; quest.target.z = d.z; } } return; }
-    if (s.type === 'choice') return; // waits for game.choose()
+    if (s.type === 'choice') return; // waits for game.choose() (or storymars.js advancing it)
     if (s.noCivilians && (ctx.civHits?.() || 0) > quest.civ0) return fail('You hit a civilian. Deal\u2019s off.');
     if (st.inside) return; // the rest of the job waits outside
     if (quest.def.limit && H.down <= 0 && quest.def.limit - (time - quest.t0) <= 0)
@@ -1688,7 +1689,10 @@ export function createGame(ctx) {
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
-    gore, hostiles, heistAt, crack, choose, crackable, jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
+    gore, hostiles, heistAt, crack, choose, crackable,
+    // v7.5 mission helpers for add-on step runners (storymars.js, activities/runner.js)
+    advanceStep() { if (!quest) return false; advance(); return true; }, failStep(why) { if (!quest) return false; fail(why || 'Job failed.'); return true; },
+    spawnWave(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(), yaw = (st.driving ? st.rover.yaw : player.yaw) + ang, a = spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: quest ? 'quest' : 'wave' }); return !!a; }, // quest-src kills count toward defeat steps jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
     stash(id, perm, name) { if (flag('stash:' + id)) return false; setFlag('stash:' + id); P.credits += 40; grantPerm(perm, name || 'Stash'); return true; }, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
@@ -1735,7 +1739,7 @@ export function createGame(ctx) {
       calm(on) { for (const a of agents) a.T = on ? { ...AGENT_TYPES[a.type], speed: 0, cd: 999 } : AGENT_TYPES[a.type]; },
       skipTimer(s) { if (quest) { quest.t0 -= s; quest.st0 -= s; } },
       credits(n) { P.credits += n; save(); }, fxCount: () => fxs.length, bolts: () => bolts.length, P: () => P, H: () => H, debrisCount: () => debrisL.length + splats.length,
-      advance() { if (quest) advance(); }, crates: () => crates.map(c => ({ x: c.x, z: c.z, cool: c.cool, cache: c.cache })), pickups: () => pickups.map(p => ({ kind: p.kind, x: p.x, z: p.z })),
+      advance() { if (quest) advance(); }, kill(i = 0, how = {}) { const a = agents[i]; if (a) killAgent(a, how); return !!a; }, bodies: () => bodies.length, crates: () => crates.map(c => ({ x: c.x, z: c.z, cool: c.cool, cache: c.cache })), pickups: () => pickups.map(p => ({ kind: p.kind, x: p.x, z: p.z })),
       drop: (kind, x, z) => drop(kind, x, z), quest: () => quest && { id: quest.def.id, step: quest.step, gi: quest.gi, target: quest.target }
     }
   };
