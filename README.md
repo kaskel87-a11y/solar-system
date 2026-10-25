@@ -21,6 +21,58 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7: darker, meaner, and a bit of GTA in space
+- **Tone:** this is a game for adults now. Mission Control and the colony contacts are dry and salty (mild swearing, no sexual content). The "(Fiction!)" tags are gone. The Log's Rewards tab has one quiet line noting which parts are fictional (hostiles, hives, colonies, contacts, security). Planet facts are still real science.
+- **Hostiles:** these are biomechanical crawlers that burrow and ambush, armored hunters that strafe and burst-fire, diving seekers, resin nests that keep hatching crawlers, and a much nastier Hive Queen who swipes and summons. They flank, lunge and hit hard. Kills burst ichor and chitin debris and leave splats on the ground.
+- **Weapons and supplies:**
+  - **Plasma rifle:** it overheats.
+  - **Pump shotgun:** a pellet spread that uses shells.
+  - **Medkits (+50 HP):** carry up to three.
+  - Hostiles sometimes drop shells and medkits. Your shield regenerates, but health only creeps back to 35 on its own.
+  - If you go down, med-evac bills you 10%.
+- **Atmosphere:**
+  - The ambient audio is a low drone with wind and the odd metal groan.
+  - A **motion tracker** pings faster and higher as something closes inside 60 m, and the radar edge pulses green.
+  - Colony lamps flicker.
+  - Frankie still growls when something is out there.
+  - Peaceful mode (Log → Settings) turns the hostiles off. Colonies and security stay.
+- **Colonies:**
+  - **Ares Junction** on Mars, about 200 m from the landing site. It has domes, a cantina, a supply depot, a landing pad, neon, crates, colonists and armed guards.
+  - **Freeport Tranquility** on the Moon, which is smaller.
+- **Take any ride:** walk up to a parked buggy, hauler, hover bike or shuttle and tap **Take** (E). Each has its own handling: the hauler is tough, the bike is fast and flips, the shuttle hovers. Your own rover stays your rover. "Return to rover" and the roof blaster still only apply to it, and there is no firing from stolen rides.
+- **Wanted level (1–5 ★ in the top bar):** stealing in front of witnesses, shooting near the colony or hitting people or security raises it. Security drones and patrol buggies come after you. At 2★ they shoot, and at 3★ the buggies ram. To lose them, get far from the colony and out of their sight. The stars blink while you're evading, and lying low on foot helps. If they get their hands on you, you're **busted**: you pay a fine (15%, minimum 50 cr) and get dumped at the colony gate.
+- **Contacts and jobs:**
+  - **Rook:** smuggling run, getaway driver.
+  - **Vesna:** stolen cargo, canyon sprint race.
+  - **Kestrel** (Moon): crater run.
+  - Walk up to a contact and tap their name to get a job.
+- **Credits shop (🛒 at the supply depot):** shotgun, shells, medkits, an armor vest, a rifle heatsink, rover armor, rover paints and Frankie bandanas.
+- **Radio:** it plays whenever you're in a vehicle. There are three procedural stations: **KRED 88.1** (red dust rock), **VOID 101.3** (deep space ambient) and **CERES 94.7** (belt synthwave), each with DJ blurbs, plus Off. Tap **📻 Next** or press N. The station name shows as a short toast.
+- **Minimap icons:**
+
+  | Icon | Meaning |
+  |---|---|
+  | Orange ring | Colony |
+  | Green $ | Shop |
+  | White bars | Parked vehicles |
+  | Grey dots | Colonists |
+  | Blue dots | Guards |
+  | Purple diamonds | Contacts |
+  | Red/blue blinking | Security |
+  | Yellow ring | Race gate |
+
+- **Keys:**
+
+  | Key | Action |
+  |---|---|
+  | E | Drive, take, talk or shop |
+  | Q | Switch weapon |
+  | X | Medkit |
+  | N | Next station |
+
+  On a phone, tap the gear chip in the top bar to switch weapons, and tap the health bars to use a medkit.
+- **HUD rules from v6.1 still hold.** One action button changes with context (Drive, Take, Talk, Shop or Exit), and `test-hud.js` still checks for no overlaps and a clear center. `test-v7.js` covers taking a vehicle, a mission, gaining and losing wanted, getting busted, buying, the radio and combat.
+
 ## v6.1: minimal phone HUD
 - **One slim top bar:** planet and gravity, shield and health bars, credits and XP, and a ☰ menu. The menu holds Take off, Discoveries/Log, View, Summon rover, Warp to rover, Return to ship, Hide HUD and Settings. On desktop it opens with Tab or M.
 - **Radar minimap (top-left):** heading-up. It shows your rover (blue), the Starship (orange), the quest objective (cyan), the next discovery (gold), aliens (red) and Frankie. A label gives the rover distance. Tap the radar for the rover/ship menu.
@@ -31,11 +83,11 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 
 ## v6: side quests, aliens and more to discover
 - **Side quests:** Mission Control radios you quest offers (with Quindar beeps and an optional voice). There are 14 quests across the Moon, Mars, Venus, Mercury, Earth, Io, Europa and Titan. Examples: recover a lost Apollo camera, scan ice in Shackleton, rescue a stranded rover, follow the Mars signal to an alien outpost and its Hive Queen boss, find the Venera capsule before it cooks, outrun the sunrise on Mercury, and play fetch with Frankie on Earth. A blue arrow and a beam point to each step. You earn XP, ranks, credits, badges, rover paints and bandanas for Frankie. Progress saves in your browser.
-- **Aliens (fiction!):** cartoony drones, crawlers and a boss. They go *zap* and poof into sparkles. Your shield recharges, and if you go down you're beamed back to the Starship with nothing lost. Frankie growls when aliens are near. Turn them off in **📜 Log → ⚙️ Settings** for peaceful exploring.
+- **Aliens:** drones, crawlers and a boss (reworked in v7, see above). Your shield recharges, and if you go down you're beamed back to the Starship. Frankie growls when aliens are near. Turn them off in **📜 Log → ⚙️ Settings** for peaceful exploring.
   - **Phone:** hold **FIRE** to auto-aim at the nearest alien.
   - **Desktop:** click, or hold F, at the crosshair or mouse pointer.
 - **Rover plasma blaster:** a twin-barrel heavy blaster on the roof, with muzzle flash, recoil and a heat meter that can overheat. On a phone it auto-aims ahead. On desktop it follows your aim.
-- **More discoveries:** 41 real-science sites, including the new landable moons **Io, Europa and Titan**, next to Jupiter and Saturn. There are also rare finds: olivine crystals, pallasite meteorites and alien artifacts (fiction). Anything made-up is tagged **FICTION**, and all planet facts are real.
+- **More discoveries:** 41 real-science sites, including the new landable moons **Io, Europa and Titan**, next to Jupiter and Saturn. There are also rare finds: olivine crystals, pallasite meteorites and alien artifacts. All planet facts are real.
 - **Easier to see:**
   - **Rover views:** the rover starts in the chase camera and remembers its own view, separate from your on-foot view. First person in the rover has a hood and dashboard with a speed and heat gauge.
   - **Terrain:** it has more contrast (slope shading, light and dark patches, darker rocks).

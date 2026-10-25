@@ -1176,7 +1176,7 @@ export function createGame(ctx) {
       return {
         hp: Math.round(H.hp), hpMax: H.max, shield: Math.round(H.shield), shieldMax: H.smax, down: H.down > 0,
         combat: combat(), aliens: agents.length, aliensOn: aliensOn(), xp: P.xp, credits: P.credits, rank: r.name, rankNext: r.next, rankBase: r.base,
-        heat: Math.round(W.heat), overheat: W.over, turret: !!turret && !!st.driving && aliensOn(), turretYaw: turret?.yaw ?? 0, turretPitch: turret?.pitch ?? 0, recoil: W.recoil,
+        heat: Math.round(W.heat), overheat: W.over, turret: !!turret && !!st.driving && !!st.own && aliensOn(), turretYaw: turret?.yaw ?? 0, turretPitch: turret?.pitch ?? 0, recoil: W.recoil,
         quest: quest ? { id: quest.def.id, title: quest.def.title, step: quest.step, steps: quest.def.steps.length, text: stepText(), fiction: !!quest.def.fiction, timer: questTimer() } : null,
         boss: bossRef ? { name: bossRef.T.name, hp: Math.max(0, bossRef.hp), max: bossRef.T.hp } : null,
         rares: rareCount(), raresHere: rares.length, kills: P.stats.kills, deaths: P.stats.deaths, badges: P.badges.length, busted: P.stats.busted,

@@ -61,6 +61,16 @@ function measure() {
       await G(() => window.__app.game.debug.clear());
       // 3) driving
       if (TAG !== 'before') { await G(() => { const s = window.__app.surface; if (!s.info.driving) s.interact(); }); await sleep(800); await check('driving'); await shot('driving'); await G(() => window.__app.surface.interact()); await sleep(400); }
+      // 3b) v7 GTA state: stolen buggy at the colony, 3 wanted stars, radio station toast, security around
+      if (TAG !== 'before') {
+        await G(() => { const s = window.__app.surface, v = s.world.debug.vehicles().find(v => v.parked && v.kind === 'buggy'); s.debugMove(v.x + 3, v.z + 1, 0); });
+        await page.waitForFunction(() => window.__app.surface.info.nearVehicle, null, { timeout: 15000 }); await sleep(400);
+        await check('nearVehicle'); await shot('take');
+        await G(() => { window.__app.surface.interact(); window.__app.surface.world.setWanted(3, 'Grand theft buggy.'); }); await sleep(1500);
+        await G(() => document.getElementById('radioBtn').click()); await sleep(700);
+        const m = await check('gta'); R.gtaShows = m.ids; await shot('gta');
+        await G(() => { const s = window.__app.surface; s.world.setWanted(0); s.interact(); }); await sleep(400);
+      }
       // 4) menu open (overlay) + cinematic
       if (TAG !== 'before') {
         await page.tap('#menuBtn'); await sleep(300); R.menu = await page.isVisible('#roverMenu'); await shot('menu');

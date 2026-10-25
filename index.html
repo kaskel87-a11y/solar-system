@@ -1544,7 +1544,7 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v7', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>

@@ -1121,6 +1121,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
     summonRover, warpToRover, returnToShip, roverNav,
     // test hook: jump to just short of the active quest's current objective
+    debugMove(x, z, yaw = 0) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     mapData() {
       if (!cfg) return null;
