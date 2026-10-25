@@ -77,7 +77,7 @@ export function grant(rideId, what, n) {
   if (typeof what === 'string' && what.includes(':')) { const [sl, v] = what.split(':'); return grantPart(rideId, sl, v); }
   return grantUpgrade(rideId, what, n);
 }
-export const GARAGE_API = { grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
   upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
@@ -353,6 +353,15 @@ function openGarage() {
   if (!here()) return toast('🔧 Your lock-ups are on Mars, next to Red Line Motors.');
   const G = garage(); if (!gSel || !rideById(gSel)) gSel = G.active;
   openSheet('garage', renderGarage, () => lot.bay); showBay();
+}
+// SSX.garage.open(rideId?): the garage sheet from anywhere (Ben's base garage Customize button). No lock-up range check, no navTo.
+// The showroom camera and 3D bay only join in when you're actually at the lock-ups; elsewhere it's just the sheet.
+function openGarageAnywhere(rideId) {
+  const G = garage(), id = rideId === 'current' ? G.active : rideId;
+  if (id != null && rideById(id)) gSel = id; else if (!gSel || !rideById(gSel)) gSel = G.active;
+  gPrev = null; const atLot = here() && !!lot && dist(meOf(), spots().garage) < 40;
+  openSheet('garage', renderGarage, atLot ? () => lot.bay : null); if (atLot) showBay();
+  return !!sheet && sheet.kind === 'garage';
 }
 function clearBay() { if (bay) { bay.group.parent?.remove(bay.group); disposeRoot(bay.group); bay = null; } }
 function showBay() {
