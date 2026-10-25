@@ -465,6 +465,8 @@
   "ssx/barks": "./barks.js?v=7.5.3",
   "./cameras.js": "./cameras.js?v=7.5.3",
   "ssx/cameras": "./cameras.js?v=7.5.3",
+  "./carmeet.js": "./carmeet.js?v=7.5.3",
+  "ssx/carmeet": "./carmeet.js?v=7.5.3",
   "./city.js": "./city.js?v=7.5.3",
   "ssx/city": "./city.js?v=7.5.3",
   "./citydata.js": "./citydata.js?v=7.5.3",
@@ -475,8 +477,12 @@
   "ssx/dangercore": "./dangercore.js?v=7.5.3",
   "./dangerhooks.js": "./dangerhooks.js?v=7.5.3",
   "ssx/dangerhooks": "./dangerhooks.js?v=7.5.3",
+  "./dealership.js": "./dealership.js?v=7.5.3",
+  "ssx/dealership": "./dealership.js?v=7.5.3",
   "./game.js": "./game.js?v=7.5.3",
   "ssx/game": "./game.js?v=7.5.3",
+  "./garagecore.js": "./garagecore.js?v=7.5.3",
+  "ssx/garagecore": "./garagecore.js?v=7.5.3",
   "./heist.js": "./heist.js?v=7.5.3",
   "ssx/heist": "./heist.js?v=7.5.3",
   "./heistcore.js": "./heistcore.js?v=7.5.3",
@@ -507,6 +513,8 @@
   "ssx/racehooks": "./racehooks.js?v=7.5.3",
   "./radio.js": "./radio.js?v=7.5.3",
   "ssx/radio": "./radio.js?v=7.5.3",
+  "./rides.js": "./rides.js?v=7.5.3",
+  "ssx/rides": "./rides.js?v=7.5.3",
   "./safecrack.js": "./safecrack.js?v=7.5.3",
   "ssx/safecrack": "./safecrack.js?v=7.5.3",
   "./scicore.js": "./scicore.js?v=7.5.3",
@@ -603,6 +611,7 @@
     import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
     import { initHeist } from './heist.js'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
     import './marsshops.js'; // v7.5.3 Mars district shops (Jeff, PR #10)
+    import { DEALER_API } from './dealership.js'; // Mars rover dealership, garages + car meets (Pumpkin, PR #7; adds SSX.registerDealerVehicle)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1782,6 +1791,7 @@
     window.SSX = {
       registerColony, registerDistrict, districtsOf, registerMission, registerInterior,
       registerVehicle, registerMenuItem,
+      ...DEALER_API,
       // v7.4 stub: extra bodies (Ceres, a cloud station) land in v7.5+. Recorded now so mods can declare them early.
       registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
     };
