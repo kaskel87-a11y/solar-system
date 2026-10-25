@@ -3,7 +3,7 @@
 // security drones and patrol buggies. Everything here is game fiction. Cheap by design: shared geometry,
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
-import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.5.1';
+import { buildRoom, INTERIORS, textTex } from './interiors.js';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {

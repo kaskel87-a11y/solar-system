@@ -3,7 +3,7 @@
 // district geometry (the ?heisttest=1 sample is test-only throwaway). No police/security AI, no chases: alarms raise
 // world wanted via heisthooks.js, and the getaway is published as the `heist:escape` event for pursuit.js.
 //
-//   import { heist } from './heist.js?v=7.5.1'   (also window.SSX.heist / window.__app.heist once initHeist runs)
+//   import { heist } from './heist.js'   (also window.SSX.heist / window.__app.heist once initHeist runs)
 //   heist.safeCrack({ tier, time, title })            -> Promise<{ success, reason, time, noise, tier, tumblers }>
 //   heist.addCamera({ id, x, z, yaw, fov, range, sweep, level, world, rel }) / heist.removeCamera(id) / heist.disableCamera(id, s)
 //   heist.alarm(level, why)                            -> raises wanted (setWanted / crime), emits 'alarm'
@@ -11,10 +11,10 @@
 //   heist.fromMansion(building, originAj, extra)       -> def from Steve's gated-community.json
 //   heist.on(evt, fn) / off(evt, fn); every event is also window CustomEvent `heist:<evt>` with the same detail.
 import * as THREE from 'three';
-import { normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts } from './heistcore.js?v=7.5.1';
-import { safeCrack, safeState, safeOpen, cancelSafe } from './safecrack.js?v=7.5.1';
-import { createCameras } from './cameras.js?v=7.5.1';
-import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem, tap } from './heisthooks.js?v=7.5.1';
+import { normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts } from './heistcore.js';
+import { safeCrack, safeState, safeOpen, cancelSafe } from './safecrack.js';
+import { createCameras } from './cameras.js';
+import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem, tap } from './heisthooks.js';
 
 const listeners = {};
 function emit(name, detail) {

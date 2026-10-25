@@ -59,3 +59,10 @@ All add-ons import core modules with the **same `?v=` string as the core** (curr
 - `registerDistrict` defs now carry `centre` (= origin, colony-relative) and `r`, and they are read back by `SSX.districtsOf('Mars')`.
 - `SSX.despawnVehicle()` scraps the stolen vehicle you are driving or standing next to (never your own rover). It is wired to Marsmania's `ssx:chop` event.
 - `SSX.contraband`: Marsmania's contraband economy and barter (mars/contraband.js, mars/barter.json).
+
+
+## Importing core modules (v7.5.2+)
+Import first-party modules with **plain relative paths, never a `?v=` query**: `import * as world from '../world.js'`, or the alias `import { registerMission } from 'ssx/game'`.
+`index.html` holds an import map that sends every module URL (and its `ssx/<path>` alias) to `<path>.js?v=<release>`, so each module loads exactly once.
+A hand-written `?v=` makes the browser load a second, separate copy of that module (its own QUESTS, world state, and so on).
+`tests/test-imports-unit.mjs` fails on any `?v=` import. After adding a new `.js` file, run `python3 tools/importmap.py` to add it to the map (release bumps run it too: `python3 tools/importmap.py 7.5.3`).

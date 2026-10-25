@@ -449,13 +449,87 @@
   <div id="fade"></div>
 
   <script type="importmap">
-  {
-    "imports": {
-      "three": "./vendor/three/build/three.module.min.js",
-      "three/addons/": "./vendor/three/addons/"
-    }
-  }
-  </script>
+{
+ "imports": {
+  "three": "./vendor/three/build/three.module.min.js",
+  "three/addons/": "./vendor/three/addons/",
+  "./ambience.js": "./ambience.js?v=7.5.1",
+  "ssx/ambience": "./ambience.js?v=7.5.1",
+  "./audio7.js": "./audio7.js?v=7.5.1",
+  "ssx/audio7": "./audio7.js?v=7.5.1",
+  "./barks.js": "./barks.js?v=7.5.1",
+  "ssx/barks": "./barks.js?v=7.5.1",
+  "./cameras.js": "./cameras.js?v=7.5.1",
+  "ssx/cameras": "./cameras.js?v=7.5.1",
+  "./city.js": "./city.js?v=7.5.1",
+  "ssx/city": "./city.js?v=7.5.1",
+  "./citydata.js": "./citydata.js?v=7.5.1",
+  "ssx/citydata": "./citydata.js?v=7.5.1",
+  "./game.js": "./game.js?v=7.5.1",
+  "ssx/game": "./game.js?v=7.5.1",
+  "./heist.js": "./heist.js?v=7.5.1",
+  "ssx/heist": "./heist.js?v=7.5.1",
+  "./heistcore.js": "./heistcore.js?v=7.5.1",
+  "ssx/heistcore": "./heistcore.js?v=7.5.1",
+  "./heisthooks.js": "./heisthooks.js?v=7.5.1",
+  "ssx/heisthooks": "./heisthooks.js?v=7.5.1",
+  "./interiors.js": "./interiors.js?v=7.5.1",
+  "ssx/interiors": "./interiors.js?v=7.5.1",
+  "./mars-audio.js": "./mars-audio.js?v=7.5.1",
+  "ssx/mars-audio": "./mars-audio.js?v=7.5.1",
+  "./missions-data.js": "./missions-data.js?v=7.5.1",
+  "ssx/missions-data": "./missions-data.js?v=7.5.1",
+  "./models.js": "./models.js?v=7.5.1",
+  "ssx/models": "./models.js?v=7.5.1",
+  "./race.js": "./race.js?v=7.5.1",
+  "ssx/race": "./race.js?v=7.5.1",
+  "./racecore.js": "./racecore.js?v=7.5.1",
+  "ssx/racecore": "./racecore.js?v=7.5.1",
+  "./racehooks.js": "./racehooks.js?v=7.5.1",
+  "ssx/racehooks": "./racehooks.js?v=7.5.1",
+  "./radio.js": "./radio.js?v=7.5.1",
+  "ssx/radio": "./radio.js?v=7.5.1",
+  "./safecrack.js": "./safecrack.js?v=7.5.1",
+  "ssx/safecrack": "./safecrack.js?v=7.5.1",
+  "./storymars.js": "./storymars.js?v=7.5.1",
+  "ssx/storymars": "./storymars.js?v=7.5.1",
+  "./surface.js": "./surface.js?v=7.5.1",
+  "ssx/surface": "./surface.js?v=7.5.1",
+  "./synth.js": "./synth.js?v=7.5.1",
+  "ssx/synth": "./synth.js?v=7.5.1",
+  "./trackbuilder.js": "./trackbuilder.js?v=7.5.1",
+  "ssx/trackbuilder": "./trackbuilder.js?v=7.5.1",
+  "./world.js": "./world.js?v=7.5.1",
+  "ssx/world": "./world.js?v=7.5.1",
+  "./activities/poker-eval.js": "./activities/poker-eval.js?v=7.5.1",
+  "ssx/activities/poker-eval": "./activities/poker-eval.js?v=7.5.1",
+  "./activities/poker.js": "./activities/poker.js?v=7.5.1",
+  "ssx/activities/poker": "./activities/poker.js?v=7.5.1",
+  "./activities/runner.js": "./activities/runner.js?v=7.5.1",
+  "ssx/activities/runner": "./activities/runner.js?v=7.5.1",
+  "./mars/contraband.js": "./mars/contraband.js?v=7.5.1",
+  "ssx/mars/contraband": "./mars/contraband.js?v=7.5.1",
+  "./planets/europa.js": "./planets/europa.js?v=7.5.1",
+  "ssx/planets/europa": "./planets/europa.js?v=7.5.1",
+  "./planets/hooks.js": "./planets/hooks.js?v=7.5.1",
+  "ssx/planets/hooks": "./planets/hooks.js?v=7.5.1",
+  "./planets/index.js": "./planets/index.js?v=7.5.1",
+  "ssx/planets/index": "./planets/index.js?v=7.5.1",
+  "./planets/io.js": "./planets/io.js?v=7.5.1",
+  "ssx/planets/io": "./planets/io.js?v=7.5.1",
+  "./planets/mercury.js": "./planets/mercury.js?v=7.5.1",
+  "ssx/planets/mercury": "./planets/mercury.js?v=7.5.1",
+  "./planets/referrals.js": "./planets/referrals.js?v=7.5.1",
+  "ssx/planets/referrals": "./planets/referrals.js?v=7.5.1",
+  "./planets/titan.js": "./planets/titan.js?v=7.5.1",
+  "ssx/planets/titan": "./planets/titan.js?v=7.5.1",
+  "./planets/vehicles.js": "./planets/vehicles.js?v=7.5.1",
+  "ssx/planets/vehicles": "./planets/vehicles.js?v=7.5.1",
+  "./planets/venus.js": "./planets/venus.js?v=7.5.1",
+  "ssx/planets/venus": "./planets/venus.js?v=7.5.1"
+ }
+}
+</script>
 
   <script>
     window.addEventListener('error', e => { const el = document.getElementById('error'); if (!window.__started) { document.getElementById('error-text').textContent = 'Something went wrong loading the scene: ' + (e.message || 'unknown error'); el.style.display = 'flex'; } });
@@ -468,16 +542,16 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5.1';
-    import { buildStarship } from './models.js?v=7.5.1';
-    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5.1';
-    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5.1';
-    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5.1'; // v7.5 Mars city (Steve's pack)
-    import { registerInterior } from './interiors.js?v=7.5.1';
-    import { createAudio7 } from './audio7.js?v=7.5.1';
-    import { initPlanets } from './planets/index.js?v=7.5.1'; // multi-planet expansion (data-driven, planets/*.js)
-    import { initStoryMars } from './storymars.js?v=7.5.1'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
-    import { initHeist } from './heist.js?v=7.5.1'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js';
+    import { buildStarship } from './models.js';
+    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js';
+    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
+    import { registerInterior } from './interiors.js';
+    import { createAudio7 } from './audio7.js';
+    import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
+    import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { initHeist } from './heist.js'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -2076,7 +2150,7 @@
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
-    import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
   <script type="module" src="./mars/contraband.js?v=7.5.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
