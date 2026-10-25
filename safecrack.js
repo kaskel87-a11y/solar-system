@@ -2,7 +2,7 @@
 // touch, pen and mouse all work); desktop also gets ←/→ or A/D (hold Shift for fine). The dial rim glows and the
 // phone buzzes as you near a notch; stop inside it to set the tumbler. Spin too fast and the noise bar fills.
 // safeCrack(opts) -> Promise<{ success, reason: 'cracked'|'noise'|'timeout'|'abort', time, noise, tier, tumblers }>
-import { createSafe, wrap180 } from './heistcore.js?v=7.5.1';
+import { createSafe, wrap180 } from './heistcore.js';
 
 let active = null;
 export const safeState = () => active ? { ...active.safe.view(), targets: active.safe.targets.slice() } : null; // test/debug view

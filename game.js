@@ -3,10 +3,10 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { STORY } from './missions-data.js?v=7.5.1';
-import { mergeGeos } from './models.js?v=7.5.1';
-import { buildHuman } from './interiors.js?v=7.5.1';
-import { buildVehicle } from './world.js?v=7.5.1';
+import { STORY } from './missions-data.js';
+import { mergeGeos } from './models.js';
+import { buildHuman } from './interiors.js';
+import { buildVehicle } from './world.js';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';

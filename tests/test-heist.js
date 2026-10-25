@@ -4,7 +4,7 @@
 // BASE=http://127.0.0.1:8851/ BR=webkit DEV="iPhone SE (3rd gen)" OUT=/workspace/pw-ben/shots/ node test-heist.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8851/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/workspace/pw-ben/shots/', desk = DEV === 'desktop';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop';
 const VP = process.env.VP; // e.g. 393x852: override the device viewport (same touch/UA settings)
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
@@ -44,13 +44,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('overview', await wait(() => document.getElementById('heistPanel')?.classList.contains('on'), 4000)); await sleep(300);
     await shot('overview');
     await ourTap('#heistPanel button[data-id="heist-sample"]');
+    await G(() => { window.SSX.on?.('heist:escape', d => { window.__ssxEsc = d; }); });
     ok('started', await wait(() => window.SSX.heist.active?.w, 8000));
     const w = await G(() => window.SSX.heist.active.w);
+    ok('activeCallable', await G(() => typeof window.SSX.heist.active === 'function' && window.SSX.heist.active('mansion', 'x') === true && window.__app.surface.game.heistAt('mansion', 'x') === true)); // main's game.heistAt calls active?.(kind, name)
     ok('camerasPlaced', await G(() => window.SSX.heist.cameras().length), (await G(() => window.SSX.heist.cameras().length)) === 3);
     R.tip = await G(() => { const h = window.SSX.heist; const c = h.applyTip('heist-sample', { type: 'cameras' }); const s = h.applyTip('heist-sample', { type: 'safe', ease: 0.3 });
       return { cams: c && c.cameras.length, ease: s && s.ease, unknown: h.applyTip('heist-sample', { type: 'zzz' }), noHeist: h.applyTip('nope', { type: 'cameras' }), ev: window.__hlog.some(e => e[0] === 'tip') }; });
     ok('applyTip', R.tip, R.tip.cams === 3 && R.tip.ease === 0.3 && R.tip.unknown === null && R.tip.noHeist === null && R.tip.ev);
-    ok('npcCap', await G(() => window.__app.surface.world.debug.people().length), desk || (await G(() => window.__app.surface.world.debug.people().length)) <= 12);
+    // v7.5 world budget: debug.people() lists every spawned person (hidden ones too); count the live ones via npcBudget/activeNPCs
+    const nb = await G(() => { const W = window.__app.surface.world; const b = W.npcBudget?.(); return b ? { used: b.used, cap: b.cap } : { used: W.debug.activeNPCs?.() ?? W.debug.people().filter(p => p.on).length, cap: 12 }; });
+    ok('npcCap', `${nb.used}/${nb.cap}`, desk || (nb.used <= nb.cap && nb.cap <= 12));
     // ---- break in
     await move(w.door.x, w.door.z + 0.8); ok('breakBtn', await wait(() => window.SSX.heist.action === '🔓 Break in', 5000));
     ok('btnVisible', await G(() => getComputedStyle(document.getElementById('heistBtn')).display !== 'none'));
@@ -104,6 +108,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await move(w.site.x + 45, w.site.z + 20);
     ok('escapeEvent', await wait(() => window.__hlog.some(e => e[0] === 'escape'), 20000));
     const esc = await G(() => (window.__hlog.find(e => e[0] === 'escape') || [])[1] || null); R.escape = esc;
+    ok('ssxBus', await G(() => window.__ssxEsc && window.__ssxEsc.id === 'heist-sample' && window.__ssxEsc.name === 'TEST VILLA'));
     ok('escapeContract', JSON.stringify(Object.keys(esc)), esc.id === 'heist-sample' && esc.heat >= 2 && esc.loot?.credits === 250 && esc.alarm === true && typeof esc.pos.x === 'number' && esc.world === 'Mars');
     ok('cleanStage', await wait(() => window.SSX.heist.active?.stage === 'clean', 3000));
     await G(() => window.__app.surface.world.setWanted(0, 'test: lost them'));
@@ -112,7 +117,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // ---- promise API on its own: abort via ✕ resolves {success:false, reason:'abort'}
     await G(() => { window.__ab = window.SSX.heist.safeCrack({ tier: 'easy', instant: true }); }); await wait(() => !!document.getElementById('hsSafeAbort'), 5000); await ourTap('#hsSafeAbort');
     const ab = await G(() => window.__ab).catch(e => ({ reason: 'err ' + e.message }));
-    ok('promiseAbort', ab.reason, ab.success === false && ab.reason === 'abort' && 'time' in ab && 'noise' in ab);
+    ok('promiseAbort', ab.reason, ab.success === false && ab.ok === false && ab.reason === 'abort' && 'time' in ab && 'noise' in ab);
+    // ---- main's game.crack(id, difficulty) drives this minigame via SSX.heist.safeCrack and reads r.ok
+    await G(() => { window.__gc = window.__app.surface.game.crack('ben-crack-int', 0, { loot: 5 }); }); ok('gameCrackOpens', await wait(() => !!document.getElementById('hsSafeAbort'), 5000));
+    R.gameCrackTier = await G(() => window.SSX.heist.debug.safe()?.tier || window.SSX.heist.debug.safe()?.targets?.length);
+    await ourTap('#hsSafeAbort'); const gc = await G(() => window.__gc).catch(e => ({ why: 'err ' + e.message }));
+    ok('gameCrackResult', JSON.stringify(gc), gc && gc.ok === false && !(await G(() => window.SSX.heist.debug.safeOpen())));
   } catch (e) { errors.push('TEST ' + e.message); }
   R.events = await G(() => (window.__hlog || []).map(e => e[0] + (e[1]?.why ? ':' + e[1].why : '')).join(' > ')).catch(() => '');
   R.heistLog = await G(() => window.SSX?.heist?.log.map(e => e.join(':')).join(' > ')).catch(() => '');

@@ -2,8 +2,8 @@
 // detection meter fills). Logic is heistcore.stepCamera; this file is visuals + the per-frame loop. Cheap: shared
 // geometry/materials, one wedge mesh per camera, nothing at all for cameras on other worlds.
 import * as THREE from 'three';
-import { normCamera, stepCamera } from './heistcore.js?v=7.5.1';
-import { toWorld } from './heisthooks.js?v=7.5.1';
+import { normCamera, stepCamera } from './heistcore.js';
+import { toWorld } from './heisthooks.js';
 
 const G = {}, M = {};
 function shared() {

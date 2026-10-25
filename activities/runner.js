@@ -3,8 +3,9 @@
 // ONE shared tick hook: surface.js calls activityTick(dt, ctx) next to raceTick.
 // Districts resolved by distance to AJ-relative centres until registerDistrict lands.
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
-import { addMenuItem, tap } from '../racehooks.js?v=7.5.1';
-import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js?v=7.5.1';
+import { addMenuItem, tap, panelTap } from '../racehooks.js';
+import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
+import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -396,7 +397,7 @@ function ensureUI() {
     onTap: () => { if (active) abandonActivity('Quit side job.'); else openPanel(); },
   });
   const panel = document.createElement('div'); panel.id = 'actPanel'; document.body.appendChild(panel);
-  panel.addEventListener('click', onPanelClick);
+  panelTap(panel, onPanelClick); // v7.5.2: works with a thumb on the joystick
   ui = { chip, ctx, m, panel, near: null };
   return ui;
 }
@@ -551,6 +552,7 @@ function watchActive() {
 // ---------- tick ----------
 export function activityTick(dt, ctx) {
   C = ctx; lastTick = performance.now();
+  try { jobsTick(dt, ctx); } catch (e) { console.warn('jobsTick', e); }
   if (ctx.name !== 'Mars') {
     if (ui) ui.ctx.style.display = 'none';
     if (active) { active = null; setChip(null); }
