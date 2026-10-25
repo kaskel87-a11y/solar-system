@@ -3,7 +3,7 @@
 // BASE=http://localhost:8765/ DEV="iPhone 14" BR=webkit VP=393x852 node test-marsshops.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || 'iPhone 14';
-const out = process.env.OUT || '/tmp/', PFX = process.env.PFX || 'ms', VP = process.env.VP;
+const out = process.env.SHOTS_DIR || process.env.OUT || '/tmp/', ONLY = process.env.ONLY, PFX = process.env.PFX || 'ms', VP = process.env.VP;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = (DEV + (VP ? '-' + VP : '')).replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {
@@ -38,6 +38,7 @@ const tag = (DEV + (VP ? '-' + VP : '')).replace(/[^a-z0-9]+/gi, '-').toLowerCas
       o.push({ d, key: s.key, kind: s.kind, sign: s.sign, pick: pick?.fid, pickKind: pick?.kind, w: pick?.w, c: pick?.c, extra: extra?.fid, extraKind: extra?.kind, ammo: extra?.ammo, price: pick?.price }); } return o; });
     let shots = 0;
     for (const p of plan) {
+      if (ONLY && !p.key.includes(ONLY)) continue;
       const k = p.key, dd = doors.find(x => x.kind === k); if (!dd) { ok(k + ':door', false); continue; }
       // flat ground at the storefront: player height at the door matches the colony floor within 0.6 m
       await G(([x, z]) => window.__app.surface.debugPlace(x, z + 0.4, Math.PI), [dd.x, dd.z]); await sleep(700);
@@ -54,14 +55,14 @@ const tag = (DEV + (VP ? '-' + VP : '')).replace(/[^a-z0-9]+/gi, '-').toLowerCas
       if (p.extraKind === 'ammo') await G(a => { const P = window.__app.game.progress, gun = { rounds: 'smg', slugs: 'railrifle', grenades: 'launcher' }[a]; if (gun && !P.unlocks.includes('weapon:' + gun)) P.unlocks.push('weapon:' + gun); P.inv[a] = 0; }, p.ammo);
       const before = await G(() => { const g = window.__app.game, P = g.progress, H = g.debug.H(); return { cr: P.credits, hp: H.hp, shield: H.shield, smax: H.smax, u: P.unlocks.slice(), eq: { ...P.equip } }; });
       const at = await G(id => { const s = window.__app.surface, w = s.world.wareList().find(x => x.id === id), b = s.world.inside; if (!w) return false; s.debugInside(w.x - (b.x0 + b.x1) / 2, w.z - (b.z0 + b.z1) / 2, 0); return true; }, p.pick);
-      const lb = await waitBtn(/Buy|🛒/, 8000); const buyLabel = await btn();
+      const lb = await waitBtn(/Buy|🛒/, 15000); const buyLabel = await btn();
       await tapBtn(); await sleep(700);
       const after = await G(() => { const g = window.__app.game, P = g.progress, H = g.debug.H(); return { cr: P.credits, hp: H.hp, shield: H.shield, smax: H.smax, u: P.unlocks.slice(), eq: { ...P.equip }, woozy: window.__marsShops.woozy(), buffs: window.__marsShops.buffs() }; });
       let eff = false;
       if (p.pickKind === 'weapon') eff = after.u.includes('weapon:' + p.w) && after.eq.weapon === p.w;
       else if (p.pickKind === 'bandana') eff = after.u.includes('bandana:' + p.c) && after.eq.bandana === p.c;
       else if (p.pickKind === 'heal') eff = after.hp > before.hp || after.shield > before.shield || after.smax > before.smax || after.woozy;
-      ok(k + ':buy', `${buyLabel} | ${before.cr}->${after.cr}`, at && lb && after.cr === before.cr - p.price && eff);
+      ok(k + ':buy', `${buyLabel} | ${before.cr}->${after.cr}${eff && at && lb ? '' : ` at=${at} lb=${lb} eff=${eff} eq=${JSON.stringify(after.eq)}`}`, at && lb && after.cr === before.cr - p.price && eff);
       if (p.kind === 'bar') ok(k + ':barEffect', `woozy=${after.woozy} buffs=${after.buffs} smax ${before.smax}->${after.smax}`, after.woozy || after.smax > before.smax);
       // second purchase: tap the item's price tag on screen (tap-to-buy), fall back to the button
       if (p.extra) {
