@@ -171,6 +171,19 @@
     #roverMenu #takeoffBtn { background: linear-gradient(135deg, rgba(255,90,54,0.95), rgba(255,154,60,0.95)); border: none; box-shadow: none; }
     #rmClose { text-align: center !important; }
     #hudShow { display: none; position: fixed; z-index: 9; top: calc(6px + var(--sat)); right: calc(8px + var(--sar)); width: 34px; height: 30px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,20,0.4); color: #fff; opacity: 0.6; padding: 0; }
+    /* v7: wanted stars + gear chip live inside the top bar, so they can never overlap anything */
+    #wantedStars { display: none; flex: 0 0 auto; color: #fbbf24; font-weight: 900; letter-spacing: -1px; font-size: 0.8rem; text-shadow: 0 0 6px rgba(255,60,60,0.8); }
+    body.wanted #wantedStars { display: block; } #wantedStars.evade { animation: wblink 0.6s steps(2) infinite; } @keyframes wblink { 50% { opacity: 0.25; } }
+    #gearChip { flex: 0 0 auto; height: 26px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0 6px; white-space: nowrap; touch-action: manipulation; }
+    #tbBars { cursor: pointer; }
+    #radioBtn { display: none; height: 42px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(120,40,160,0.55) !important; }
+    body.driving #radioBtn { display: block; }
+    #shopPanel { position: fixed; inset: 0; z-index: 14; display: none; background: rgba(6,4,10,0.95); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(24px + var(--sab)) calc(16px + var(--sal)); color: #fff; }
+    #shopPanel .wrap { max-width: 640px; margin: 0 auto; } #shopPanel h2 { margin: 6px 0 4px; } #shopPanel h3 { margin: 14px 0 6px; color: #fca5a5; font-size: 0.95rem; }
+    #shopPanel .item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 7px; font-size: 0.86rem; }
+    #shopPanel .item div { flex: 1; } #shopPanel .item small { opacity: 0.7; } #shopPanel .item button { min-height: 38px; min-width: 84px; border-radius: 10px; font-weight: 800; }
+    #shopPanel .item.no button { opacity: 0.45; } #shopMsg { min-height: 1.2em; color: #fbbf24; font-size: 0.85rem; }
+    body.touch.wanted:not(.driving) #fireBtn { display: block; }
     #surfBtns { position: fixed; z-index: 7; right: calc(8px + var(--sar)); bottom: calc(22px + var(--sab)); display: grid; grid-template-columns: 64px; gap: 8px; }
     #surfBtns button { height: 54px; border-radius: 14px; font-size: 0.82rem; font-weight: 700; touch-action: none; color: #fff; background: rgba(10,14,30,0.42); border: 1px solid rgba(255,255,255,0.22); padding: 0 4px; }
     #surfBtns button.on { background: rgba(80,160,255,0.55); }
@@ -207,7 +220,7 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe<span class="ver">v6.1</span></h1>
+    <h1>🌌 Cinematic Universe<span class="ver">v7</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
@@ -249,7 +262,9 @@
     <div id="topBar">
       <div id="surfInfo"></div>
       <div id="tbBars"><div class="bar" id="shBar"><i></i></div><div class="bar" id="hpBar"><i></i></div></div>
+      <div id="wantedStars" title="Wanted level"></div>
       <div id="rankLine"></div>
+      <button id="gearChip" aria-label="Switch weapon">🔫</button>
       <div id="heatRow"><span id="heatLbl">🔥</span><div class="bar" id="heatBar"><i></i></div></div>
       <button id="menuBtn" aria-label="Menu">☰</button>
     </div>
@@ -259,7 +274,7 @@
       <div id="bossBar" class="glass"><span id="bossName"></span><div class="bar"><i></i></div></div>
       <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
       <div id="toast" class="glass"></div>
-      <div id="radio"><div class="from">📻 MISSION CONTROL <span id="radioFic"></span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
+      <div id="radio"><div class="from">📻 <span id="radioFrom">CONTROL</span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
     </div>
     <div id="roverMenu" class="glass">
       <button id="takeoffBtn" class="btn">🚀 Take off</button>
@@ -276,15 +291,17 @@
     <div id="surfBtns">
       <button id="petBtn" class="glass">🐾 Pet</button>
       <button id="driveBtn" class="glass">🚙 Drive</button>
+      <button id="radioBtn" class="glass" aria-label="Next radio station">📻 Next</button>
       <button id="jumpBtn" class="glass touch-only">Jump</button>
       <button id="runBtn" class="glass touch-only">Run</button>
     </div>
     <button id="fireBtn">FIRE</button>
-    <div id="surfHelp" class="glass desk-only">WASD move · mouse aim · click/F fire · E drive · P pet · Tab/M menu · U hide HUD · R rover · H ship · V view · L log · T take off</div>
+    <div id="surfHelp" class="glass desk-only">WASD move · mouse aim · click/F fire · E drive/take/talk/shop · Q weapon · X medkit · N radio · P pet · Tab/M menu · U hide HUD · H ship · L log</div>
     <div id="crosshair" class="desk-only"></div>
   </div>
   <div id="hurt"></div>
-  <div id="downMsg"><div>💫 Ouch! Beaming you back to the Starship…</div></div>
+  <div id="downMsg"><div id="downText">☠️ You're down. Med-evac inbound…</div></div>
+  <div id="shopPanel"><div class="wrap"><button id="shopClose" class="btn">✕ Close</button><h2 id="shopTitle">🛒 Supply</h2><div id="shopMsg"></div><div id="shopList"></div></div></div>
   <div id="logPanel"><div class="wrap">
     <button id="logClose" class="btn">✕ Close</button>
     <h2>🛰 Mission Log</h2>
@@ -319,9 +336,10 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=6.1';
-    import { buildStarship } from './models.js?v=6.1';
-    import { COSMETICS } from './game.js?v=6.1';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7';
+    import { buildStarship } from './models.js?v=7';
+    import { COSMETICS } from './game.js?v=7';
+    import { createAudio7 } from './audio7.js?v=7';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -827,7 +845,7 @@
       try {
         if (!surface.game.progress.settings.voice || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
         speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/\(Fiction!?\)/g, ''));
+        const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/\[\d+ cr\]/g, ''));
         u.rate = 1.05; u.pitch = 0.95; u.volume = 0.9; speechSynthesis.speak(u);
       } catch (e) { /* no speech on this device */ }
     }
@@ -836,7 +854,7 @@
       radioText.textContent = ev.text;
       radioOffer = ev.offer || null;
       const def = radioOffer && surface.game.questList().find(q => q.id === radioOffer);
-      document.getElementById('radioFic').innerHTML = (def?.fiction || ev.fiction) ? '<span class="fic">FICTION</span>' : '';
+      const m = /^([A-Z][\w .'-]{1,22}):\s/.exec(ev.text || ''); document.getElementById('radioFrom').textContent = (ev.contact || (m && m[1]) || 'Control').toUpperCase();
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? 25000 : 9000);
@@ -844,7 +862,7 @@
     }
     radioEl.addEventListener('click', e => { if (e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
     document.getElementById('radioAccept').onclick = () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); };
-    document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Open the Log (📜/L) any time to start a quest.', 3000); };
+    document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Jobs stay in the Log (L).', 2500); };
     const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
     let hurtTimer = 0;
     function toast(msg, ms = 4000) {
@@ -861,24 +879,64 @@
       else if (type === 'radio') showRadio(ev);
       else if (type === 'quest') {
         if (ev.kind === 'accepted') toast(`📜 Quest started: ${ev.title}`, 3000);
-        else if (ev.kind === 'done') { fanfare(); rewardPop('🏁 QUEST COMPLETE!', ev.title, [ev.fact, ...ev.got].filter(Boolean).join('  ·  '), `+${ev.xp} XP · +${ev.credits} credits${ev.fiction ? ' · 👾 alien parts are fiction' : ''}`, 10000); }
+        else if (ev.kind === 'done') { fanfare(); rewardPop('🏁 QUEST COMPLETE!', ev.title, [ev.fact, ...ev.got].filter(Boolean).join('  ·  '), `+${ev.xp} XP · +${ev.credits} credits`, 10000); }
         else if (ev.kind === 'failed') { hurtSnd(); toast(`⏱ Quest failed: ${ev.title}. Try again from the Log!`, 4000); }
         else if (ev.kind === 'step' && !ev.silent) { /* HUD shows it */ }
         updateSurfHud(true);
       }
       else if (type === 'chime') pickupSnd();
       else if (type === 'pickup') { pickupSnd(); toast(`✅ ${ev.name}`, 2500); }
-      else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '👾 RARE FIND (FICTION)' : '💎 RARE FIND!', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
-      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; ev.heavy ? plasma() : zap(); } }
-      else if (type === 'poof') { poofSnd(ev.boss); if (ev.boss) toast('👑 The Hive Queen went POOF! (Fiction!)', 3500); }
+      else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '☣️ SPECIMEN' : '💎 RARE FIND', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
+      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }
+      else if (type === 'poof') { au7.fx.squelch(ev.boss); sfxLog.push('squelch'); if (ev.boss) toast('👑 Queen down. Burn the nest before anything else hatches.', 3500); }
       else if (type === 'hurt') { hurtSnd(); hurtEl.style.transition = 'none'; hurtEl.style.opacity = ev.hp < 40 ? 1 : 0.7; clearTimeout(hurtTimer); hurtTimer = setTimeout(() => { hurtEl.style.transition = 'opacity 0.5s'; hurtEl.style.opacity = 0; }, 90); }
-      else if (type === 'down') { downEl.style.display = 'flex'; hurtEl.style.opacity = 1; }
-      else if (type === 'respawn') { downEl.style.display = 'none'; hurtEl.style.opacity = 0; updateSurfHud(true); }
-      else if (type === 'alienWarn') toast(`🐶 ${dogName} growls: aliens about ${ev.dist} m away! (Fiction!)`, 3000);
+      else if (type === 'down') { document.getElementById('downText').textContent = ev.why === 'busted' ? '🚨 BUSTED. Security is processing you…' : '☠️ You\'re down. Med-evac inbound…'; downEl.style.display = 'flex'; hurtEl.style.opacity = 1; }
+      else if (type === 'respawn') { downEl.style.display = 'none'; hurtEl.style.opacity = 0; if (ev.fee) toast(ev.why === 'busted' ? `🚨 Fined ${ev.fee} cr. Dumped at the colony gate.` : `🩺 Med-evac billed ${ev.fee} cr.`, 3500); updateSurfHud(true); }
+      else if (type === 'alienWarn') toast(`🐶 ${dogName} is growling. Something's out there, ${ev.dist} m.`, 3000);
+      else if (type === 'ambush') { au7.fx.screech(); sfxLog.push('ambush'); toast('☣️ They were in the ground. Move!', 2500); }
+      else if (type === 'hatch') { au7.fx.spit(); sfxLog.push('hatch'); }
+      else if (type === 'screech') { au7.fx.screech(); sfxLog.push('screech'); }
+      else if (type === 'slash') { au7.fx.slash(); sfxLog.push('slash'); }
+      else if (type === 'spit') { au7.fx.spit(); sfxLog.push('spit'); }
+      else if (type === 'enemyShot' || type === 'secShot') { au7.fx.enemyShot(); sfxLog.push(type); }
+      else if (type === 'dry') { au7.fx.dry(); sfxLog.push('dry'); toast('🔫 Click. Out of shells. Q to swap.', 1800); }
+      else if (type === 'weapon') { au7.fx.dry(); toast(`🔫 ${ev.name}${ev.id === 'shotgun' ? ` · ${ev.shells} shells` : ''}`, 1600); updateSurfHud(true); }
+      else if (type === 'medkit') { pickupSnd(); toast(`🩹 Patched up. ${ev.left} medkit${ev.left === 1 ? '' : 's'} left.`, 2000); }
+      else if (type === 'bought') { au7.fx.cash(); sfxLog.push('cash'); }
+      else if (type === 'take') { au7.fx.door(); sfxLog.push('take'); toast(ev.seen ? `🚗 ${ev.name} taken. Somebody saw that.` : `🚗 ${ev.name} taken. Nobody saw a thing.`, 2600); }
+      else if (type === 'vehicle') onVehicle(ev);
+      else if (type === 'wanted') { au7.fx.wanted(); sfxLog.push('wanted'); toast(`🚨 ${'★'.repeat(ev.stars)} ${ev.why || 'Security wants a word.'}`, 2600); updateSurfHud(true); }
+      else if (type === 'wantedLost') { au7.fx.lost(); sfxLog.push('lost'); toast('😮‍💨 Security lost you. Act natural.', 2600); updateSurfHud(true); }
+      else if (type === 'siren') { au7.fx.siren(); sfxLog.push('siren'); }
+      else if (type === 'crash') { au7.fx.crash(); sfxLog.push('crash'); }
+      else if (type === 'thud') { au7.fx.thud(); sfxLog.push('thud'); }
+      else if (type === 'secDown') toast(ev.kind === 'drone' ? '💥 Drone down. That\'s going on your record.' : '💥 Security down. They will remember that.', 2200);
       else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
-      else if (type === 'overheat') { overheatSnd(); toast('🔥 Plasma blaster overheated! Cooling down…', 2200); }
+      else if (type === 'overheat') { overheatSnd(); toast('🔥 Rifle\'s cooking. Let it breathe.', 2200); }
       else if (type === 'toast') toast(ev.text, 3500);
     }
+    // ===== v7 radio + ambience =====
+    const au7 = createAudio7(() => actx || audio());
+    let djTimer = 0;
+    function stationToast(intro) { const S = au7.station; toast(S.id === 'off' ? '📻 Radio off' : `📻 ${S.name} · ${S.tag}${intro ? ' — ' + (au7.dj() || '') : ''}`, 3000); }
+    function onVehicle(ev) {
+      if (ev.on) { au7.setStation(surface.game.progress.settings.radio ?? 0, true); djTimer = 40; stationToast(true); sfxLog.push('radioOn'); }
+      else au7.radio(false);
+    }
+    function nextStation() {
+      if (!surface.info?.driving) return;
+      const S = au7.next(true); try { surface.game.progress.settings.radio = au7.stationIndex; surface.game.save?.(); } catch (e) { /* */ }
+      sfxLog.push('station:' + S.id); stationToast(true); djTimer = 45;
+    }
+    document.getElementById('radioBtn').onclick = nextStation;
+    let ambTick = 0;
+    function tickAudio7(dt) {
+      const i = surface.info, g = surface.game.info; if (!i) return;
+      const ping = au7.tick(dt, { trackerDist: g.tracker ?? 1e9, hostiles: surface.game.progress.settings.aliens, driving: i.driving });
+      if (ping != null) { sfxLog.push('tracker'); trackerFlash = 1; }
+      if (i.driving && au7.playing) { djTimer -= dt; if (djTimer <= 0) { djTimer = 50 + Math.random() * 30; const t = au7.dj(); if (t && !toastEl.classList.contains('on') && radioEl.style.display !== 'block') toast(`📻 ${au7.station.name}: ${t}`, 3500); } }
+    }
+    let trackerFlash = 0;
     const surface = createSurface({ renderer, textures, isMobile, onEvent: onSurfaceEvent });
     const landBtn = document.getElementById('landBtn'), landMsg = document.getElementById('landMsg'), fadeEl = document.getElementById('fade');
     const surfInfo = document.getElementById('surfInfo');
@@ -901,7 +959,7 @@
           surface.enter(landedBody.userData.name);
           onSurface = true; landAnim = null;
           document.body.classList.add('surface');
-          factPanel.style.display = 'none';
+          factPanel.style.display = 'none'; au7.startAmbient();
           updateSurfHud(true);
         } catch (err) { console.error(err); landAnim = null; }
         fadeEl.style.opacity = 0;
@@ -911,7 +969,7 @@
     function takeOff() {
       if (!onSurface || transitioning) return;
       transitioning = true;
-      surface.takeOff();
+      surface.takeOff(); au7.radio(false); au7.stopAmbient(); shopPanel.style.display = 'none';
       fadeEl.style.opacity = 1;
       factPanel.style.display = 'none';
       radioEl.style.display = 'none'; roverMenu.classList.remove('show'); downEl.style.display = 'none'; hurtEl.style.opacity = 0; touchBtns.fire = false; mouseAim.held = false;
@@ -988,7 +1046,39 @@
     viewBtn.onclick = () => { surface.cycleView(); updateSurfHud(true); };
     discBtn.addEventListener('click', () => roverMenu.classList.remove('show'));
     document.getElementById('takeoffBtn').addEventListener('click', () => roverMenu.classList.remove('show'));
-    function doInteract() { const r = surface.interact(); if (r === 'drive') toast(`🚙 Driving! ${isTouch ? 'Stick to steer and throttle, hold Boost to go fast.' : 'WASD to drive, Shift to boost, E to get out.'}`, 3500); updateSurfHud(true); }
+    const VEH_ICON = { rover: '🚙', buggy: '🏎', hauler: '🚛', hoverbike: '🏍', shuttle: '🛸' };
+    function actionFor(i) {
+      if (i.driving) return { kind: 'exit', label: '🚪 Exit' };
+      if (i.nearRover) return { kind: 'drive', label: '🚙 Drive' };
+      if (i.nearVehicle) return { kind: 'take', label: `${VEH_ICON[i.nearVehicle.kind] || '🚗'} Take` };
+      if (i.nearContact) return { kind: 'talk', label: `💬 ${i.nearContact}`, who: i.nearContact };
+      if (i.nearShop) return { kind: 'shop', label: '🛒 Shop' };
+      return { kind: null, label: '' };
+    }
+    function doInteract() {
+      const i = surface.info; if (!i) return; const act = actionFor(i);
+      if (act.kind === 'talk') { surface.game.talk(act.who); return; }
+      if (act.kind === 'shop') { openShop(); return; }
+      const r = surface.interact();
+      updateSurfHud(true);
+    }
+    // ===== v7 shop =====
+    const shopPanel = document.getElementById('shopPanel'), shopListEl = document.getElementById('shopList'), shopMsg = document.getElementById('shopMsg');
+    function renderShop() {
+      const L = surface.game.shopList(), groups = {};
+      for (const it of L.items) (groups[it.group] = groups[it.group] || []).push(it);
+      document.getElementById('shopTitle').textContent = `🛒 ${surface.info?.colony?.name || 'Colony'} Supply · 💰 ${L.credits} cr`;
+      shopListEl.innerHTML = Object.entries(groups).map(([g, items]) => `<h3>${esc(g)}</h3>` + items.map(it => {
+        const lbl = it.owned ? (it.id.includes(':') ? (it.desc === 'Equipped' ? 'Equipped' : 'Equip') : 'Owned') : `${it.price} cr`;
+        const no = (!it.ok && !it.owned) || (!it.owned && !it.afford) || (it.owned && !it.id.includes(':'));
+        return `<div class="item${no ? ' no' : ''}">${it.color != null ? `<span style="width:14px;height:14px;border-radius:4px;background:#${it.color.toString(16).padStart(6, '0')}"></span>` : ''}<div><b>${esc(it.name)}</b><br><small>${esc(it.why || it.desc || '')}</small></div><button class="btn" data-buy="${esc(it.id)}">${lbl}</button></div>`;
+      }).join('')).join('') + `<p style="opacity:.6;font-size:.75rem">Carrying ${L.medkits}/3 medkits · ${L.shells} shells.</p>`;
+      shopListEl.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); updateSurfHud(true); });
+    }
+    function openShop() { shopMsg.textContent = 'Cash only. No refunds. No questions.'; renderShop(); shopPanel.style.display = 'block'; au7.fx.door(); if (document.pointerLockElement) document.exitPointerLock(); }
+    document.getElementById('shopClose').onclick = () => shopPanel.style.display = 'none';
+    document.getElementById('gearChip').onclick = () => surface.game.switchWeapon();
+    document.getElementById('tbBars').onclick = () => surface.game.useMedkit();
     driveBtn.onclick = doInteract;
     petBtn.onclick = () => { surface.pet(); };
     function openLog() {
@@ -1021,7 +1111,7 @@
         qh += `<h3>${esc(w)} · ${list.filter(q => q.done).length}/${list.length}</h3>` + list.map(q => {
           const btn = w !== here ? '' : q.active ? `<button class="btn" data-abandon="${q.id}">✖ Abandon</button>` : `<button class="btn" data-accept="${q.id}">${q.done ? '🔁 Replay' : '▶ Start'}</button>`;
           const need = q.needsAliens && !P.settings.aliens ? ' · 🕊 boss is skipped in peaceful mode' : '';
-          return `<div class="item${q.done ? ' done' : ''}${q.active ? ' active' : ''}"><b>${q.done ? '✅ ' : ''}${esc(q.title)}</b>${q.fiction ? '<span class="fic">FICTION</span>' : ''}<br><small>${q.steps} steps${q.limit ? ` · ⏱ ${q.limit} s` : ''} · +${q.reward.xp} XP${q.reward.badge ? ' · 🏅 ' + esc(q.reward.badge) : ''}${need}</small>${btn ? `<div class="row">${btn}</div>` : ''}</div>`;
+          return `<div class="item${q.done ? ' done' : ''}${q.active ? ' active' : ''}"><b>${q.done ? '✅ ' : ''}${esc(q.title)}</b>${q.fiction ? '<small class="ficm"> · fictional</small>' : ''}<br><small>${q.steps} steps${q.limit ? ` · ⏱ ${q.limit} s` : ''} · +${q.reward.xp} XP${q.reward.badge ? ' · 🏅 ' + esc(q.reward.badge) : ''}${need}</small>${btn ? `<div class="row">${btn}</div>` : ''}</div>`;
         }).join('');
       }
       const tq = document.getElementById('tabQuests'); tq.innerHTML = qh;
@@ -1030,25 +1120,25 @@
       // rewards
       const r = gi;
       const rareTotal = Object.values(P.rare || {}).reduce((n, a) => n + a.length, 0);
-      document.getElementById('tabRewards').innerHTML = `<div class="item"><b>⭐ ${esc(r.rank)}</b> · ${r.xp} XP${r.rankNext ? ` · next rank at ${r.rankNext} XP` : ' · top rank!'}<div class="bar" style="margin-top:6px"><i style="width:${r.rankNext ? Math.round(100 * (r.xp - r.rankBase) / (r.rankNext - r.rankBase)) : 100}%;background:#ffd25a"></i></div>💰 ${r.credits} credits · 👾 ${P.stats.kills} aliens poofed · 💎 ${rareTotal} rare finds</div>`
+      document.getElementById('tabRewards').innerHTML = `<div class="item"><b>⭐ ${esc(r.rank)}</b> · ${r.xp} XP${r.rankNext ? ` · next rank at ${r.rankNext} XP` : ' · top rank!'}<div class="bar" style="margin-top:6px"><i style="width:${r.rankNext ? Math.round(100 * (r.xp - r.rankBase) / (r.rankNext - r.rankBase)) : 100}%;background:#ffd25a"></i></div>💰 ${r.credits} credits · ☣️ ${P.stats.kills} kills · 💎 ${rareTotal} finds · 🚗 ${P.stats.stolen || 0} rides taken · 🚨 busted ${P.stats.busted || 0}×</div>`
         + `<h3>🏅 Badges (${P.badges.length})</h3>` + (P.badges.length ? `<div class="chips">${P.badges.map(b => `<span class="chip on">🏅 ${esc(b)}</span>`).join('')}</div>` : '<p style="opacity:.75">Finish quests to earn badges.</p>')
-        + `<p style="opacity:.75;font-size:.8rem">Aliens, drones, the Hive Queen and alien artifacts are made up for fun. Every planet fact is real science.</p>`;
+        + `<p style="opacity:.6;font-size:.75rem">Fictional: hostiles, hives, the Queen, colonies, contacts, security and specimens. Planet facts are real science.</p>`;
       // settings + cosmetics
       const pick = kind => Object.entries(COSMETICS[kind]).map(([id, c]) => { const own = P.unlocks.includes(`${kind}:${id}`); return `<button class="chip${P.equip[kind] === id ? ' on' : ''}${own ? '' : ' lock'}" data-kind="${kind}" data-id="${id}">${own ? '' : '🔒 '}${esc(c.name)}</button>`; }).join('');
       const sb = document.getElementById('settingsBody');
-      sb.innerHTML = `<div class="sw"><span>👾 Aliens &amp; combat<br><small style="opacity:.7">Off = peaceful exploring</small></span><button class="btn" id="setAliens">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
-        + `<div class="sw"><span>📻 Mission-control voice</span><button class="btn" id="setVoice">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
+      sb.innerHTML = `<div class="sw"><span>☣️ Hostiles &amp; combat<br><small style="opacity:.7">Off = peaceful exploring (colonies and security stay)</small></span><button class="btn" id="setAliens">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
+        + `<div class="sw"><span>📻 Radio voice (text-to-speech)</span><button class="btn" id="setVoice">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
         + `<h3>🎨 Rover paint</h3><div class="chips">${pick('paint')}</div><h3>🧣 ${esc(dogName)}'s bandana</h3><div class="chips">${pick('bandana')}</div>`;
-      sb.querySelector('#setAliens').onclick = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '👾 Aliens ON. Watch out! (Fiction!)' : '🕊 Peaceful mode: no aliens.', 2500); renderLogTabs(); updateSurfHud(true); };
+      sb.querySelector('#setAliens').onclick = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '☣️ Hostiles ON. Check your corners.' : '🕊 Peaceful mode: no hostiles.', 2500); renderLogTabs(); updateSurfHud(true); };
       sb.querySelector('#setVoice').onclick = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
-      sb.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Finish quests to unlock this one.', 2500); });
+      sb.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Earn it on a job, or buy it at a colony shop.', 2500); });
     }
     discBtn.onclick = openLog;
     document.getElementById('logClose').onclick = () => logPanel.style.display = 'none';
     document.getElementById('dogSave').onclick = () => {
       const v = document.getElementById('dogName').value.trim().slice(0, 20) || 'Frankie'; dogName = v;
       try { localStorage.setItem(DOG_KEY, v); } catch (e) { /* ignore */ }
-      toast(`🐶 Say hi to ${v}!`, 2500); updateSurfHud(true);
+      toast(`🐶 ${v} it is.`, 2500); updateSurfHud(true);
     };
     document.getElementById('dogName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') document.getElementById('dogSave').click(); });
     let hudKey = '';
@@ -1057,13 +1147,15 @@
       document.body.classList.toggle('driving', i.driving);
       const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : '';
       surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g${extra}`;
-      const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName].join('|');
+      const act = actionFor(i);
+      const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName, act.label].join('|');
       if (force || key !== hudKey) {
         hudKey = key;
         viewBtn.textContent = VIEW_LABEL[surface.info.camGoal < 0.8 ? 'first' : surface.info.camGoal < 60 ? 'third' : 'aerial'];
         discBtn.textContent = `🔎 Discoveries ${i.disc.found}/${i.disc.total}`;
-        driveBtn.style.display = i.driving || i.nearRover ? 'block' : 'none';
-        driveBtn.textContent = i.driving ? '🚪 Exit' : `🚙 Drive${isTouch ? '' : ' (E)'}`;
+        driveBtn.style.display = act.label ? 'block' : 'none';
+        driveBtn.textContent = act.label ? act.label + (isTouch ? '' : ' (E)') : '';
+        driveBtn.dataset.act = act.kind || '';
         petBtn.style.display = !i.driving && i.nearDog ? 'block' : 'none';
         petBtn.textContent = `🐾 Pet${isTouch ? '' : ' (P)'}`;
         runBtnEl.textContent = i.driving ? 'Boost' : 'Run';
@@ -1082,11 +1174,17 @@
       heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
       document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
       rankLine.textContent = `💰 ${g.credits} · ⭐ ${g.xp}`; rankLine.title = `${g.rank} · ${g.xp} XP`;
+      const si = surface.info, wl = si?.wanted || 0, ws = document.getElementById('wantedStars');
+      document.body.classList.toggle('wanted', wl > 0);
+      if (wl > 0) { ws.textContent = '★'.repeat(wl); ws.classList.toggle('evade', !!si.evading); }
+      const gc = document.getElementById('gearChip');
+      const gtxt = si?.driving ? (si.stolen ? `${VEH_ICON[si.vehicle] || '🚗'}` : '🔫 Cannon') : `${g.weapon === 'shotgun' ? `💥 ${g.shells}` : '🔫'}${g.medkits ? ` 🩹${g.medkits}` : ''}`;
+      if (gc.textContent !== gtxt) gc.textContent = gtxt;
       if (g.quest) {
         questTrack.style.display = 'block';
-        questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b>${g.quest.fiction ? '<span class="fic">FICTION</span>' : ''}<br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
+        questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b><br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
       } else questTrack.style.display = 'none';
-      if (g.boss) { bossBar.style.display = 'block'; document.getElementById('bossName').textContent = `👑 ${g.boss.name} (fiction)`; bossBar.querySelector('i').style.width = `${(100 * g.boss.hp / g.boss.max).toFixed(0)}%`; }
+      if (g.boss) { bossBar.style.display = 'block'; document.getElementById('bossName').textContent = `👑 ${g.boss.name}`; bossBar.querySelector('i').style.width = `${(100 * g.boss.hp / g.boss.max).toFixed(0)}%`; }
       else bossBar.style.display = 'none';
     }
     // return to rover / summon rover / return to ship
@@ -1112,6 +1210,19 @@
       if (md.ship) { const p = proj(md.ship.x, md.ship.z, true); c.save(); c.translate(p[0], p[1]); c.beginPath(); c.moveTo(0, -5 * dpr); c.lineTo(4 * dpr, 4 * dpr); c.lineTo(-4 * dpr, 4 * dpr); c.closePath(); c.fillStyle = '#ff8a3c'; c.fill(); c.restore(); out.ship = true; }
       if (md.rover && !md.driving) { const p = proj(md.rover.x, md.rover.z, true); c.fillStyle = '#4fa8ff'; c.fillRect(p[0] - 3.5 * dpr, p[1] - 3.5 * dpr, 7 * dpr, 7 * dpr); out.rover = true; }
       if (md.wp) { const p = proj(md.wp.x, md.wp.z, true); c.save(); c.translate(p[0], p[1]); c.rotate(Math.PI / 4); c.fillStyle = '#38e1ff'; c.fillRect(-3.5 * dpr, -3.5 * dpr, 7 * dpr, 7 * dpr); c.restore(); out.wp = true; }
+      const W7 = md.world;
+      if (W7) {
+        if (W7.colony) { const p = proj(W7.colony.x, W7.colony.z, true); c.beginPath(); c.arc(p[0], p[1], (p[2] ? 4 : Math.max(5, 26 * k)) * (p[2] ? dpr : 1), 0, Math.PI * 2); c.strokeStyle = '#ff9b5a'; c.lineWidth = 1.5 * dpr; c.stroke(); out.colony = true; }
+        if (W7.shop) { const p = proj(W7.shop.x, W7.shop.z, false); if (p) { c.fillStyle = '#4ade80'; c.font = `900 ${Math.round(9 * dpr)}px system-ui`; c.textAlign = 'center'; c.fillText('$', p[0], p[1] + 3 * dpr); out.shop = true; } }
+        for (const v of W7.vehicles || []) { const p = proj(v.x, v.z, false); if (!p) continue; c.fillStyle = '#e5e7eb'; c.fillRect(p[0] - 2.5 * dpr, p[1] - 1.5 * dpr, 5 * dpr, 3 * dpr); out.vehicles = (out.vehicles || 0) + 1; }
+        for (const q of W7.people || []) { const p = proj(q.x, q.z, false); if (!p) continue;
+          if (q.kind === 'contact') { c.save(); c.translate(p[0], p[1]); c.rotate(Math.PI / 4); c.fillStyle = '#c084fc'; c.fillRect(-3 * dpr, -3 * dpr, 6 * dpr, 6 * dpr); c.restore(); out.contacts = (out.contacts || 0) + 1; }
+          else { c.beginPath(); c.arc(p[0], p[1], 1.6 * dpr, 0, Math.PI * 2); c.fillStyle = q.kind === 'guard' ? '#60a5fa' : '#a3a3a3'; c.fill(); out.people = (out.people || 0) + 1; } }
+        const blink = (performance.now() / 250 | 0) % 2;
+        for (const q of W7.security || []) { const p = proj(q.x, q.z, true); c.beginPath(); c.arc(p[0], p[1], 2.8 * dpr, 0, Math.PI * 2); c.fillStyle = blink ? '#ef4444' : '#3b82f6'; c.fill(); out.security = (out.security || 0) + 1; }
+      }
+      if (md.gate) { const p = proj(md.gate.x, md.gate.z, true); c.beginPath(); c.arc(p[0], p[1], 4 * dpr, 0, Math.PI * 2); c.strokeStyle = '#facc15'; c.lineWidth = 2 * dpr; c.stroke(); out.gate = true; }
+      if (trackerFlash > 0.02) { c.beginPath(); c.arc(R, R, (R - 4 * dpr) * (1.05 - trackerFlash * 0.6), 0, Math.PI * 2); c.strokeStyle = `rgba(74,222,128,${(trackerFlash * 0.7).toFixed(2)})`; c.lineWidth = 2 * dpr; c.stroke(); trackerFlash *= 0.8; }
       c.save(); c.translate(R, R); c.beginPath(); c.moveTo(0, -6 * dpr); c.lineTo(4.5 * dpr, 5 * dpr); c.lineTo(0, 2.5 * dpr); c.lineTo(-4.5 * dpr, 5 * dpr); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
       const label = md.driving ? `🚀 ${fmtDist(Math.round(Math.hypot(md.ship.x - md.x, md.ship.z - md.z)))}` : md.rover ? `🚙 ${fmtDist(Math.round(Math.hypot(md.rover.x - md.x, md.rover.z - md.z)))}` : '';
       c.font = `700 ${Math.round(9 * dpr)}px system-ui, sans-serif`; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,0.9)'; c.shadowColor = '#000'; c.shadowBlur = 3 * dpr; c.fillText(label, R, W - 9 * dpr); c.shadowBlur = 0;
@@ -1174,6 +1285,10 @@
       keys[e.code] = true;
       if (onSurface) {
         if (logPanel.style.display === 'block') { if (e.code === 'Escape') logPanel.style.display = 'none'; return; }
+        if (shopPanel.style.display === 'block') { if (e.code === 'Escape' || e.code === 'KeyE') shopPanel.style.display = 'none'; return; }
+        if (e.code === 'KeyQ' && !e.repeat) surface.game.switchWeapon();
+        if (e.code === 'KeyX' && !e.repeat) surface.game.useMedkit();
+        if (e.code === 'KeyN' && !e.repeat) nextStation();
         if (e.code === 'KeyT') takeOff();
         if (e.code === 'KeyE' && !e.repeat) doInteract();
         if (e.code === 'KeyP' && !e.repeat) surface.pet();
@@ -1276,6 +1391,7 @@
         surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run,
           fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
+        tickAudio7(realDt);
         if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
         window.__frames = (window.__frames || 0) + 1;
         return;
@@ -1428,7 +1544,7 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v6.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>

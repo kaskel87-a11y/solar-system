@@ -1,7 +1,8 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=6.1';
-import { createGame } from './game.js?v=6.1';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7';
+import { createGame } from './game.js?v=7';
+import { createWorld, VEHICLES } from './world.js?v=7';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -220,12 +221,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     }
     return h;
   }
+  let flats = []; // colony ground (v7): flattened discs
   function height(x, z) {
     const r = Math.hypot(x, z);
     const s = smooth(30, 70, r);
     const pad = cfg.padH ?? 0;
     const b = baseHeight(x, z);
-    return THREE.MathUtils.lerp(pad + b * 0.15, b, s);
+    let h = THREE.MathUtils.lerp(pad + b * 0.15, b, s);
+    for (let i = 0; i < flats.length; i++) { const f = flats[i], d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
+    return h;
   }
 
   // ---------- Chunks ----------
@@ -481,7 +485,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
   let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
   let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
-  let astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
+  let car = null, astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
   let found = loadFound(), discItems = [];
   const saveView = () => { if (driving) driveGoal = camGoal; try { localStorage.setItem(driving ? ROVER_VIEW_KEY : VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
 
@@ -595,12 +599,23 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
 
   // v6 game layer: quests, aliens, blasters, rewards (see game.js)
+  // v7 world layer: colonies, NPCs, parked vehicles, wanted level (see world.js)
+  const world = createWorld({
+    scene, height: (x, z) => height(x, z), player, onEvent, isMobile, game: () => game,
+    st: () => ({ driving, car, ownRover: rover })
+  });
+  const gameEvent = (t, d) => { if (t === 'zap' && !driving) world.shotFired(); onEvent(t, d); };
   const game = createGame({
-    scene, camera, isMobile, onEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
-    st: () => ({ name, cfg, driving, rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
-    respawn() {
+    scene, camera, isMobile, onEvent: gameEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
+    st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
+    hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
+    colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
+    wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
+    respawn(why) {
       if (driving) interact();
-      const x = SHIP.x - 10, z = SHIP.z + 12;
+      world.onRespawn(why);
+      const gp = why === 'busted' ? world.gate() : null;
+      const x = gp ? gp.x : SHIP.x - 10, z = gp ? gp.z : SHIP.z + 12;
       player.x = x; player.z = z; player.y = height(x, z) + EYE; player.vy = 0; player.yaw = 0.6; player.faceYaw = 0.6;
       if (dog) { dog.mode = 'follow'; dog.x = x + 1.5; dog.z = z + 1.5; dog.y = height(dog.x, dog.z); }
       updateChunks(x, z, true);
@@ -626,10 +641,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const ship = place(buildRocket(), SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit.' }); ship.rotation.y = 0.5;
     const flag = place(buildFlag(), -6, -10, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
     const special = place(builders[cfg.poi.kind](cfg.poi.sign), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
+    flats = world.layout(bodyName, safePoint);
     placeDiscoveries();
     // rover
     const rv = buildBuggy(); rv.group.rotation.order = 'YXZ';
-    rover = { ...rv, x: -9, z: 0, yaw: 0.5, y: height(-9, 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0 };
+    rover = { ...rv, kind: 'rover', spec: VEHICLES.rover, x: -9, z: 0, yaw: 0.5, y: height(-9, 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0 };
     Object.assign(rv.group.userData, { poi: true, rover: true, name: 'Your rover', fact: 'A six-wheeled pressurized rover with independent suspension and a full light bar. Walk up and tap Drive (or press E). Boost goes faster; low gravity means big hops.' });
     scene.add(rv.group); poiObjects.push(rv.group);
     dust = makeDust();
@@ -638,24 +654,25 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dg = buildDog({ helmet: bodyName !== 'Earth' }); dg.group.rotation.order = 'YXZ';
     dog = { ...dg, x: 1.6, z: 7.5, y: height(1.6, 7.5), vy: 0, yaw: 0, mode: 'follow', idle: 0, wag: 0, phase: 0, nextSniff: 14, sniff: null, sniffT: 0, air: false, sit: 0 };
     scene.add(dg.group);
-    driving = false; camYawOff = 0; driven = 0; camGoal = loadNum(VIEW_KEY, 9); driveGoal = loadNum(ROVER_VIEW_KEY, 16);
+    driving = false; car = null; camYawOff = 0; driven = 0; camGoal = loadNum(VIEW_KEY, 9); driveGoal = loadNum(ROVER_VIEW_KEY, 16);
     scene.add(camera); buildCockpit();
     player.x = 0; player.z = 6; player.yaw = 0; player.pitch = -0.08; player.vy = 0; player.walked = 0; player.faceYaw = 0;
     player.y = height(0, 6) + EYE;
     state = { intro: 1.8, outro: 0 };
+    world.enter(bodyName);
     game.enter(bodyName);
     updateChunks(player.x, player.z, true);
     camDist = camGoal;
     updateRover(0.016, { keys: {}, joy: { x: 0, y: 0 } }, cfg.g * 9.81); updateDog(0.016, cfg.g * 9.81); updateAstro(0.016); updateCamera(0.016);
   }
   function exit() {
-    game.exit();
+    game.exit(); world.exit(); flats = [];
     for (const c of chunks.values()) disposeChunk(c);
     chunks.clear();
     scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && !o.geometry.userData.shared && ![rockGeo, trunkGeo, leafGeo, meteorGeo, beamGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (!m || m.userData.shared || [beamOn, beamOff, glintMat].includes(m)) return; if (m.map?.userData?.shared) { m.dispose(); return; } if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
     [terrainMat, rockMat, trunkMat, leafMat, meteorMat].forEach(m => m?.dispose());
     scene.clear(); poiObjects.length = 0; waterMesh = null; skyGroup = null; scene.fog = null;
-    farMesh = null; farCenter = null; rover = null; dog = null; astro = null; dust = null; discItems = []; driving = false;
+    farMesh = null; farCenter = null; rover = null; car = null; dog = null; astro = null; dust = null; discItems = []; driving = false;
     cfg = null; state = null;
   }
 
@@ -685,6 +702,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const gh = height(nx, nz);
       if (cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
       else { player.walked += Math.hypot(dx, dz); player.moveYaw = Math.atan2(-dx, -dz); }
+      const c = world.collide(nx, nz, 0.45); if (c) { nx = c.x; nz = c.z; }
       player.x = nx; player.z = nz;
     }
     const ground = height(player.x, player.z) + EYE;
@@ -700,22 +718,36 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (player.grounded && len > 0.05) player.bob += dt * (running ? 13 : 8) * (cfg.g < 0.3 ? 0.6 : 1); else player.bob *= 0.9;
   }
 
-  function updateRover(dt, input, g) {
-    const r = rover;
+  function updateRover(dt, input, g, r = rover) {
+    const sp = r.spec || VEHICLES.rover, me = driving && car === r;
     let thr = 0, st = 0;
-    if (driving) { [st, thr] = readMove(input); thr = clamp(thr, -1, 1); st = clamp(st, -1, 1); }
-    const boost = driving && input.run, vmax = boost ? 30 : 17, grip = r.air ? 0.15 : 1;
+    if (me) { [st, thr] = readMove(input); thr = clamp(thr, -1, 1); st = clamp(st, -1, 1); }
+    const boost = me && input.run, vmax = boost ? sp.boost : sp.vmax, grip = r.air ? 0.15 : 1;
     if (thr * r.speed < -0.1) r.speed += thr * 26 * dt * grip;
-    else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? 15 : 9) * dt * grip;
+    else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? sp.bacc : sp.acc) * dt * grip;
     else r.speed -= Math.sign(r.speed) * Math.min(Math.abs(r.speed), 5 * dt * grip);
     if (r.speed > vmax) r.speed = Math.max(vmax, r.speed - 10 * dt);
     r.speed = Math.max(r.speed, -7);
     r.steer += (st - r.steer) * Math.min(1, dt * 8);
     const as = Math.abs(r.speed);
-    if (!r.air) r.yaw -= r.steer * 1.5 * Math.min(1, as / 4) * (1 - 0.45 * Math.min(1, as / 30)) * Math.sign(r.speed || 1) * dt;
+    if (!r.air) r.yaw -= r.steer * sp.turn * Math.min(1, as / 4) * (1 - 0.45 * Math.min(1, as / 30)) * Math.sign(r.speed || 1) * dt;
     const nx = r.x - Math.sin(r.yaw) * r.speed * dt, nz = r.z - Math.cos(r.yaw) * r.speed * dt;
     if (cfg.water !== undefined && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2;
-    else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
+    else {
+      const c = world.collide(nx, nz, sp.r * 0.75, r);
+      if (c) { if (Math.abs(r.speed) > 9 && me) { onEvent('crash', { speed: Math.abs(r.speed) }); if (Math.abs(r.speed) > 16) game.hurtPlayer(Math.abs(r.speed) * 0.6, null); } r.speed *= -0.25; }
+      else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
+    }
+    if (sp.hover) { // hover vehicles: ride a cushion above the ground, lean into turns
+      const gh = height(r.x, r.z), want = gh + sp.hover + Math.sin(time * 3) * 0.08;
+      r.y += (Math.max(want, gh + 0.4) - r.y) * Math.min(1, dt * 6); r.vy = 0; r.air = false; r.prevG = gh;
+      const fx = -Math.sin(r.yaw), fz = -Math.cos(r.yaw);
+      const tp = Math.atan2(height(r.x + fx * 2.5, r.z + fz * 2.5) - height(r.x - fx * 2.5, r.z - fz * 2.5), 5) * 0.6;
+      r.pitch += (tp - r.pitch) * Math.min(1, dt * 4); r.roll += (-r.steer * (sp.lean || 0.15) * Math.min(1, as / 10) - r.roll) * Math.min(1, dt * 5);
+      r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
+      if (dust && as > 4 && Math.random() < dt * as * 1.5) spawnDust(r.x + (Math.random() - 0.5) * 2, gh + 0.2, r.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 6, 1 + Math.random() * 2, (Math.random() - 0.5) * 6);
+      return;
+    }
     const gH = height(r.x, r.z);
     if (r.prevG === null) r.prevG = gH;
     const gv = (gH - r.prevG) / Math.max(dt, 1e-3); r.prevG = gH;
@@ -735,8 +767,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const wx = r.x + rx * w.x - fx * w.z, wz = r.z + rz * w.x - fz * w.z;
       const expected = r.y + (-w.z) * Math.sin(r.pitch) + w.x * Math.sin(r.roll);
       const off = r.air ? -0.22 : clamp(height(wx, wz) - expected, -0.3, 0.3);
-      w.pivot.position.y += (0.62 + off - w.pivot.position.y) * Math.min(1, dt * 18);
-      w.spin.rotation.x -= r.speed * dt / 0.62;
+      w.pivot.position.y += (sp.wy + off - w.pivot.position.y) * Math.min(1, dt * 18);
+      w.spin.rotation.x -= r.speed * dt / sp.wr;
       if (w.front) w.pivot.rotation.y = -r.steer * 0.38; else if (w.z > 1) w.pivot.rotation.y = r.steer * 0.12;
     }
     // dust from the rear wheels
@@ -750,7 +782,6 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
           fx * back + (Math.random() - 0.5) * 2 + rx * side * 0.8, 1.2 + Math.random() * 2.2 * (dust.airless ? 1.6 : 1), fz * back + (Math.random() - 0.5) * 2 + rz * side * 0.8);
       }
     }
-    if (dust) updateDust(dt, g);
   }
 
   const seatW = new THREE.Vector3();
@@ -758,9 +789,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const d = dog, P = d.parts; d.wag = Math.max(0, d.wag - dt);
     let v = 0;
     if (driving) {
-      d.mode = 'ride'; rover.group.updateMatrixWorld(true); rover.seat.getWorldPosition(seatW);
+      d.mode = 'ride'; car.group.updateMatrixWorld(true); car.seat.getWorldPosition(seatW);
       d.x = seatW.x; d.z = seatW.z; d.y = seatW.y; d.vy = 0; d.air = false;
-      d.group.position.copy(seatW); d.group.rotation.set(rover.pitch, rover.yaw, rover.roll); d.yaw = rover.yaw; d.sit = 1;
+      d.group.position.copy(seatW); d.group.rotation.set(car.pitch, car.yaw, car.roll); d.yaw = car.yaw; d.sit = 1;
     } else {
       if (d.mode === 'ride') { d.mode = 'follow'; d.x = player.x + Math.cos(player.yaw) * 1.4; d.z = player.z - Math.sin(player.yaw) * 1.4; d.y = height(d.x, d.z) + 0.8; d.vy = 0; d.idle = 0; }
       const fxp = -Math.sin(player.yaw), fzp = -Math.cos(player.yaw), rxp = Math.cos(player.yaw), rzp = -Math.sin(player.yaw);
@@ -854,7 +885,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function updateCockpit(dt, on) {
     if (!cockpit) return;
     // in the rover's first-person seat the rover's own deck would fill the lower screen: hide it, the cockpit frame replaces it
-    if (rover) rover.group.visible = !on;
+    if (rover) rover.group.visible = !(on && car === rover);
+    if (car && car !== rover) car.group.visible = !on;
     if (dog && driving) dog.group.visible = !on; else if (dog) dog.group.visible = true;
     cockpit.g.visible = on; if (!on) return;
     // sized as fractions of the screen so portrait phones get a slim frame: dash ~6%, hood ~10% of the height
@@ -867,11 +899,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const gh = dashH * 0.7; cockpit.gauge.position.set(0, -hh + dashH * 0.48, -D); cockpit.gauge.scale.set(gh, gh, 1);
     const pw = W * 0.018; for (const [p, sgn] of [[cockpit.pL, -1], [cockpit.pR, 1]]) { p.position.set(sgn * (hw - pw * 0.3), 0, -D); p.scale.set(pw, H * 1.2, 1); p.rotation.z = sgn * 0.06; }
     cockpit.t -= dt; if (cockpit.t > 0) return; cockpit.t = 0.2;
-    const gi = game.info, txt = `${Math.round(Math.abs(rover.speed) * 3.6)}|${gi.turret ? gi.heat : -1}|${gi.overheat}`;
+    const gi = game.info, txt = `${Math.round(Math.abs(car.speed) * 3.6)}|${gi.turret ? gi.heat : -1}|${gi.overheat}`;
     if (txt === cockpit.last) return; cockpit.last = txt;
     const x = cockpit.c.getContext('2d'); x.clearRect(0, 0, 256, 64);
     x.fillStyle = 'rgba(5,10,20,0.9)'; x.beginPath(); x.roundRect ? x.roundRect(2, 2, 252, 60, 12) : x.rect(2, 2, 252, 60); x.fill();
-    x.fillStyle = '#7dd3fc'; x.font = 'bold 30px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillText(`${Math.round(Math.abs(rover.speed) * 3.6)} km/h`, 14, 33);
+    x.fillStyle = '#7dd3fc'; x.font = 'bold 30px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillText(`${Math.round(Math.abs(car.speed) * 3.6)} km/h`, 14, 33);
     if (gi.turret) { x.fillStyle = 'rgba(255,255,255,0.18)'; x.fillRect(150, 26, 92, 14); x.fillStyle = gi.overheat ? '#ff2d55' : '#f59e0b'; x.fillRect(150, 26, 92 * gi.heat / 100, 14); x.fillStyle = '#fff'; x.font = 'bold 13px system-ui, sans-serif'; x.fillText(gi.overheat ? 'OVERHEAT' : 'PLASMA', 152, 15); }
     cockpit.tex.needsUpdate = true;
   }
@@ -884,11 +916,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const first = camDist < 0.8;
     if (driving) {
       if (time - lastLook > 1.2) camYawOff *= Math.exp(-dt * 2);
-      viewYaw = rover.yaw + camYawOff;
+      viewYaw = car.yaw + camYawOff;
       if (first) {
-        rover.group.updateMatrixWorld(true); rover.body.localToWorld(camT.set(-0.45, 2.15, -0.55));
-        camera.position.copy(camT); camera.rotation.set(player.pitch + rover.pitch, viewYaw, rover.roll, 'YXZ');
-      } else camT.set(rover.x, rover.y + 2.0, rover.z);
+        car.group.updateMatrixWorld(true); car.body.localToWorld(camT.set(-0.45, 2.15, -0.55));
+        camera.position.copy(camT); camera.rotation.set(player.pitch + car.pitch, viewYaw, car.roll, 'YXZ');
+      } else camT.set(car.x, car.y + 2.0, car.z);
     } else {
       viewYaw = player.yaw;
       if (first) {
@@ -919,8 +951,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (state.intro > 0) state.intro = Math.max(0, state.intro - dt);
     if (game.isDown()) input = { keys: {}, joy: { x: 0, y: 0 } }; // knocked out: wait for the beam-back
     if (!driving) walk(dt, input, g);
-    updateRover(dt, input, g);
-    if (driving) { player.x = rover.x; player.z = rover.z; player.y = rover.y + EYE; player.grounded = !rover.air; if (state.outro > 0) state.outro -= dt; }
+    updateRover(dt, input, g, rover);
+    if (driving && car !== rover) updateRover(dt, input, g, car);
+    if (dust) updateDust(dt, g);
+    world.update(dt);
+    if (driving) { player.x = car.x; player.z = car.z; player.y = car.y + EYE; player.grounded = !car.air; if (state.outro > 0) state.outro -= dt; }
     updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
@@ -981,14 +1016,23 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function interact() {
     if (!cfg || state.intro > 0 || state.outro > 0) return null;
     if (driving) {
-      const rx = Math.cos(rover.yaw), rz = -Math.sin(rover.yaw);
-      let ex = rover.x - rx * 2.9, ez = rover.z - rz * 2.9;
-      if (cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) { ex = rover.x + rx * 2.9; ez = rover.z + rz * 2.9; }
+      const rx = Math.cos(car.yaw), rz = -Math.sin(car.yaw);
+      let ex = car.x - rx * 2.9, ez = car.z - rz * 2.9;
+      if (cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) { ex = car.x + rx * 2.9; ez = car.z + rz * 2.9; }
       player.x = ex; player.z = ez; player.y = height(ex, ez) + EYE; player.vy = 0; player.grounded = true;
-      player.yaw = rover.yaw + camYawOff; player.faceYaw = player.yaw;
-      rover.speed = 0; driveGoal = camGoal; saveView(); driving = false; camGoal = walkGoal; return 'exit';
+      const c = world.collide(ex, ez, 0.45, car); if (c) { player.x = c.x; player.z = c.z; }
+      player.yaw = car.yaw + camYawOff; player.faceYaw = player.yaw;
+      car.speed = 0; car.group.visible = true; driveGoal = camGoal; saveView(); driving = false; camGoal = walkGoal;
+      const was = car; if (car !== rover) world.leave(car); car = null;
+      onEvent('vehicle', { on: false, kind: was.kind }); return 'exit';
     }
-    if (nearRover()) { walkGoal = camGoal; saveView(); driving = true; camGoal = driveGoal; camYawOff = 0; player.pitch = camGoal < 0.8 ? FP_DRIVE_PITCH : Math.min(player.pitch, 0); return 'drive'; }
+    const nv = !nearRover() && world.nearVehicle(player.x, player.z);
+    if (nearRover() || nv) {
+      car = nv || rover; if (nv) world.take(nv);
+      walkGoal = camGoal; saveView(); driving = true; camGoal = driveGoal; camYawOff = 0; player.pitch = camGoal < 0.8 ? FP_DRIVE_PITCH : Math.min(player.pitch, 0);
+      onEvent('vehicle', { on: true, kind: car.kind, name: car.spec.name, stolen: car !== rover });
+      return nv ? 'take' : 'drive';
+    }
     return null;
   }
   function pet() {
@@ -1019,7 +1063,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const it = discItems.find(i => i.d.id === id); if (!it) return false;
     const L = Math.hypot(it.x, it.z) || 1, k = Math.max(0, (L - short) / L), x = it.x * k, z = it.z * k;
     const yaw = Math.atan2(-(it.x - x), -(it.z - z));
-    if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; }
+    if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; }
     else { player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; }
     updateChunks(x, z, true); return true;
   }
@@ -1055,6 +1099,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function returnToShip() {
     if (!cfg || state.intro > 0 || game.isDown()) return { ok: false, why: 'busy' };
     if (game.info.combat) return { ok: false, why: 'aliens are nearby! Clear them first.' };
+    if (driving && car !== rover) interact();
     if (driving) {
       const p = freeSpot(SHIP.x, SHIP.z + 20, 0, 4);
       rover.x = p.x; rover.z = p.z; rover.y = height(p.x, p.z); rover.speed = 0; rover.vy = 0; rover.prevG = null; rover.yaw = 0.4;
@@ -1072,16 +1117,17 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
   function debugPlace(x, z, yaw = player.yaw) { if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
   return {
-    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game,
+    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
     summonRover, warpToRover, returnToShip, roverNav,
     // test hook: jump to just short of the active quest's current objective
-    debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
+    debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     mapData() {
       if (!cfg) return null;
       const n = nearestUndiscovered(player.x, player.z), w = game.waypoint();
-      return { x: driving ? rover.x : player.x, z: driving ? rover.z : player.z, yaw: viewYaw, driving, rover: rover ? { x: rover.x, z: rover.z } : null, ship: SHIP,
-        wp: w ? { x: w.x, z: w.z } : null, next: n ? { x: n.it.x, z: n.it.z } : null, aliens: game.mapAliens(), dog: dog && !driving ? { x: dog.x, z: dog.z } : null };
+      return { x: driving ? car.x : player.x, z: driving ? car.z : player.z, yaw: viewYaw, driving, rover: rover ? { x: rover.x, z: rover.z } : null, ship: SHIP,
+        wp: w ? { x: w.x, z: w.z } : null, next: n ? { x: n.it.x, z: n.it.z } : null, aliens: game.mapAliens(), dog: dog && !driving ? { x: dog.x, z: dog.z } : null,
+        world: world.mapData(), gate: game.mapGate() };
     },
     waypoint() { const w = game.waypoint(); if (!w) return null; const a = Math.atan2(-(w.x - player.x), -(w.z - player.z)) - viewYaw; return { dist: Math.round(w.dist), ang: Math.atan2(Math.sin(a), Math.cos(a)), text: w.text }; },
     get info() {
@@ -1089,7 +1135,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = nearestUndiscovered(player.x, player.z), c = discCount();
       return {
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
-        view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: rover ? rover.speed : 0, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
+        view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
+        nearVehicle: (() => { if (driving || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
+        nearContact: !driving ? (world.nearContact()?.name || null) : null, nearShop: !driving && world.nearShop(), wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
         nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,
         disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,

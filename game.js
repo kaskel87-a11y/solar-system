@@ -1164,7 +1164,7 @@ export function createGame(ctx) {
     setAliens(on) {
       P.settings.aliens = !!on; save();
       if (!on) { for (const a of [...agents]) removeAgent(a); for (const o of orbs) scene.remove(o.mesh); orbs.length = 0; for (const b of bolts) scene.remove(b.mesh); bolts.length = 0; W.heat = 0; W.over = false; } if (quest) onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); },
-    setVoice(on) { P.settings.voice = !!on; save(); },
+    setVoice(on) { P.settings.voice = !!on; save(); }, save: () => save(),
     reload() { P = loadProgress(); applyCosmetics(); },
     get progress() { return P; },
     questList(w = world) {
