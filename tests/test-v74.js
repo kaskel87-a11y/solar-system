@@ -118,7 +118,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.leaveBuilding()); await sleep(300);
     // ---- Titan methane skiff is amphibious, and its icon falls back from the vehicle spec
     const sk = await G(() => { const V = window.__app.surface.world?.VEHICLES || null; return null; });
-    const spec = await page.evaluate(async () => { const m = await import('./world.js?v=7.4'); const v = m.VEHICLES.methane_skiff; return v && { amph: !!v.amphibious, icon: v.icon, cart: !!m.VEHICLES.v74cart, builder: typeof m.VEHICLE_BUILDERS.methane_skiff }; });
+    const spec = await page.evaluate(async () => { const m = await import('./world.js'); const v = m.VEHICLES.methane_skiff; return v && { amph: !!v.amphibious, icon: v.icon, cart: !!m.VEHICLES.v74cart, builder: typeof m.VEHICLE_BUILDERS.methane_skiff }; });
     ok('skiffAmphibious', JSON.stringify(spec), spec?.amph && !!spec.icon && spec.cart && spec.builder === 'function');
     ok('restoreUnit', await G(() => { const g = window.__app.game; g.hurtPlayer(90); const a = g.info.hp; g.restore(); return `${a} → ${g.info.hp}`; }), await G(() => window.__app.game.info.hp === window.__app.game.info.hpMax));
     ok('controlsListRolls', await G(() => /Barrel roll/i.test(document.getElementById('ctlPanel').textContent)));

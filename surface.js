@@ -6,6 +6,7 @@ import { createWorld, VEHICLES } from './world.js';
 import { raceTick } from './race.js';
 import { activityTick } from './activities/runner.js';
 import { heistTick } from './heist.js';
+import { sciTick } from './scihooks.js'; // junkyard lab pack: Raccoon Mobile + scientist portal jobs
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1147,6 +1148,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    sciTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);

@@ -34,16 +34,16 @@ const PICK = { 'rook-04-crew': ['pros', 'ozzie', 'penny', 'self'], 'vesna-04-coo
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => { ['ssx.progress.v1', 'ssx.planets.v1', 'ssx.race.v1'].forEach(k => localStorage.removeItem(k)); localStorage.setItem('ssx.adult', '1'); window.__app.game?.reload?.(); });
-    const meta = await G(async () => { const GM = await import('./game.js?v=7.5.1'); return { shipped: window.__storymars.shipped, deferred: GM.STORY_DEFERRED.filter(x => /^(rook|vesna|kestrel|ines|rusk)-/.test(x)), types: window.__storymars.types.filter(t => GM.AGENT_TYPES[t]) }; });
+    const meta = await G(async () => { const GM = await import('./game.js'); return { shipped: window.__storymars.shipped, deferred: GM.STORY_DEFERRED.filter(x => /^(rook|vesna|kestrel|ines|rusk)-/.test(x)), types: window.__storymars.types.filter(t => GM.AGENT_TYPES[t]) }; });
     ok('shipped', meta.shipped.length, meta.shipped.length === 11); ok('deferredLeft', meta.deferred.join(','), meta.deferred.join(',') === 'rook-05-withdrawal'); ok('humanTypes', meta.types.join(','), meta.types.length === 5);
-    const plan = await G(async () => { const GM = await import('./game.js?v=7.5.1'); const by = {}; for (const id of window.__storymars.shipped) { const q = GM.QUESTS.find(x => x.id === id); (by[q.world] ||= []).push(id); } return by; });
+    const plan = await G(async () => { const GM = await import('./game.js'); const by = {}; for (const id of window.__storymars.shipped) { const q = GM.QUESTS.find(x => x.id === id); (by[q.world] ||= []).push(id); } return by; });
     for (const w of ['Mars', 'Moon']) {
       const ids = (plan[w] || []).filter(id => !ONLY || ONLY.includes(id)); if (!ids.length) continue;
       await land(w);
       for (const id of ids) {
         await outside(); await onFoot();
         // unlock: mark prerequisites done (the chain order itself is checked via talk() below)
-        const offered = await G(async id => { const GM = await import('./game.js?v=7.5.1'); const g = window.__app.game, P = g.progress, q = GM.QUESTS.find(x => x.id === id);
+        const offered = await G(async id => { const GM = await import('./game.js'); const g = window.__app.game, P = g.progress, q = GM.QUESTS.find(x => x.id === id);
           const need = new Set(q.requires || []); for (const x of GM.QUESTS) if (x.contact === q.contact && x.world === q.world && GM.QUESTS.indexOf(x) < GM.QUESTS.indexOf(q)) need.add(x.id);
           for (const r of need) P.quests[r] = { status: 'done', everDone: true, step: 0, n: 0 };
           P.credits = Math.max(P.credits, 1500); g.save(); g.debug.clear(); window.__app.surface.world.setWanted(0);
@@ -107,7 +107,7 @@ const PICK = { 'rook-04-crew': ['pros', 'ozzie', 'penny', 'self'], 'vesna-04-coo
           } else if (s.type === 'rrace') {
             const started = await wait(() => window.__race?.state?.id === window.__app.game.debug.quest()?.id, 6000);
             if (!started) { bad.push(id + ':raceStart'); break; }
-            const t = await G(async s => { const RC = await import('./racecore.js?v=7.5.1'); return RC.resolveTrack({ gates: s.pts, loop: false, anchor: 'colony' }, window.__app.surface.info.colony); }, s);
+            const t = await G(async s => { const RC = await import('./racecore.js'); return RC.resolveTrack({ gates: s.pts, loop: false, anchor: 'colony' }, window.__app.surface.info.colony); }, s);
             await G(() => window.__race.skipCountdown()); await wait(() => window.__race.state?.phase === 'run', 8000);
             if (await G(id => window.__app.game.progress.flags.includes(`story:${id}:fix=throw`), id)) await G(() => window.__race.rivalPace(40));
             await sleep(1500);
@@ -116,7 +116,7 @@ const PICK = { 'rook-04-crew': ['pros', 'ozzie', 'penny', 'self'], 'vesna-04-coo
             notes.push('race:' + JSON.stringify(await G(() => { const r = window.__race.result; return r && { done: r.done, won: r.won }; })));
             await wait(() => !window.__race.state, 12000);
           } else if (s.type === 'build') {
-            await G(async () => { const RA = await import('./race.js?v=7.5.1'), c = window.__app.surface.info.colony; const gs = [[0, 45], [60, 20], [90, -40], [40, -90], [-40, -80], [-70, -10]].map(([x, z]) => ({ x: c.x + x, z: c.z + z }));
+            await G(async () => { const RA = await import('./race.js'), c = window.__app.surface.info.colony; const gs = [[0, 45], [60, 20], [90, -40], [40, -90], [-40, -80], [-70, -10]].map(([x, z]) => ({ x: c.x + x, z: c.z + z }));
               return !!RA.saveTrack({ id: 'my-moon-' + Date.now(), name: 'Kestrel Killer', world: window.__app.surface.info.name, loop: true, laps: 1, gates: gs, props: [{ t: 'ramp', x: c.x + 30, z: c.z + 35, yaw: 1 }] }); });
           } else if (s.type === 'runtrack') {
             await outside(); await wait(() => window.__storymars.state.sheet, 6000); await tapEl('#smSheet button[data-opt="race"]');

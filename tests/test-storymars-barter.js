@@ -26,14 +26,14 @@ const STUB = preload => { const offers = {}, calls = []; window.SSX = window.SSX
     await G(w => window.__app.landOn(window.__app.bodies.find(b => b.name === w).mesh), 'Mars');
     await wait(() => { const s = window.__app.state; return s.onSurface && !s.transitioning && window.__app.surface.info?.intro === 0; }, 120000); await sleep(1200); };
   const trade = id => G(id => { const o = window.SSX.contraband.offers[id]; const r = window.SSX.contraband.barter(o.wants[0].item, o.wants[0].qty, id); return r && { ok: r.ok, msg: r.msg, unlocked: r.unlocked, inert: r.inert }; }, id);
-  const req = id => G(async id => { const GM = await import('./game.js?v=7.5.1'); return GM.QUESTS.find(q => q.id === id).requires.length; }, id);
+  const req = id => G(async id => { const GM = await import('./game.js'); return GM.QUESTS.find(q => q.id === id).requires.length; }, id);
   try {
     await open();
     const rows = await G(() => window.__storymars.barter.offers);
     ok('rows', rows.length, rows.length === 14);
     if (process.env.BARTER_JSON && fs.existsSync(process.env.BARTER_JSON)) { // our copy must match Steve's file row for row
       const file = JSON.parse(fs.readFileSync(process.env.BARTER_JSON, 'utf8')).offers.filter(o => /Ozzie|Rusk|Ines|Vesna|Rook/.test(o.npc));
-      const mine = await G(async () => (await import('./storymars.js?v=7.5.1')).BARTER);
+      const mine = await G(async () => (await import('./storymars.js')).BARTER);
       ok('matchesBarterJson', null, JSON.stringify(file) === JSON.stringify(mine));
     }
     ok('A:noApiNoRegister', (await G(() => window.__storymars.barter.registered.length)) === 0);
@@ -58,7 +58,7 @@ const STUB = preload => { const offers = {}, calls = []; window.SSX = window.SSX
     await page.close();
     // C) Marsmania already registered barter.json: attach only
     await open();
-    const all = await G(async () => (await import('./storymars.js?v=7.5.1')).BARTER);
+    const all = await G(async () => (await import('./storymars.js')).BARTER);
     await G(STUB, all);
     ok('C:attachedStory', await wait(() => window.__storymars.barter.attached.length === 3, 5000) && await G(() => window.__storymars.barter.attached.sort().join(',')));
     ok('C:registeredNone', (await G(() => window.__storymars.barter.registered.length)) === 0);
