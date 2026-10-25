@@ -90,12 +90,13 @@ function bubbleTex(text, color) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 // our bark key -> SSX.bark category (mugger lines keep their beat as a hint: npc.barkBeat)
-const barkCat = key => /^junkie/.test(key) ? 'mugger' : /^fight/.test(key) ? 'fighter' : key === 'bystander' ? 'bystander' : null;
+const barkCat = key => /^junkie/.test(key) ? 'mugger' : /^(fight|escort)/.test(key) ? 'fighter' : key === 'bystander' ? 'bystander' : null;
 function say(n, key, vars, ms = 2600, color = '#ff5a5a') {
   const line = DC.fill(DC.pick(DC.BARKS[key] || [key]), vars); if (!line) return '';
-  // Pumpkin's PR #5 captioned barks: SSX.bark(npc, category). Use it when present; it handles the line unless it returns false.
+  // v7.5 captioned barks (mars-audio.js, ex-PR #5): SSX.bark({x,z,kind,name}, text, {force}). It returns null when its
+  // rate limiter says no, so we only skip our own bubble when it actually showed the line.
   const ext = typeof window !== 'undefined' && typeof window.SSX?.bark === 'function' ? window.SSX.bark : null;
-  if (ext && barkCat(key)) { try { n.barkBeat = key; const r = ext(n, barkCat(key)); if (r !== false) { n.lastLine = typeof r === 'string' ? r : line; return n.lastLine; } } catch (e) { /* fall back to our bubble */ } }
+  if (ext && barkCat(key)) { try { n.barkBeat = key; const r = ext({ x: n.x, z: n.z, kind: n.kind === 'junkie' || n.kind === 'thug' ? 'colonist' : n.kind, name: n.name }, line, { force: barkCat(key) === 'mugger' }); if (r) { n.lastLine = line; return line; } } catch (e) { /* fall back to our bubble */ } }
   if (n.bubble) { n.bubble.material.map.dispose(); n.bubble.material.dispose(); n.g.remove(n.bubble); }
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(line, color), transparent: true, depthWrite: false, depthTest: false }));
   s.position.y = 2.45; s.scale.set(3.6, 0.68, 1); s.renderOrder = 20; n.g.add(s); n.bubble = s; n.bubbleT = ms / 1000; n.lastLine = line;
@@ -447,6 +448,7 @@ function clearAll() {
   for (const n of [...npcs]) removeNpc(n); for (const s of splats) root?.remove(s.m); splats = [];
   if (ui) { setChoices(false); setChip(null); }
   pursuitReset(C, !!C);
+  reserveSlots(C?.world, true);
 }
 
 // ---------- the hook ----------
@@ -492,7 +494,11 @@ export function dangerTick(dt, ctx) {
     if (s.drop) { const v = s.m.userData.v; v.y -= 9 * dt; s.m.position.addScaledVector(v, dt); if ((s.m.userData.life -= dt) <= 0 || s.m.position.y < ctx.height(s.m.position.x, s.m.position.z)) { root.remove(s.m); splats = splats.filter(o => o !== s); } }
     else if (s.m.scale.x < s.r) s.m.scale.setScalar(Math.min(s.r, 0.1 + s.t * 0.5)); }
   pursuitTick(dt, ctx, settings.on);
+  reserveSlots(ctx.world);
 }
+// v7.5: tell world.js how many bodies we have so its walkers shrink to fit (phone stays <= 12)
+let reserved = -1;
+function reserveSlots(w, force) { if (typeof w?.npcReserve !== 'function') return; const n = force ? 0 : npcs.filter(x => x.alive).length + pursuitNpcCount(); if (n !== reserved) { reserved = n; try { w.npcReserve('danger', n); } catch (_) {} } }
 
 function startChase(kind) {
   kind = kind || (C.district === 'rough' || C.district === 'highway' ? 'gang' : 'junkie');

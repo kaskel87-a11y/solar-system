@@ -1,14 +1,14 @@
 // Multi-planet expansion (steve/multi-planet). planets/*.js are pure data; planets/hooks.js is the ONLY file that touches core
 // (v7.3 registerColony / registerMission / menu hooks when present, v7.2 registries otherwise).
 // Core touch points: one import + initPlanets(window.__app) in index.html, and the VEHICLE_BUILDERS hook in world.js.
-import { registerColony, registerMission, registerCosmetics, registerVehicles, colonyOf, missionsFor, addMenuItem, tap, STATIONS } from './hooks.js?v=7.4';
-import { EXT_VEHICLES } from './vehicles.js?v=7.4';
-import venus from './venus.js?v=7.4';
-import mercury from './mercury.js?v=7.4';
-import titan from './titan.js?v=7.4';
-import europa from './europa.js?v=7.4';
-import io from './io.js?v=7.4';
-import referrals from './referrals.js?v=7.4';
+import { registerColony, registerMission, registerCosmetics, registerVehicles, colonyOf, missionsFor, addMenuItem, tap, STATIONS } from './hooks.js?v=7.5';
+import { EXT_VEHICLES } from './vehicles.js?v=7.5';
+import venus from './venus.js?v=7.5';
+import mercury from './mercury.js?v=7.5';
+import titan from './titan.js?v=7.5';
+import europa from './europa.js?v=7.5';
+import io from './io.js?v=7.5';
+import referrals from './referrals.js?v=7.5';
 
 export const PLANETS = [venus, mercury, titan, europa, io];
 const KEY = 'ssx.planets.v1', FEE = 40;

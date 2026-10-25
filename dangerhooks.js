@@ -5,7 +5,7 @@
 // Everything else is wrapped here at runtime, once per world object:
 //   world.hitWorld / targets / meleeTarget / meleeWorld / blast  -> our muggers, fighters and street-chase cars are hittable
 // If core grows registerHittable(fn) / registerSurfaceTick(fn), only this file changes.
-export { buildVehicle, VEHICLES } from './world.js?v=7.4';
+export { buildVehicle, VEHICLES } from './world.js?v=7.5';
 
 // ☰ menu: v7.3 has window.SSX.registerMenuItem; fall back to injecting a .btn above Settings
 export function addMenuItem({ id, label, onTap }) {
