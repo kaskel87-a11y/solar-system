@@ -1,7 +1,7 @@
 // THE ONE PLACE base.js talks to core (same shim pattern as planets/hooks.js, racehooks.js, heisthooks.js).
 // Credits and medkits go through game.spend / game.reward / game.progress; heat through the v7.4 world add-on API
 // (world.wanted, world.securityList(), world.hitWorld). Import URLs must match the core's ?v= exactly (shared module instances).
-export { addMenuItem, tap } from './racehooks.js?v=7.5.1';
+export { addMenuItem, tap } from './racehooks.js';
 
 export const credits = game => game?.progress?.credits | 0;
 // take credits; false (and nothing changes) if you can't afford it

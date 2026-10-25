@@ -11,8 +11,8 @@
 // Raids: if Steve's SSX.raids exists, raid() starts one through SSX.raids.start and window raid:start / raid:wave /
 // raid:end events whose pos falls inside a lot arm that lot's turrets. Otherwise raid() emits base:raid on its own.
 import * as THREE from 'three';
-import * as BC from './basecore.js?v=7.5.1';
-import * as H from './basehooks.js?v=7.5.1';
+import * as BC from './basecore.js';
+import * as H from './basehooks.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 const WORLD = 'Mars', GHOST_AHEAD = 5, NEAR = 3;
