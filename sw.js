@@ -8,7 +8,7 @@ const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
-  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
+  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`, `marsshops.js${q}`,
   `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`,
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   'vendor/three/build/three.module.min.js',
