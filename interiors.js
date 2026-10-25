@@ -2,10 +2,11 @@
 // Each interior is a small closed room built lazily the first time you walk in, parked out of sight above
 // the colony and only visible while you are inside. The colony's one point light moves in with you, so the
 // light count never changes (no shader recompiles). Hotspots drive the action button; colliders are boxes.
-// All game fiction. The club is a dance club: fully clothed costumed performers on a stage, a bar, a
+// All game fiction. The club is a dance club: costumed performers (bikinis, club wear) on a stage, a bar, a
 // bouncer and a VIP back room used as a contact hub. No nudity, no sexual content, no interactions with
 // the performers.
 import * as THREE from 'three';
+import { dress } from './clubdancers.js';
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -363,7 +364,7 @@ export const INTERIORS = {
       for (const s of [-1, 1]) for (const z of [-7.6, -4.7]) box(s * 4.8, 3.2, z, 0.16, 5, 0.16, mat(0x7af0ff, { basic: true }));
       const led = box(0, 3.6, -d / 2 + 0.1, 10, 4.6, 0.06, mat(0x6020a0, { basic: true }));
       api.sign('THE VELVET AIRLOCK', 0xff3cc8, 0, 5.75, -d / 2 + 0.16, 0, 7.5, { w: 1024, h: 160, font: 'bold 96px system-ui, sans-serif' });
-      // v7.4: three pole dancers in sequinned bodysuits and boots (the costumes never come off), rotating pole routines
+      // v7.4: three pole dancers (v7.5.x: realistic models in bikinis and boots, clubdancers.js), rotating pole routines
       const looks = [
         { top: 0xc8a0ff, bottom: 0xc8a0ff, shoes: 0xe8e8f0, hair: 0xf0e0a0, hairStyle: 'long', skin: 0xe8b894, accent: 0x7af0ff, glow: 0x8040ff },
         { top: 0xff4a8a, bottom: 0x1a1a24, shoes: 0x1a1a24, hair: 0x101010, hairStyle: 'bun', skin: 0x8a5a3a, accent: 0xffd040, glow: 0xff2060 },
@@ -373,6 +374,7 @@ export const INTERIORS = {
       const poleM = chrome, poles = [[-2.8, -6.0], [0, -6.6], [2.8, -6.0]];
       poles.forEach(([x, z]) => { box(x, (stageY + api.h) / 2, z, 0.07, api.h - stageY, 0.07, poleM); box(x, stageY + 0.03, z, 0.6, 0.05, 0.6, mat(0xff3cc8, { basic: true })); });
       const dancers = poles.map(([x, z], i) => api.person(looks[i], x, z, 0, (p, t, k) => poleDance(p, t, k, x, z, stageY), i));
+      ['rhea', 'danny', 'kiara'].forEach((n, i) => dress(api, dancers[i], { dancer: n, outfit: n === 'danny' ? 'string' : 'bikini', k: i })); // v7.5.x realistic dancers (lazy GLBs, blocky fallback)
       api.sign('LIVE ON STAGE', 0x7af0ff, -w / 2 + 0.06, 3.6, -1.2, Math.PI / 2, 3.6, { h: 96 });
       // make it rain: credit chits flutter down over the stage (one instanced pool, parked off-stage when idle)
       const chitM = new THREE.MeshBasicMaterial({ color: 0x7dff9a, side: THREE.DoubleSide }); api.disposables.push(chitM);
@@ -427,8 +429,10 @@ export const INTERIORS = {
       box(PX, 0.25, PZ + 2.1, 0.8, 0.5, 0.8, velvet); box(PX, 0.75, PZ + 2.45, 0.8, 0.6, 0.15, velvet);
       let privT = 0; const prvLook = { top: 0x1a1a2a, bottom: 0x1a1a2a, shoes: 0xc0c4cc, hair: 0x2a0a3a, hairStyle: 'long', skin: 0xc8946c, accent: 0xff3cc8, glow: 0xa040ff };
       const prv = api.person(prvLook, PX, PZ, 0, (p, t, k, y, dt = 0.016) => { if (privT > 0) { privT -= dt; poleDance(p, t, 3, PX, PZ, 0.24); } else { idle(p, t, 2); p.group.position.set(PX + 0.45, 0.24, PZ + 0.3); p.group.rotation.y = 0.3; p.arms[0].rotation.z = 2.4; } });
+      dress(api, prv, { dancer: 'danny', outfit: 'crop', k: 3, cardigan: () => privT <= 0 }); // cardigan on between songs
+      api.sign('DANNY ALVAREZ', 0xff7eb8, X0 + 0.12, 3.0, PZ, Math.PI / 2, 2.2, { w: 512, h: 96, font: 'bold 60px system-ui, sans-serif' });
       api.privateDance = (sec = 9) => { privT = sec; return sec; };
-      api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: 'Nova' });
+      api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: 'Danny Alvarez' });
       // v7.4 upstairs: a door in the back wall and its host. Adults only; the game fades to black and never shows or describes anything.
       const UX = X1 - 1.6;
       box(UX, 1.3, Z0 + 0.08, 1.4, 2.6, 0.08, mat(0x3a0a20, { roughness: 0.6 })); box(UX, 2.66, Z0 + 0.1, 1.5, 0.08, 0.08, mat(0xffd040, { basic: true }));
