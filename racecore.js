@@ -167,3 +167,50 @@ export function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(c).padStart(2, '0')}`;
 }
 export function clampI(v, a, b) { v = Math.round(+v || 0); return Math.max(a, Math.min(b, v)); }
+
+// v7.4.2 race fixes (BUGS-v7.4 M1/M2). Prop frames: a prop's normal is f = (-sin yaw, -cos yaw) (the barrier's thin
+// axis / the ramp's climb direction) and its tangent is l = (cos yaw, -sin yaw) (the barrier's long axis).
+export const BARRIER = { half: 3, thick: 0.42, h: 1.1 };   // matches jersey(6, 1.1) in race.js
+export const RAMP = { halfW: 3, halfL: 4, h: 1.9 };        // matches wedge(6, 8, 1.9) in race.js
+const propFrame = p => { const fx = -Math.sin(p.yaw || 0), fz = -Math.cos(p.yaw || 0); return { fx, fz, lx: -fz, lz: fx }; };
+
+// M2: barrier contact that slides instead of pinning. ent = { x, z, yaw?, speed? } (a car when speed is a number),
+// r = its radius. Pushes the body out along the shallowest axis (sides or end caps) plus a small epsilon, removes the
+// velocity component going into the barrier and keeps the tangential part (scaled by `keep`), turning the heading to
+// match so the next frame doesn't drive straight back in. A near head-on hit slides toward the nearer end at
+// `headOn` x speed instead of stopping dead. Returns null when there's no contact, else the new state.
+export function barrierSlide(ent, p, r, { eps = 0.05, keep = 0.9, headOn = 0.35 } = {}) {
+  const { fx, fz, lx, lz } = propFrame(p), dx = ent.x - p.x, dz = ent.z - p.z;
+  const along = dx * fx + dz * fz, lat = dx * lx + dz * lz;
+  const penN = BARRIER.thick + r - Math.abs(along), penL = BARRIER.half + r - Math.abs(lat);
+  if (penN <= 0 || penL <= 0) return null;
+  // outward contact normal n and its tangent t
+  let nx, nz, push;
+  if (penN <= penL) { const s = Math.sign(along) || 1; nx = fx * s; nz = fz * s; push = penN + eps; }
+  else { const s = Math.sign(lat) || 1; nx = lx * s; nz = lz * s; push = penL + eps; }
+  const out = { x: ent.x + nx * push, z: ent.z + nz * push, yaw: ent.yaw, speed: ent.speed, hit: false, impact: 0 };
+  if (typeof ent.speed !== 'number' || !ent.speed) return out;
+  const hx = -Math.sin(ent.yaw || 0), hz = -Math.cos(ent.yaw || 0), vx = hx * ent.speed, vz = hz * ent.speed;
+  const vn = vx * nx + vz * nz; if (vn >= 0) return out;  // already moving away / along: just the push-out
+  const sp = Math.abs(ent.speed); out.hit = true; out.impact = -vn;
+  let tx = vx - vn * nx, tz = vz - vn * nz, tl = Math.hypot(tx, tz);
+  if (tl < headOn * sp) { // near head-on: pick the tangent toward the nearer end (or the way the nose already leans)
+    const ux = -nz, uz = nx; let side = Math.sign(tx * ux + tz * uz);
+    if (penN <= penL && Math.abs(lat) > 0.3) side = Math.sign((dx * ux + dz * uz)) || side;
+    side = side || 1; tl = headOn * sp; tx = ux * side * tl; tz = uz * side * tl;
+  }
+  const ns = tl * keep, dir = Math.sign(ent.speed);
+  out.speed = dir * ns; out.yaw = Math.atan2(-tx * dir, -tz * dir);
+  return out;
+}
+
+// M1: is the point (x, y, z) inside a race prop's solid (padded for the camera near plane)? gy = ground height under it.
+export function propCamHit(p, x, y, z, gy, pad = 0.45) {
+  if (p.t !== 'barrier' && p.t !== 'ramp') return false;
+  const { fx, fz, lx, lz } = propFrame(p), dx = x - p.x, dz = z - p.z, along = dx * fx + dz * fz, lat = dx * lx + dz * lz, dy = y - gy;
+  if (dy < -1) return false;
+  if (p.t === 'barrier') return Math.abs(lat) < BARRIER.half + pad && Math.abs(along) < BARRIER.thick + pad && dy < BARRIER.h + pad;
+  if (Math.abs(lat) > RAMP.halfW + pad || Math.abs(along) > RAMP.halfL + pad) return false;
+  const top = RAMP.h * Math.min(1, Math.max(0, (along + RAMP.halfL) / (2 * RAMP.halfL)));
+  return dy < top + pad;
+}

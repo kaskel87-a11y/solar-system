@@ -58,4 +58,76 @@ const gh = RC.packGhost([[0, 0, 0, 0], [100, 10, 0, 0.5], [200, 20, 0, 1]]); con
 ok('ghost interp', Math.abs(ga.x - 15) < 1e-6 && Math.abs(ga.yaw - 0.75) < 1e-6 && !ga.done); ok('ghost end', RC.ghostAt(gh, 999).done);
 // format
 ok('fmt', RC.fmtTime(83456) === '1:23.45' && RC.fmtTime(NaN) === '--:--.--');
+// v7.4.2 barrier slide (BUGS-v7.4 M2): project onto the barrier tangent, push out, keep speed
+{
+  const B = { t: 'barrier', x: 0, z: 0, yaw: 0 }; // long axis = x, normal = -z (along = -dz)
+  const hd = y => [-Math.sin(y), -Math.cos(y)];
+  ok('slide: no contact far away', RC.barrierSlide({ x: 0, z: 10, yaw: 0, speed: 20 }, B, 1.8) === null);
+  ok('slide: no contact past the end', RC.barrierSlide({ x: 5.2, z: 0.5, yaw: 0, speed: 20 }, B, 1.8) === null);
+  // car on the +z side (along < 0) heading -z (into it) at 30 deg off the normal, going +x-ish
+  const c = { x: 0, z: 2.0, yaw: -Math.PI / 6, speed: 20 }; // heading = (sin30, -cos30) = (+0.5, -0.87)
+  const s1 = RC.barrierSlide(c, B, 1.8);
+  ok('slide: hit flagged', s1 && s1.hit, JSON.stringify(s1));
+  ok('slide: pushed out past contact + eps', s1.z >= 0.42 + 1.8 + 0.049, s1.z);
+  ok('slide: speed kept (not zeroed or reversed)', s1.speed > 20 * 0.5 * 0.89 && s1.speed <= 20, s1.speed);
+  const [hx, hz] = hd(s1.yaw);
+  ok('slide: heading turned onto the tangent', Math.abs(hz) < 1e-9 && hx > 0.99, `${hx},${hz}`);
+  ok('slide: tangent speed = |v|sin(30) x keep', Math.abs(s1.speed - 20 * 0.5 * 0.9) < 1e-9, s1.speed);
+  // reversing into it keeps reversing (speed sign kept)
+  const r1 = RC.barrierSlide({ x: 0, z: 2.0, yaw: Math.PI - Math.PI / 6, speed: -12 }, B, 1.8);
+  ok('slide: reverse stays reverse', r1.hit && r1.speed < 0 && Math.abs(hd(r1.yaw)[1]) < 1e-9, JSON.stringify(r1));
+  // moving away: push-out only, untouched velocity
+  const a1 = RC.barrierSlide({ x: 0, z: 2.0, yaw: Math.PI, speed: 15 }, B, 1.8);
+  ok('slide: moving away untouched', !a1.hit && a1.speed === 15 && a1.yaw === Math.PI && a1.z > 2.2);
+  // head-on: slides toward the nearer end at >= 35% x keep, never zero
+  const h1 = RC.barrierSlide({ x: 1.2, z: 2.0, yaw: 0, speed: 25 }, B, 1.8);
+  ok('slide: head-on slides toward nearer end', h1.hit && h1.speed > 25 * 0.3 && hd(h1.yaw)[0] > 0.99, JSON.stringify(h1));
+  const h2 = RC.barrierSlide({ x: -1.2, z: 2.0, yaw: 0, speed: 25 }, B, 1.8);
+  ok('slide: head-on (other end)', h2.hit && hd(h2.yaw)[0] < -0.99);
+  // end cap: approaching the short end pushes out along the long axis, not through the barrier
+  const e1 = RC.barrierSlide({ x: 4.5, z: 0.1, yaw: Math.PI / 2, speed: 10 }, B, 1.8); // heading -x into the end
+  ok('slide: end cap push along long axis', e1 && e1.x >= 3 + 1.8 && Math.abs(e1.z - 0.1) < 1e-9, JSON.stringify(e1));
+  // on foot (no speed): push-out only
+  const p1 = RC.barrierSlide({ x: 0.5, z: 0.3 }, B, 0.45);
+  ok('slide: person pushed out', p1 && p1.z >= 0.87 && !p1.hit);
+  // rotated barrier: same result in its own frame
+  const yawB = 0.9, Bq = { t: 'barrier', x: 50, z: 139, yaw: yawB }, fx = -Math.sin(yawB), fz = -Math.cos(yawB);
+  const q = RC.barrierSlide({ x: 50 + fx * 2, z: 139 + fz * 2, yaw: yawB + Math.PI - Math.PI / 6, speed: 20 }, Bq, 1.8);
+  ok('slide: rotated barrier', q.hit && Math.abs(q.speed - 9) < 1e-9 && ((q.x - 50) * fx + (q.z - 139) * fz) >= 2.27, JSON.stringify(q));
+  // simulation: a car held into the barrier at 30 deg scrapes along and clears the end instead of pinning
+  const sim = (car, props, secs, steer) => { let minSp = Infinity, stuck = 0, dt = 1 / 60; for (let i = 0; i < secs * 60; i++) {
+    if (steer) steer(car, dt); const [x, z] = hd(car.yaw); car.x += x * car.speed * dt; car.z += z * car.speed * dt;
+    for (const p of props) { const r = RC.barrierSlide(car, p, 1.8); if (r) Object.assign(car, { x: r.x, z: r.z, yaw: r.yaw, speed: r.speed }); }
+    car.speed += (22 - car.speed) * 0.9 * dt; minSp = Math.min(minSp, Math.abs(car.speed)); } return { minSp }; };
+  const cs = { x: -2, z: 4, yaw: -Math.PI / 6, speed: 22 }; const rs = sim(cs, [B], 2);
+  ok('slide sim: clears the barrier end', cs.x > 3 + 1.8 && rs.minSp > 5, JSON.stringify({ cs, rs }));
+  // Gutter Sprint chicane: chase gates 3 -> 4 -> 5 with a rate-limited steer; must reach gate 5 within 8 s
+  const gut = RC.resolveTrack(RC.PRESETS.find(p => p.id === 'mars-gutter'), { x: 0, z: 0 }), bars = gut.props.filter(p => p.t === 'barrier');
+  for (const [lane, off] of [['center', 0], ['left', -4], ['right', 4]]) {
+    const g3 = gut.gates[2], g4 = gut.gates[3], g5 = gut.gates[4], car = { x: g3.x + off, z: g3.z, yaw: RC.yawOf(g4.x - g3.x, g4.z - g3.z), speed: 22 };
+    let tgt = 3, t = 0, done = false; const dt = 1 / 60;
+    while (t < 8 && !done) { t += dt; const g = gut.gates[tgt]; const [x, z] = hd(car.yaw);
+      const want = RC.yawOf(g.x - car.x, g.z - car.z); let d = want - car.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); car.yaw += Math.max(-1.6 * dt, Math.min(1.6 * dt, d));
+      car.x += x * car.speed * dt; car.z += z * car.speed * dt;
+      for (const p of bars) { const r = RC.barrierSlide(car, p, 1.8); if (r) Object.assign(car, { x: r.x, z: r.z, yaw: r.yaw, speed: r.speed }); }
+      car.speed += (22 - car.speed) * 0.9 * dt;
+      if (Math.hypot(car.x - g.x, car.z - g.z) < 7) { if (tgt === 4) done = true; else tgt = 4; } }
+    ok(`chicane sim (${lane}): reaches gate 5`, done, JSON.stringify({ t: t.toFixed(2), car }));
+  }
+}
+// v7.4.2 race props as camera blockers (BUGS-v7.4 M1)
+{
+  const B = { t: 'barrier', x: 0, z: 0, yaw: 0 }, Rp = { t: 'ramp', x: 0, z: 0, yaw: 0 };
+  ok('cam: inside barrier', RC.propCamHit(B, 1, 0.8, 0.1, 0));
+  ok('cam: above barrier clear', !RC.propCamHit(B, 1, 2.0, 0.1, 0));
+  ok('cam: beside barrier clear', !RC.propCamHit(B, 1, 0.8, 1.2, 0));
+  ok('cam: past barrier end clear', !RC.propCamHit(B, 3.6, 0.8, 0, 0));
+  ok('cam: padded thickness >= boom step', RC.propCamHit(B, 0, 0.5, 0.8, 0)); // 14-step boom marches ~1.2 m
+  ok('cam: ramp low end clear above lip', !RC.propCamHit(Rp, 0, 0.8, 3.9, -0.15)); // low end is local +z
+  ok('cam: ramp high end blocks', RC.propCamHit(Rp, 0, 1.6, -3.5, -0.15));
+  ok('cam: boost pads never block', !RC.propCamHit({ t: 'boost', x: 0, z: 0, yaw: 0 }, 0, 0.1, 0, 0));
+  const yawB = 1.5, Bq = { t: 'barrier', x: 20, z: 155, yaw: yawB }; // long axis (cos, -sin)
+  ok('cam: rotated barrier along its length', RC.propCamHit(Bq, 20 + Math.cos(yawB) * 2.5, 0.5, 155 - Math.sin(yawB) * 2.5, 0));
+  ok('cam: rotated barrier off its side', !RC.propCamHit(Bq, 20 - Math.sin(yawB) * 1.5, 0.5, 155 - Math.cos(yawB) * 1.5, 0));
+}
 console.log(fails ? `\n${fails}/${n} FAILED` : `\nall ${n} passed`); process.exit(fails ? 1 : 0);
