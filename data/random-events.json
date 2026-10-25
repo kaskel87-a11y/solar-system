@@ -1,0 +1,1585 @@
+{
+  "format": "solar-system-story/mars-city random-events v1",
+  "world": "Mars",
+  "notes": [
+    "Ambient random events weighted by district. Cooldowns in seconds. phone_npc_max always <= 12.",
+    "Triggers may combine time, wanted, vehicle/on-foot, weather, HP, near-gate flags — engine must evaluate.",
+    "Choices produce outcomes (credits/xp/wanted/rep/flags/fights). Barks are short radio/toast lines.",
+    "Scope fence: vignettes only — not CoS holdup/chase systems; not Ben heist alarm/camera/safe; not Pumpkin radio/car-meet; not Jeff story contacts as givers.",
+    "Needs an ambient event spawner in core (see README gaps)."
+  ],
+  "spawn_rules": {
+    "max_active_phone": 1,
+    "max_active_desktop": 2,
+    "global_cooldown_s": 90,
+    "suppress_during_mission_step_types": [
+      "race",
+      "defeat",
+      "enter"
+    ],
+    "suppress_wanted_min": 4
+  },
+  "events": [
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "ev-duststorm-pileup",
+      "name": "Dust-Storm Pileup",
+      "districts": {
+        "mars-highway": 0.55,
+        "mars-downtown": 0.25,
+        "mars-rough": 0.15,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "weather": "dust_storm",
+        "on_foot_or_vehicle": "any",
+        "wanted_max": 5
+      },
+      "cooldown_s": 420,
+      "duration_s": 90,
+      "spawn": {
+        "at": "ahead_on_beltway_or_district_road",
+        "npcs": [
+          "civ",
+          "civ",
+          "hauler_wreck"
+        ],
+        "phone_npc_max": 5
+      },
+      "choices": [
+        {
+          "id": "help",
+          "label": "Pull them out",
+          "outcome": {
+            "credits": 60,
+            "xp": 25,
+            "rep": {
+              "civilian": 1
+            },
+            "wanted": 0
+          }
+        },
+        {
+          "id": "loot",
+          "label": "Loot the hauler",
+          "outcome": {
+            "credits": 140,
+            "item": "cargo",
+            "wanted": 1,
+            "rep": {
+              "civilian": -1
+            }
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Drive past",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Radio: Pileup on the Beltway. Dust's thick.",
+        "help": "Civ: Thought I was dead. Take this.",
+        "loot": "Civ: Thief! ColSec!",
+        "ignore": null
+      },
+      "engine_needs": [
+        "weather flag / dust storm",
+        "road wreck prop",
+        "ambient choice card"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-o2-thief",
+      "name": "Oxygen Tank Thief",
+      "districts": {
+        "mars-rough": 0.45,
+        "mars-downtown": 0.35,
+        "mars-highway": 0.15,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "on_foot": true,
+        "wanted_max": 3,
+        "time": "any"
+      },
+      "cooldown_s": 300,
+      "duration_s": 45,
+      "spawn": {
+        "near_player_m": 18,
+        "npcs": [
+          "thief"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "chase",
+          "label": "Chase them down",
+          "outcome": {
+            "xp": 20,
+            "credits": 40,
+            "item": "medkit",
+            "steps_hint": "goto thief 20s"
+          }
+        },
+        {
+          "id": "shoot",
+          "label": "Drop them",
+          "outcome": {
+            "credits": 30,
+            "wanted": 1
+          }
+        },
+        {
+          "id": "shrug",
+          "label": "Not my tanks",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Thief: Easy credits—hey, eyes off!",
+        "chase": "Thief: Okay okay! Take the spare!",
+        "shoot": "Thief: —",
+        "shrug": null
+      },
+      "engine_needs": [
+        "fleeing NPC",
+        "short chase helper"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "ev-cargo-drone-crash",
+      "name": "Crashed Cargo Drone",
+      "districts": {
+        "mars-highway": 0.4,
+        "mars-downtown": 0.25,
+        "mars-rough": 0.25,
+        "mars-gated": 0.1
+      },
+      "triggers": {
+        "vehicle_or_foot": "any"
+      },
+      "cooldown_s": 360,
+      "duration_s": 120,
+      "spawn": {
+        "near_player_m": 40,
+        "props": [
+          "drone_wreck",
+          "crate",
+          "crate"
+        ],
+        "phone_npc_max": 1
+      },
+      "choices": [
+        {
+          "id": "salvage",
+          "label": "Salvage the crates",
+          "outcome": {
+            "credits": 90,
+            "item": "salvage",
+            "xp": 20
+          }
+        },
+        {
+          "id": "report",
+          "label": "Ping Meridian lost-and-found",
+          "outcome": {
+            "credits": 50,
+            "rep": {
+              "meridian": 1
+            }
+          }
+        },
+        {
+          "id": "rig",
+          "label": "Rig it to explode (trap)",
+          "outcome": {
+            "xp": 15,
+            "flag": "drone_trap_set"
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Suit: Smoke on the ridge. Drone's down.",
+        "salvage": "Suit: Serial numbers filed off. Nice.",
+        "report": "Meridian bot: Claim filed. Token deposited.",
+        "rig": "Suit: Timer's live. Mean."
+      },
+      "engine_needs": [
+        "wreck prop",
+        "collect crates"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "ev-initiation-watch",
+      "name": "Saltblood Initiation (watch)",
+      "districts": {
+        "mars-rough": 0.7,
+        "mars-highway": 0.2,
+        "mars-downtown": 0.1
+      },
+      "triggers": {
+        "on_foot": true,
+        "wanted_max": 2,
+        "night_or_dusk": true
+      },
+      "cooldown_s": 600,
+      "duration_s": 60,
+      "spawn": {
+        "near_player_m": 30,
+        "npcs": [
+          "saltblood",
+          "saltblood",
+          "recruit"
+        ],
+        "phone_npc_max": 4
+      },
+      "choices": [
+        {
+          "id": "watch",
+          "label": "Watch from cover",
+          "outcome": {
+            "xp": 10,
+            "info": "saltblood_patrol_hint"
+          }
+        },
+        {
+          "id": "interrupt",
+          "label": "Break it up",
+          "outcome": {
+            "xp": 40,
+            "wanted": 1,
+            "rep": {
+              "saltblood": -2
+            },
+            "fight": [
+              "crawler",
+              "crawler"
+            ]
+          }
+        },
+        {
+          "id": "join_cheer",
+          "label": "Cheer them on",
+          "outcome": {
+            "rep": {
+              "saltblood": 1
+            },
+            "credits": 20
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Saltblood: Tape his arm. He earns it or he bleeds it.",
+        "watch": null,
+        "interrupt": "Saltblood: Tourist wants a lesson!",
+        "join_cheer": "Saltblood: Ha. Buy-in accepted."
+      },
+      "notes": "Ambient ritual — NOT a gang chase / holdup (CoS). No pursuit script.",
+      "engine_needs": [
+        "ambient NPC vignette",
+        "optional defeat on interrupt"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "ev-exec-jacked",
+      "name": "Exec Getting Jacked",
+      "districts": {
+        "mars-downtown": 0.5,
+        "mars-highway": 0.3,
+        "mars-gated": 0.15,
+        "mars-rough": 0.05
+      },
+      "triggers": {
+        "vehicle": true,
+        "wanted_max": 4
+      },
+      "cooldown_s": 480,
+      "duration_s": 50,
+      "spawn": {
+        "ahead_m": 35,
+        "npcs": [
+          "exec",
+          "mugger",
+          "mugger"
+        ],
+        "phone_npc_max": 4
+      },
+      "choices": [
+        {
+          "id": "intervene",
+          "label": "Stop the jacking",
+          "outcome": {
+            "credits": 120,
+            "xp": 40,
+            "rep": {
+              "meridian": 1
+            },
+            "fight": [
+              "crawler",
+              "crawler"
+            ]
+          }
+        },
+        {
+          "id": "help_muggers",
+          "label": "Help the jackers",
+          "outcome": {
+            "credits": 180,
+            "wanted": 2,
+            "rep": {
+              "meridian": -2
+            }
+          }
+        },
+        {
+          "id": "film",
+          "label": "Film it for Pixel",
+          "outcome": {
+            "credits": 70,
+            "xp": 15
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Exec: That's my buggy—!",
+        "intervene": "Exec: Filthy heroes. Take this.",
+        "help_muggers": "Mugger: Split's yours. Move.",
+        "film": "Pixel ping: Footage pays."
+      },
+      "notes": "Single vignette jacking, not a CoS chase chain."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 7,
+        "desktop_npc_max": 12
+      },
+      "scope_ok": true,
+      "id": "ev-protest",
+      "name": "Water Not Resin Protest",
+      "districts": {
+        "mars-downtown": 0.6,
+        "mars-rough": 0.25,
+        "mars-highway": 0.1,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "on_foot_or_vehicle": "any",
+        "time": "day"
+      },
+      "cooldown_s": 720,
+      "duration_s": 180,
+      "spawn": {
+        "at": "plaza_or_precinct",
+        "npcs": [
+          "civ",
+          "civ",
+          "civ",
+          "civ",
+          "colsec"
+        ],
+        "phone_npc_max": 7
+      },
+      "choices": [
+        {
+          "id": "join",
+          "label": "Join the chant",
+          "outcome": {
+            "xp": 15,
+            "rep": {
+              "civilian": 1,
+              "meridian": -1
+            }
+          }
+        },
+        {
+          "id": "disperse",
+          "label": "Help ColSec disperse",
+          "outcome": {
+            "credits": 80,
+            "rep": {
+              "colsec": 1,
+              "civilian": -2
+            }
+          }
+        },
+        {
+          "id": "slip",
+          "label": "Slip through",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Crowd: WATER NOT RESIN! WATER NOT RESIN!",
+        "join": "Protester: Another voice. Good.",
+        "disperse": "Vale-ish guard: Credits. Don't enjoy it.",
+        "slip": null
+      },
+      "engine_needs": [
+        "crowd vignette (instanced)",
+        "graffiti tag WATER NOT RESIN already in ART.md"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "ev-runaway-rover",
+      "name": "Runaway Rover",
+      "districts": {
+        "mars-highway": 0.45,
+        "mars-downtown": 0.25,
+        "mars-gated": 0.2,
+        "mars-rough": 0.1
+      },
+      "triggers": {
+        "vehicle_or_foot": "any"
+      },
+      "cooldown_s": 400,
+      "duration_s": 70,
+      "spawn": {
+        "near_player_m": 50,
+        "vehicles": [
+          "buggy_runaway"
+        ],
+        "phone_npc_max": 1
+      },
+      "choices": [
+        {
+          "id": "stop",
+          "label": "Pit / stop it",
+          "outcome": {
+            "credits": 100,
+            "xp": 35,
+            "rep": {
+              "civilian": 1
+            }
+          }
+        },
+        {
+          "id": "steal",
+          "label": "Take it for yourself",
+          "outcome": {
+            "vehicle": "stolen_buggy",
+            "wanted": 1
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Let it cook",
+          "outcome": {
+            "flag": "rover_crashed_later"
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Civ (radio): That's my rover—no brakes!",
+        "stop": "Civ: You lunatic. Here's credits.",
+        "steal": "Civ: HEY—",
+        "ignore": null
+      },
+      "engine_needs": [
+        "runaway vehicle AI (simple forward + panic)"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-stranded-tourist",
+      "name": "Stranded Tourist",
+      "districts": {
+        "mars-highway": 0.35,
+        "mars-gated": 0.25,
+        "mars-downtown": 0.25,
+        "mars-rough": 0.15
+      },
+      "triggers": {
+        "vehicle": true
+      },
+      "cooldown_s": 300,
+      "duration_s": 90,
+      "spawn": {
+        "roadside": true,
+        "npcs": [
+          "tourist"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "taxi",
+          "label": "Give them a lift",
+          "outcome": {
+            "credits": 70,
+            "xp": 25,
+            "steps_hint": "taxi drop random district"
+          }
+        },
+        {
+          "id": "rob",
+          "label": "Rob them",
+          "outcome": {
+            "credits": 110,
+            "wanted": 1,
+            "rep": {
+              "civilian": -2
+            }
+          }
+        },
+        {
+          "id": "directions",
+          "label": "Point at the map",
+          "outcome": {
+            "xp": 5
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Tourist: Is this… Freeport? My suit says Mars.",
+        "taxi": "Tourist: Tip. Big tip. Never again.",
+        "rob": "Tourist: ColSec! COLSEC!",
+        "directions": "Tourist: Thanks? I think?"
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 3,
+        "desktop_npc_max": 5
+      },
+      "scope_ok": true,
+      "id": "ev-cop-shakedown",
+      "name": "Cop Shakedown",
+      "districts": {
+        "mars-downtown": 0.4,
+        "mars-highway": 0.35,
+        "mars-rough": 0.2,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "vehicle": true,
+        "wanted_min": 0,
+        "wanted_max": 2
+      },
+      "cooldown_s": 480,
+      "duration_s": 40,
+      "spawn": {
+        "checkpoint_or_pullin": true,
+        "npcs": [
+          "colsec"
+        ],
+        "phone_npc_max": 3
+      },
+      "choices": [
+        {
+          "id": "pay",
+          "label": "Pay the 'fine' (80 cr)",
+          "outcome": {
+            "credits": -80,
+            "wanted": 0,
+            "rep": {
+              "colsec": 1
+            }
+          }
+        },
+        {
+          "id": "badge",
+          "label": "Name-drop Vale / Rusk",
+          "outcome": {
+            "requires_flag_any": [
+              "vale_board",
+              "rusk_protection"
+            ],
+            "wanted": 0,
+            "xp": 10
+          }
+        },
+        {
+          "id": "run",
+          "label": "Boost off",
+          "outcome": {
+            "wanted": 2
+          }
+        },
+        {
+          "id": "fight",
+          "label": "Fight",
+          "outcome": {
+            "wanted": 3,
+            "fight": [
+              "drone"
+            ]
+          }
+        }
+      ],
+      "barks": {
+        "spot": "ColSec: License, registration, and your sense of optimism.",
+        "pay": "ColSec: Pleasure doing predator business.",
+        "badge": "ColSec: …Move along.",
+        "run": "ColSec: Runner!",
+        "fight": "ColSec: Weapons free!"
+      },
+      "notes": "Ambient bribe stop — not Rusk's story chain (Jeff). Vale name-drop is flavour."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 5,
+        "desktop_npc_max": 9
+      },
+      "scope_ok": true,
+      "id": "ev-dome-breach",
+      "name": "Dome Breach Alarm",
+      "districts": {
+        "mars-downtown": 0.45,
+        "mars-gated": 0.3,
+        "mars-rough": 0.2,
+        "mars-highway": 0.05
+      },
+      "triggers": {
+        "on_foot": true,
+        "inside_district_r": 80
+      },
+      "cooldown_s": 900,
+      "duration_s": 60,
+      "spawn": {
+        "alarms": true,
+        "npcs": [
+          "civ",
+          "civ",
+          "colsec"
+        ],
+        "phone_npc_max": 5
+      },
+      "choices": [
+        {
+          "id": "seal",
+          "label": "Help seal the panel",
+          "outcome": {
+            "credits": 90,
+            "xp": 40,
+            "rep": {
+              "civilian": 1
+            }
+          }
+        },
+        {
+          "id": "loot_panic",
+          "label": "Loot in the panic",
+          "outcome": {
+            "credits": 160,
+            "wanted": 2
+          }
+        },
+        {
+          "id": "evacuate",
+          "label": "Just get clear",
+          "outcome": {
+            "xp": 5
+          }
+        }
+      ],
+      "barks": {
+        "spot": "PA: BREACH. SECTOR 4. MASKS ON.",
+        "seal": "Tech: Pressure's holding. Take this.",
+        "loot_panic": "Civ: That's a clinic crate—!",
+        "evacuate": null
+      },
+      "engine_needs": [
+        "alarm VFX (not Ben's heist alarm — environmental)",
+        "panel interact"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-street-preacher",
+      "name": "Heat-Death Preacher",
+      "districts": {
+        "mars-downtown": 0.35,
+        "mars-rough": 0.4,
+        "mars-highway": 0.15,
+        "mars-gated": 0.1
+      },
+      "triggers": {
+        "on_foot": true
+      },
+      "cooldown_s": 500,
+      "duration_s": 40,
+      "spawn": {
+        "npcs": [
+          "preacher"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "donate",
+          "label": "Donate 20 cr",
+          "outcome": {
+            "credits": -20,
+            "xp": 5,
+            "flag": "preacher_blessed"
+          }
+        },
+        {
+          "id": "heckle",
+          "label": "Heckle",
+          "outcome": {
+            "xp": 5,
+            "fight_chance": 0.2
+          }
+        },
+        {
+          "id": "listen",
+          "label": "Listen",
+          "outcome": {
+            "xp": 5,
+            "lore": "heat_death_bark"
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Preacher: The sun is a timer and you're late!",
+        "donate": "Preacher: Bless your tanks.",
+        "heckle": "Preacher: Heathen!",
+        "listen": "Preacher: …and that's why glow-dust is a sin."
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-lost-dog",
+      "name": "Lost Pressure Pup",
+      "districts": {
+        "mars-downtown": 0.3,
+        "mars-gated": 0.35,
+        "mars-rough": 0.2,
+        "mars-highway": 0.15
+      },
+      "triggers": {
+        "on_foot_or_vehicle": "any"
+      },
+      "cooldown_s": 600,
+      "duration_s": 100,
+      "spawn": {
+        "npcs": [
+          "dog_helmet",
+          "owner_later"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "return",
+          "label": "Return to owner",
+          "outcome": {
+            "credits": 50,
+            "xp": 30,
+            "rep": {
+              "civilian": 2
+            }
+          }
+        },
+        {
+          "id": "keep",
+          "label": "Keep it (Frankie side-eye)",
+          "outcome": {
+            "flag": "temp_dog",
+            "frankie_jealous": true
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Walk on",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Pup: (helmet fog) …",
+        "return": "Owner: You absolute legend. Credits.",
+        "keep": "Frankie: …",
+        "ignore": null
+      },
+      "notes": "Cute ambient. Nobody hurts the dog (STORY.md)."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "ev-blackout",
+      "name": "Grid Brownout",
+      "districts": {
+        "mars-downtown": 0.5,
+        "mars-rough": 0.3,
+        "mars-gated": 0.15,
+        "mars-highway": 0.05
+      },
+      "triggers": {
+        "time": "night",
+        "on_foot_or_vehicle": "any"
+      },
+      "cooldown_s": 800,
+      "duration_s": 50,
+      "spawn": {
+        "lights_out": true,
+        "phone_npc_max": 4
+      },
+      "choices": [
+        {
+          "id": "fix",
+          "label": "Find the junction box",
+          "outcome": {
+            "credits": 80,
+            "xp": 35
+          }
+        },
+        {
+          "id": "steal_dark",
+          "label": "Steal in the dark",
+          "outcome": {
+            "credits": 150,
+            "wanted": 2
+          }
+        },
+        {
+          "id": "wait",
+          "label": "Wait it out",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "PA: Brownout. Stay calm. Stay armed.",
+        "fix": "Tech: Grid's back. Token for you.",
+        "steal_dark": "Civ: I can't see—my bag!",
+        "wait": null
+      },
+      "engine_needs": [
+        "district light dim",
+        "junction box interact"
+      ]
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 3,
+        "desktop_npc_max": 5
+      },
+      "scope_ok": true,
+      "id": "ev-street-duel-invite",
+      "name": "Cantina Champion Rematch",
+      "districts": {
+        "mars-downtown": 0.55,
+        "mars-rough": 0.35,
+        "mars-highway": 0.1
+      },
+      "triggers": {
+        "on_foot": true,
+        "near_club_or_bar": true
+      },
+      "cooldown_s": 450,
+      "duration_s": 30,
+      "spawn": {
+        "npcs": [
+          "bruiser"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "accept",
+          "label": "Accept duel (fists)",
+          "outcome": {
+            "starts": "v7.4_duel_fists",
+            "wager": 75
+          }
+        },
+        {
+          "id": "raise",
+          "label": "Raise stakes (150)",
+          "outcome": {
+            "starts": "v7.4_duel_fists",
+            "wager": 150
+          }
+        },
+        {
+          "id": "decline",
+          "label": "Not tonight",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Bruiser: Cantina champ wants a rematch. Fists. Wager.",
+        "accept": "Bruiser: Circle up.",
+        "raise": "Bruiser: Cute. Let's bleed.",
+        "decline": "Bruiser: Coward tax unpaid."
+      },
+      "notes": "Uses v7.4 legal duel API — not street holdup."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-billboard-hack",
+      "name": "Billboard Hijack",
+      "districts": {
+        "mars-downtown": 0.4,
+        "mars-highway": 0.4,
+        "mars-rough": 0.15,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "on_foot_or_vehicle": "any"
+      },
+      "cooldown_s": 550,
+      "duration_s": 40,
+      "spawn": {
+        "props": [
+          "billboard"
+        ],
+        "npcs": [
+          "hacker_kid"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "help_hack",
+          "label": "Help flash SALTBLOOD / WATER NOT RESIN",
+          "outcome": {
+            "credits": 60,
+            "xp": 20,
+            "rep": {
+              "saltblood": 1,
+              "meridian": -1
+            }
+          }
+        },
+        {
+          "id": "restore",
+          "label": "Restore Meridian ad",
+          "outcome": {
+            "credits": 70,
+            "rep": {
+              "meridian": 1
+            }
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Keep rolling",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Kid: Hold my ladder. Or don't.",
+        "help_hack": "Kid: Live on the strip!",
+        "restore": "Meridian bot: Ad integrity restored. Token.",
+        "ignore": null
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 1,
+        "desktop_npc_max": 1
+      },
+      "scope_ok": true,
+      "id": "ev-medical-drone",
+      "name": "Medical Drone Drop",
+      "districts": {
+        "mars-highway": 0.3,
+        "mars-downtown": 0.3,
+        "mars-rough": 0.25,
+        "mars-gated": 0.15
+      },
+      "triggers": {
+        "player_hp_below": 50,
+        "vehicle_or_foot": "any"
+      },
+      "cooldown_s": 240,
+      "duration_s": 35,
+      "spawn": {
+        "near_player_m": 12,
+        "props": [
+          "med_drone"
+        ],
+        "phone_npc_max": 1
+      },
+      "choices": [
+        {
+          "id": "accept",
+          "label": "Accept medkit (free once)",
+          "outcome": {
+            "heal": 40,
+            "item": "medkit"
+          }
+        },
+        {
+          "id": "buy",
+          "label": "Buy extra (60 cr)",
+          "outcome": {
+            "credits": -60,
+            "item": "medkit",
+            "heal": 40
+          }
+        },
+        {
+          "id": "shoot_drone",
+          "label": "Shoot it down for parts",
+          "outcome": {
+            "credits": 40,
+            "wanted": 1,
+            "rep": {
+              "civilian": -1
+            }
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Drone: Vital signs suboptimal. Aid?",
+        "accept": "Drone: Stay pressurized.",
+        "buy": "Drone: Transaction clear.",
+        "shoot_drone": "Drone: —static—"
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 3,
+        "desktop_npc_max": 4
+      },
+      "scope_ok": true,
+      "id": "ev-helios-guest-list",
+      "name": "Wrong Guest List",
+      "districts": {
+        "mars-gated": 0.75,
+        "mars-highway": 0.15,
+        "mars-downtown": 0.1
+      },
+      "triggers": {
+        "near_helios_gate": true,
+        "vehicle_or_foot": "any"
+      },
+      "cooldown_s": 500,
+      "duration_s": 40,
+      "spawn": {
+        "npcs": [
+          "porter_or_guard",
+          "confused_guest"
+        ],
+        "phone_npc_max": 3
+      },
+      "choices": [
+        {
+          "id": "bluff",
+          "label": "Bluff you're on the list",
+          "outcome": {
+            "chance": 0.5,
+            "success": {
+              "enter_helios": true
+            },
+            "fail": {
+              "wanted": 1
+            }
+          }
+        },
+        {
+          "id": "bribe",
+          "label": "Bribe Porter (100 cr)",
+          "outcome": {
+            "credits": -100,
+            "enter_helios": true,
+            "rep": {
+              "helios_staff": 1
+            }
+          }
+        },
+        {
+          "id": "leave",
+          "label": "Turn around",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Guard: Name.",
+        "bluff": "Guard: …Fine. Don't touch the ferns.",
+        "bribe": "Porter: Lungful money spends. Go.",
+        "leave": "Guard: Smart."
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-race-challenge",
+      "name": "Impromptu Alley Wager",
+      "districts": {
+        "mars-rough": 0.45,
+        "mars-downtown": 0.3,
+        "mars-highway": 0.25
+      },
+      "triggers": {
+        "vehicle": true,
+        "wanted_max": 2
+      },
+      "cooldown_s": 360,
+      "duration_s": 25,
+      "spawn": {
+        "npcs": [
+          "racer"
+        ],
+        "vehicles": [
+          "hoverbike"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "race",
+          "label": "Race to next gate (wager 100)",
+          "outcome": {
+            "starts": "short_race",
+            "wager": 100,
+            "pts_hint": "nearest_beltway_segment"
+          }
+        },
+        {
+          "id": "decline",
+          "label": "Not worth it",
+          "outcome": {}
+        },
+        {
+          "id": "sabotage",
+          "label": "Ram them off first",
+          "outcome": {
+            "wanted": 1,
+            "credits": 50
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Racer: Gate to gate. Hundred credits. Or are you scenery?",
+        "race": "Racer: GO!",
+        "decline": "Racer: Dust.",
+        "sabotage": "Racer: Cheap shot!"
+      },
+      "notes": "One-off alley wager — not Pumpkin car meet / radio event."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "ev-vault-truck-flat",
+      "name": "Armored Flat Tire",
+      "districts": {
+        "mars-highway": 0.5,
+        "mars-downtown": 0.35,
+        "mars-gated": 0.1,
+        "mars-rough": 0.05
+      },
+      "triggers": {
+        "vehicle": true
+      },
+      "cooldown_s": 700,
+      "duration_s": 70,
+      "spawn": {
+        "ahead_m": 40,
+        "vehicles": [
+          "armored_hauler_disabled"
+        ],
+        "npcs": [
+          "guard",
+          "guard"
+        ],
+        "phone_npc_max": 4
+      },
+      "choices": [
+        {
+          "id": "help_change",
+          "label": "Help change the tire",
+          "outcome": {
+            "credits": 90,
+            "rep": {
+              "trust": 1
+            }
+          }
+        },
+        {
+          "id": "distract_steal",
+          "label": "Distract and lift a case",
+          "outcome": {
+            "credits": 250,
+            "item": "contraband",
+            "wanted": 2,
+            "rep": {
+              "trust": -2
+            }
+          }
+        },
+        {
+          "id": "pass",
+          "label": "Keep driving",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Guard: Stay back. Trust property.",
+        "help_change": "Guard: …Thanks. Token.",
+        "distract_steal": "Guard: CASE MISSING—!",
+        "pass": null
+      },
+      "notes": "Street-level armored mishap — not vault safe-crack (Ben)."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 1,
+        "desktop_npc_max": 1
+      },
+      "scope_ok": true,
+      "id": "ev-meteor-scare",
+      "name": "Meteor Scare",
+      "districts": {
+        "mars-highway": 0.4,
+        "mars-rough": 0.25,
+        "mars-downtown": 0.2,
+        "mars-gated": 0.15
+      },
+      "triggers": {
+        "any": true
+      },
+      "cooldown_s": 1000,
+      "duration_s": 20,
+      "spawn": {
+        "sky_fx": "meteor_streak",
+        "phone_npc_max": 0
+      },
+      "choices": [
+        {
+          "id": "seek",
+          "label": "Chase the impact glow",
+          "outcome": {
+            "chance_item": "meteorite",
+            "xp": 25,
+            "credits": 40
+          }
+        },
+        {
+          "id": "wish",
+          "label": "Make a dumb wish",
+          "outcome": {
+            "xp": 5
+          }
+        },
+        {
+          "id": "ignore",
+          "label": "Ignore",
+          "outcome": {}
+        }
+      ],
+      "barks": {
+        "spot": "Suit: Streak. Big one.",
+        "seek": "Suit: Warm rock. Pallasite? Maybe.",
+        "wish": "Suit: …Really?",
+        "ignore": null
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "ev-colsec-checkpoint-surprise",
+      "name": "Pop-Up Checkpoint",
+      "districts": {
+        "mars-highway": 0.55,
+        "mars-downtown": 0.3,
+        "mars-rough": 0.1,
+        "mars-gated": 0.05
+      },
+      "triggers": {
+        "vehicle": true
+      },
+      "cooldown_s": 520,
+      "duration_s": 55,
+      "spawn": {
+        "at": "beltway_node",
+        "npcs": [
+          "colsec",
+          "colsec"
+        ],
+        "props": [
+          "jersey_barrier"
+        ],
+        "phone_npc_max": 4
+      },
+      "choices": [
+        {
+          "id": "submit",
+          "label": "Submit to scan",
+          "outcome": {
+            "if_contraband": {
+              "wanted": 2
+            },
+            "else": {
+              "credits": -20
+            }
+          }
+        },
+        {
+          "id": "bribe",
+          "label": "Bribe (120 cr)",
+          "outcome": {
+            "credits": -120
+          }
+        },
+        {
+          "id": "blast",
+          "label": "Blast through",
+          "outcome": {
+            "wanted": 3
+          }
+        }
+      ],
+      "barks": {
+        "spot": "ColSec: Checkpoint. Slow down.",
+        "submit": "ColSec: Clean enough. Move.",
+        "bribe": "ColSec: Paperwork delayed.",
+        "blast": "ColSec: Weapons free!"
+      }
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-quiet-courier",
+      "name": "Quiet Courier Glance",
+      "districts": {
+        "mars-downtown": 0.4,
+        "mars-gated": 0.3,
+        "mars-highway": 0.2,
+        "mars-rough": 0.1
+      },
+      "triggers": {
+        "on_foot": true,
+        "wanted_max": 1
+      },
+      "cooldown_s": 650,
+      "duration_s": 35,
+      "spawn": {
+        "npcs": [
+          "quiet_courier"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "accept_envelope",
+          "label": "Take the envelope",
+          "outcome": {
+            "credits": 200,
+            "flag": "quiet_favor",
+            "starts_hint": "side delivery downtown"
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "outcome": {
+            "rep": {
+              "quiet": -1
+            }
+          }
+        },
+        {
+          "id": "grab",
+          "label": "Grab and run",
+          "outcome": {
+            "credits": 200,
+            "wanted": 2,
+            "rep": {
+              "quiet": -3
+            }
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Courier: Mr. Sable sends regards. Envelope. Or not.",
+        "accept_envelope": "Courier: Deliver. Don't open.",
+        "refuse": "Courier: Noted.",
+        "grab": "Courier: Mistake."
+      },
+      "notes": "Flavour for Quiet — not Jeff's Rook/Sable finale chain."
+    },
+    {
+      "world": "Mars",
+      "fiction": true,
+      "repeatable": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 3
+      },
+      "scope_ok": true,
+      "id": "ev-roof-sniper-drill",
+      "name": "Rooftop Laser Sight",
+      "districts": {
+        "mars-downtown": 0.45,
+        "mars-gated": 0.35,
+        "mars-rough": 0.15,
+        "mars-highway": 0.05
+      },
+      "triggers": {
+        "on_foot": true
+      },
+      "cooldown_s": 700,
+      "duration_s": 25,
+      "spawn": {
+        "fx": "laser_dot",
+        "npcs": [
+          "merc_or_rhee_drill"
+        ],
+        "phone_npc_max": 2
+      },
+      "choices": [
+        {
+          "id": "dive",
+          "label": "Dive to cover",
+          "outcome": {
+            "xp": 10
+          }
+        },
+        {
+          "id": "wave",
+          "label": "Wave at the sight",
+          "outcome": {
+            "credits": 30,
+            "bark": "merc: Cute. Training laser."
+          }
+        },
+        {
+          "id": "climb",
+          "label": "Climb after them",
+          "outcome": {
+            "xp": 25,
+            "fight_chance": 0.3
+          }
+        }
+      ],
+      "barks": {
+        "spot": "Suit: Red dot on your chest.",
+        "dive": null,
+        "wave": "Merc: Training laser. Relax. Or don't.",
+        "climb": "Merc: Persistent!"
+      }
+    }
+  ],
+  "count": 23
+}

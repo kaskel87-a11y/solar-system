@@ -1,0 +1,280 @@
+// v7.4 street danger: the pure logic (no THREE, no DOM) behind danger.js and pursuit.js, so it runs under plain node
+// for unit tests. Encounter director (spawn rates by district + time of day, cooldowns, wanted escalation), the knife
+// mugging state machine and its outcomes, ambient fights, street (non-police) chase tiers + the Red Tape Run set-piece,
+// intercept steering, line of sight and the phone NPC budget. Police/wanted stays in world.js (v7.4 security combat).
+// Design doc: solar-system-story/STREET-DANGER.md (copied to docs in the PR body).
+
+// ---------- districts ----------
+// Live Ares Junction is one ring colony. The Mars city pack (solar-system-story/mars-city, mirrored in streetdata.js)
+// places Olympus Row (downtown), Red Tape Flats (rough) and Helios Heights (gated) AJ-relative, joined by the Ares
+// Beltway polyline. districtAt checks those first (colony.districts, or opts.city = MARS_CITY), then the beltway
+// (driving within ~14 m of it = highway), then falls back to the AJ ring: core = downtown, shanty ring = rough.
+export const DISTRICTS = ['downtown', 'rough', 'gated', 'highway', 'wastes'];
+export function distToPolyline(x, z, pts) {
+  let best = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i], sx = bx - ax, sz = bz - az, L2 = sx * sx + sz * sz;
+    const t = L2 ? Math.max(0, Math.min(1, ((x - ax) * sx + (z - az) * sz) / L2)) : 0;
+    best = Math.min(best, Math.hypot(ax + sx * t - x, az + sz * t - z));
+  }
+  return best;
+}
+export function districtAt(x, z, colony, opts = {}) {
+  if (!colony) return 'wastes';
+  const city = opts.city, ax = x - colony.x, az = z - colony.z; // AJ-relative
+  const list = Array.isArray(colony.districts) ? colony.districts.map(d => ({ ...d, x: d.x - colony.x, z: d.z - colony.z })) : city?.districts || [];
+  let best = null, bd = Infinity;
+  for (const d of list) { const k = Math.hypot(ax - d.x, az - d.z); if (k < d.r && k < bd) { bd = k; best = d.id; } }
+  if (best) return best;
+  const d = Math.hypot(ax, az);
+  if (d < (opts.core ?? 58)) return 'downtown';
+  if (city?.beltway && opts.driving && distToPolyline(ax, az, city.beltway) < (opts.lane ?? 14)) return 'highway';
+  if (d < (opts.ring ?? 175)) return 'rough';
+  return opts.driving && (opts.speed || 0) > 14 ? 'highway' : 'wastes';
+}
+
+// ---------- time of day ----------
+// No world clock yet (engine_need): a "Mars hour" runs off the wall clock, 1 game hour = 2 real minutes, so a session
+// sees dusk and night. Tests pin it with setClock().
+let clockOverride = null;
+export function setClock(h) { clockOverride = h == null ? null : ((h % 24) + 24) % 24; }
+export function marsHour(nowMs = Date.now()) { return clockOverride ?? ((nowMs / 120000) % 24); }
+export function timeBand(h) { return h >= 21 || h < 5 ? 'night' : h >= 17 ? 'dusk' : h < 8 ? 'dawn' : 'day'; }
+const BAND_K = {
+  mugging: { day: 0.5, dawn: 0.8, dusk: 1.2, night: 1.9 },
+  fight: { day: 0.7, dawn: 0.6, dusk: 1.2, night: 1.6 },
+  robbery: { day: 0.3, dawn: 0.6, dusk: 1.0, night: 1.6 },
+  carjack: { day: 0.6, dawn: 0.8, dusk: 1.1, night: 1.5 },
+  ambush: { day: 0.6, dawn: 0.8, dusk: 1.2, night: 1.5 },
+  gangChase: { day: 0.6, dawn: 0.7, dusk: 1.2, night: 1.6 }
+};
+
+// ---------- encounter director ----------
+// expected encounters per minute of exposure, by district (before the time-of-day multiplier)
+export const RATES = {
+  mugging: { downtown: 0.18, rough: 0.7, gated: 0.03, highway: 0, wastes: 0.12 },
+  fight: { downtown: 0.35, rough: 0.8, gated: 0.05, highway: 0, wastes: 0.05 },
+  robbery: { downtown: 0.05, rough: 0.25, gated: 0.02, highway: 0, wastes: 0.05 },
+  carjack: { downtown: 0.08, rough: 0.3, gated: 0.02, highway: 0.25, wastes: 0.08 },
+  ambush: { downtown: 0, rough: 0.12, gated: 0, highway: 0, wastes: 0 },
+  gangChase: { downtown: 0.03, rough: 0.35, gated: 0, highway: 0.15, wastes: 0.04 },   // Saltblood cars come for you
+  ambient: { downtown: 0.5, rough: 0.4, gated: 0.45, highway: 0.35, wastes: 0 }        // random-events.json vignettes (ambient.js picks which)
+};
+export const IMPLEMENTED = ['mugging', 'fight', 'gangChase', 'ambient']; // the rest are designed (STREET-DANGER.md) and wait on engine_needs
+export const COOLDOWN = { global: 40, mugging: 110, fight: 55, robbery: 240, carjack: 150, ambush: 300, gangChase: 180, ambient: 90 }; // ambient = random-events.json spawn_rules.global_cooldown_s
+export const GRACE = 25; // seconds after landing / respawn before anything can happen
+// situation: { district, hour, onFoot, driving, wanted, inside, busy (quest combat, race, menu, down), questActive }
+export function eligible(type, s) {
+  if (s.inside || s.busy || s.inDuel) return false;   // never jump a player mid-duel (world.inDuel)
+  if (type === 'mugging' || type === 'robbery') return s.onFoot && s.wanted === 0; // nobody mugs you with sirens on you
+  if (type === 'fight') return s.wanted <= 1;
+  if (type === 'carjack') return s.driving && s.wanted === 0 && (s.speed || 0) < 6; // stopped or crawling
+  if (type === 'ambush') return s.wanted <= 2 && s.district === 'rough' && (s.saltbloodHeat || 0) >= 1;
+  if (type === 'gangChase') return s.driving && s.wanted <= 2 && (s.speed || 0) > 4;  // gangs don't care about stars
+  if (type === 'ambient') return !!s.ambientReady && (s.wanted || 0) < 4;              // some random-events.json event fits right here
+  return false;
+}
+export function ratePerMin(type, s) {
+  const base = RATES[type]?.[s.district] ?? 0; if (!base) return 0;
+  let k = BAND_K[type]?.[timeBand(s.hour ?? 12)] ?? 1;
+  if (s.questActive) k *= 0.5;                // story missions get the stage
+  if (type === 'gangChase') k *= 1 + Math.min(2, s.saltbloodHeat || 0); // you killed their boys: they come looking
+  if (type === 'fight' && s.wanted === 1) k *= 0.5;
+  if (type === 'mugging' && s.dust) k *= 1.5;  // carrying glow-dust: junkies can smell it
+  return base * k;
+}
+export function createDirector({ rng = Math.random, types = IMPLEMENTED, cooldown = COOLDOWN, grace = GRACE } = {}) {
+  const D = { t: 0, since: {}, last: -1e9, grace, active: 0, log: [] };
+  D.reset = (g = grace) => { D.grace = g; };
+  D.tick = (dt, s) => {
+    D.t += dt; if (D.grace > 0) { D.grace -= dt; return null; }
+    if (D.active > 0 || D.t - D.last < cooldown.global) return null;
+    for (const type of types) {
+      if (D.t - (D.since[type] ?? -1e9) < (cooldown[type] ?? 60)) continue;
+      if (!eligible(type, s)) continue;
+      const p = 1 - Math.exp(-ratePerMin(type, s) / 60 * dt);
+      if (rng() < p) { D.since[type] = D.t; D.last = D.t; D.log.push({ type, t: D.t, district: s.district }); return type; }
+    }
+    return null;
+  };
+  D.force = type => { D.since[type] = D.t; D.last = D.t; D.log.push({ type, t: D.t, forced: true }); return type; };
+  return D;
+}
+
+// ---------- barks (65 chars max; profane on purpose, M-rated) ----------
+export const BARKS = {
+  junkieApproach: ['Hey. HEY. Spaceman. C\u2019mere a sec.', 'Yo, you got a minute? Just a minute, man.', 'Psst. Hey buddy. Hey. Don\u2019t walk away from me.', 'You\u2019re new, huh? Fresh off the boat. C\u2019mere.'],
+  junkieDemand: ['Gimme your fuckin\u2019 credits! {n}, NOW!', 'Wallet. Now. {n} credits or I open you up.', '{n} credits, asshole. Don\u2019t make me do this.', 'Don\u2019t fuckin\u2019 move. {n} cr. My hands are shaking, man.'],
+  junkiePaid: ['Pleasure doin\u2019 business. Don\u2019t follow me.', 'Yeah. Yeah! Dust tonight, baby!', 'Smart. Real smart. Now fuck off.'],
+  junkieBroke: ['You\u2019re BROKE? The FUCK is wrong with you?', 'Zero? You walk round with ZERO?'],
+  junkieFight: ['Oh you wanna DANCE? Let\u2019s dance!', 'Big mistake, big mistake!', 'I\u2019ll cut your fuckin\u2019 visor off!'],
+  junkieHit: ['AGH! Fuck!', 'You hit me! You actually hit me!', 'Shit shit shit!'],
+  junkieChase: ['Get back here!', 'RUN, you little bitch!', 'I\u2019ll find you, spaceman!'],
+  junkieGiveUp: ['Yeah, keep running! ...fuck, my lungs.', 'Whatever. Plenty more tourists.'],
+  junkieTalked: ['...Fuck it. Not worth it.', 'Okay, okay. I\u2019m going. Christ.', 'You\u2019re lucky I like your dog.'],
+  junkieTip: ['Look... Saltblood stash, east dunes. Didn\u2019t hear it from me.', 'Rusk takes envelopes Tuesdays. Everybody knows. Shh.'],
+  junkieTwitch: ['Don\u2019t you fuckin\u2019 lecture me!', 'You think I\u2019m STUPID?'],
+  junkieTimeout: ['Too slow, man!', 'Shoulda paid!'],
+  junkieDown: ['...mom?', 'Worth it... wasn\u2019t worth it...', 'Ah, fuck...'],
+  fightStart: ['You spilled my fuckin\u2019 drink!', 'That\u2019s for my brother, you piece of shit!', 'Saltblood owns this corner, bitch!', 'You owe me forty credits, Dale!', 'Look at me again. Look at me AGAIN.'],
+  fightMid: ['Get off me!', 'Hit him! HIT HIM!', 'My tooth! You knocked out my tooth!', 'Somebody call security! No, don\u2019t!'],
+  fightEnd: ['Stay down. STAY DOWN.', 'That\u2019s what you get.', 'Oh shit, is he breathing?'],
+  bystander: ['Holy shit!', 'Not again, man. Not again.', 'Somebody stop them!', 'I\u2019m filming this!'],
+  gangChase: ['Saltblood! That\u2019s the motherfucker!', 'Run him off the road!', 'Box him in! BOX HIM IN!', 'You\u2019re in Red Tape now, bitch!'],
+  gangLost: ['Where\u2019d he go? WHERE\u2019D HE GO?', 'Fuck! Lost him.', 'Marrow\u2019s gonna skin us.'],
+  gangShoot: ['Light him up!', 'Shoot the tyres!', 'Eat it, tourist!'],
+  runStart: ['That\u2019s Marrow\u2019s crate! Get it back!', 'Kill him and bring me the box!'],
+  getaway: ['That\u2019s the crew from the vault! Get the money back!', 'Nobody robs Vesna\u2019s vault and drives home!', 'Cut him off before the dunes!'],
+  runWin: ['Helios gate. They won\u2019t follow you in here.'],
+  rusk: ['Rusk: Your wanted level? Lost the paperwork. Paper\u2019s expensive.']
+};
+export function pick(list, rng = Math.random) { return list?.length ? list[Math.floor(rng() * list.length) % list.length] : ''; }
+export function fill(line, vars = {}) { return String(line).replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m); }
+
+// ---------- the knife mugging ----------
+// phases: approach -> standoff (choice) -> resolved into one of: paid, fight, chase, talked, tip, stabbed (timeout)
+export const MUG = { standoff: 9, reach: 2.6, stabRange: 1.9, stabCd: 1.15, hp: 4, giveUp: 20, chaseTime: 7, speed: 5.6, runSpeed: 6.2 };
+export function demandFor(credits, rng = Math.random) {
+  if (credits <= 0) return 20;
+  const want = Math.round(credits * (0.25 + rng() * 0.15) / 5) * 5;
+  return Math.max(20, Math.min(150, want));
+}
+// talk-down odds: rank/XP, a gun already out, Frankie at your side, a rep with the dust crews; desperation (night) hurts
+export function talkChance({ xp = 0, armed = false, dog = false, saltbloodRep = 0, night = false, tries = 0 } = {}) {
+  let p = 0.32 + Math.min(0.25, xp / 4000) + (armed ? 0.18 : 0) + (dog ? 0.1 : 0) + Math.min(0.15, saltbloodRep * 0.05) - (night ? 0.08 : 0) - tries * 0.25;
+  return Math.max(0.05, Math.min(0.9, p));
+}
+// what happens when the player picks. Returns a plain outcome; the runtime applies it (credits, damage, heat, barks).
+export function resolveChoice(choice, m, env = {}, rng = Math.random) {
+  const credits = env.credits ?? 0;
+  if (choice === 'pay') {
+    // empty pockets is still a way out: he shoves you, spits, and goes looking for a better mark
+    if (credits <= 0) return { result: 'shoved', why: 'broke', bark: 'junkieBroke', dmg: 4 };
+    const paid = Math.min(credits, m.demand);
+    return { result: 'paid', paid, bark: 'junkiePaid', comeback: rng() < 0.2 };
+  }
+  if (choice === 'fight') return { result: 'fight', bark: 'junkieFight', lunge: false };
+  if (choice === 'run') return { result: 'chase', bark: 'junkieChase' };
+  if (choice === 'talk') {
+    const p = talkChance({ ...env, tries: m.talks || 0 });
+    const r = rng();
+    if (r < p * 0.35) return { result: 'tip', bark: 'junkieTip', xp: 15, p };
+    if (r < p) return { result: 'talked', bark: 'junkieTalked', xp: 10, p };
+    return { result: 'fight', why: 'twitch', bark: 'junkieTwitch', lunge: true, p };
+  }
+  if (choice === 'timeout') return { result: 'stabbed', bark: 'junkieTimeout', paid: Math.min(credits, Math.round(m.demand / 2)), dmg: 16 };
+  throw new Error('unknown choice ' + choice);
+}
+// heat for hurting/killing the mugger. Self-defense is legal; shooting a man in the back near the cameras isn't.
+// phase: approach | standoff | fight | chase | fleeing (after you paid / talked him down)
+export function heatForMugger({ phase, killed, gun, witnessed, inColony }) {
+  if (phase === 'fight' || phase === 'chase' || phase === 'standoff') {
+    // he pulled a knife on you: nobody cares, unless you emptied a gun next to the colony cameras
+    return gun && inColony && killed ? { min: 1, why: 'discharging a weapon in the colony' } : null;
+  }
+  if (!witnessed) return null;
+  if (phase === 'fleeing') return { min: killed ? 2 : 1, why: killed ? 'shot a man in the back' : 'assault' };
+  return { min: killed ? 2 : 1, why: killed ? 'murder' : 'assault' }; // approach: he hadn't done anything yet
+}
+export function muggerLoot(rng = Math.random, paid = 0) { return { credits: paid + 8 + Math.floor(rng() * 30), dust: rng() < 0.6 ? 1 : 0 }; }
+
+// ---------- ambient fights ----------
+export const FIGHT_KINDS = [
+  { id: 'brawl', a: 'thug', b: 'colonist', weapon: 'fists', w: 0.45 },
+  { id: 'knife', a: 'junkie', b: 'junkie', weapon: 'knife', w: 0.3 },
+  { id: 'beatdown', a: 'thug', b: 'junkie', weapon: 'pipe', w: 0.25, helpers: 1 }
+];
+export function pickFight(rng = Math.random, district = 'rough') {
+  const list = district === 'downtown' ? FIGHT_KINDS.filter(f => f.id !== 'beatdown') : FIGHT_KINDS;
+  let t = rng() * list.reduce((s, f) => s + f.w, 0); for (const f of list) { if ((t -= f.w) <= 0) return f; } return list[0];
+}
+export const WEAPON_DMG = { fists: [0.5, 0.9], knife: [0.9, 1.6], pipe: [0.8, 1.3] };
+export function swing(weapon, rng = Math.random) { const [a, b] = WEAPON_DMG[weapon] || WEAPON_DMG.fists; return a + rng() * (b - a); }
+// stepping in: hurting the aggressor is fine, hurting the victim is assault
+export function heatForFighter({ role, killed, witnessed }) {
+  if (!witnessed) return null;
+  if (role === 'aggressor') return killed ? { min: 1, why: 'manslaughter' } : null;
+  return { min: killed ? 2 : 1, why: killed ? 'murder' : 'assault' };
+}
+
+// ---------- street chases (NOT police: v7.4 world.js owns wanted + security) ----------
+// gang: Saltblood cars that ram and shoot from the window; junkie: one doped-up driver who only rams;
+// setpiece: highway.json chase pursuers (goon, goon, sbuggy). Phones cap pursuers at 3 (highway.json caps).
+export function chaseTier(kind = 'gang', mobile = false, n = 0) {
+  const T = {
+    junkie: { cars: 1, ram: true, shoot: false, vmax: 24, boost: 1.05, sight: 90, loseTime: 4, search: 6, ramDmg: 6 },
+    gang: { cars: 2, ram: true, shoot: true, vmax: 28, boost: 1.12, sight: 130, loseTime: 6, search: 9, ramDmg: 8 },
+    getaway: { cars: 2, ram: true, shoot: true, vmax: 29, boost: 1.14, sight: 140, loseTime: 7, search: 10, ramDmg: 8 }, // heist:escape (Ben's heist module)
+    setpiece: { cars: 3, ram: true, shoot: true, vmax: 30, boost: 1.15, sight: 150, loseTime: 8, search: 10, ramDmg: 9 }
+  }[kind] || null;
+  if (!T) return null;
+  const cars = n > 0 ? n : T.cars;
+  return { kind, ...T, cars: Math.min(cars, mobile ? 3 : 5) };
+}
+// the phone NPC budget: everything walking around (world colonists/guards/contacts + ours + chase drivers) <= cap
+export const NPC_CAP = { phone: 12, desktop: 20 };
+// "ambient" = what shares the street with you: world people + ColSec (world.securityList()) within AMBIENT_R of the player
+export const AMBIENT_R = 90;
+export function nearCount(list, x, z, r = AMBIENT_R) { let n = 0; for (const p of list || []) if (Math.hypot(p.x - x, p.z - z) < r) n++; return n; }
+export function npcBudget(worldPeople, mine, mobile) { return Math.max(0, (mobile ? NPC_CAP.phone : NPC_CAP.desktop) - worldPeople - mine); }
+
+// ---------- Red Tape Run (highway.json "beltway-chase-saltblood") ----------
+// route = [[x,z]...] world coords (start, via..., end); r = checkpoint radius. Pure step: the runtime feeds car pos,
+// how many pursuers are on your bumper while you crawl, and damage taken by the crate.
+export function setPieceNew(def, route, r = 16) { return { id: def.id, title: def.title, route, r, i: 1, t: 0, limit: def.limit_s, crate: 100, pinned: 0, status: 'running' }; }
+export function setPieceStep(sp, dt, { x, z, speed = 0, close = 0, crateDmg = 0 }) {
+  if (sp.status !== 'running') return sp;
+  sp.t += dt; sp.crate = Math.max(0, sp.crate - crateDmg);
+  const [cx, cz] = sp.route[sp.i];
+  if (Math.hypot(x - cx, z - cz) < sp.r) { sp.i++; sp.hit = true; } else sp.hit = false;
+  if (sp.i >= sp.route.length) { sp.status = 'won'; return sp; }
+  // boxed in: a pursuer within 6 m while you're doing under 4 m/s for 4 s
+  sp.pinned = close > 0 && Math.abs(speed) < 4 ? sp.pinned + dt : Math.max(0, sp.pinned - dt * 2);
+  if (sp.crate <= 0) sp.status = 'crate_destroyed';
+  else if (sp.pinned > 4) sp.status = 'caught';
+  else if (sp.t > sp.limit) sp.status = 'timer';
+  return sp;
+}
+// where to aim: lead the target by the time it takes to close the gap (clamped), like a GTA interceptor
+export function interceptPoint(target, tv, from, speed, maxLead = 2.2) {
+  const d = Math.hypot(target.x - from.x, target.z - from.z), t = Math.min(maxLead, d / Math.max(4, speed));
+  return { x: target.x + tv.x * t, z: target.z + tv.z * t, t };
+}
+// steer a car-like agent (x, z, yaw, speed) at a point. yaw follows the game's convention: forward = (-sin yaw, -cos yaw).
+export function steerTo(a, px, pz, dt, { vmax = 26, acc = 14, turn = 2.2, brakeAngle = 1.4 } = {}) {
+  const want = Math.atan2(-(px - a.x), -(pz - a.z));
+  let da = Math.atan2(Math.sin(want - a.yaw), Math.cos(want - a.yaw));
+  const k = Math.max(-1, Math.min(1, da / 0.6)), yr = turn * (0.4 + 0.6 * Math.min(1, Math.abs(a.speed) / 8));
+  a.yaw += k * yr * dt;
+  const target = Math.abs(da) > brakeAngle ? vmax * 0.35 : vmax * (1 - Math.min(0.5, Math.abs(da) / 3));
+  a.speed += Math.max(-acc * 1.6 * dt, Math.min(acc * dt, target - a.speed));
+  a.x += -Math.sin(a.yaw) * a.speed * dt; a.z += -Math.cos(a.yaw) * a.speed * dt;
+  return da;
+}
+// line of sight between two points over terrain (+ optional solids test): sample the segment
+export function lineOfSight(a, b, height, solidAt = null, steps = 14) {
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t, y = a.y + (b.y - a.y) * t;
+    if (height(x, z) > y + 0.2) return false;
+    if (solidAt && solidAt(x, y, z)) return false;
+  }
+  return true;
+}
+// heat state machine for one pursuit: 'chase' while any unit sees you; out of sight for loseTime -> 'search';
+// search expires -> 'lost' (they give up). Spotted again during search -> 'chase'.
+export function heatStep(h, seen, dt, tier) {
+  if (seen) { h.unseen = 0; h.mode = 'chase'; h.search = 0; return h; }
+  h.unseen = (h.unseen || 0) + dt;
+  if (h.mode === 'chase' && h.unseen > tier.loseTime) { h.mode = 'search'; h.search = 0; }
+  if (h.mode === 'search') { h.search = (h.search || 0) + dt; if (h.search > tier.search) h.mode = 'lost'; }
+  return h;
+}
+// a point on your heading (where an ambush car pulls out ahead of you)
+export function aheadPoint(x, z, yaw, dist) { return { x: x - Math.sin(yaw) * dist, z: z - Math.cos(yaw) * dist, yaw }; }
+// a ram: relative closing speed along the line between the two -> damage + speed loss + a shove
+export function ramImpulse(cop, car, carVel) {
+  const dx = car.x - cop.x, dz = car.z - cop.z, d = Math.hypot(dx, dz) || 1, nx = dx / d, nz = dz / d;
+  const cv = { x: -Math.sin(cop.yaw) * cop.speed, z: -Math.cos(cop.yaw) * cop.speed };
+  const closing = (cv.x - carVel.x) * nx + (cv.z - carVel.z) * nz;
+  return { closing, nx, nz, hard: closing > 6, shove: Math.max(0, closing) * 0.18 };
+}
