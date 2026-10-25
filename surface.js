@@ -825,18 +825,20 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       player.yaw = rover.yaw + camYawOff; player.faceYaw = player.yaw;
       rover.speed = 0; driving = false; camGoal = walkGoal; return 'exit';
     }
-    if (nearRover()) { driving = true; walkGoal = camGoal; if (camGoal > 0.8) camGoal = Math.max(camGoal, 12); camYawOff = 0; player.pitch = Math.min(player.pitch, 0); return 'drive'; }
+    if (nearRover()) { driving = true; walkGoal = camGoal; if (camGoal > 0.8) camGoal = Math.max(camGoal, 16); camYawOff = 0; player.pitch = Math.min(player.pitch, 0); return 'drive'; }
     return null;
   }
   function pet() {
     if (!dog) return false;
     const dd = driving ? 0 : Math.hypot(dog.x - player.x, dog.z - player.z);
-    if (dd > 8 && camDist < 0.8) return false;
-    dog.wag = 2.4; dog.idle = 0; if (!dog.air && !driving) dog.vy = 3.2;
+    if (dd > 40) return false;
+    // petting (or calling from a distance) brings the dog back from a sniff
+    if (!driving && dog.mode === 'sniff') { dog.mode = 'follow'; dog.nextSniff = 20 + Math.random() * 15; }
+    dog.wag = 2.4; dog.idle = 0; if (!dog.air && !driving && dd < 8) dog.vy = 3.2;
     onEvent('bark', {}); return true;
   }
   const viewName = (d = camGoal) => d < 0.8 ? 'first' : d < 60 ? 'third' : 'aerial';
-  function setView(v) { camGoal = v === 'first' ? 0 : v === 'aerial' ? 220 : (driving ? 12 : 9); saveView(); return viewName(); }
+  function setView(v) { camGoal = v === 'first' ? 0 : v === 'aerial' ? 220 : (driving ? 16 : 9); saveView(); return viewName(); }
   function cycleView() { const v = viewName(); return setView(v === 'first' ? 'third' : v === 'third' ? 'aerial' : 'first'); }
   function zoom(f) {
     if (camGoal < 0.8) { if (f > 1) camGoal = 3.5; }
@@ -869,7 +871,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
         view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: rover ? rover.speed : 0, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
-        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 8,
+        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 20,
         disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,
         far: !!farMesh?.visible
       };
