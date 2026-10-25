@@ -1,4 +1,4 @@
-# Cinematic Universe Explorer
+# Solar System Explorer
 
 Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or click a planet (or use the planet bar) for facts, and press **F** or tap **🚀 Fly** to pilot a rocket.
 
@@ -20,6 +20,63 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Starship:** a stylized steel ship with heat tiles and flaps. You fly it in space and it stands on landing legs on the surface.
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
+
+## v7.3: walk in, go shopping, and the Velvet Airlock
+
+**Every building is enterable.** Walk up to a door in a colony and the context button says **🚪 Enter <name>** (stores say **🛒 Shop**). Inside, the camera pulls in close and stays in the room, guns are holstered ("house rules"), and **🚪 Leave** by the door takes you back out.
+
+| Colony | Building | What it's for |
+|---|---|---|
+| Ares Junction (Mars) | Cantina | Dutch behind the bar: drinks (heal/shield), rumors, jobs |
+| | Ares Supply | Medkits, armor, heat sink, shells; Trauma implants and Bandolier rigs in the cases; Frankie's bandanas |
+| | Meridian Depot | Rover parts wall (turrets, rail cannon, rockets, torch, EMP, armor), paint and body kit wall, a hidden stash |
+| | Ozzie's Iron | Wall rack of long guns (shotgun, Viper SMG, rail rifle, frag launcher), cases of ammo and blades; Ozzie's jobs |
+| | The Velvet Airlock | Neon club: fully clothed costumed dancers, bar, booths, Brick at the door (20 cr cover, no entry while wanted), VIP room (60 cr) with Ines |
+| | Colony Security | Deputy Rusk takes 80 × stars² cr to make your wanted level disappear (not at 4★+) |
+| Freeport (Moon) | The Dry Sea, Freeport Supply, Freeport Arms | Bar, gear store, gun shop |
+
+**Shopping is physical.** Guns hang on the wall, gear and upgrades sit in lit glass cases, and every item has a price tag (it flips to OWNED or EQUIPPED). Walk up to an item for **🛒 Buy <item> · <price>**, or tap the item itself. The clerk at the counter has the full list as a fallback. Finding a store: each one is a big green **$** on the radar, **🛒 Shop** beats Pet near a store, and ☰ → **🛒 Shop** marks the nearest one with a pulsing $.
+
+**New gear:** Viper SMG (rounds), scoped rail rifle (slugs), frag launcher (lobbed grenades with splash), heavy cleaver (melee). Max health (+15 per Trauma implant) and ammo capacity (+25% per Bandolier rig) go up with buyable tiers I-III, rare biomod/bandolier finds and two hidden stashes.
+
+**Story.** Contacts from the story pack (Dutch, Ozzie, Ines, Brick, Rusk) live in the buildings. Dutch's and Ozzie's first jobs, Vesna's resin job and Kestrel's ghost run are playable now; later missions unlock as the engine grows (v7.4).
+
+**Playtest fixes (from the v7.2 bug list).**
+- The chase camera now pulls in instead of going through buildings, domes or the Starship's legs, so you stay on screen next to walls.
+- **🛬 Fly to … & land** now goes to the world you picked, or to **Mars** (Ares Junction, where the game is) when you haven't picked one. Before, it went to whatever was nearest.
+- Job offers that arrive while you're landing show up as a one-line pill. A minimized pill really hides Accept/Later now, and **Later** is readable.
+- Frankie no longer wanders off sniffing while you run.
+- Credits never get cut off in the top bar; the gravity readout drops out when you're wanted or driving.
+- ☰, the weapon chip, the radio buttons and the menu items are all at least 44 px tall.
+- All buttons are black with white text and a light border. Toggles show a green **ON** or a grey **OFF**. `tests/test-contrast.js` checks every visible button for at least 4.5:1 contrast.
+- On a laptop, the HUD is drawn larger.
+
+**Keyboard and mouse (laptops).** ☰ → **❔ Controls** (or press **?**) lists every key for flying and on foot. ☰ → **⛶ Full screen** toggles browser full screen (it reads *Exit full screen* while active, F11 and Esc still work; hidden on iPhone, which has no element full screen). On a touchscreen laptop the HUD follows your last input: tap the screen and the touch joystick and buttons appear, press a key or move the mouse and you get the keyboard/mouse HUD back. **Boost:** hold **Shift** while driving any vehicle (your rover, or a stolen buggy, hauler, hover bike or skimmer; each has its own boost top speed), or hold the **⚡ Boost** button with the mouse or a finger. The first time you drive on a laptop a hint reminds you.
+- **Enter** accepts a radio job and **Backspace** skips it, even when the mouse is locked.
+- **E** enters buildings and buys the item in front of you. Inside, a crosshair appears, and clicking an item on the wall buys it.
+- Opening a menu or shop frees the mouse.
+
+### Modding API (v7.3)
+Call these from the browser console or an extra `<script type="module">` before you land:
+
+```js
+// a new colony on any landable world. blocks: [x, z, w, d, h, sign, colour, interiorKind?, insideTitle?]
+SSX.registerColony('Europa', { name: 'Ice Harbor', a: 20, d: 180, tint: 0x9fd8ff,
+  domes: [[0, 0, 10, 'ICE HARBOR', 0x9fd8ff]], blocks: [[18, 10, 7, 4, 4, 'SUPPLY', 0x3cff8a, 'supply'], [-16, 12, 8, 5, 5, 'BAR', 0xff2a5a, 'cantina', 'THE CRACK']],
+  shop: [18, 13.2], contacts: [{ name: 'Mara', at: [6, 18], blurb: 'Ice miner. Owes everyone.' }], inside: { cantina: { barkeep: 'Mara', talk: 'Mara' } } });
+
+// a mission (engine format: steps goto/collect/defeat/return/take/clean/race/enter; `at` is colony-relative [x, z])
+SSX.registerMission({ id: 'mara-01', world: 'Europa', contact: 'Mara', title: 'Cold feet', intro: 'Mara: Walk into the bar. Act normal.',
+  steps: [{ type: 'enter', building: 'bar', text: 'Walk into The Crack' }, { type: 'goto', at: [30, -20], r: 4, text: 'Meet the buyer' }],
+  reward: { xp: 120, credits: 150 } });
+// story-pack format (giver/setup/dialogue/rewards/prerequisites) is accepted too.
+
+// a new interior kind: build(api, opts) with api.box/col/spot/sign/person; spots { id, x, z, r, label, act: 'shop'|'talk'|'leave'|'bribe', venue, who }
+SSX.registerInterior('chapel', { name: 'Chapel', w: 10, d: 12, h: 6, build(api) { api.sign('QUIET PLEASE', 0xffffff, 0, 3.5, -5.9); } });
+
+// a ☰ menu entry
+SSX.registerMenuItem({ label: '🎲 Random warp', onClick: app => app.toast('Not today.') });
+```
 
 ## v7.2: fly the rover, bolt guns to it, and install it as an app
 
@@ -51,7 +108,7 @@ The rover turret now works with **hostiles off** and **while flying**. When you'
 
 **Install it as an app (PWA).**
 - The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Starship-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
-- `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.2`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` and the game's own modules are fetched network-first, with the cache as the offline fallback, so new releases and hotfixes still land. three.js, textures and icons are served cache-first.
+- `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.3`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` and the game's own modules are fetched network-first, with the cache as the offline fallback, so new releases and hotfixes still land. three.js, textures and icons are served cache-first.
 - The HUD already respects the notch and home-bar safe areas in standalone mode.
 - **On iPhone:** open https://kaskel87-a11y.github.io/solar-system/ in Safari, tap **Share (□↑) → Add to Home Screen → Add**. On iOS 16.4+ Chrome works too: **Share → Add to Home Screen**. Launch it from the home-screen icon for full screen with no browser bars.
 - **On Android or desktop Chrome:** use the ☰ menu → **📲 Add to Home Screen**, which triggers the install prompt, or use the browser's Install button.

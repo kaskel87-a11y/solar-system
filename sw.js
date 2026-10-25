@@ -1,5 +1,5 @@
-// Solar System Explorer service worker (v7.2+).
-// The version comes from the registration URL (sw.js?v=7.2), the same number as the ?v cache bust on the modules,
+// Solar System Explorer service worker (v7.3+).
+// The version comes from the registration URL (sw.js?v=7.3), the same number as the ?v cache bust on the modules,
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
 // BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
@@ -8,7 +8,7 @@ const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
-  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`,
+  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
   'vendor/three/build/three.module.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'textures/2k_stars_milky_way.jpg'

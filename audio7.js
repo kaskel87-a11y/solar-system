@@ -11,6 +11,9 @@ export const STATIONS = [
 ];
 
 export function createAudio7(getCtx) {
+  // v7.3 venue music (club / cantina) plays through the same bus, muffled like it's coming through the walls
+  const VENUES = { club: { id: 'club', bpm: 118 }, cantina: { id: 'cantina', bpm: 92 } };
+  let venue = null, venueWas = false;
   let radioBus = null, ambBus = null, station = 0, playing = false, nextT = 0, step = 0, timer = 0, amb = null, trackerNext = 0;
   const noiseBuf = { b: null };
   function noise(a) {
@@ -38,7 +41,7 @@ export function createAudio7(getCtx) {
   const N = n => 440 * Math.pow(2, (n - 69) / 12);
   function schedule() {
     const a = getCtx(); if (!a || !playing) return;
-    const S = STATIONS[station]; if (S.id === 'off') return;
+    const S = venue ? VENUES[venue] : STATIONS[station]; if (S.id === 'off') return;
     const out = bus(a), spb = 60 / S.bpm / 4; // 16th notes
     if (nextT < a.currentTime) nextT = a.currentTime + 0.05;
     while (nextT < a.currentTime + 0.35) {
@@ -54,6 +57,19 @@ export function createAudio7(getCtx) {
         if (s % 16 === 0) { const ch = [[50, 57, 62, 65], [48, 55, 60, 63], [46, 53, 58, 62], [45, 52, 57, 60]][bar]; ch.forEach(n => { osc(a, out, 'sine', N(n), t, spb * 15, 0.06); osc(a, out, 'triangle', N(n) * 1.003, t, spb * 15, 0.025); }); }
         if (s % 16 === 8 && Math.random() < 0.5) osc(a, out, 'sine', N(74 + [0, 3, 7, 10][Math.floor(Math.random() * 4)]), t, spb * 6, 0.04);
         if (s % 32 === 0) hiss(a, out, t, 2.5, 0.05, 600, 0.4);
+      } else if (S.id === 'club') { // four on the floor, offbeat hats, pumping saw bass, a stab every two bars
+        const root = [41, 41, 44, 39][bar];
+        if (s % 4 === 0) osc(a, out, 'sine', 130, t, 0.22, 0.6, 42);
+        if (s % 4 === 2) hiss(a, out, t, 0.05, 0.12, 7000, 1, 'highpass');
+        if (s % 8 === 4) hiss(a, out, t, 0.18, 0.22, 1700, 0.6);
+        if (s % 4 === 2 || s % 4 === 3) osc(a, out, 'sawtooth', N(root), t, spb * 0.9, 0.1);
+        if (s % 32 === 0) [0, 3, 7, 10].forEach(k => osc(a, out, 'square', N(root + 24 + k), t, spb * 2, 0.035));
+      } else if (S.id === 'cantina') { // lazy two-step, plucked minor riff
+        const root = [45, 45, 43, 40][bar], riff = [0, 3, 7, 3, 10, 7, 3, 0];
+        if (s % 8 === 0) osc(a, out, 'sine', 100, t, 0.2, 0.4, 50);
+        if (s % 8 === 4) hiss(a, out, t, 0.08, 0.15, 3000, 0.7);
+        if (s % 2 === 0) osc(a, out, 'triangle', N(root + 12 + riff[(s / 2) % 8]), t, spb * 1.6, 0.06);
+        if (s % 16 === 0) osc(a, out, 'sawtooth', N(root - 12), t, spb * 6, 0.07);
       } else if (S.id === 'ceres') {
         const root = [45, 41, 43, 40][bar], arp = [0, 7, 12, 15, 12, 7, 3, 7];
         if (s % 4 === 0) osc(a, out, 'sine', 110, t, 0.2, 0.45, 45);
@@ -66,7 +82,7 @@ export function createAudio7(getCtx) {
     }
   }
   function setPlaying(on) {
-    const a = getCtx(); playing = !!on && STATIONS[station].id !== 'off';
+    const a = getCtx(); playing = !!on && (!!venue || STATIONS[station].id !== 'off');
     if (a) { const g = bus(a).gain; g.cancelScheduledValues(a.currentTime); g.setTargetAtTime(playing ? 0.22 : 0.0001, a.currentTime, 0.15); }
     clearInterval(timer); if (playing) { step = 0; nextT = 0; timer = setInterval(schedule, 90); schedule(); }
   }
@@ -150,7 +166,9 @@ export function createAudio7(getCtx) {
     get station() { return STATIONS[station]; }, get stationIndex() { return station; }, get playing() { return playing; },
     setStation(i, on) { station = ((i % STATIONS.length) + STATIONS.length) % STATIONS.length; tuneStatic(); setPlaying(on); return STATIONS[station]; },
     next(on) { return this.setStation(station + 1, on); },
-    radio(on) { setPlaying(on); },
+    radio(on) { if (venue) { venueWas = !!on; return; } setPlaying(on); },
+    setVenue(v) { v = VENUES[v] ? v : null; if (v === venue) return venue; if (v && !venue) venueWas = playing; venue = v; step = 0; setPlaying(v ? true : venueWas); if (radioBus && v) { const a = getCtx(); if (a) radioBus.gain.setTargetAtTime(0.16, a.currentTime, 0.2); } return venue; },
+    get venue() { return venue; },
     dj() { const S = STATIONS[station]; return S.dj.length ? S.dj[Math.floor(Math.random() * S.dj.length)] : null; }
   };
 }

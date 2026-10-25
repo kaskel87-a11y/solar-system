@@ -1,0 +1,3914 @@
+{
+ "format": "solar-system-story/missions v1",
+ "notes": [
+  "Grouped by contact as Grok Bot asked. Each mission: id, giver, setup (short phone lines), type (deliver/escort/kill/steal/race/heist), location, rewards.credits, choice (or null).",
+  "steps[] use the exact game.js QUESTS step schema (goto/collect/defeat/return/take/clean/race/escort, a/d or at:[dx,dz], r, limit, vehicle, wanted, item, wave). New step types/extras are listed per mission in engine_needs.",
+  "Missions with existing:true are already in game.js QUESTS under the same id; keep their ids and rewards.",
+  "Coordinates for new buildings/hubs are proposals (colony-local metres); adjust to the real layout."
+ ],
+ "mapping_to_game_js": {
+  "id": "QUESTS[].id",
+  "world": "QUESTS[].world",
+  "giver": "QUESTS[].contact (omit for Control quests)",
+  "title": "QUESTS[].title",
+  "dialogue.intro": "QUESTS[].intro (prefix \"Name: \", as existing contact intros do)",
+  "steps": "QUESTS[].steps (same schema)",
+  "rewards.credits/xp/unlock/badge": "QUESTS[].reward",
+  "fiction": "always true for contact missions",
+  "dialogue.success / dialogue.fail": "new: replaces the random \"Pleasure doing business\" line and the fail() reason",
+  "setup, type, location, choice, prerequisites, chain/order, fail_conditions, engine_needs": "new fields; ignored by the current engine"
+ },
+ "proposed_buildings": {
+  "Mars/Ares Junction": {
+   "Cantina": [
+    31,
+    -17
+   ],
+   "Depot": [
+    -44,
+    -14
+   ],
+   "Velvet Airlock": [
+    -30,
+    -36
+   ],
+   "Gun shop (Ozzie’s Iron)": [
+    16,
+    -38
+   ],
+   "First Junction Trust (bank)": [
+    -4,
+    -40
+   ],
+   "Gus’s Gently Used (dealership/garage)": [
+    -60,
+    -4
+   ],
+   "Security post": [
+    4,
+    -24
+   ]
+  },
+  "Moon/Freeport Tranquility": {
+   "Bar (the Dry Sea)": [
+    16,
+    18
+   ]
+  }
+ },
+ "proposed_wave_types": {
+  "thug": "unarmed colonist brawler",
+  "goon": "Saltblood gunman",
+  "enforcer": "armored cartel mini-boss",
+  "guard": "colony/corp guard using cover",
+  "squad": "3 armed security",
+  "sdrone": "security drone (exists in world.js as security)",
+  "sbuggy": "patrol buggy (exists in world.js as security)"
+ },
+ "contacts": {
+  "Dutch": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    29,
+    -15
+   ],
+   "building": "Cantina",
+   "blurb": "Cantina barkeep. Knows who needs what.",
+   "status": "new",
+   "tier": "v7.3",
+   "missions": [
+    {
+     "id": "dutch-01-sweep",
+     "chain": "dutch-rags",
+     "order": 1,
+     "giver": "Dutch",
+     "title": "Pocket Change",
+     "world": "Mars",
+     "location": "Ares Junction: Cantina",
+     "type": "deliver",
+     "setup": [
+      "Dutch: You’re broke. I can smell it.",
+      "Dutch: Ten crates of ration paste to the depot. Don’t eat any."
+     ],
+     "objectives": [
+      "Walk into the Cantina",
+      "Load paste crates from the pad",
+      "Drop them at the depot"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Cantina",
+       "text": "Walk into the Cantina"
+      },
+      {
+       "type": "collect",
+       "at": [
+        -31,
+        18
+       ],
+       "spread": 6,
+       "n": 3,
+       "item": "cargo",
+       "text": "Load paste crates from the pad"
+      },
+      {
+       "type": "goto",
+       "text": "Drop them at the depot",
+       "at": [
+        -44,
+        -14
+       ],
+       "r": 5
+      }
+     ],
+     "rewards": {
+      "credits": 60,
+      "xp": 40
+     },
+     "dialogue": {
+      "intro": "Dutch: Everybody starts at zero. Most stay there. Prove me wrong.",
+      "success": "Dutch: Sixty credits. Don’t spend it all on oxygen.",
+      "fail": "Dutch: You lost paste. Paste. Unbelievable."
+     },
+     "fail_conditions": [
+      "Crates destroyed",
+      "Arrested (busted)"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": false,
+     "notes": "Rags-to-Riches: first job on a fresh $0 save.",
+     "engine_needs": [
+      "extra:building",
+      "step:enter"
+     ]
+    },
+    {
+     "id": "dutch-02-taxi",
+     "chain": "dutch-rags",
+     "order": 2,
+     "giver": "Dutch",
+     "title": "Meter’s Running",
+     "world": "Mars",
+     "location": "Ares Junction → Hab 3 → landing pad",
+     "type": "escort",
+     "setup": [
+      "Dutch: Drunk miner needs a lift home.",
+      "Dutch: Drive smooth. He pukes in his helmet, you clean it."
+     ],
+     "objectives": [
+      "Grab any ride",
+      "Pick up the miner outside the Cantina",
+      "Drop him at Hab 3"
+     ],
+     "steps": [
+      {
+       "type": "take",
+       "text": "Grab any ride"
+      },
+      {
+       "type": "goto",
+       "text": "Pick up the miner outside the Cantina",
+       "at": [
+        30,
+        -10
+       ],
+       "r": 4,
+       "vehicle": "any"
+      },
+      {
+       "type": "goto",
+       "text": "Drop him at Hab 3",
+       "at": [
+        24,
+        6
+       ],
+       "r": 6,
+       "limit": 60,
+       "text_hint": "Hard hits wake him up angry"
+      }
+     ],
+     "rewards": {
+      "credits": 80,
+      "xp": 50
+     },
+     "dialogue": {
+      "intro": "Dutch: Taxi work. Glamorous. Pays.",
+      "success": "Dutch: He tipped. Nobody ever tips. What did you do?",
+      "fail": "Dutch: He walked. Took his credits with him."
+     },
+     "fail_conditions": [
+      "Passenger takes 3 hard hits",
+      "Timer runs out",
+      "Vehicle wrecked"
+     ],
+     "prerequisites": [
+      "dutch-01-sweep"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Reusable taxi template: random passenger, random drop, payout by time.",
+     "engine_needs": []
+    },
+    {
+     "id": "dutch-03-tab",
+     "chain": "dutch-rags",
+     "order": 3,
+     "giver": "Dutch",
+     "title": "Settle the Tab",
+     "world": "Mars",
+     "location": "Ares Junction: hauler yard",
+     "type": "kill",
+     "setup": [
+      "Dutch: Dockhand owes me 200 on his bar tab.",
+      "Dutch: Shake him. Don’t kill him. Dead men don’t pay."
+     ],
+     "objectives": [
+      "Find the dockhand by the depot",
+      "Beat down his buddies (fists only)",
+      "Bring the credits back to Dutch"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Find the dockhand by the depot",
+       "at": [
+        -46,
+        -4
+       ],
+       "r": 4
+      },
+      {
+       "type": "defeat",
+       "at": [
+        -46,
+        -4
+       ],
+       "wave": [
+        "thug",
+        "thug"
+       ],
+       "nonlethal": true,
+       "text": "Beat down his buddies (fists only)"
+      },
+      {
+       "type": "goto",
+       "text": "Bring the credits back to Dutch",
+       "at": [
+        29,
+        -15
+       ],
+       "r": 3
+      }
+     ],
+     "rewards": {
+      "credits": 120,
+      "xp": 60
+     },
+     "dialogue": {
+      "intro": "Dutch: Collections. Fists only, unless he pulls first.",
+      "success": "Dutch: Paid in full. Here’s your cut.",
+      "fail": "Dutch: You killed him. Now I’m out 200 AND I owe the undertaker."
+     },
+     "fail_conditions": [
+      "Dockhand killed",
+      "Fire a gun inside the colony (wanted 2+)"
+     ],
+     "prerequisites": [
+      "dutch-02-taxi"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:nonlethal",
+      "wave:thug"
+     ]
+    },
+    {
+     "id": "dutch-04-intro",
+     "chain": "dutch-rags",
+     "order": 4,
+     "giver": "Dutch",
+     "title": "Somebody Wants to Meet You",
+     "world": "Mars",
+     "location": "Ares Junction: behind the Cantina",
+     "type": "deliver",
+     "setup": [
+      "Dutch: Rook’s been asking about you.",
+      "Dutch: Take him this envelope. Don’t open it."
+     ],
+     "objectives": [
+      "Grab the envelope off the bar",
+      "Hand it to Rook"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Grab the envelope off the bar",
+       "at": [
+        29,
+        -15
+       ],
+       "r": 2,
+       "item": "contraband"
+      },
+      {
+       "type": "goto",
+       "text": "Hand it to Rook",
+       "at": [
+        36,
+        -26
+       ],
+       "r": 3
+      }
+     ],
+     "rewards": {
+      "credits": 50,
+      "xp": 40,
+      "unlock": "contact:Rook"
+     },
+     "dialogue": {
+      "intro": "Dutch: Rook doesn’t ask twice. Neither do I.",
+      "success": "Rook: You didn’t open it. Good. We’ll talk.",
+      "fail": "Dutch: You opened it, didn’t you."
+     },
+     "fail_conditions": [
+      "Envelope dropped while wanted"
+     ],
+     "prerequisites": [
+      "dutch-03-tab"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Gates Rook’s chain in Rags-to-Riches saves; normal saves already have Rook.",
+     "engine_needs": []
+    }
+   ]
+  },
+  "Rook": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    36,
+    -26
+   ],
+   "building": null,
+   "blurb": "Fixer. Doesn’t like questions.",
+   "status": "existing (world.js)",
+   "tier": "v7.3",
+   "links": [
+    "Hot cargo (Venus permit referral, planets/venus.md)"
+   ],
+   "missions": [
+    {
+     "id": "mars-smuggle",
+     "chain": "rook-heist",
+     "order": 1,
+     "giver": "Rook",
+     "title": "Smuggling run",
+     "world": "Mars",
+     "location": "Ares Junction loading dock → old pumping station",
+     "type": "deliver",
+     "setup": [
+      "Rook: Crate on the dock. No questions.",
+      "Rook: Steal a ride. Not your rover. Security’s tipped."
+     ],
+     "objectives": [
+      "Grab the crate on the loading dock",
+      "Steal a ride (not your rover)",
+      "Deliver to the pumping station"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Grab the crate on the loading dock",
+       "at": [
+        -34,
+        18
+       ],
+       "r": 3,
+       "item": "contraband"
+      },
+      {
+       "type": "take",
+       "text": "Steal a ride (not your rover)"
+      },
+      {
+       "type": "goto",
+       "text": "Deliver to the pumping station",
+       "a": -60,
+       "d": 380,
+       "r": 12,
+       "vehicle": "stolen",
+       "limit": 120,
+       "wanted": 2
+      }
+     ],
+     "rewards": {
+      "credits": 350,
+      "xp": 150,
+      "badge": "Contraband"
+     },
+     "dialogue": {
+      "intro": "Rook: Crate on the loading dock, no questions. Don’t get pinched.",
+      "success": "Rook: Pleasure doing business.",
+      "fail": "Rook: You got pinched. Job’s blown."
+     },
+     "fail_conditions": [
+      "Busted",
+      "Timer runs out"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": true,
+     "notes": "Already in game.js QUESTS. Story retcon: the crate was glow-dust.",
+     "engine_needs": []
+    },
+    {
+     "id": "mars-getaway",
+     "chain": "rook-heist",
+     "order": 2,
+     "giver": "Rook",
+     "title": "Getaway driver",
+     "world": "Mars",
+     "location": "Behind the Cantina → safehouse",
+     "type": "escort",
+     "setup": [
+      "Rook: Crew’s making a withdrawal.",
+      "Rook: You drive. Then lose them. I mean it."
+     ],
+     "objectives": [
+      "Meet the crew behind the cantina",
+      "Grab a fast vehicle",
+      "Reach the safehouse",
+      "Lose your wanted level"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Meet the crew behind the cantina",
+       "at": [
+        30,
+        -28
+       ],
+       "r": 4
+      },
+      {
+       "type": "take",
+       "text": "Grab a fast vehicle"
+      },
+      {
+       "type": "goto",
+       "text": "Reach the safehouse",
+       "a": -175,
+       "d": 430,
+       "r": 14,
+       "vehicle": "stolen",
+       "limit": 75,
+       "wanted": 3
+      },
+      {
+       "type": "clean",
+       "text": "Lose your wanted level"
+      }
+     ],
+     "rewards": {
+      "credits": 300,
+      "xp": 170,
+      "unlock": "paint:camo"
+     },
+     "dialogue": {
+      "intro": "Rook: My crew’s about to make a withdrawal. You drive.",
+      "success": "Rook: Not bad. Don’t get comfortable.",
+      "fail": "Rook: Security boxed you in. Amateur hour."
+     },
+     "fail_conditions": [
+      "Busted",
+      "Timer runs out"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": true,
+     "engine_needs": []
+    },
+    {
+     "id": "rook-03-case",
+     "chain": "rook-heist",
+     "order": 3,
+     "giver": "Rook",
+     "title": "Casing the Trust",
+     "world": "Mars",
+     "location": "First Junction Trust (bank)",
+     "type": "steal",
+     "setup": [
+      "Rook: First Junction Trust. Quiet money.",
+      "Rook: Walk in. Look poor. Photograph everything."
+     ],
+     "objectives": [
+      "Walk into the bank",
+      "Snap the vault, cameras and guard rota",
+      "Lift the guard’s keycard (melee from behind)",
+      "Leave without heat"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "First Junction Trust",
+       "text": "Walk into the bank"
+      },
+      {
+       "type": "collect",
+       "at": [
+        -4,
+        -40
+       ],
+       "spread": 5,
+       "n": 3,
+       "item": "camera",
+       "wanted_on_fail": 1,
+       "text": "Snap the vault, cameras and guard rota"
+      },
+      {
+       "type": "goto",
+       "text": "Lift the guard’s keycard (melee from behind)",
+       "at": [
+        0,
+        -44
+       ],
+       "r": 2,
+       "item": "keycard"
+      },
+      {
+       "type": "goto",
+       "text": "Leave without heat",
+       "at": [
+        36,
+        -26
+       ],
+       "r": 4,
+       "nowanted": true
+      }
+     ],
+     "rewards": {
+      "credits": 250,
+      "xp": 150
+     },
+     "dialogue": {
+      "intro": "Rook: Plan first. Guns later. Usually.",
+      "success": "Rook: Codes point to Ceres. The Exchange. We need a crew.",
+      "fail": "Rook: They made you. Lay low a week, then we try again."
+     },
+     "fail_conditions": [
+      "Wanted level gained inside the bank",
+      "Keycard guard alerted"
+     ],
+     "prerequisites": [
+      "mars-getaway"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Heist stage 1: PLAN (scout and intel). The Mars branch holds the routing codes for the real vault at Occator Exchange (planets/ceres.md).",
+     "engine_needs": [
+      "extra:building",
+      "extra:nowanted",
+      "item:keycard",
+      "step:enter"
+     ]
+    },
+    {
+     "id": "rook-04-crew",
+     "chain": "rook-heist",
+     "order": 4,
+     "giver": "Rook",
+     "title": "Assemble the Crew",
+     "world": "Mars + Moon + Ceres",
+     "location": "Three hubs",
+     "type": "heist",
+     "setup": [
+      "Rook: Need a driller, a hacker, a wheelman.",
+      "Rook: Pick who you trust. Cheap ones talk."
+     ],
+     "objectives": [
+      "Hire a driller: Ozzie (pricey, solid) or a cantina drunk (cheap)",
+      "Inside help: Penny Okoro (vault engineer) or Halo",
+      "Hire a wheelman: Kestrel, or drive the getaway yourself",
+      "Bring the crew to the safehouse"
+     ],
+     "steps": [
+      {
+       "type": "choice",
+       "id": "driller",
+       "text": "Hire a driller: Ozzie (pricey, solid) or a cantina drunk (cheap)"
+      },
+      {
+       "type": "choice",
+       "id": "hacker",
+       "text": "Inside help: Penny Okoro (vault engineer) or Halo"
+      },
+      {
+       "type": "choice",
+       "id": "wheel",
+       "text": "Hire a wheelman: Kestrel, or drive the getaway yourself"
+      },
+      {
+       "type": "goto",
+       "text": "Bring the crew to the safehouse",
+       "a": -175,
+       "d": 430,
+       "r": 14
+      }
+     ],
+     "rewards": {
+      "credits": 0,
+      "xp": 200
+     },
+     "dialogue": {
+      "intro": "Rook: Every crew member is a cut and a risk.",
+      "success": "Rook: Crew’s set. Nobody look at anybody.",
+      "fail": "Rook: You hired a rat. The rat ran. Pick again."
+     },
+     "fail_conditions": [
+      "Cannot afford hire fees"
+     ],
+     "prerequisites": [
+      "rook-03-case"
+     ],
+     "choice": {
+      "prompt": "Hire fees come out of your cut. Pros cost more but fail less in the vault.",
+      "options": [
+       {
+        "id": "pros",
+        "label": "Hire pros (-900 cr)",
+        "effect": "heist.quality=high",
+        "line": "Rook: Expensive. Good. Expensive is quiet."
+       },
+       {
+        "id": "cheap",
+        "label": "Hire cheap (-200 cr)",
+        "effect": "heist.quality=low; vault alarm sooner",
+        "line": "Rook: Cheap. We’ll see."
+       }
+      ]
+     },
+     "existing": false,
+     "notes": "Heist stage 2: CREW. Hire options double as the NPC \"hire muscle\" system.",
+     "engine_needs": [
+      "step:choice"
+     ]
+    },
+    {
+     "id": "rook-05-withdrawal",
+     "chain": "rook-heist",
+     "order": 5,
+     "giver": "Rook",
+     "title": "The Big Withdrawal",
+     "world": "Ceres",
+     "location": "Occator Exchange vault → Starship",
+     "type": "heist",
+     "setup": [
+      "Rook: Tonight we rob the Quiet’s bank.",
+      "Rook: Drill, grab, run. Do not get greedy."
+     ],
+     "objectives": [
+      "Fly the crew to Occator Exchange",
+      "Go in loud (or keycard in quiet)",
+      "Defend the drill for 45 s",
+      "Grab the vault boxes (and the ledger)",
+      "Rook draws on you",
+      "Get to the getaway ride (Tether Hopper)",
+      "Reach the Starship with 4★ on you"
+     ],
+     "steps": [
+      {
+       "type": "travel",
+       "to": "Ceres",
+       "text": "Fly the crew to Occator Exchange"
+      },
+      {
+       "type": "enter",
+       "building": "Exchange vault",
+       "wanted": 3,
+       "text": "Go in loud (or keycard in quiet)"
+      },
+      {
+       "type": "hold",
+       "at": [
+        -4,
+        -46
+       ],
+       "r": 4,
+       "seconds": 45,
+       "wave": [
+        "guard",
+        "guard",
+        "squad"
+       ],
+       "text": "Defend the drill for 45 s"
+      },
+      {
+       "type": "collect",
+       "at": [
+        -4,
+        -48
+       ],
+       "spread": 3,
+       "n": 4,
+       "item": "cargo",
+       "text": "Grab the vault boxes (and the ledger)"
+      },
+      {
+       "type": "choice",
+       "id": "rook_reveal",
+       "text": "Rook draws on you"
+      },
+      {
+       "type": "take",
+       "vehicle": "tether_hopper",
+       "text": "Get to the getaway ride (Tether Hopper)"
+      },
+      {
+       "type": "return",
+       "wanted": 4,
+       "limit": 150,
+       "text": "Reach the Starship with 4★ on you"
+      }
+     ],
+     "rewards": {
+      "credits": 5000,
+      "xp": 500,
+      "badge": "Withdrawal Slip"
+     },
+     "dialogue": {
+      "intro": "Rook: Every guard on Ceres is about to hate you.",
+      "success": "Rook: We’re rich. Now we’re targets.",
+      "fail": "Rook: Vault’s blown, crew’s scattered. Run."
+     },
+     "fail_conditions": [
+      "Drill destroyed",
+      "Busted",
+      "Die with the boxes",
+      "Drift off the salt flats (0.03 g)"
+     ],
+     "prerequisites": [
+      "rook-04-crew"
+     ],
+     "choice": {
+      "prompt": "In the vault: the Quiet’s black ledger. Then Rook raises his gun. He’s worked for Mr. Sable all along.",
+      "options": [
+       {
+        "id": "take_cut",
+        "label": "Take the cut, give Rook the ledger",
+        "effect": "credits +2000; flag:rook_loyal_to_sable; finale path=quiet",
+        "line": "Rook: Smart. Paper gets people killed."
+       },
+       {
+        "id": "take_ledger",
+        "label": "Talk him down, keep the ledger",
+        "effect": "flag:ledger; flag:rook_turned (Rook joins you vs Sable)",
+        "line": "Rook: …Fine. I always hated the old man."
+       },
+       {
+        "id": "betray",
+        "label": "Shoot Rook first",
+        "effect": "flag:ledger; flag:rook_dead; Rook’s Mars jobs close",
+        "line": "Rook: Should’ve asked a question."
+       }
+      ]
+     },
+     "existing": false,
+     "notes": "Heist stages 3+4: VAULT and GETAWAY. Same heist as planets/ceres.md mission 2; this is its full script. Rook’s twist matches ceres.md.",
+     "engine_needs": [
+      "extra:building",
+      "hub:Ceres",
+      "step:choice",
+      "step:enter",
+      "step:hold",
+      "step:travel",
+      "vehicle:tether_hopper",
+      "wave:guard",
+      "wave:squad"
+     ]
+    }
+   ]
+  },
+  "Vesna": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    8,
+    24
+   ],
+   "building": null,
+   "blurb": "Salvage broker. Pays on time.",
+   "status": "existing (world.js)",
+   "tier": "v7.3",
+   "links": [
+    "Salvage rights (Mercury permit referral, planets/mercury.md)"
+   ],
+   "missions": [
+    {
+     "id": "mars-cargo",
+     "chain": "vesna-glow",
+     "order": 1,
+     "giver": "Vesna",
+     "title": "Stolen cargo",
+     "world": "Mars",
+     "location": "Nest past the dunes",
+     "type": "kill",
+     "setup": [
+      "Vesna: Hive dragged off my ore pod.",
+      "Vesna: Burn the nest. Bring back my ledger."
+     ],
+     "objectives": [
+      "Find the nest past the dunes",
+      "Burn out the nest",
+      "Recover the cargo pod",
+      "Bring the pod back to Vesna"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Find the nest past the dunes",
+       "a": -150,
+       "d": 330,
+       "r": 18
+      },
+      {
+       "type": "defeat",
+       "a": -150,
+       "d": 330,
+       "wave": [
+        "nest",
+        "crawler",
+        "crawler",
+        "hunter"
+       ],
+       "ambush": true,
+       "text": "Burn out the nest"
+      },
+      {
+       "type": "goto",
+       "text": "Recover the cargo pod",
+       "a": -147,
+       "d": 336,
+       "r": 3,
+       "item": "cargo"
+      },
+      {
+       "type": "goto",
+       "text": "Bring the pod back to Vesna",
+       "at": [
+        8,
+        24
+       ],
+       "r": 6
+      }
+     ],
+     "rewards": {
+      "credits": 400,
+      "xp": 200,
+      "badge": "Exterminator"
+     },
+     "dialogue": {
+      "intro": "Vesna: Burn it, bring back my pod. I pay professionals.",
+      "success": "Vesna: Clean work. Mostly.",
+      "fail": "Vesna: The bugs got you. Want another crack?"
+     },
+     "fail_conditions": [
+      "Killed"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": true,
+     "notes": "Already in QUESTS. Story: the pod was full of hive resin, not ore.",
+     "engine_needs": []
+    },
+    {
+     "id": "mars-race",
+     "chain": "vesna-glow",
+     "order": 2,
+     "giver": "Vesna",
+     "title": "Canyon sprint",
+     "world": "Mars",
+     "location": "Junction loop",
+     "type": "race",
+     "setup": [
+      "Vesna: Kids race the junction loop.",
+      "Vesna: Six gates, 70 seconds. Bikes flip."
+     ],
+     "objectives": [
+      "Grab a fast vehicle",
+      "Hit every gate"
+     ],
+     "steps": [
+      {
+       "type": "take",
+       "text": "Grab a fast vehicle"
+      },
+      {
+       "type": "race",
+       "pts": [
+        [
+         -40,
+         -60
+        ],
+        [
+         -120,
+         -60
+        ],
+        [
+         -170,
+         10
+        ],
+        [
+         -130,
+         90
+        ],
+        [
+         -50,
+         80
+        ],
+        [
+         0,
+         30
+        ]
+       ],
+       "limit": 70,
+       "text": "Hit every gate"
+      }
+     ],
+     "rewards": {
+      "credits": 250,
+      "xp": 120,
+      "unlock": "bandana:blaze"
+     },
+     "dialogue": {
+      "intro": "Vesna: You look like you need money. Race.",
+      "success": "Vesna: Not bad. The kids hate you now.",
+      "fail": "Vesna: Too slow. Kids laughed."
+     },
+     "fail_conditions": [
+      "Timer runs out"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": true,
+     "engine_needs": []
+    },
+    {
+     "id": "vesna-03-resin",
+     "chain": "vesna-glow",
+     "order": 3,
+     "giver": "Vesna",
+     "title": "Resin Rush",
+     "world": "Mars",
+     "location": "Badlands nests",
+     "type": "steal",
+     "setup": [
+      "Vesna: That pod was resin, not ore.",
+      "Vesna: Resin + heat = glow-dust. Get me more."
+     ],
+     "objectives": [
+      "Scrape resin from live nests",
+      "Survive the swarm",
+      "Deliver resin to Vesna"
+     ],
+     "steps": [
+      {
+       "type": "collect",
+       "a": 40,
+       "d": 260,
+       "spread": 20,
+       "n": 5,
+       "item": "resin",
+       "text": "Scrape resin from live nests"
+      },
+      {
+       "type": "defeat",
+       "a": 40,
+       "d": 260,
+       "wave": [
+        "crawler",
+        "crawler",
+        "hunter"
+       ],
+       "ambush": true,
+       "text": "Survive the swarm"
+      },
+      {
+       "type": "goto",
+       "text": "Deliver resin to Vesna",
+       "at": [
+        8,
+        24
+       ],
+       "r": 4
+      }
+     ],
+     "rewards": {
+      "credits": 450,
+      "xp": 180
+     },
+     "dialogue": {
+      "intro": "Vesna: Saltblood pays miners peanuts for this. We cut them out.",
+      "success": "Vesna: Five jars. We’re in business, partner.",
+      "fail": "Vesna: The hive kept its jars. So did I. Empty."
+     },
+     "fail_conditions": [
+      "Killed",
+      "Resin jars destroyed by fire (plasma torch)"
+     ],
+     "prerequisites": [
+      "mars-cargo"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Peaceful mode: nests are dormant, resin is just collectibles.",
+     "engine_needs": [
+      "item:resin"
+     ]
+    },
+    {
+     "id": "vesna-04-cook",
+     "chain": "vesna-glow",
+     "order": 4,
+     "giver": "Vesna",
+     "title": "The Cook Shack",
+     "world": "Mars",
+     "location": "Old pumping station",
+     "type": "heist",
+     "setup": [
+      "Vesna: Pumping station. Perfect lab.",
+      "Vesna: Saltblood owns it. Evict them."
+     ],
+     "objectives": [
+      "Reach the pumping station",
+      "Clear out the Saltblood squatters",
+      "Hold while Vesna fires up the cooker"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Reach the pumping station",
+       "a": -60,
+       "d": 380,
+       "r": 14
+      },
+      {
+       "type": "defeat",
+       "a": -60,
+       "d": 380,
+       "wave": [
+        "goon",
+        "goon",
+        "goon",
+        "goon"
+       ],
+       "text": "Clear out the Saltblood squatters"
+      },
+      {
+       "type": "hold",
+       "a": -60,
+       "d": 380,
+       "r": 8,
+       "seconds": 40,
+       "wave": [
+        "goon",
+        "goon"
+       ],
+       "text": "Hold while Vesna fires up the cooker"
+      }
+     ],
+     "rewards": {
+      "credits": 600,
+      "xp": 250,
+      "unlock": "system:contraband"
+     },
+     "dialogue": {
+      "intro": "Vesna: Every business needs a factory. Ours has bullet holes.",
+      "success": "Vesna: Lab’s hot. Glow-dust trade is open. Don’t sample.",
+      "fail": "Vesna: Saltblood kept their shack."
+     },
+     "fail_conditions": [
+      "Killed",
+      "Cooker destroyed"
+     ],
+     "prerequisites": [
+      "vesna-03-resin"
+     ],
+     "choice": {
+      "prompt": "One Saltblood cook surrenders. Knows Mr. Sable personally.",
+      "options": [
+       {
+        "id": "spare",
+        "label": "Spare him, put him to work",
+        "effect": "flag:cook_spared; lab yield +20%; Mr. Sable learns your name sooner",
+        "line": "Cook: I’ll cook. Just… don’t."
+       },
+       {
+        "id": "execute",
+        "label": "Execute him",
+        "effect": "flag:cook_dead; Saltblood heat +1 permanently",
+        "line": "Vesna: Cold. Mr. Sable will hear about that."
+       },
+       {
+        "id": "send_back",
+        "label": "Send him back to Mr. Sable with a message",
+        "effect": "flag:message_sent; triggers sable-01 early",
+        "line": "Vesna: Bold. Stupid, but bold."
+       }
+      ]
+     },
+     "existing": false,
+     "notes": "Unlocks the contraband business loop (see side jobs + MISSIONS.md).",
+     "engine_needs": [
+      "step:hold",
+      "wave:goon"
+     ]
+    }
+   ]
+  },
+  "Kestrel": {
+   "world": "Moon",
+   "hub": "Freeport Tranquility",
+   "at": [
+    12,
+    20
+   ],
+   "building": null,
+   "blurb": "Runs the crater races. Takes a cut.",
+   "status": "existing (world.js)",
+   "tier": "v7.3",
+   "links": [
+    "Invitational (Titan permit referral, planets/titan.md)"
+   ],
+   "missions": [
+    {
+     "id": "moon-race",
+     "chain": "kestrel-track",
+     "order": 1,
+     "giver": "Kestrel",
+     "title": "Crater run",
+     "world": "Moon",
+     "location": "Freeport crater loop",
+     "type": "race",
+     "setup": [
+      "Kestrel: Fastest lap’s 52. Mine.",
+      "Kestrel: You get 60. Steal a bike."
+     ],
+     "objectives": [
+      "Grab a fast vehicle (try a hover bike)",
+      "Hit every gate"
+     ],
+     "steps": [
+      {
+       "type": "take",
+       "text": "Grab a fast vehicle (try a hover bike)"
+      },
+      {
+       "type": "race",
+       "pts": [
+        [
+         50,
+         -40
+        ],
+        [
+         120,
+         -20
+        ],
+        [
+         150,
+         50
+        ],
+        [
+         100,
+         120
+        ],
+        [
+         20,
+         100
+        ],
+        [
+         0,
+         35
+        ]
+       ],
+       "limit": 60,
+       "text": "Hit every gate"
+      }
+     ],
+     "rewards": {
+      "credits": 250,
+      "xp": 120,
+      "unlock": "paint:hazard"
+     },
+     "dialogue": {
+      "intro": "Kestrel: Six gates round the crater. Pray.",
+      "success": "Kestrel: Huh. Lucky.",
+      "fail": "Kestrel: Ha. Slow."
+     },
+     "fail_conditions": [
+      "Timer runs out"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": true,
+     "engine_needs": []
+    },
+    {
+     "id": "kestrel-02-ghost",
+     "chain": "kestrel-track",
+     "order": 2,
+     "giver": "Kestrel",
+     "title": "Chasing Ghosts",
+     "world": "Moon",
+     "location": "Freeport crater loop",
+     "type": "race",
+     "setup": [
+      "Kestrel: Beat my ghost. 52 seconds.",
+      "Kestrel: The blue one’s me. Don’t cry."
+     ],
+     "objectives": [
+      "Beat Kestrel’s ghost"
+     ],
+     "steps": [
+      {
+       "type": "race",
+       "pts": [
+        [
+         50,
+         -40
+        ],
+        [
+         120,
+         -20
+        ],
+        [
+         150,
+         50
+        ],
+        [
+         100,
+         120
+        ],
+        [
+         20,
+         100
+        ],
+        [
+         0,
+         35
+        ]
+       ],
+       "limit": 52,
+       "ghost": "kestrel",
+       "text": "Beat Kestrel’s ghost"
+      }
+     ],
+     "rewards": {
+      "credits": 400,
+      "xp": 150,
+      "unlock": "system:ghost_runs"
+     },
+     "dialogue": {
+      "intro": "Kestrel: Ghost runs. Like racing a dead woman. Me.",
+      "success": "Kestrel: …Fine. You’re fast. Shut up.",
+      "fail": "Kestrel: My ghost lapped you. Embarrassing."
+     },
+     "fail_conditions": [
+      "Ghost finishes first"
+     ],
+     "prerequisites": [
+      "moon-race"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:ghost"
+     ]
+    },
+    {
+     "id": "kestrel-03-fix",
+     "chain": "kestrel-track",
+     "order": 3,
+     "giver": "Kestrel",
+     "title": "Fixed Race",
+     "world": "Moon",
+     "location": "Freeport crater loop",
+     "type": "race",
+     "setup": [
+      "Kestrel: Tycho money’s on the Ceres kid.",
+      "Kestrel: Lose by a second. Or don’t."
+     ],
+     "objectives": [
+      "Race the Tycho field",
+      "Lose whoever’s mad at you"
+     ],
+     "steps": [
+      {
+       "type": "race",
+       "pts": [
+        [
+         50,
+         -40
+        ],
+        [
+         120,
+         -20
+        ],
+        [
+         150,
+         50
+        ],
+        [
+         100,
+         120
+        ],
+        [
+         20,
+         100
+        ],
+        [
+         0,
+         35
+        ]
+       ],
+       "limit": 70,
+       "rivals": 3,
+       "text": "Race the Tycho field"
+      },
+      {
+       "type": "clean",
+       "text": "Lose whoever’s mad at you"
+      }
+     ],
+     "rewards": {
+      "credits": 500,
+      "xp": 180
+     },
+     "dialogue": {
+      "intro": "Kestrel: Bookies want a loser. Pick a side.",
+      "success": "Kestrel: Done. Somebody’s mad. Not me.",
+      "fail": "Kestrel: You crashed. Nobody gets paid."
+     },
+     "fail_conditions": [
+      "Wrecked",
+      "Finish outside top 4"
+     ],
+     "prerequisites": [
+      "kestrel-02-ghost"
+     ],
+     "choice": {
+      "prompt": "Throw the race for the Tycho bookies, or win it for Kestrel’s pride?",
+      "options": [
+       {
+        "id": "throw",
+        "label": "Take a dive (finish 2nd)",
+        "effect": "credits +800; Kestrel trust -1",
+        "line": "Kestrel: You took a dive. I saw."
+       },
+       {
+        "id": "win",
+        "label": "Win it",
+        "effect": "credits +0; Tycho goons ambush you (wanted-free fight)",
+        "line": "Kestrel: THAT’s my racer."
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "extra:rivals"
+     ]
+    },
+    {
+     "id": "kestrel-04-track",
+     "chain": "kestrel-track",
+     "order": 4,
+     "giver": "Kestrel",
+     "title": "Build It and They Crash",
+     "world": "Moon",
+     "location": "Mare Tranquillitatis flats",
+     "type": "race",
+     "setup": [
+      "Kestrel: Build me a track. Six gates.",
+      "Kestrel: Ramps. Make it hurt."
+     ],
+     "objectives": [
+      "Place 6 checkpoints and a ramp",
+      "Run your own track once"
+     ],
+     "steps": [
+      {
+       "type": "build",
+       "item": "gate",
+       "n": 6,
+       "text": "Place 6 checkpoints and a ramp"
+      },
+      {
+       "type": "race",
+       "pts": "player_track",
+       "limit": 90,
+       "text": "Run your own track once"
+      }
+     ],
+     "rewards": {
+      "credits": 300,
+      "xp": 200,
+      "unlock": "system:race_track",
+      "badge": "Track Boss"
+     },
+     "dialogue": {
+      "intro": "Kestrel: Freeport needs a real track.",
+      "success": "Kestrel: Ugly. Perfect. Race night is open.",
+      "fail": "Kestrel: That track killed nobody. Try harder."
+     },
+     "fail_conditions": [
+      "Track has fewer than 6 gates"
+     ],
+     "prerequisites": [
+      "kestrel-03-fix"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Hooks the Later: race track builder (checkpoints, ramps, lap timer, ghost runs).",
+     "engine_needs": [
+      "step:build"
+     ]
+    }
+   ]
+  },
+  "Ines": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    -30,
+    -36
+   ],
+   "building": "Velvet Airlock (VIP room)",
+   "blurb": "Owns the Velvet Airlock. Mr. Sable’s estranged daughter.",
+   "status": "new",
+   "tier": "v7.3",
+   "missions": [
+    {
+     "id": "ines-01-door",
+     "chain": "ines-velvet",
+     "order": 1,
+     "giver": "Ines",
+     "title": "Door Policy",
+     "world": "Mars",
+     "location": "Velvet Airlock: front door",
+     "type": "kill",
+     "setup": [
+      "Ines: Saltblood boys at my door.",
+      "Ines: Brick needs a hand. Bring yours."
+     ],
+     "objectives": [
+      "Get to the Velvet Airlock",
+      "Help Brick clear the door",
+      "Go inside to the VIP room"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Get to the Velvet Airlock",
+       "at": [
+        -30,
+        -36
+       ],
+       "r": 5
+      },
+      {
+       "type": "defeat",
+       "at": [
+        -30,
+        -32
+       ],
+       "wave": [
+        "goon",
+        "goon",
+        "goon"
+       ],
+       "text": "Help Brick clear the door"
+      },
+      {
+       "type": "enter",
+       "building": "Velvet Airlock",
+       "text": "Go inside to the VIP room"
+      }
+     ],
+     "rewards": {
+      "credits": 300,
+      "xp": 150,
+      "unlock": "building:velvet_vip"
+     },
+     "dialogue": {
+      "intro": "Ines: Nobody deals in my club but me.",
+      "success": "Ines: Brick likes you. Brick likes nobody.",
+      "fail": "Ines: Brick had to finish it. Brick is billing you."
+     },
+     "fail_conditions": [
+      "Killed",
+      "Brick goes down",
+      "Shoot a dancer or patron (instant fail)"
+     ],
+     "prerequisites": [
+      "vesna-04-cook"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Unlocks the VIP back room as a mission hub (job board, rumor broker, hire muscle).",
+     "engine_needs": [
+      "extra:building",
+      "step:enter",
+      "wave:goon"
+     ]
+    },
+    {
+     "id": "ines-02-pour",
+     "chain": "ines-velvet",
+     "order": 2,
+     "giver": "Ines",
+     "title": "Bad Pour",
+     "world": "Mars",
+     "location": "Velvet Airlock bar → depot",
+     "type": "steal",
+     "setup": [
+      "Ines: Someone cut my bar stock with dust.",
+      "Ines: Patrons glowing. Bad look."
+     ],
+     "objectives": [
+      "Talk to the bartender",
+      "Follow the supply hauler to the depot",
+      "Steal the tainted hauler",
+      "Dump it in the canyon"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Velvet Airlock",
+       "text": "Talk to the bartender"
+      },
+      {
+       "type": "goto",
+       "text": "Follow the supply hauler to the depot",
+       "at": [
+        -44,
+        -14
+       ],
+       "r": 8,
+       "tail": true
+      },
+      {
+       "type": "goto",
+       "text": "Steal the tainted hauler",
+       "at": [
+        -50,
+        -24
+       ],
+       "r": 3,
+       "vehicle": "stolen"
+      },
+      {
+       "type": "goto",
+       "text": "Dump it in the canyon",
+       "a": 120,
+       "d": 300,
+       "r": 12
+      }
+     ],
+     "rewards": {
+      "credits": 400,
+      "xp": 160
+     },
+     "dialogue": {
+      "intro": "Ines: Follow the crates. Don’t get seen.",
+      "success": "Ines: Corporate supply crates. Meridian. Interesting.",
+      "fail": "Ines: You spooked them. Trail’s cold."
+     },
+     "fail_conditions": [
+      "Spotted while tailing (>3 s in sight cone)",
+      "Busted"
+     ],
+     "prerequisites": [
+      "ines-01-door"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:building",
+      "extra:tail",
+      "step:enter"
+     ]
+    },
+    {
+     "id": "ines-03-guest",
+     "chain": "ines-velvet",
+     "order": 3,
+     "giver": "Ines",
+     "title": "Guest List",
+     "world": "Mars",
+     "location": "Velvet Airlock VIP → landing pad",
+     "type": "escort",
+     "setup": [
+      "Ines: Meridian accountant wants out.",
+      "Ines: Get him to a shuttle. Alive."
+     ],
+     "objectives": [
+      "Collect the accountant in VIP",
+      "Walk him to the pad",
+      "Fly him out in the shuttle"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Velvet Airlock",
+       "text": "Collect the accountant in VIP"
+      },
+      {
+       "type": "escort",
+       "at": [
+        -38,
+        10
+       ],
+       "convoy": "accountant",
+       "wave": [
+        "goon",
+        "goon",
+        "sdrone"
+       ],
+       "text": "Walk him to the pad"
+      },
+      {
+       "type": "take",
+       "vehicle": "shuttle",
+       "text": "Fly him out in the shuttle"
+      }
+     ],
+     "rewards": {
+      "credits": 700,
+      "xp": 220
+     },
+     "dialogue": {
+      "intro": "Ines: He knows where the bodies are. Literally.",
+      "success": "Ines: He’s singing. Song’s about Voss.",
+      "fail": "Ines: He’s dead. So is the lead."
+     },
+     "fail_conditions": [
+      "Accountant killed",
+      "Shuttle destroyed"
+     ],
+     "prerequisites": [
+      "ines-02-pour"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:building",
+      "step:enter",
+      "wave:goon",
+      "wave:sdrone"
+     ]
+    },
+    {
+     "id": "ines-04-lastcall",
+     "chain": "ines-velvet",
+     "order": 4,
+     "giver": "Ines",
+     "title": "Last Call",
+     "world": "Mars",
+     "location": "Velvet Airlock (whole club)",
+     "type": "kill",
+     "setup": [
+      "Ines: Mr. Sable’s sending a message tonight.",
+      "Ines: Lock the doors. Nobody leaves hurt."
+     ],
+     "objectives": [
+      "Get inside before the lockdown",
+      "Defend the club for 90 s",
+      "Take down Mr. Sable’s enforcer"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Velvet Airlock",
+       "text": "Get inside before the lockdown"
+      },
+      {
+       "type": "hold",
+       "building": "Velvet Airlock",
+       "seconds": 90,
+       "wave": [
+        "goon",
+        "goon",
+        "goon",
+        "enforcer"
+       ],
+       "text": "Defend the club for 90 s"
+      },
+      {
+       "type": "defeat",
+       "building": "Velvet Airlock",
+       "wave": [
+        "enforcer"
+       ],
+       "text": "Take down Mr. Sable’s enforcer"
+      }
+     ],
+     "rewards": {
+      "credits": 900,
+      "xp": 300,
+      "badge": "Last Call"
+     },
+     "dialogue": {
+      "intro": "Ines: Music stays on. That’s the rule.",
+      "success": "Ines: Club’s standing. Mr. Sable’s blinking.",
+      "fail": "Ines: They torched the bar. We’re closed."
+     },
+     "fail_conditions": [
+      "Killed",
+      "3+ patrons hurt",
+      "Sable goes down"
+     ],
+     "prerequisites": [
+      "ines-03-guest"
+     ],
+     "choice": {
+      "prompt": "The enforcer begs. He’s Mr. Sable’s nephew.",
+      "options": [
+       {
+        "id": "spare",
+        "label": "Spare him",
+        "effect": "flag:nephew_spared; Mr. Sable offers a truce in sable-02",
+        "line": "Ines: Mercy. Mr. Sable will owe you. Or hunt you."
+       },
+       {
+        "id": "execute",
+        "label": "Finish him",
+        "effect": "flag:nephew_dead; Saltblood war, +1 goon per cartel fight",
+        "line": "Ines: …Mop. Somebody get a mop."
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "extra:building",
+      "step:enter",
+      "step:hold",
+      "wave:enforcer",
+      "wave:goon"
+     ]
+    }
+   ]
+  },
+  "Rusk": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    4,
+    -24
+   ],
+   "building": null,
+   "blurb": "Deputy Marshal. Badge for rent.",
+   "status": "new",
+   "tier": "v7.3",
+   "missions": [
+    {
+     "id": "rusk-01-protection",
+     "chain": "rusk-badge",
+     "order": 1,
+     "giver": "Rusk",
+     "title": "Protection Money",
+     "world": "Mars",
+     "location": "Ares Junction shops",
+     "type": "deliver",
+     "setup": [
+      "Rusk: Your lab. I know. Relax.",
+      "Rusk: Collect my envelopes. Then we’re friends."
+     ],
+     "objectives": [
+      "Collect 4 envelopes from colony shops",
+      "Drop them at the security post"
+     ],
+     "steps": [
+      {
+       "type": "collect",
+       "at": [
+        0,
+        0
+       ],
+       "spread": 40,
+       "n": 4,
+       "item": "contraband",
+       "text": "Collect 4 envelopes from colony shops"
+      },
+      {
+       "type": "goto",
+       "text": "Drop them at the security post",
+       "at": [
+        4,
+        -24
+       ],
+       "r": 3
+      }
+     ],
+     "rewards": {
+      "credits": 200,
+      "xp": 120,
+      "unlock": "system:bribe"
+     },
+     "dialogue": {
+      "intro": "Rusk: I’m not dirty. I’m underpaid.",
+      "success": "Rusk: Your wanted level? Lost the paperwork.",
+      "fail": "Rusk: Short envelope? That’s a fine. Your fine."
+     },
+     "fail_conditions": [
+      "Pocket an envelope (he counts)",
+      "Busted by another officer"
+     ],
+     "prerequisites": [
+      "vesna-04-cook"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Unlocks bribe: pay Rusk to drop 1★ (cost scales).",
+     "engine_needs": []
+    },
+    {
+     "id": "rusk-02-sweep",
+     "chain": "rusk-badge",
+     "order": 2,
+     "giver": "Rusk",
+     "title": "Clean Sweep",
+     "world": "Mars",
+     "location": "Saltblood stash, east badlands",
+     "type": "kill",
+     "setup": [
+      "Rusk: Raid with us. Off the books.",
+      "Rusk: Saltblood stash. Anything you lift is yours."
+     ],
+     "objectives": [
+      "Ride with the patrol to the stash",
+      "Win the firefight (they use cover)",
+      "Grab the dust before the patrol does"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Ride with the patrol to the stash",
+       "a": 80,
+       "d": 320,
+       "r": 14
+      },
+      {
+       "type": "defeat",
+       "a": 80,
+       "d": 320,
+       "wave": [
+        "goon",
+        "goon",
+        "goon",
+        "goon",
+        "enforcer"
+       ],
+       "cover": true,
+       "text": "Win the firefight (they use cover)"
+      },
+      {
+       "type": "collect",
+       "a": 80,
+       "d": 320,
+       "spread": 8,
+       "n": 3,
+       "item": "contraband",
+       "text": "Grab the dust before the patrol does"
+      }
+     ],
+     "rewards": {
+      "credits": 500,
+      "xp": 220
+     },
+     "dialogue": {
+      "intro": "Rusk: Officially you’re a concerned citizen.",
+      "success": "Rusk: Saltblood lost a stash. Mr. Sable lost face.",
+      "fail": "Rusk: Patrol got wiped. That’s paperwork."
+     },
+     "fail_conditions": [
+      "Killed",
+      "Shoot a patrol officer"
+     ],
+     "prerequisites": [
+      "rusk-01-protection"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Showcase for full security combat AI: cover, return fire, call backup (here on your side).",
+     "engine_needs": [
+      "extra:cover",
+      "wave:enforcer",
+      "wave:goon"
+     ]
+    },
+    {
+     "id": "rusk-03-ia",
+     "chain": "rusk-badge",
+     "order": 3,
+     "giver": "Rusk",
+     "title": "Internal Affairs",
+     "world": "Mars",
+     "location": "Security post → badlands",
+     "type": "escort",
+     "setup": [
+      "Rusk: IA’s coming for me. And you.",
+      "Rusk: Drive me out. Or don’t."
+     ],
+     "objectives": [
+      "Pick Rusk up at the post",
+      "Steal a ride",
+      "Outrun the IA squad",
+      "Decide Rusk’s fate"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Pick Rusk up at the post",
+       "at": [
+        4,
+        -24
+       ],
+       "r": 4
+      },
+      {
+       "type": "take",
+       "text": "Steal a ride"
+      },
+      {
+       "type": "goto",
+       "text": "Outrun the IA squad",
+       "a": -120,
+       "d": 400,
+       "r": 14,
+       "wanted": 4,
+       "vehicle": "stolen"
+      },
+      {
+       "type": "choice",
+       "id": "okafor_fate",
+       "text": "Decide Rusk’s fate"
+      }
+     ],
+     "rewards": {
+      "credits": 600,
+      "xp": 260
+     },
+     "dialogue": {
+      "intro": "Rusk: I made you. Now unmake my problem.",
+      "success": "Rusk: You’re a real friend. Or a smart one.",
+      "fail": "Rusk: They got us both. Brilliant."
+     },
+     "fail_conditions": [
+      "Rusk killed by IA",
+      "Busted"
+     ],
+     "prerequisites": [
+      "rusk-02-sweep",
+      "rook-05-withdrawal"
+     ],
+     "choice": {
+      "prompt": "IA wants Rusk. The ledger has his name. What do you do?",
+      "options": [
+       {
+        "id": "spare",
+        "label": "Get him off-world (to Io)",
+        "effect": "flag:rusk_free; he turns up on Io working for Warden Okafor; bribes -50%",
+        "line": "Rusk: I owe you. I hate that."
+       },
+       {
+        "id": "betray",
+        "label": "Hand him to IA",
+        "effect": "flag:rusk_jailed; your wanted 0; bribes disabled",
+        "line": "Rusk: You rat. You absolute rat."
+       },
+       {
+        "id": "execute",
+        "label": "Leave him in the dust",
+        "effect": "flag:rusk_dead; security response +1 tier for 1 day",
+        "line": "Rusk: Wait—"
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "step:choice"
+     ]
+    }
+   ]
+  },
+  "Ozzie": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    16,
+    -38
+   ],
+   "building": "Gun shop (Ozzie’s Iron)",
+   "blurb": "Gunsmith. Two oxygen tanks, zero patience.",
+   "status": "new",
+   "tier": "v7.3",
+   "missions": [
+    {
+     "id": "ozzie-01-testfire",
+     "chain": "ozzie-iron",
+     "order": 1,
+     "giver": "Ozzie",
+     "title": "Test Fire",
+     "world": "Mars",
+     "location": "Ozzie’s Iron → badlands",
+     "type": "kill",
+     "setup": [
+      "Ozzie: New SMG. Never fired it.",
+      "Ozzie: Go shoot something that bites."
+     ],
+     "objectives": [
+      "Pick up the loaner SMG",
+      "Kill 3 hostiles with the SMG"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Gun shop",
+       "text": "Pick up the loaner SMG"
+      },
+      {
+       "type": "defeat",
+       "a": 100,
+       "d": 200,
+       "wave": [
+        "hunter",
+        "hunter",
+        "crawler"
+       ],
+       "weapon": "smg",
+       "text": "Kill 3 hostiles with the SMG"
+      }
+     ],
+     "rewards": {
+      "credits": 250,
+      "xp": 140,
+      "unlock": "shop:smg"
+     },
+     "dialogue": {
+      "intro": "Ozzie: If it jams, run. Then tell me.",
+      "success": "Ozzie: No jams? Keep it. Half price on ammo.",
+      "fail": "Ozzie: You broke my SMG. With your face?"
+     },
+     "fail_conditions": [
+      "Killed",
+      "Swap off the SMG"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": false,
+     "notes": "Gun shop intro. Peaceful mode: shooting-range targets instead.",
+     "engine_needs": [
+      "extra:building",
+      "step:enter"
+     ]
+    },
+    {
+     "id": "ozzie-02-hotiron",
+     "chain": "ozzie-iron",
+     "order": 2,
+     "giver": "Ozzie",
+     "title": "Hot Iron",
+     "world": "Mars",
+     "location": "Meridian convoy, south road",
+     "type": "steal",
+     "setup": [
+      "Ozzie: Meridian’s moving rifles. Scoped.",
+      "Ozzie: Hit the convoy. Bring me the hauler."
+     ],
+     "objectives": [
+      "Intercept the convoy",
+      "Drop the corporate guards",
+      "Steal the ore hauler",
+      "Bring it to the gun shop"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Intercept the convoy",
+       "a": 170,
+       "d": 250,
+       "r": 20
+      },
+      {
+       "type": "defeat",
+       "a": 170,
+       "d": 250,
+       "wave": [
+        "guard",
+        "guard",
+        "sdrone"
+       ],
+       "text": "Drop the corporate guards"
+      },
+      {
+       "type": "goto",
+       "text": "Steal the ore hauler",
+       "a": 170,
+       "d": 250,
+       "r": 3,
+       "vehicle": "stolen"
+      },
+      {
+       "type": "goto",
+       "text": "Bring it to the gun shop",
+       "at": [
+        16,
+        -38
+       ],
+       "r": 6,
+       "wanted": 2
+      }
+     ],
+     "rewards": {
+      "credits": 650,
+      "xp": 220,
+      "unlock": "shop:scoped_rifle"
+     },
+     "dialogue": {
+      "intro": "Ozzie: Corporate guns, independent prices.",
+      "success": "Ozzie: Scoped rifles in stock. You get the first one.",
+      "fail": "Ozzie: Convoy got away. So did my margin."
+     },
+     "fail_conditions": [
+      "Hauler destroyed",
+      "Busted"
+     ],
+     "prerequisites": [
+      "ozzie-01-testfire"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "wave:guard",
+      "wave:sdrone"
+     ]
+    },
+    {
+     "id": "ozzie-03-insurance",
+     "chain": "ozzie-iron",
+     "order": 3,
+     "giver": "Ozzie",
+     "title": "Ozzie’s Insurance",
+     "world": "Mars → Europa",
+     "location": "Ares Junction pad → Conamara Station",
+     "type": "escort",
+     "setup": [
+      "Ozzie: Union on Europa wants launchers.",
+      "Ozzie: Fly them. Keep them dry."
+     ],
+     "objectives": [
+      "Load crates at the pad",
+      "Fly to Europa",
+      "Escort the sled to the union hall"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Load crates at the pad",
+       "at": [
+        -38,
+        10
+       ],
+       "r": 5,
+       "item": "cargo"
+      },
+      {
+       "type": "travel",
+       "to": "Europa",
+       "text": "Fly to Europa"
+      },
+      {
+       "type": "escort",
+       "convoy": "union_sled",
+       "wave": [
+        "guard",
+        "guard",
+        "sdrone"
+       ],
+       "text": "Escort the sled to the union hall"
+      }
+     ],
+     "rewards": {
+      "credits": 900,
+      "xp": 260,
+      "unlock": "shop:grenade_launcher"
+     },
+     "dialogue": {
+      "intro": "Ozzie: Grenade launchers. Don’t drop them.",
+      "success": "Ozzie: Union paid. Launchers are on the shelf.",
+      "fail": "Ozzie: Crates went through the ice. Bye."
+     },
+     "fail_conditions": [
+      "Sled destroyed"
+     ],
+     "prerequisites": [
+      "ozzie-02-hotiron"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Cross-planet hook into planets/europa.md: the Drift union (Juno Reyes) buys the launchers.",
+     "engine_needs": [
+      "hub:Mars → Europa",
+      "step:travel",
+      "wave:guard",
+      "wave:sdrone"
+     ]
+    }
+   ]
+  },
+  "Gus": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    -60,
+    -4
+   ],
+   "building": "Depot / Gus’s Gently Used",
+   "blurb": "Rover dealer. Every ride “barely stolen.”",
+   "status": "new",
+   "tier": "later (dealership)",
+   "missions": [
+    {
+     "id": "gus-01-repo",
+     "chain": "gus-lot",
+     "order": 1,
+     "giver": "Gus",
+     "title": "Repo Man",
+     "world": "Mars",
+     "location": "Hab 3 → Gus’s lot",
+     "type": "steal",
+     "setup": [
+      "Gus: Guy missed six payments.",
+      "Gus: Take the buggy back. Gently-ish."
+     ],
+     "objectives": [
+      "Find the buggy at Hab 3",
+      "Take the buggy",
+      "Bring it to Gus’s lot"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Find the buggy at Hab 3",
+       "at": [
+        42,
+        12
+       ],
+       "r": 3
+      },
+      {
+       "type": "take",
+       "text": "Take the buggy"
+      },
+      {
+       "type": "goto",
+       "text": "Bring it to Gus’s lot",
+       "at": [
+        -60,
+        -4
+       ],
+       "r": 5,
+       "vehicle": "stolen"
+      }
+     ],
+     "rewards": {
+      "credits": 200,
+      "xp": 100,
+      "unlock": "building:dealership"
+     },
+     "dialogue": {
+      "intro": "Gus: Legally it’s mine. Practically, it’s his.",
+      "success": "Gus: Smell that? Commission.",
+      "fail": "Gus: You wrecked my collateral."
+     },
+     "fail_conditions": [
+      "Buggy wrecked"
+     ],
+     "prerequisites": [],
+     "choice": null,
+     "existing": false,
+     "engine_needs": []
+    },
+    {
+     "id": "gus-02-testdrive",
+     "chain": "gus-lot",
+     "order": 2,
+     "giver": "Gus",
+     "title": "Test Drive",
+     "world": "Mars",
+     "location": "Junction loop",
+     "type": "race",
+     "setup": [
+      "Gus: New model. Stripped hover bike.",
+      "Gus: Make it look fast for the buyers."
+     ],
+     "objectives": [
+      "Lap under 60 s, no scratches"
+     ],
+     "steps": [
+      {
+       "type": "race",
+       "pts": [
+        [
+         -40,
+         -60
+        ],
+        [
+         -120,
+         -60
+        ],
+        [
+         -170,
+         10
+        ],
+        [
+         -130,
+         90
+        ],
+        [
+         -50,
+         80
+        ],
+        [
+         0,
+         30
+        ]
+       ],
+       "limit": 60,
+       "vehicle": "hoverbike",
+       "nodamage": true,
+       "text": "Lap under 60 s, no scratches"
+      }
+     ],
+     "rewards": {
+      "credits": 300,
+      "xp": 120,
+      "unlock": "dealer:hoverbike"
+     },
+     "dialogue": {
+      "intro": "Gus: Scratch it, you bought it.",
+      "success": "Gus: Sold three. You’re my mascot now.",
+      "fail": "Gus: Dented. Yours now. Pay up."
+     },
+     "fail_conditions": [
+      "Bike takes damage",
+      "Timer runs out"
+     ],
+     "prerequisites": [
+      "gus-01-repo"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:nodamage"
+     ]
+    },
+    {
+     "id": "gus-03-chop",
+     "chain": "gus-lot",
+     "order": 3,
+     "giver": "Gus",
+     "title": "Chop Shop",
+     "world": "Mars",
+     "location": "Ares Junction + Freeport",
+     "type": "deliver",
+     "setup": [
+      "Gus: Buyer wants three rides. Specific.",
+      "Gus: Hauler, shuttle, buggy. Clean plates."
+     ],
+     "objectives": [
+      "Steal a hauler → lot",
+      "Steal a shuttle → lot",
+      "Steal a buggy → lot",
+      "Each one to the garage"
+     ],
+     "steps": [
+      {
+       "type": "take",
+       "vehicle": "hauler",
+       "text": "Steal a hauler → lot"
+      },
+      {
+       "type": "take",
+       "vehicle": "shuttle",
+       "text": "Steal a shuttle → lot"
+      },
+      {
+       "type": "take",
+       "vehicle": "buggy",
+       "text": "Steal a buggy → lot"
+      },
+      {
+       "type": "goto",
+       "text": "Each one to the garage",
+       "at": [
+        -60,
+        -4
+       ],
+       "r": 5,
+       "repeat": 3
+      }
+     ],
+     "rewards": {
+      "credits": 1200,
+      "xp": 300,
+      "unlock": "building:garage",
+      "badge": "Chop Shop"
+     },
+     "dialogue": {
+      "intro": "Gus: Don’t ask who the buyer is. It’s Mr. Sable.",
+      "success": "Gus: Garage is yours to use. Mi casa.",
+      "fail": "Gus: Buyer walked. You’re bad for business."
+     },
+     "fail_conditions": [
+      "Any car wrecked",
+      "Busted"
+     ],
+     "prerequisites": [
+      "gus-02-testdrive"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Unlocks garage: paint, wheels, lights, armor, weapons.",
+     "engine_needs": [
+      "extra:repeat"
+     ]
+    }
+   ]
+  },
+  "Voss": {
+   "world": "Mars",
+   "hub": "Ares Junction",
+   "at": [
+    -4,
+    -52
+   ],
+   "building": "Meridian tower",
+   "blurb": "Meridian Extraction director. Smiles in contracts.",
+   "status": "new",
+   "tier": "multi-planet",
+   "missions": [
+    {
+     "id": "voss-01-diligence",
+     "chain": "voss-merger",
+     "order": 1,
+     "giver": "Voss",
+     "title": "Due Diligence",
+     "world": "Mercury",
+     "location": "Shadowline Array: Calloway grid office",
+     "type": "steal",
+     "setup": [
+      "Voss: You know too much. I hire that.",
+      "Voss: Steal Calloway’s grid drive."
+     ],
+     "objectives": [
+      "Fly to Shadowline Array",
+      "Reach the grid office",
+      "Grab the drive",
+      "Outrun Pike’s drones in a Sun Skimmer"
+     ],
+     "steps": [
+      {
+       "type": "travel",
+       "to": "Mercury",
+       "text": "Fly to Shadowline Array"
+      },
+      {
+       "type": "goto",
+       "text": "Reach the grid office",
+       "at": [
+        30,
+        0
+       ],
+       "r": 4
+      },
+      {
+       "type": "goto",
+       "text": "Grab the drive",
+       "at": [
+        32,
+        2
+       ],
+       "r": 2,
+       "item": "artifact",
+       "limit": 60
+      },
+      {
+       "type": "take",
+       "vehicle": "sun_skimmer",
+       "text": "Outrun Pike’s drones in a Sun Skimmer"
+      }
+     ],
+     "rewards": {
+      "credits": 1500,
+      "xp": 300
+     },
+     "dialogue": {
+      "intro": "Voss: Consider this an interview.",
+      "success": "Voss: Promising. Meridian rewards loyalty. Briefly.",
+      "fail": "Voss: Disappointing. HR will be in touch."
+     },
+     "fail_conditions": [
+      "Caught in sunlight",
+      "Busted"
+     ],
+     "prerequisites": [
+      "ines-03-guest"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Uses Mercury from planets/mercury.md (Sunny Calloway, Pike) as targets only.",
+     "engine_needs": [
+      "hub:Mercury",
+      "step:travel",
+      "vehicle:sun_skimmer"
+     ]
+    },
+    {
+     "id": "voss-02-takeover",
+     "chain": "voss-merger",
+     "order": 2,
+     "giver": "Voss",
+     "title": "Hostile Takeover",
+     "world": "Mars",
+     "location": "Meridian tower, Ares Junction",
+     "type": "kill",
+     "setup": [
+      "Voss: My board voted against me.",
+      "Voss: Change their minds. Permanently."
+     ],
+     "objectives": [
+      "Walk into the tower",
+      "Break the board’s security",
+      "Decide what happens to the board"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Meridian tower",
+       "text": "Walk into the tower"
+      },
+      {
+       "type": "defeat",
+       "at": [
+        -4,
+        -52
+       ],
+       "wave": [
+        "guard",
+        "squad",
+        "squad",
+        "sdrone"
+       ],
+       "cover": true,
+       "text": "Break the board’s security"
+      },
+      {
+       "type": "choice",
+       "id": "board",
+       "text": "Decide what happens to the board"
+      }
+     ],
+     "rewards": {
+      "credits": 2000,
+      "xp": 320
+     },
+     "dialogue": {
+      "intro": "Voss: I don’t fire people. I let gravity.",
+      "success": "Voss: The vote is now unanimous.",
+      "fail": "Voss: The board wins. You lose."
+     },
+     "fail_conditions": [
+      "Killed"
+     ],
+     "prerequisites": [
+      "voss-01-diligence"
+     ],
+     "choice": {
+      "prompt": "The board surrenders. They’ll testify against Voss if you let them live.",
+      "options": [
+       {
+        "id": "obey",
+        "label": "Do Voss’s job",
+        "effect": "flag:voss_ally",
+        "line": "Voss: Good. Leave the chairs."
+       },
+       {
+        "id": "spare",
+        "label": "Let them go, keep their testimony",
+        "effect": "flag:board_testimony",
+        "line": "Board member: Thank you. Run."
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "extra:building",
+      "extra:cover",
+      "step:choice",
+      "step:enter",
+      "wave:guard",
+      "wave:sdrone",
+      "wave:squad"
+     ]
+    },
+    {
+     "id": "voss-03-parachute",
+     "chain": "voss-merger",
+     "order": 3,
+     "giver": "Voss",
+     "title": "Golden Parachute",
+     "world": "Mars",
+     "location": "Meridian pad → badlands",
+     "type": "kill",
+     "setup": [
+      "Voss: Farm’s burned. I’m leaving.",
+      "Voss: Come with me, or get out of the way."
+     ],
+     "objectives": [
+      "Reach the Meridian pad",
+      "Stop the launch",
+      "Voss, on her knees in the dust"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Reach the Meridian pad",
+       "at": [
+        -4,
+        -60
+       ],
+       "r": 6,
+       "wanted": 3
+      },
+      {
+       "type": "defeat",
+       "wave": [
+        "squad",
+        "sdrone",
+        "sbuggy"
+       ],
+       "text": "Stop the launch"
+      },
+      {
+       "type": "choice",
+       "id": "voss_fate",
+       "text": "Voss, on her knees in the dust"
+      }
+     ],
+     "rewards": {
+      "credits": 2500,
+      "xp": 400
+     },
+     "dialogue": {
+      "intro": "Voss: Everyone has a price. I’ve read yours.",
+      "success": "Rook: That’s one way to close a deal.",
+      "fail": "Voss: Long way up. Enjoy the view."
+     },
+     "fail_conditions": [
+      "Shuttle launches"
+     ],
+     "prerequisites": [
+      "voss-02-takeover",
+      "mags-x-farm"
+     ],
+     "choice": {
+      "prompt": "Voss offers Meridian’s resin routes for her life.",
+      "options": [
+       {
+        "id": "deal",
+        "label": "Take the routes, let her fly",
+        "effect": "flag:voss_routes; finale: Take It Over is cheaper",
+        "line": "Voss: Pleasure. Truly."
+       },
+       {
+        "id": "arrest",
+        "label": "Hand her to Rusk (or IA)",
+        "effect": "flag:voss_jailed; board_testimony makes it stick",
+        "line": "Voss: Prison is just a smaller office."
+       },
+       {
+        "id": "execute",
+        "label": "Leave her in the dust",
+        "effect": "flag:voss_dead; Meridian guards hostile everywhere",
+        "line": "Voss: You can’t—"
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "step:choice",
+      "wave:sbuggy",
+      "wave:sdrone",
+      "wave:squad"
+     ]
+    }
+   ]
+  },
+  "Halo": {
+   "world": "Ceres",
+   "hub": "Occator Exchange",
+   "at": [
+    0,
+    12
+   ],
+   "building": "CERES 94.7 booth",
+   "blurb": "The CERES 94.7 DJ. Also a fence.",
+   "status": "new (voice of the existing CERES 94.7 station)",
+   "tier": "multi-planet",
+   "missions": [
+    {
+     "id": "halo-01-deadair",
+     "chain": "halo-airwaves",
+     "order": 1,
+     "giver": "Halo",
+     "title": "Dead Air",
+     "world": "Ceres",
+     "location": "Occator Exchange → Freeport → Ares Junction",
+     "type": "deliver",
+     "setup": [
+      "Halo: Dust is cheap here. Gold on Mars.",
+      "Halo: Buy five. Sell high. Don’t get searched."
+     ],
+     "objectives": [
+      "Buy 5 units of glow-dust at the Drift",
+      "Sell 2 at Freeport (bar)",
+      "Sell 3 at the Velvet Airlock"
+     ],
+     "steps": [
+      {
+       "type": "buy",
+       "item": "glowdust",
+       "n": 5,
+       "at": [
+        0,
+        12
+       ],
+       "text": "Buy 5 units of glow-dust at the Drift"
+      },
+      {
+       "type": "travel",
+       "to": "Moon",
+       "text": "Sell 2 at Freeport (bar)"
+      },
+      {
+       "type": "travel",
+       "to": "Mars",
+       "text": "Sell 3 at the Velvet Airlock"
+      }
+     ],
+     "rewards": {
+      "credits": 400,
+      "xp": 180,
+      "unlock": "system:trade_routes"
+     },
+     "dialogue": {
+      "intro": "Halo: Ceres 94.7. Neon, chrome, and logistics.",
+      "success": "Halo: Buy low, sell high. Capitalism, baby.",
+      "fail": "Halo: Customs took it. And your dignity."
+     },
+     "fail_conditions": [
+      "Searched at a pad while carrying (wanted 1+)"
+     ],
+     "prerequisites": [
+      "vesna-04-cook"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Teaches the buy-low/sell-high loop across colonies.",
+     "engine_needs": [
+      "hub:Ceres",
+      "item:glowdust",
+      "step:buy",
+      "step:travel"
+     ]
+    },
+    {
+     "id": "halo-02-pirate",
+     "chain": "halo-airwaves",
+     "order": 2,
+     "giver": "Halo",
+     "title": "Pirate Broadcast",
+     "world": "Ceres",
+     "location": "Saltblood relay mast",
+     "type": "steal",
+     "setup": [
+      "Halo: Mr. Sable runs his deals over my band.",
+      "Halo: Steal his relay. I want the chatter."
+     ],
+     "objectives": [
+      "Reach the relay mast",
+      "Splice the relay (30 s)"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Reach the relay mast",
+       "at": [
+        40,
+        -30
+       ],
+       "r": 6
+      },
+      {
+       "type": "hold",
+       "at": [
+        40,
+        -30
+       ],
+       "r": 5,
+       "seconds": 30,
+       "wave": [
+        "goon",
+        "goon",
+        "sdrone"
+       ],
+       "text": "Splice the relay (30 s)"
+      }
+     ],
+     "rewards": {
+      "credits": 500,
+      "xp": 200,
+      "unlock": "radio:bust_alerts"
+     },
+     "dialogue": {
+      "intro": "Halo: Knowledge is power. Also blackmail.",
+      "success": "Halo: I hear everything now. Bust alerts on your radio.",
+      "fail": "Halo: They fried the splice. Back to guessing."
+     },
+     "fail_conditions": [
+      "Killed",
+      "Splice interrupted 3 times"
+     ],
+     "prerequisites": [
+      "halo-01-deadair"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Reward: radio now warns before contraband busts.",
+     "engine_needs": [
+      "hub:Ceres",
+      "step:hold",
+      "wave:goon",
+      "wave:sdrone"
+     ]
+    },
+    {
+     "id": "halo-03-signoff",
+     "chain": "halo-airwaves",
+     "order": 3,
+     "giver": "Halo",
+     "title": "Sign-Off",
+     "world": "Ceres",
+     "location": "CERES 94.7 booth",
+     "type": "kill",
+     "setup": [
+      "Halo: Mr. Sable knows it was me.",
+      "Halo: His guys are coming. Live on air."
+     ],
+     "objectives": [
+      "Keep Halo alive for 60 s",
+      "Get Halo to your ship"
+     ],
+     "steps": [
+      {
+       "type": "hold",
+       "at": [
+        0,
+        12
+       ],
+       "r": 8,
+       "seconds": 60,
+       "wave": [
+        "goon",
+        "goon",
+        "goon",
+        "enforcer"
+       ],
+       "text": "Keep Halo alive for 60 s"
+      },
+      {
+       "type": "escort",
+       "convoy": "halo",
+       "to_pad": true,
+       "text": "Get Halo to your ship"
+      }
+     ],
+     "rewards": {
+      "credits": 800,
+      "xp": 260
+     },
+     "dialogue": {
+      "intro": "Halo: Stay tuned. Possibly forever.",
+      "success": "Halo: We’re back after these gunshots.",
+      "fail": "Halo: …[static]"
+     },
+     "fail_conditions": [
+      "Halo killed"
+     ],
+     "prerequisites": [
+      "halo-02-pirate"
+     ],
+     "choice": {
+      "prompt": "Halo can broadcast the chatter: Mr. Sable’s whole route list.",
+      "options": [
+       {
+        "id": "broadcast",
+        "label": "Broadcast it",
+        "effect": "flag:routes_leaked; dust prices +40% (shortage)",
+        "line": "Halo: Ceres 94.7. Breaking news. Ruining a cartel."
+       },
+       {
+        "id": "sell",
+        "label": "Sell it to Voss",
+        "effect": "credits +1500; flag:voss_owes",
+        "line": "Halo: Selling out. Very 94.7 of you."
+       }
+      ]
+     },
+     "existing": false,
+     "engine_needs": [
+      "hub:Ceres",
+      "step:hold",
+      "wave:enforcer",
+      "wave:goon"
+     ]
+    }
+   ]
+  },
+  "Mr. Sable": {
+   "world": "Ceres",
+   "hub": "Occator Exchange",
+   "at": [
+    -14,
+    -10
+   ],
+   "building": "Exchange boardroom",
+   "blurb": "Banker for the Quiet. Courteous, ancient, frightening.",
+   "status": "from planets/ceres.md",
+   "tier": "multi-planet",
+   "missions": [
+    {
+     "id": "sable-01-audition",
+     "chain": "sable-quiet",
+     "order": 1,
+     "giver": "Mr. Sable",
+     "title": "The Audition",
+     "world": "Ceres",
+     "location": "Occator Exchange",
+     "type": "deliver",
+     "setup": [
+      "Mr. Sable: You cook in my house. Bold.",
+      "Mr. Sable: Carry this. Then we talk."
+     ],
+     "objectives": [
+      "Fly to Occator Exchange",
+      "Carry the case to the salt-flat drop",
+      "Survive the “surprise” test"
+     ],
+     "steps": [
+      {
+       "type": "travel",
+       "to": "Ceres",
+       "text": "Fly to Occator Exchange"
+      },
+      {
+       "type": "goto",
+       "text": "Carry the case to the salt-flat drop",
+       "at": [
+        30,
+        20
+       ],
+       "r": 4,
+       "item": "contraband",
+       "limit": 90
+      },
+      {
+       "type": "defeat",
+       "at": [
+        30,
+        20
+       ],
+       "wave": [
+        "goon",
+        "goon"
+       ],
+       "text": "Survive the “surprise” test"
+      }
+     ],
+     "rewards": {
+      "credits": 600,
+      "xp": 220
+     },
+     "dialogue": {
+      "intro": "Mr. Sable: Everyone works for me eventually.",
+      "success": "Mr. Sable: You passed. Most fail. Messily.",
+      "fail": "Mr. Sable: Pity. I liked your shoes."
+     },
+     "fail_conditions": [
+      "Case lost",
+      "Timer runs out"
+     ],
+     "prerequisites": [
+      "vesna-04-cook"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Runs alongside ceres.md “Clean money”.",
+     "engine_needs": [
+      "hub:Ceres",
+      "step:travel",
+      "wave:goon"
+     ]
+    },
+    {
+     "id": "sable-02-tithe",
+     "chain": "sable-quiet",
+     "order": 2,
+     "giver": "Mr. Sable",
+     "title": "The Tithe",
+     "world": "Mars",
+     "location": "Meridian depot, Ares Junction",
+     "type": "heist",
+     "setup": [
+      "Mr. Sable: Meridian skims my money.",
+      "Mr. Sable: Take it back. From their depot."
+     ],
+     "objectives": [
+      "Break into the depot after hours",
+      "Crack the safe (30 s)",
+      "Lose the heat"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Depot",
+       "text": "Break into the depot after hours"
+      },
+      {
+       "type": "hold",
+       "building": "Depot",
+       "seconds": 30,
+       "wave": [
+        "guard",
+        "guard"
+       ],
+       "text": "Crack the safe (30 s)"
+      },
+      {
+       "type": "clean",
+       "text": "Lose the heat"
+      }
+     ],
+     "rewards": {
+      "credits": 1000,
+      "xp": 280
+     },
+     "dialogue": {
+      "intro": "Mr. Sable: A tithe is just respect in cash.",
+      "success": "Mr. Sable: Heaven loves a cheerful thief.",
+      "fail": "Mr. Sable: You failed. I forgive once."
+     },
+     "fail_conditions": [
+      "Busted",
+      "Killed"
+     ],
+     "prerequisites": [
+      "sable-01-audition",
+      "ines-04-lastcall"
+     ],
+     "choice": null,
+     "existing": false,
+     "engine_needs": [
+      "extra:building",
+      "step:enter",
+      "step:hold",
+      "wave:guard"
+     ]
+    },
+    {
+     "id": "sable-03-quiet",
+     "chain": "sable-quiet",
+     "order": 3,
+     "giver": "Mr. Sable",
+     "title": "The Quiet",
+     "world": "Ceres",
+     "location": "Exchange boardroom",
+     "type": "heist",
+     "setup": [
+      "Mr. Sable: Bring me the ledger.",
+      "Mr. Sable: Or bring nothing, and run."
+     ],
+     "objectives": [
+      "Meet Mr. Sable in the boardroom",
+      "Decide what happens to the Quiet",
+      "Fight your way out",
+      "Get off Ceres alive"
+     ],
+     "steps": [
+      {
+       "type": "enter",
+       "building": "Exchange boardroom",
+       "text": "Meet Mr. Sable in the boardroom"
+      },
+      {
+       "type": "choice",
+       "id": "finale",
+       "text": "Decide what happens to the Quiet"
+      },
+      {
+       "type": "defeat",
+       "wave": [
+        "enforcer",
+        "goon",
+        "goon",
+        "goon"
+       ],
+       "conditional": "take_over|burn",
+       "text": "Fight your way out"
+      },
+      {
+       "type": "return",
+       "wanted": 5,
+       "limit": 180,
+       "text": "Get off Ceres alive"
+      }
+     ],
+     "rewards": {
+      "credits": 0,
+      "xp": 600,
+      "badge": "Endgame"
+     },
+     "dialogue": {
+      "intro": "Mr. Sable: Kneel or don’t. Both are choices.",
+      "success": "(ending line, see STORY.md Act 4)",
+      "fail": "Mr. Sable: Amen."
+     },
+     "fail_conditions": [
+      "Killed during escape"
+     ],
+     "prerequisites": [
+      "sable-02-tithe",
+      "rook-05-withdrawal"
+     ],
+     "choice": {
+      "prompt": "The ending. Same three as planets/00-overview.md. Flags flavor each one.",
+      "options": [
+       {
+        "id": "take_over",
+        "label": "Take it over",
+        "effect": "ENDING: Kingpin. You run the Quiet; Ines gets the Velvet Airlock outright",
+        "line": "Mr. Sable: Ah. The child eats the father."
+       },
+       {
+        "id": "sell_out",
+        "label": "Sell it out",
+        "effect": "ENDING: Company Man. Ledger to Sable, cut to you, peace with a price",
+        "line": "Mr. Sable: Welcome to the family."
+       },
+       {
+        "id": "burn",
+        "label": "Burn it down",
+        "effect": "ENDING: Dead Air. Halo reads the ledger live on CERES 94.7",
+        "line": "Halo: We’re live, baby."
+       }
+      ]
+     },
+     "existing": false,
+     "notes": "This is the planets/ceres.md finale “The Quiet”; the Saltblood/Meridian/Rusk flags change the epilogue lines.",
+     "engine_needs": [
+      "extra:building",
+      "extra:conditional",
+      "hub:Ceres",
+      "step:choice",
+      "step:enter",
+      "wave:enforcer",
+      "wave:goon"
+     ]
+    }
+   ]
+  },
+  "Juno Reyes": {
+   "world": "Europa",
+   "hub": "Conamara Station",
+   "at": [
+    10,
+    8
+   ],
+   "building": "Drift union hall",
+   "blurb": "Drift union organizer, water smuggler.",
+   "status": "from planets/europa.md (story add-on only)",
+   "tier": "multi-planet",
+   "missions": [
+    {
+     "id": "reyes-x-manifest",
+     "chain": "reyes-addon",
+     "order": 1,
+     "giver": "Juno Reyes",
+     "title": "Union Dues",
+     "world": "Europa",
+     "location": "Conamara Station: Halvorsen office",
+     "type": "steal",
+     "setup": [
+      "Juno Reyes: Halvorsen ships “ice” to Mars.",
+      "Juno Reyes: It’s not ice. Prove it."
+     ],
+     "objectives": [
+      "Sneak into the Halvorsen office",
+      "Grab the shipping manifest",
+      "Escape on a Crevasse Sled",
+      "Lose company security"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Sneak into the Halvorsen office",
+       "at": [
+        -20,
+        -14
+       ],
+       "r": 3,
+       "nowanted": true
+      },
+      {
+       "type": "goto",
+       "text": "Grab the shipping manifest",
+       "at": [
+        -22,
+        -16
+       ],
+       "r": 2,
+       "item": "artifact"
+      },
+      {
+       "type": "take",
+       "vehicle": "crevasse_sled",
+       "text": "Escape on a Crevasse Sled"
+      },
+      {
+       "type": "clean",
+       "text": "Lose company security"
+      }
+     ],
+     "rewards": {
+      "credits": 900,
+      "xp": 280,
+      "badge": "Union Card"
+     },
+     "dialogue": {
+      "intro": "Juno Reyes: Ice is water. Resin is war.",
+      "success": "Juno Reyes: Resin. Tons. Bound for Meridian on Mars.",
+      "fail": "Juno Reyes: Brask shredded it. Of course."
+     },
+     "fail_conditions": [
+      "Spotted before grabbing the manifest",
+      "Busted"
+     ],
+     "prerequisites": [
+      "ozzie-03-insurance",
+      "ines-03-guest"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Add-on to Juno Reyes’s chain in planets/europa.md (run after its “Company store”). Story beat: Meridian’s resin moves through Halvorsen.",
+     "engine_needs": [
+      "extra:nowanted",
+      "hub:Europa",
+      "vehicle:crevasse_sled"
+     ]
+    }
+   ]
+  },
+  "Mags": {
+   "world": "Titan",
+   "hub": "Kraken Landing",
+   "at": [
+    -8,
+    16
+   ],
+   "building": "Tank farm",
+   "blurb": "Mags Oduya, queen of the free port.",
+   "status": "from planets/titan.md (story add-ons only)",
+   "tier": "multi-planet",
+   "missions": [
+    {
+     "id": "mags-x-trawl",
+     "chain": "mags-addon",
+     "order": 1,
+     "giver": "Mags",
+     "title": "Resin Tide",
+     "world": "Titan",
+     "location": "Kraken Mare shore",
+     "type": "steal",
+     "setup": [
+      "Mags: Somebody dumps crates in my sea.",
+      "Mags: Fish them out. Sea law."
+     ],
+     "objectives": [
+      "Take a Methane Skiff",
+      "Hook 4 floating crates"
+     ],
+     "steps": [
+      {
+       "type": "take",
+       "vehicle": "methane_skiff",
+       "text": "Take a Methane Skiff"
+      },
+      {
+       "type": "collect",
+       "a": 0,
+       "d": 220,
+       "spread": 30,
+       "n": 4,
+       "item": "cargo",
+       "text": "Hook 4 floating crates",
+       "limit": 120
+      }
+     ],
+     "rewards": {
+      "credits": 600,
+      "xp": 220
+     },
+     "dialogue": {
+      "intro": "Mags: Finders keepers. Leaving is extra.",
+      "success": "Mags: Resin. Meridian stamps. In MY port.",
+      "fail": "Mags: Their boat got there first."
+     },
+     "fail_conditions": [
+      "Skiff sunk",
+      "Timer runs out"
+     ],
+     "prerequisites": [
+      "mags-haze-sharks"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Follows Mags’s “Haze sharks” in planets/titan.md (id there is a placeholder).",
+     "engine_needs": [
+      "hub:Titan",
+      "vehicle:methane_skiff"
+     ]
+    },
+    {
+     "id": "mags-x-farm",
+     "chain": "mags-addon",
+     "order": 2,
+     "giver": "Mags",
+     "title": "Cattle",
+     "world": "Titan",
+     "location": "Meridian resin farm in the dunes",
+     "type": "kill",
+     "setup": [
+      "Mags: Found their farm. A live hive.",
+      "Mags: Queen in a cage. Burn it all."
+     ],
+     "objectives": [
+      "Reach the resin farm",
+      "Kill the guards and nests",
+      "Kill the caged Queen"
+     ],
+     "steps": [
+      {
+       "type": "goto",
+       "text": "Reach the resin farm",
+       "a": -120,
+       "d": 350,
+       "r": 16,
+       "outpost": true
+      },
+      {
+       "type": "defeat",
+       "a": -120,
+       "d": 350,
+       "wave": [
+        "guard",
+        "guard",
+        "nest",
+        "hunter"
+       ],
+       "text": "Kill the guards and nests"
+      },
+      {
+       "type": "defeat",
+       "a": -120,
+       "d": 350,
+       "wave": [
+        "boss"
+       ],
+       "text": "Kill the caged Queen"
+      }
+     ],
+     "rewards": {
+      "credits": 1200,
+      "xp": 350,
+      "badge": "Farm Fire"
+     },
+     "dialogue": {
+      "intro": "Mags: They keep a Queen like cattle.",
+      "success": "Mags: Farm’s ash. Voss will feel that.",
+      "fail": "Mags: Queen’s loose. That’s worse."
+     },
+     "fail_conditions": [
+      "Killed"
+     ],
+     "prerequisites": [
+      "mags-x-trawl",
+      "reyes-x-manifest"
+     ],
+     "choice": null,
+     "existing": false,
+     "notes": "Peaceful mode: guards only, the Queen is already dead in her cage.",
+     "engine_needs": [
+      "hub:Titan",
+      "wave:guard"
+     ]
+    }
+   ]
+  }
+ },
+ "side_jobs": [
+  {
+   "id": "side-cargo-run",
+   "chain": null,
+   "giver": "Dutch (job board)",
+   "title": "Cargo Run",
+   "world": "Any colony",
+   "location": "Pad → random drop",
+   "type": "deliver",
+   "setup": [
+    "Board: Crates need moving. No questions."
+   ],
+   "objectives": [
+    "Load cargo at the pad",
+    "Deliver to the marked drop"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Load cargo at the pad",
+     "at": [
+      -38,
+      10
+     ],
+     "r": 5,
+     "item": "cargo"
+    },
+    {
+     "type": "goto",
+     "text": "Deliver to the marked drop",
+     "random": true,
+     "limit": 90
+    }
+   ],
+   "rewards": {
+    "credits": 80,
+    "xp": 30
+   },
+   "dialogue": {
+    "intro": "Dutch: Crates. Point B. Go.",
+    "success": "Dutch: Delivered. Barely.",
+    "fail": "Dutch: Crates are scrap."
+   },
+   "fail_conditions": [
+    "Timer runs out",
+    "Cargo destroyed"
+   ],
+   "prerequisites": [],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Rags-to-Riches filler; payout scales with distance.",
+   "engine_needs": [
+    "extra:random"
+   ]
+  },
+  {
+   "id": "side-taxi",
+   "chain": null,
+   "giver": "Street fare",
+   "title": "Fare",
+   "world": "Any colony",
+   "location": "Random",
+   "type": "escort",
+   "setup": [
+    "Colonist: Taxi! Hey! You!"
+   ],
+   "objectives": [
+    "Pick up the fare",
+    "Drop them off"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Pick up the fare",
+     "random": true
+    },
+    {
+     "type": "goto",
+     "text": "Drop them off",
+     "random": true,
+     "limit": 60
+    }
+   ],
+   "rewards": {
+    "credits": 60,
+    "xp": 25
+   },
+   "dialogue": {
+    "intro": "Fare: Hab 3. Step on it.",
+    "success": "Fare: Here. Keep the change.",
+    "fail": "Fare: I’m walking. Jerk."
+   },
+   "fail_conditions": [
+    "3 hard hits",
+    "Timer runs out"
+   ],
+   "prerequisites": [],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Random street event when driving a stolen buggy/shuttle.",
+   "engine_needs": [
+    "extra:random"
+   ]
+  },
+  {
+   "id": "side-bounty",
+   "chain": null,
+   "giver": "Rusk (wanted board)",
+   "title": "Bounty: Dust Dealer",
+   "world": "Mars",
+   "location": "Badlands camp",
+   "type": "kill",
+   "setup": [
+    "Board: Saltblood runner, dead or alive."
+   ],
+   "objectives": [
+    "Find the runner’s camp",
+    "Take the runner"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Find the runner’s camp",
+     "random": true,
+     "r": 12
+    },
+    {
+     "type": "defeat",
+     "wave": [
+      "goon",
+      "goon",
+      "enforcer"
+     ],
+     "text": "Take the runner"
+    }
+   ],
+   "rewards": {
+    "credits": 250,
+    "xp": 100
+   },
+   "dialogue": {
+    "intro": "Rusk: Alive pays more. Dead pays faster.",
+    "success": "Rusk: Bounty paid.",
+    "fail": "Rusk: He skipped. Again."
+   },
+   "fail_conditions": [
+    "Runner escapes 200 m"
+   ],
+   "prerequisites": [
+    "rusk-01-protection"
+   ],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "engine_needs": [
+    "extra:random",
+    "wave:enforcer",
+    "wave:goon"
+   ]
+  },
+  {
+   "id": "side-dust-deal",
+   "chain": null,
+   "giver": "Velvet Airlock buyer",
+   "title": "Corner Deal",
+   "world": "Mars/Moon/Ceres",
+   "location": "Random alley",
+   "type": "deliver",
+   "setup": [
+    "Buyer: You holding? Meet me."
+   ],
+   "objectives": [
+    "Meet the buyer",
+    "Sell, or rob the buyer"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Meet the buyer",
+     "random": true,
+     "r": 4
+    },
+    {
+     "type": "choice",
+     "id": "deal",
+     "text": "Sell, or rob the buyer"
+    }
+   ],
+   "rewards": {
+    "credits": 150,
+    "xp": 40
+   },
+   "dialogue": {
+    "intro": "Buyer: Quick. Security sweeps at the hour.",
+    "success": "Buyer: Pleasure.",
+    "fail": "Buyer: It’s a setup! Run!"
+   },
+   "fail_conditions": [
+    "Buyer was a narc (20%)",
+    "Busted"
+   ],
+   "prerequisites": [
+    "vesna-04-cook"
+   ],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Contraband loop: each sale moves 1–3 units; 20% narc chance drops if you bought rumors.",
+   "engine_needs": [
+    "extra:random",
+    "hub:Mars/Moon/Ceres",
+    "step:choice"
+   ]
+  },
+  {
+   "id": "side-lab-raid",
+   "chain": null,
+   "giver": "Saltblood (event)",
+   "title": "Lab Under Siege",
+   "world": "Mars",
+   "location": "Old pumping station",
+   "type": "kill",
+   "setup": [
+    "Vesna: They’re hitting the lab. Now!"
+   ],
+   "objectives": [
+    "Defend the lab"
+   ],
+   "steps": [
+    {
+     "type": "hold",
+     "a": -60,
+     "d": 380,
+     "r": 8,
+     "seconds": 60,
+     "wave": [
+      "goon",
+      "goon",
+      "goon"
+     ],
+     "text": "Defend the lab"
+    }
+   ],
+   "rewards": {
+    "credits": 300,
+    "xp": 80
+   },
+   "dialogue": {
+    "intro": "Vesna: Saltblood at the door. Get here.",
+    "success": "Vesna: Lab’s fine. Stock’s fine. You’re bleeding.",
+    "fail": "Vesna: They took the stock."
+   },
+   "fail_conditions": [
+    "Lab destroyed (lose stored dust)"
+   ],
+   "prerequisites": [
+    "vesna-04-cook"
+   ],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Random cartel rival event when stock > 10 units.",
+   "engine_needs": [
+    "step:hold",
+    "wave:goon"
+   ]
+  },
+  {
+   "id": "side-rumor",
+   "chain": null,
+   "giver": "Rumor broker (VIP room)",
+   "title": "Buy a Rumor",
+   "world": "Mars/Moon",
+   "location": "Velvet Airlock VIP / Freeport bar",
+   "type": "steal",
+   "setup": [
+    "Broker: 50 credits, I tell you a thing."
+   ],
+   "objectives": [
+    "Pay for the rumor",
+    "Check out the tip"
+   ],
+   "steps": [
+    {
+     "type": "pay",
+     "credits": 50,
+     "text": "Pay for the rumor"
+    },
+    {
+     "type": "goto",
+     "text": "Check out the tip",
+     "random": true,
+     "r": 8
+    }
+   ],
+   "rewards": {
+    "credits": 0,
+    "xp": 20
+   },
+   "dialogue": {
+    "intro": "Broker: Information wants to be paid.",
+    "success": "Broker: Told you.",
+    "fail": "Broker: Rumors are rumors."
+   },
+   "fail_conditions": [],
+   "prerequisites": [],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Reveals a rare find (max HP/ammo), a stash or a hidden job on the radar.",
+   "engine_needs": [
+    "extra:random",
+    "step:pay"
+   ]
+  },
+  {
+   "id": "side-hire-muscle",
+   "chain": null,
+   "giver": "Brick (bouncer)",
+   "title": "Hire Muscle",
+   "world": "Mars",
+   "location": "Velvet Airlock door",
+   "type": "escort",
+   "setup": [
+    "Brick: 200 a job. I don’t do stairs."
+   ],
+   "objectives": [
+    "Hire Brick or one of his guys",
+    "They follow you for one mission"
+   ],
+   "steps": [
+    {
+     "type": "pay",
+     "credits": 200,
+     "text": "Hire Brick or one of his guys"
+    },
+    {
+     "type": "escort",
+     "follower": true,
+     "text": "They follow you for one mission"
+    }
+   ],
+   "rewards": {
+    "credits": 0,
+    "xp": 0
+   },
+   "dialogue": {
+    "intro": "Brick: Point. I punch.",
+    "success": "Brick: Good night. Tip’s optional. It isn’t.",
+    "fail": "Brick: I’m down. You owe me a medkit."
+   },
+   "fail_conditions": [
+    "Hireling killed"
+   ],
+   "prerequisites": [
+    "ines-01-door"
+   ],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "engine_needs": [
+    "extra:follower",
+    "step:pay"
+   ]
+  },
+  {
+   "id": "side-car-meet",
+   "chain": null,
+   "giver": "Kestrel",
+   "title": "Car Meet",
+   "world": "Moon",
+   "location": "Freeport pad",
+   "type": "race",
+   "setup": [
+    "Kestrel: Meet’s tonight. Bring a build."
+   ],
+   "objectives": [
+    "Park your build at the meet",
+    "Drag race the local champ"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Park your build at the meet",
+     "at": [
+      -28,
+      -12
+     ],
+     "r": 6
+    },
+    {
+     "type": "race",
+     "pts": "random_drag",
+     "limit": 20,
+     "text": "Drag race the local champ"
+    }
+   ],
+   "rewards": {
+    "credits": 200,
+    "xp": 60
+   },
+   "dialogue": {
+    "intro": "Kestrel: Show off. Lose politely.",
+    "success": "Kestrel: Crowd liked the spoiler.",
+    "fail": "Kestrel: Nobody liked the spoiler."
+   },
+   "fail_conditions": [
+    "Lose the drag"
+   ],
+   "prerequisites": [
+    "kestrel-04-track"
+   ],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Themed garages and car meets hook.",
+   "engine_needs": []
+  },
+  {
+   "id": "side-frankie",
+   "chain": null,
+   "giver": "Frankie",
+   "title": "Frankie Smells Money",
+   "world": "Any",
+   "location": "Random dig site",
+   "type": "steal",
+   "setup": [
+    "Frankie: *snorts at the dirt, very insistent*"
+   ],
+   "objectives": [
+    "Follow Frankie’s nose",
+    "Dig up the buried stash"
+   ],
+   "steps": [
+    {
+     "type": "goto",
+     "text": "Follow Frankie’s nose",
+     "random": true,
+     "r": 4
+    },
+    {
+     "type": "collect",
+     "n": 1,
+     "item": "contraband",
+     "text": "Dig up the buried stash"
+    }
+   ],
+   "rewards": {
+    "credits": 120,
+    "xp": 30
+   },
+   "dialogue": {
+    "intro": "Frankie: *growls at a lump of regolith*",
+    "success": "Frankie: *proud snort*",
+    "fail": "Frankie: *sneezes, gives up*"
+   },
+   "fail_conditions": [
+    "Someone else digs it up first"
+   ],
+   "prerequisites": [],
+   "choice": null,
+   "repeatable": true,
+   "existing": false,
+   "notes": "Frankie already sniffs toward signals; reuse for buried cartel stashes.",
+   "engine_needs": [
+    "extra:random"
+   ]
+  }
+ ]
+}

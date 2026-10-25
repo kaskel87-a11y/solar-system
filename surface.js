@@ -1,8 +1,8 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.2';
-import { createGame } from './game.js?v=7.2';
-import { createWorld, VEHICLES } from './world.js?v=7.2';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.3';
+import { createGame } from './game.js?v=7.3';
+import { createWorld, VEHICLES } from './world.js?v=7.3';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -485,6 +485,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
   let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
   let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawS = null, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
+  let indoor = null, hiddenOut = [];
   let car = null, astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
   let found = loadFound(), discItems = [];
   const saveView = () => { if (driving) driveGoal = camGoal; try { localStorage.setItem(driving ? ROVER_VIEW_KEY : VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
@@ -607,11 +608,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const gameEvent = (t, d) => { if (t === 'zap' && (!driving || car !== rover)) world.shotFired(); onEvent(t, d); };
   const game = createGame({
     scene, camera, isMobile, onEvent: gameEvent, height: (x, z) => height(x, z), player, SHIP, safePoint,
-    st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0 }),
+    st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0, inside: indoor ? world.inside : null }),
+    doorFor: q => world.doorFor(q), enterBuilding: () => enterBuilding(), leaveBuilding: () => leaveBuilding(),
     hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
     respawn(why) {
+      if (indoor) leaveBuilding(true);
       if (driving) interact();
       world.onRespawn(why);
       const gp = why === 'busted' ? world.gate() : null;
@@ -668,6 +671,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateRover(0.016, { keys: {}, joy: { x: 0, y: 0 } }, cfg.g * 9.81); updateDog(0.016, cfg.g * 9.81); updateAstro(0.016); updateCamera(0.016);
   }
   function exit() {
+    indoor = null; hiddenOut = [];
     game.exit(); world.exit(); flats = [];
     for (const c of chunks.values()) disposeChunk(c);
     chunks.clear();
@@ -699,16 +703,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1);
     fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const dx = (fwd.x * mvz + right.x * mvx) * speed * dt, dz = (fwd.z * mvz + right.z * mvx) * speed * dt;
-    player.moving = Math.min(1, len);
+    player.moving = Math.min(1, len); player.running = running && len > 0.3;
     if (dx || dz) {
       let nx = player.x + dx, nz = player.z + dz;
-      const gh = height(nx, nz);
-      if (cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
+      const gh = groundAt(nx, nz);
+      if (!indoor && cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
       else { player.walked += Math.hypot(dx, dz); player.moveYaw = Math.atan2(-dx, -dz); }
-      const c = world.collide(nx, nz, 0.45); if (c) { nx = c.x; nz = c.z; }
+      const c = world.collidePlayer(nx, nz, 0.45); if (c) { nx = c.x; nz = c.z; }
       player.x = nx; player.z = nz;
     }
-    const ground = height(player.x, player.z) + EYE;
+    const ground = groundAt(player.x, player.z) + EYE;
     if (state.outro > 0) {
       state.outro -= dt; player.vy += 25 * dt; player.y += player.vy * dt;
     } else {
@@ -795,6 +799,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const wantThr = me && canThrust(r) && !!input.jump && state.intro <= 0 && r.fuel > 0.5;
     r.thrusting = wantThr; r.thrFwd = me ? thr : 0; thrustFuel(r, wantThr, dt);
     const boost = me && input.run, vmax = boost ? sp.boost : sp.vmax, grip = r.air ? (wantThr ? 0.65 : 0.22) : 1;
+    if (me) { r.boosting = !!boost; r.vcap = vmax; } // v7.3: every drivable vehicle boosts (per-vehicle boost top speed in VEHICLES)
     if (thr * r.speed < -0.1) r.speed += thr * 26 * dt * grip;
     else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? sp.bacc : sp.acc) * dt * grip;
     else r.speed -= Math.sign(r.speed) * Math.min(Math.abs(r.speed), 5 * dt * grip);
@@ -880,7 +885,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       let tx = player.x + rxp * 1.3 - fxp * 1.0, tz = player.z + rzp * 1.3 - fzp * 1.0, stopAt = 0.7;
       if (d.mode === 'sniff' && d.sniff) {
         tx = d.sniff.x; tz = d.sniff.z; stopAt = 0.8;
-        if (Math.hypot(player.x - d.x, player.z - d.z) > 35 || d.sniff.done()) d.mode = 'follow';
+        if (Math.hypot(player.x - d.x, player.z - d.z) > 14 || player.running || d.sniff.done()) { d.mode = 'follow'; d.nextSniff = Math.max(d.nextSniff, 8); } // v7.3 (playtest m3): keep up
       }
       const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
       if (dist > 60 && d.mode === 'follow') { d.x = tx; d.z = tz; d.y = height(tx, tz); }
@@ -894,7 +899,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       } else d.yaw = lerpAngle(d.yaw, Math.atan2(-(player.x - d.x), -(player.z - d.z)), dt * 3);
       d.idle = (v < 0.3 && d.mode === 'follow') ? d.idle + dt : 0;
       d.nextSniff -= dt;
-      if (d.mode === 'follow' && d.nextSniff <= 0 && state.intro <= 0) {
+      if (d.mode === 'follow' && d.nextSniff <= 0 && state.intro <= 0 && !player.running && !indoor) {
         // quest items and rare finds first, then undiscovered sites
         const q = game.sniffTarget(player.x, player.z), n = nearestUndiscovered(player.x, player.z);
         const t = q ? { x: q.x, z: q.z, id: q.id, done: q.done, dist: Math.hypot(q.x - player.x, q.z - player.z), quest: true }
@@ -1004,7 +1009,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (gi.turret) { x.fillStyle = 'rgba(255,255,255,0.18)'; x.fillRect(150, 26, 92, 14); x.fillStyle = gi.overheat ? '#ff2d55' : '#f59e0b'; x.fillRect(150, 26, 92 * gi.heat / 100, 14); x.fillStyle = '#fff'; x.font = 'bold 13px system-ui, sans-serif'; x.fillText(gi.overheat ? 'OVERHEAT' : 'PLASMA', 152, 15); }
     cockpit.tex.needsUpdate = true;
   }
-  const camT = new THREE.Vector3(), camDir = new THREE.Vector3();
+  const camT = new THREE.Vector3(), camDir = new THREE.Vector3(); let camPull = 1e9, camOcc = false;
   function updateCamera(dt) {
     camDist += (camGoal - camDist) * (1 - Math.exp(-dt * 6));
     if (Math.abs(camGoal - camDist) < 0.02) camDist = camGoal;
@@ -1042,13 +1047,30 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!first) {
       const ep = clamp(player.pitch - lerp(0.28, 1.0, zt) - introP, -1.52, 0.5);
       camDir.set(-Math.sin(viewYaw) * Math.cos(ep), Math.sin(ep), -Math.cos(viewYaw) * Math.cos(ep));
-      camera.position.copy(camT).addScaledVector(camDir, -camDist); camera.position.y += introY;
-      const gy = height(camera.position.x, camera.position.z) + 1.0;
+      let cd = camDist;
+      if (indoor) { // v7.3: tight-space camera. Pull in close and shorten the boom so the lens never leaves the room
+        const b = world.inside, m = 0.35; cd = Math.min(cd, 3.4);
+        const lim = (o, d, lo, hi) => d > 1e-4 ? (hi - o) / d : d < -1e-4 ? (lo - o) / d : 1e9;
+        cd = Math.max(0.3, Math.min(cd, lim(camT.x, -camDir.x, b.x0 + m, b.x1 - m), lim(camT.z, -camDir.z, b.z0 + m, b.z1 - m), lim(camT.y, -camDir.y, b.floor + 0.4, b.y1 - m)));
+      }
+      else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
+        const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
+        const blocked = (x, y, z) => world.camBlocked(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
+        const N = 14; let hit = cd;
+        for (let i = 1; i <= N; i++) { const t = cd * i / N; if (blocked(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { hit = Math.max(0.9, cd * (i - 1) / N - 0.25); break; } }
+        camPull = hit < camPull ? hit : camPull + (hit - camPull) * (1 - Math.exp(-dt * 3));
+        cd = Math.min(cd, camPull);
+      }
+      if (indoor || cd >= 60) camPull = cd;
+      camOcc = cd < camDist - 0.3;
+      camera.position.copy(camT).addScaledVector(camDir, -cd); camera.position.y += introY;
+      const gy = (indoor ? world.inside.floor + 0.4 : height(camera.position.x, camera.position.z) + 1.0);
       if (camera.position.y < gy) camera.position.y = gy;
-      if (cfg.water !== undefined && camera.position.y < cfg.water + 0.6) camera.position.y = cfg.water + 0.6;
+      if (!indoor && cfg.water !== undefined && camera.position.y < cfg.water + 0.6) camera.position.y = cfg.water + 0.6;
       camera.lookAt(camT.x, camT.y + introY * 0.8, camT.z);
     }
-    if (scene.fog && baseFog) {
+    if (scene.fog && baseFog && indoor) { if (scene.fog.isFogExp2) scene.fog.density = 0; else { scene.fog.near = 300; scene.fog.far = 600; } }
+    else if (scene.fog && baseFog) {
       if (scene.fog.isFogExp2) scene.fog.density = baseFog.density * lerp(1, 0.12, zt);
       else { scene.fog.near = lerp(baseFog.near, Math.max(baseFog.near, 260), zt); scene.fog.far = lerp(baseFog.far, 720, zt); }
     }
@@ -1067,7 +1089,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (dust) updateDust(dt, g);
     world.update(dt);
     if (driving) { player.x = car.x; player.z = car.z; player.y = car.y + EYE; player.grounded = !car.air; if (state.outro > 0) state.outro -= dt; }
-    updateDog(dt, g);
+    if (!indoor) updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
     game.update(dt, input);
@@ -1075,7 +1097,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const px = player.x, pz = player.z;
     updateChunks(px, pz, false, driving ? 2 : 1);
     // far terrain for high views
-    const farOn = camDist > 18;
+    const farOn = camDist > 18 && !indoor;
     if (farOn && (!farCenter || Math.hypot(px - farCenter.x, pz - farCenter.z) > 150)) buildFar(Math.round(px / 50) * 50, Math.round(pz / 50) * 50);
     if (farMesh) { farMesh.visible = farOn; const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK); nearHole.value.set((cx + 0.5) * CHUNK, (cz + 0.5) * CHUNK, (RADIUS + 0.5) * CHUNK - 1); }
     if (skyGroup) { skyGroup.position.copy(camera.position); skyGroup.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * 0.05; }); }
@@ -1086,13 +1108,18 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const dc = Math.hypot(it.x - camera.position.x, it.z - camera.position.z), k = Math.max(1, dc / 70);
       it.beam.scale.set(k, 1, k); it.glint.scale.setScalar(Math.max(4, dc / 14));
       it.obj.userData.anim?.(it.obj, time);
-      if (state.intro <= 0 && !isFound(it.d.id) && Math.hypot(it.x - px, it.z - pz) < it.reach + (driving ? 4 : 0)) discover(it, driving ? 'drive' : 'walk');
+      if (state.intro <= 0 && !indoor && !isFound(it.d.id) && Math.hypot(it.x - px, it.z - pz) < it.reach + (driving ? 4 : 0)) discover(it, driving ? 'drive' : 'walk');
     }
   }
 
   const ray = new THREE.Raycaster();
   function tap(nx, ny) {
     if (!cfg) return null;
+    if (indoor) { // v7.3: tap an item on a rack or in a case to buy it
+      ray.far = 14; ray.setFromCamera({ x: nx, y: ny }, camera);
+      const h = ray.intersectObjects(world.wareTargets(), false)[0];
+      return h ? { ware: h.object.userData.ware } : null;
+    }
     ray.far = camDist + 90;
     ray.setFromCamera({ x: nx, y: ny }, camera);
     const targets = [...poiObjects, ...game.tapTargets()]; if (dog && !driving) targets.push(dog.group);
@@ -1123,9 +1150,32 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!best || bd > 200) return null;
     return { name: best.userData.name, dist: Math.round(bd), dir: relDir(Math.atan2(-(best.position.x - player.x), -(best.position.z - player.z)) - viewYaw) };
   }
-  const nearRover = () => rover && !driving && Math.hypot(rover.x - player.x, rover.z - player.z) < 6.5;
+  const nearRover = () => rover && !driving && !indoor && Math.hypot(rover.x - player.x, rover.z - player.z) < 6.5;
+  // ----- v7.3 enterable buildings: walk through a door into a small interior parked above the colony -----
+  const groundAt = (x, z) => indoor ? world.inside.floor : height(x, z);
+  function enterBuilding(door) {
+    if (!cfg || indoor || driving || state.intro > 0 || state.outro > 0 || game.isDown()) return null;
+    const r = world.enterBuilding(door); if (!r.ok) { if (r.msg) onEvent('toast', { text: r.msg, long: true }); return r; }
+    indoor = { kind: r.kind, name: r.name, out: { x: player.x, z: player.z } };
+    hiddenOut = [];
+    for (const o of scene.children) { if (o.isLight || o.isCamera || o.userData.keep || o === astro?.group || !o.visible) continue; o.visible = false; hiddenOut.push(o); }
+    player.x = r.spawn.x; player.z = r.spawn.z; player.y = r.spawn.y + EYE; player.vy = 0; player.grounded = true; player.yaw = r.spawn.yaw; player.faceYaw = r.spawn.yaw; player.pitch = -0.08;
+    lastLook = -9; camYawS = null;
+    onEvent('indoor', { on: true, kind: r.kind, name: r.name, paid: r.paid || 0 });
+    return r;
+  }
+  function leaveBuilding(quiet) {
+    if (!indoor) return null;
+    const p = world.exitBuilding();
+    for (const o of hiddenOut) o.visible = true; hiddenOut = [];
+    indoor = null;
+    if (p) { player.x = p.x; player.z = p.z; player.y = height(p.x, p.z) + EYE; player.vy = 0; player.yaw = p.yaw; player.faceYaw = p.yaw; dogTo(p.x, p.z); updateChunks(p.x, p.z, true); }
+    if (!quiet) onEvent('indoor', { on: false });
+    return p;
+  }
   function interact() {
     if (!cfg || state.intro > 0 || state.outro > 0) return null;
+    if (indoor) return null;
     if (driving) {
       const rx = Math.cos(car.yaw), rz = -Math.sin(car.yaw);
       let ex = car.x - rx * 2.9, ez = car.z - rz * 2.9;
@@ -1167,7 +1217,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     camGoal = Math.min(CAM_MAX, camGoal); saveView();
   }
   function resize(w, h) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
-  function takeOff() { if (state) { if (driving) interact(); state.outro = 1.0; player.vy = 2; } }
+  function takeOff() { if (state) { if (indoor) leaveBuilding(); if (driving) interact(); state.outro = 1.0; player.vy = 2; } }
   function discoveryLog() {
     const f = loadFound();
     return Object.entries(DISCOVERIES).map(([world, list]) => ({ world, items: list.map(d => ({ id: d.id, name: d.name, fact: d.fact, found: !!f[world]?.includes(d.id) })) }));
@@ -1188,7 +1238,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     for (let k = 0; k < 16; k++) { const a = yaw + [-1.2, 1.2, -0.6, 0.6, -1.9, 1.9, 0, Math.PI][k % 8], r = r0 + Math.floor(k / 8) * 4, x = cx - Math.sin(a) * r, z = cz - Math.cos(a) * r; if (dry(x, z) && Math.hypot(x - SHIP.x, z - SHIP.z) > 11) return { x, z }; }
     return { x: cx + 4, z: cz + 4 };
   }
-  function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
+  function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (indoor) leaveBuilding(); if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
   function dogTo(x, z) { if (!dog || driving) return; dog.mode = 'follow'; dog.sniff = null; dog.x = x + 1.4; dog.z = z + 1.2; dog.y = height(dog.x, dog.z); dog.vy = 0; dog.nextSniff = 12; }
   function dustRing(x, z, n = 70) { if (!dust) return; const y = height(x, z); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, sp = 3 + (i % 5); spawnDust(x + Math.cos(a) * 2.2, y + 0.4, z + Math.sin(a) * 2.2, Math.cos(a) * sp, 1.5 + (i % 3), Math.sin(a) * sp); } }
   function summonRover() {
@@ -1212,6 +1262,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
   function returnToShip() {
     if (!cfg || state.intro > 0 || game.isDown()) return { ok: false, why: 'busy' };
+    if (indoor) leaveBuilding();
     if (game.info.combat) return { ok: false, why: 'aliens are nearby! Clear them first.' };
     if (driving && car !== rover) interact();
     if (driving) {
@@ -1229,11 +1280,12 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dx = rover.x - player.x, dz = rover.z - player.z, a = Math.atan2(-dx, -dz) - viewYaw;
     return { dist: Math.round(Math.hypot(dx, dz)), ang: Math.atan2(Math.sin(a), Math.cos(a)), ship: Math.round(Math.hypot(SHIP.x - player.x, SHIP.z - player.z)) };
   }
-  function debugPlace(x, z, yaw = player.yaw) { if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
+  function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
-    summonRover, warpToRover, returnToShip, roverNav,
+    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding,
+    debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugMove(x, z, yaw = 0) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
@@ -1250,14 +1302,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = nearestUndiscovered(player.x, player.z), c = discCount();
       return {
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
-        view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
-        nearVehicle: (() => { if (driving || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
-        nearContact: !driving ? (world.nearContact()?.name || null) : null, nearShop: !driving && world.nearShop(), wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
+        view: viewName(camDist), camDist, camGoal, camPulled: camOcc, camPos: [camera.position.x, camera.position.y, camera.position.z], driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, boosting: driving ? !!car.boosting : false, vcap: driving ? car.vcap || 0 : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
+        nearVehicle: (() => { if (driving || indoor || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
+        nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, nearShop: !driving && !indoor ? world.nearShop() : null,
+        door: !driving && !indoor ? (() => { const d = world.nearDoor(); return d ? { name: d.name, kind: d.kind } : null; })() : null,
+        inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
         carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,
         faceYaw: player.faceYaw, camYawOff, lookIdle: time - lastLook,
         thrust: (() => { const r = driving ? car : rover; const can = driving && canThrust(car); return { can, on: !!(can && r.thrusting), fuel: r ? Math.round(r.fuel ?? 100) : 0, max: r ? FUEL_MAX(r) : 100, jet: r?.jet || 0 }; })(), viewYaw,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
-        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,
+        nearDog: !!dog && !driving && !indoor && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,
         disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,
         far: !!farMesh?.visible
       };

@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <meta name="theme-color" content="#05060c">
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-  <meta name="app-version" content="v7.2">
+  <meta name="app-version" content="v7.3">
   <link rel="canonical" href="https://kaskel87-a11y.github.io/solar-system/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Solar System Explorer">
@@ -32,7 +32,7 @@
   <meta name="twitter:description" content="Land on Mars, fly a thruster rover, bolt a rail gun to it and raise hell in the colonies. Free, in your browser, no App Store.">
   <meta name="twitter:image" content="https://kaskel87-a11y.github.io/solar-system/share-card.jpg">
   <meta name="twitter:image:alt" content="A red thruster rover banking over the Martian desert beside a landed Starship">
-  <title>Cinematic Universe Explorer</title>
+  <title>Solar System Explorer</title>
   <style>
     :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, -apple-system, sans-serif; color: #fff;
@@ -48,7 +48,7 @@
     #speedbox { padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
     #speedbox input { width: 110px; }
     .btn { border-radius: 12px; padding: 9px 14px; font-size: 0.9rem; font-weight: 600; }
-    #flyBtn { background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
+    #flyBtn { min-height: 44px; background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
     #planetBar { position: fixed; left: 0; right: 0; bottom: calc(10px + var(--sab)); display: flex; gap: 6px; overflow-x: auto; padding: 0 calc(12px + var(--sar)) 0 calc(12px + var(--sal)); z-index: 4; scrollbar-width: none; justify-content: flex-start; }
     #planetBar > :first-child { margin-left: auto; } #planetBar > :last-child { margin-right: auto; }
     #planetBar::-webkit-scrollbar { display: none; }
@@ -90,6 +90,8 @@
     #dogRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); }
     #dogName { flex: 1; min-width: 120px; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); color: #fff; }
     body.driving #jumpBtn { display: none !important; }
+    body.indoors #fireBtn, body.indoors #meleeBtn, body.indoors #crosshair, body.indoors #miniMap, body.indoors #roverDist { display: none !important; }
+    #shopPanel .item .btn.eq { background: rgba(125,255,176,0.18); }
     /* v7.2: in your rover (or a stolen hover bike) Jump becomes Thrust, with a thin fuel bar inside the button */
     body.touch.driving.canthrust #jumpBtn { display: block !important; }
     #jumpBtn { position: relative; overflow: hidden; } #jumpBtn .fuel { display: none; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.18); }
@@ -110,7 +112,16 @@
     body.touch .touch-only { display: revert !important; }
     body.touch #info small.touch-only, body.touch #info p.touch-only { display: block !important; }
     body.touch .desk-only { display: none !important; }
-    body:not(.touch) #joy { display: none; }
+    body:not(.touch).indoors #crosshair { display: block !important; } /* v7.3: desktop buys off the wall with the crosshair */
+    #ctlPanel { position: fixed; inset: 0; z-index: 15; display: none; background: rgba(4,6,16,0.95); overflow-y: auto; padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(24px + var(--sab)) calc(16px + var(--sal)); color: #e5e7eb; font-size: 0.85rem; }
+    #ctlPanel .wrap { max-width: 720px; margin: 0 auto; } #ctlPanel h2 { margin: 8px 0 4px; font-size: 1.1rem; } #ctlPanel h3 { margin: 14px 0 4px; font-size: 0.9rem; color: #7dd3fc; }
+    #ctlPanel table { width: 100%; border-collapse: collapse; } #ctlPanel td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; } #ctlPanel td:first-child { white-space: nowrap; width: 38%; }
+    #ctlPanel kbd { display: inline-block; min-width: 1.4em; text-align: center; padding: 1px 6px; margin: 1px 2px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); font: 700 0.75rem/1.4 ui-monospace, monospace; }
+    #ctlClose { min-height: 44px; }
+    @media (min-width: 1200px) and (min-height: 720px) and (hover: hover) and (pointer: fine) { #surfHud { zoom: 1.25; } } /* v7.3 (playtest p4): readable HUD on laptops */
+    body:not(.touch) #joy, body:not(.touch) #jumpBtn, body:not(.touch) #runBtn, body:not(.touch) #fireBtn, body:not(.touch) #meleeBtn { display: none !important; }
+    body:not(.touch).driving #runBtn { display: block !important; } /* v7.3: mouse-holdable ⚡ Boost on laptops */
+    #runBtn.on, body.boosting #runBtn { border-color: #fbbf24 !important; box-shadow: 0 0 10px rgba(251,191,36,.6); }
     /* v6: health, quests, radio, combat */
     .bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; margin: 2px 0 4px; }
     .bar i { display: block; height: 100%; width: 100%; border-radius: 4px; transition: width 0.15s; }
@@ -123,6 +134,7 @@
     .fic { display: inline-block; font-size: 0.62rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; background: #7c3aed; color: #fff; margin-left: 4px; vertical-align: 1px; }
     #radio .from { color: #7dd3fc; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.06em; }
     #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
+    #radioLater { background: rgba(30,41,59,0.92) !important; border: 1px solid rgba(255,255,255,0.28) !important; color: #e2e8f0 !important; }
     #fireBtn.on { transform: scale(0.93); background: radial-gradient(circle at 40% 35%, #ff9ab0, #ff2d6a); }
     body.combat #crosshair { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: transparent; border: 2px solid rgba(255,120,160,0.9); }
     #bossBar .bar i { background: linear-gradient(90deg, #a855f7, #ec4899); }
@@ -164,23 +176,24 @@
     /* v6.1 minimal surface HUD: one slim top bar, a minimap, a right-hand stack for cards, thumb-zone buttons.
        Nothing overlaps and the middle of the screen stays clear (checked by tests/test-hud.js). */
     .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
-    #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 34px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
+    #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
       background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
     #tbBars { flex: 0 0 64px; } #tbBars .bar { height: 5px; margin: 2px 0; }
-    #rankLine { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; opacity: 0.9; }
-    #menuBtn { flex: 0 0 auto; width: 34px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
-    #miniMap { position: fixed; z-index: 7; top: calc(46px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
-    #stackR { position: fixed; z-index: 9; top: calc(44px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
+    #rankLine { flex: 0 0 auto; white-space: nowrap; opacity: 0.9; } body.wanted #rankLine .xp, body.driving #rankLine .xp, body.turret #rankLine .xp { display: none; } body.wanted #surfInfo .gv, body.driving #surfInfo .gv { display: none; }
+    @media (max-width: 380px) { #rankLine .xp { display: none; } }
+    #menuBtn { flex: 0 0 auto; width: 44px; height: 38px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
+    #miniMap { position: fixed; z-index: 7; top: calc(56px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
+    #stackR { position: fixed; z-index: 9; top: calc(54px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
-    #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } body.turret #rankLine { display: none; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
+    #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
     #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #questTrack { border-color: rgba(80,200,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #questTrack b { color: #7dd3fc; } #questTrack .tm { color: #fca5a5; font-weight: 800; }
     #bossBar { width: 200px; text-align: center; font-weight: 800; border-color: rgba(200,80,255,0.6); } #bossBar .bar i { background: linear-gradient(90deg, #a855f7, #ec4899); }
     #toast { text-align: right; display: none; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } #toast.on { display: -webkit-box; }
     #discPop:not(.open) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #radio.mini #radioText, #radio.mini .btns { display: none; } #radio.mini .from { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #radio.mini .from::after { content: ' · tap to read'; opacity: 0.7; font-weight: 600; }
+    #radio.mini #radioText, #radio.mini .btns { display: none !important; } #radio.mini .from { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #radio.mini .from::after { content: ' · tap to read'; opacity: 0.7; font-weight: 600; }
     #discPop { display: none; animation: popIn 0.25s ease-out; cursor: pointer; text-align: left; border-color: rgba(255,210,90,0.55); background: rgba(30,22,6,0.8); }
     #discPop.show { display: block; } @keyframes popIn { from { opacity: 0; transform: translateY(-6px); } }
     #discPop .t { color: #ffd25a; font-weight: 800; font-size: 0.62rem; letter-spacing: 0.04em; display: inline; margin-right: 6px; }
@@ -193,18 +206,19 @@
     #radio .from { color: #7dd3fc; font-weight: 800; font-size: 0.6rem; letter-spacing: 0.06em; }
     #radioText { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     #radio.open #radioText { -webkit-line-clamp: 12; }
-    #radio .btns { display: flex; gap: 6px; margin-top: 5px; } #radio .btns button { flex: 1; min-height: 28px; font-weight: 800; border-radius: 9px; font-size: 0.74rem; padding: 2px 8px; }
+    #radio .btns { display: flex; gap: 6px; margin-top: 5px; } #radio .btns button { flex: 1; min-height: 44px; font-weight: 800; border-radius: 9px; font-size: 0.74rem; padding: 2px 8px; }
     #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
-    #roverMenu { position: fixed; z-index: 12; top: calc(46px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
+    #roverMenu { position: fixed; z-index: 12; top: calc(56px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
     #roverMenu.show { display: flex; }
-    #roverMenu button { min-height: 38px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 5px 10px; white-space: nowrap; }
+    #roverMenu button { min-height: 44px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 5px 10px; white-space: nowrap; }
+    @media (max-height: 1150px) and (min-height: 441px) { #roverMenu { width: min(380px, calc(100vw - 16px)); } #roverMenu.show { display: grid; grid-template-columns: 1fr 1fr; } #roverMenu button { white-space: normal; line-height: 1.15; } } /* v7.3: 13 items fit on an SE/iPhone 14 without scrolling */
     #roverMenu #takeoffBtn { background: linear-gradient(135deg, rgba(255,90,54,0.95), rgba(255,154,60,0.95)); border: none; box-shadow: none; }
     #rmClose { text-align: center !important; }
     #hudShow { display: none; position: fixed; z-index: 9; top: calc(6px + var(--sat)); right: calc(8px + var(--sar)); width: 34px; height: 30px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,20,0.4); color: #fff; opacity: 0.6; padding: 0; }
     /* v7: wanted stars + gear chip live inside the top bar, so they can never overlap anything */
     #wantedStars { display: none; flex: 0 0 auto; color: #fbbf24; font-weight: 900; letter-spacing: -1px; font-size: 0.8rem; text-shadow: 0 0 6px rgba(255,60,60,0.8); }
     body.wanted #wantedStars { display: block; } #wantedStars.evade { animation: wblink 0.6s steps(2) infinite; } @keyframes wblink { 50% { opacity: 0.25; } }
-    #gearChip { flex: 0 0 auto; height: 26px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0 6px; white-space: nowrap; touch-action: manipulation; }
+    #gearChip { flex: 0 0 auto; height: 36px; min-width: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0 6px; white-space: nowrap; touch-action: manipulation; }
     #tbBars { cursor: pointer; }
     #radioBtn { display: none; height: 42px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(120,40,160,0.55) !important; }
     body.driving #radioBtn { display: block; }
@@ -240,12 +254,12 @@
     body.cinematic #hudShow { display: block; }
     body.cinematic.surface #joy { opacity: 0.18; }
     @media (max-height: 440px) {
-      #topBar { height: 30px; top: calc(4px + var(--sat)); }
-      #miniMap { top: calc(40px + var(--sat)); width: 80px; height: 80px; }
-      #stackR { top: calc(40px + var(--sat)); left: auto; width: calc(24vw - 8px); max-height: calc(100vh - 190px - var(--sat) - var(--sab)); }
+      #topBar { height: 40px; top: calc(4px + var(--sat)); } #menuBtn { height: 36px; } #gearChip { height: 34px; }
+      #miniMap { top: calc(50px + var(--sat)); width: 80px; height: 80px; }
+      #stackR { top: calc(50px + var(--sat)); left: auto; width: calc(24vw - 8px); max-height: calc(100vh - 190px - var(--sat) - var(--sab)); }
       #bossBar { width: 100%; }
-      #roverMenu { top: calc(40px + var(--sat)); width: 330px; display: none; flex-direction: row; flex-wrap: wrap; } #roverMenu.show { display: flex; }
-      #roverMenu button { flex: 1 1 140px; min-height: 34px; }
+      #roverMenu { top: calc(50px + var(--sat)); width: min(480px, 70vw); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; display: none; flex-direction: row; flex-wrap: wrap; } #roverMenu.show { display: flex; }
+      #roverMenu button { flex: 1 1 140px; min-height: 44px; }
       #surfBtns { grid-template-columns: 60px 60px; bottom: calc(14px + var(--sab)); gap: 6px; }
       #surfBtns button { height: 48px; }
       #petBtn, #driveBtn { height: 48px !important; }
@@ -253,6 +267,23 @@
       #meleeBtn { width: 52px; height: 52px; right: calc(220px + var(--sar)); bottom: calc(14px + var(--sab)); }
       body.surface #joy { width: 104px; height: 104px; bottom: calc(14px + var(--sab)); }
     }
+
+    /* v7.3 readable buttons (Collin: "black cell with white font"). Root cause: .btn set no background, so unstyled buttons got the
+       browser's near-white default under white text. Every button gets a near-black cell, white text and a visible light border;
+       panel buttons are forced (tests/test-contrast.js checks every visible button for >= 4.5:1). */
+    button, .chip { background-color: #111; color: #fff; border: 1px solid rgba(255,255,255,0.55); }
+    :is(#logPanel, #shopPanel, #ctlPanel, #roverMenu, #radio, #fact-panel, #info, #topright, #planetBar, #a2hsCard, #dlgPanel) :is(button, .chip) { background: #111 !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.55) !important; opacity: 1 !important; }
+    :is(#logTabs button.active, .chip.on, #planetBar button.active) { border-color: #4ade80 !important; box-shadow: inset 0 0 0 1px #4ade80 !important; color: #fff !important; }
+    #logPanel .sw button.on { color: #4ade80 !important; border-color: #4ade80 !important; box-shadow: inset 0 0 0 1px #4ade80 !important; }
+    #logPanel .sw button.off { color: #b4b4b4 !important; border-color: #6b6b6b !important; }
+    #radioAccept { border-color: #38bdf8 !important; box-shadow: inset 0 0 0 1px #38bdf8 !important; }
+    :is(#shopPanel .item.no button, .chip.lock, button:disabled) { color: #b4b4b4 !important; border-style: dashed !important; border-color: #6b6b6b !important; }
+    #shopPanel .item .btn.eq { border-color: #4ade80 !important; color: #4ade80 !important; }
+    #landBtn, #landBtn.auto { background: #111 !important; border: 1px solid #38bdf8 !important; box-shadow: inset 0 0 0 1px #38bdf8, 0 4px 18px rgba(56,189,248,0.35) !important; color: #fff !important; }
+    #fireBtn { background: radial-gradient(circle at 40% 35%, #be123c, #5f0a24) !important; } #fireBtn.on { background: radial-gradient(circle at 40% 35%, #9f1239, #4c0519) !important; }
+    #fireBtn.blade { background: radial-gradient(circle at 40% 35%, #0e7490, #082f49) !important; }
+    #meleeBtn { background: radial-gradient(circle at 40% 35%, #9a3412, #431407) !important; }
+    #flyBtn { background: #111 !important; border: 1px solid #ff7a3c !important; box-shadow: inset 0 0 0 1px #ff7a3c, 0 4px 18px rgba(255,100,40,0.35) !important; color: #fff !important; }
   </style>
 </head>
 <body>
@@ -260,7 +291,7 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe<span class="ver">v7.2</span></h1>
+    <h1>🌌 Solar System Explorer<span class="ver">v7.3</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
@@ -282,7 +313,7 @@
     <button id="factLand" class="btn">🛬 Land here</button>
   </div>
 
-  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v6 · Alien content in quests is fiction; science facts are real.</div>
+  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v7.3 · Alien content in quests is fiction; science facts are real.</div>
 
   <div id="hud">
     <div id="hudHint"></div>
@@ -322,11 +353,14 @@
       <button id="viewBtn" class="btn">👁 Third person</button>
       <button id="rmSummon" class="btn">🚙 Summon rover here</button>
       <button id="rmWarp" class="btn">✨ Warp to rover</button>
+      <button id="rmShopNav" class="btn">🛒 Shop</button>
       <button id="rmShip" class="btn">🏠 Return to ship</button>
       <button id="hideHudBtn" class="btn">🎬 Hide HUD</button>
       <button id="a2hsBtn" class="btn">📲 Add to Home Screen<span class="dot"></span></button>
       <button id="shareBtn" class="btn">🔗 Share with friends</button>
       <button id="settingsBtn" class="btn">⚙️ Settings &amp; log</button>
+      <button id="ctlBtn" class="btn">❔ Controls</button>
+      <button id="fsBtn" class="btn">⛶ Full screen</button>
       <button id="rmClose" class="btn">✖ Close</button>
     </div>
     <button id="hudShow" aria-label="Show HUD">👁</button>
@@ -345,6 +379,10 @@
   <div id="hurt"></div>
   <div id="downMsg"><div id="downText">☠️ You're down. Med-evac inbound…</div></div>
   <div id="shopPanel"><div class="wrap"><button id="shopClose" class="btn">✕ Close</button><h2 id="shopTitle">🛒 Supply</h2><div id="shopMsg"></div><div id="shopList"></div></div></div>
+  <div id="ctlPanel"><div class="wrap"><button id="ctlClose" class="btn">✕ Close</button><h2>❔ Controls</h2>
+    <p style="opacity:.8">Phone: left stick moves, drag anywhere to look, and the big buttons do the rest. Keyboard and mouse:</p>
+    <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
+    <p style="opacity:.7">Shop panels: click to buy, <kbd>E</kbd> or <kbd>Esc</kbd> closes. The mouse is freed whenever a menu or shop opens.</p></div></div>
   <div id="logPanel"><div class="wrap">
     <button id="logClose" class="btn">✕ Close</button>
     <h2>🛰 Mission Log</h2>
@@ -379,14 +417,31 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.2';
-    import { buildStarship } from './models.js?v=7.2';
-    import { COSMETICS } from './game.js?v=7.2';
-    import { createAudio7 } from './audio7.js?v=7.2';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.3';
+    import { buildStarship } from './models.js?v=7.3';
+    import { COSMETICS, registerMission } from './game.js?v=7.3';
+    import { registerColony } from './world.js?v=7.3';
+    import { registerInterior } from './interiors.js?v=7.3';
+    import { createAudio7 } from './audio7.js?v=7.3';
 
-    const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
+    // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
+    // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
+    const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const phoneUA = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (hasTouch && /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    let isTouch = hasTouch && (phoneUA || !matchMedia('(pointer: fine)').matches);
+    const isMobile = phoneUA || (hasTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
     if (isTouch) document.body.classList.add('touch');
+    function setInputMode(touch) {
+      if (touch === isTouch || (!touch && phoneUA)) return;
+      isTouch = touch; document.body.classList.toggle('touch', touch);
+      try { controls.rotateSpeed = touch ? 0.7 : 1; controls.zoomSpeed = touch ? 1.2 : 1; controls.enablePan = !touch; } catch (e) { /* not built yet */ }
+      if (touch && document.pointerLockElement) document.exitPointerLock();
+      try { window.dispatchEvent(new CustomEvent('ssx-input', { detail: touch ? 'touch' : 'kbm' })); } catch (e) { /* old browser */ }
+    }
+    let lastMouse = null;
+    window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' || e.pointerType === 'pen') setInputMode(true); else if (e.pointerType === 'mouse' && !(e.target.closest && e.target.closest('button'))) setInputMode(false); }, true);
+    window.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons) return; if (lastMouse && Math.hypot(e.screenX - lastMouse[0], e.screenY - lastMouse[1]) > 6) setInputMode(false); lastMouse = [e.screenX, e.screenY]; }, true);
+    window.addEventListener('keydown', e => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) setInputMode(false); }, true);
     const quality = isMobile ? 0.45 : 1;
 
     // WebGL check
@@ -788,7 +843,7 @@
     function lockPointer() {
       try { const r = renderer.domElement.requestPointerLock?.(); r?.catch?.(() => {}); } catch (e) { /* drag-to-look still works */ }
     }
-    let onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null, autopilot = null, landTarget = null;
+    let landedAt = -1e9, onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null, autopilot = null, landTarget = null;
     const prevNearPos = new THREE.Vector3();
     function setFlying(on) {
       if (onSurface || transitioning) return;
@@ -900,7 +955,10 @@
       const m = /^([A-Z][\w .'-]{1,22}):\s/.exec(ev.text || ''); document.getElementById('radioFrom').textContent = (ev.contact || (m && m[1]) || 'Control').toUpperCase();
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
-      clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? 25000 : 9000);
+      // v7.3 (playtest m7): an offer during the landing reveal arrives as a one-line pill; tap it (or Enter) to read and accept
+      const early = radioOffer && performance.now() - landedAt < 12000; if (early) radioEl.classList.add('mini');
+      if (!isTouch) { document.getElementById('radioAccept').textContent = '✅ Accept (Enter)'; document.getElementById('radioLater').textContent = 'Later (⌫)'; }
+      clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
       speak(ev.text);
     }
     radioEl.addEventListener('click', e => { if (e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
@@ -960,7 +1018,14 @@
       else if (type === 'secDown') toast(ev.kind === 'drone' ? '💥 Drone down. That\'s going on your record.' : '💥 Security down. They will remember that.', 2200);
       else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
       else if (type === 'overheat') { overheatSnd(); toast('🔥 Blaster\'s cooking. Let it breathe, or punch something.', 2200); }
-      else if (type === 'toast') toast(ev.text, 3500);
+      else if (type === 'toast') toast(ev.text, ev.long ? 4200 : 3500);
+      else if (type === 'indoor') {
+        document.body.classList.toggle('indoors', !!ev.on); shopPanel.style.display = 'none'; shopMark = null; au7.fx.door(); sfxLog.push(ev.on ? 'enter' : 'leave');
+        au7.setVenue?.(ev.on ? (ev.kind === 'club' ? 'club' : ev.kind === 'cantina' ? 'cantina' : null) : null);
+        if (ev.on) toast(`🚪 ${ev.name}${ev.paid ? ` · cover ${ev.paid} cr` : ''}. ${ev.kind === 'guns' || ev.kind === 'supply' || ev.kind === 'depot' ? (isTouch ? 'Walk up to anything with a tag, or tap it, to buy.' : 'Walk up to anything with a tag (E), or click it, to buy.') : ev.kind === 'security' ? 'Deputy Rusk has a price for everything.' : ''}`, 3200);
+        updateSurfHud(true);
+      }
+      else if (type === 'perm') { chime(); rewardPop('💪 UPGRADE', ev.name, ev.text, `Level ${ev.level}`, 4500); updateSurfHud(true); }
     }
     // ===== v7 radio + ambience =====
     const au7 = createAudio7(() => actx || audio());
@@ -1017,7 +1082,7 @@
         try {
           surface.resize(innerWidth, innerHeight);
           surface.enter(landedBody.userData.name);
-          onSurface = true; landAnim = null;
+          onSurface = true; landAnim = null; landedAt = performance.now();
           document.body.classList.add('surface');
           factPanel.style.display = 'none'; au7.startAmbient();
           updateSurfHud(true);
@@ -1054,7 +1119,10 @@
       }, 950);
     }
     // One button for everything: land if close, otherwise autopilot to the nearest rocky world, then land
+    // v7.3 (playtest M2): the main CTA goes to the world you picked, else straight to Mars (Ares Junction, where the game is), never just "whatever is nearest"
     function nearestLandable() {
+      if (flyTarget && LANDABLE.includes(flyTarget.userData?.name)) return flyTarget;
+      const mars = bodies.find(b => b.name === 'Mars'); if (mars) return mars.mesh;
       let best = null, bd = Infinity;
       for (const b of bodies) {
         if (!LANDABLE.includes(b.name)) continue;
@@ -1101,41 +1169,84 @@
 
     // ===== Surface: view, rover, dog, discoveries log =====
     const viewBtn = document.getElementById('viewBtn'), discBtn = document.getElementById('discBtn'), driveBtn = document.getElementById('driveBtn'), petBtn = document.getElementById('petBtn');
+    let wasDriving = false, boostHinted = false;
     const runBtnEl = document.getElementById('runBtn'), logPanel = document.getElementById('logPanel');
     const VIEW_LABEL = { first: '👁 First person', third: '👁 Third person', aerial: '🛰 Aerial view' };
     viewBtn.onclick = () => { surface.cycleView(); updateSurfHud(true); };
     discBtn.addEventListener('click', () => roverMenu.classList.remove('show'));
     document.getElementById('takeoffBtn').addEventListener('click', () => roverMenu.classList.remove('show'));
     const VEH_ICON = { rover: '🚙', buggy: '🏎', hauler: '🚛', hoverbike: '🏍', shuttle: '🛸' };
+    let shopMark = null;
+    // v7.3: what the context button says for an item on a rack or in a case
+    function buyLabel(it) {
+      if (!it) return '';
+      if (it.equipped) return `✓ ${it.name} · equipped`;
+      if (it.owned && (it.kind === 'weapon' || it.kind === 'melee')) return `🔫 Equip ${it.name}`;
+      if (it.owned && it.id.includes(':')) return `✓ Equip ${it.name}`;
+      if (it.owned) return `✓ ${it.name} · owned`;
+      if (!it.ok) return `🔒 ${it.name} · ${it.why}`;
+      return `🛒 Buy ${it.name} · ${it.price} cr`;
+    }
     function actionFor(i) {
       if (i.driving) return { kind: 'exit', label: '🚪 Exit' };
+      if (i.inside) {
+        const s = i.spot; if (!s) return { kind: null, label: '' };
+        if (s.act === 'buy') return { kind: 'buy', label: buyLabel(surface.game.shopItem(s.ware)), ware: s.ware };
+        if (s.act === 'bribe') { const c = surface.game.bribeCost(); return { kind: 'spot', label: c ? `💰 Pay off Rusk · ${c} cr` : s.label, spot: s }; }
+        if (s.act === 'vip' && !surface.game.flag('vip')) return { kind: 'spot', label: '🍾 VIP room · 60 cr', spot: s };
+        return { kind: 'spot', label: s.label, spot: s };
+      }
       if (i.nearRover) return { kind: 'drive', label: '🚙 Drive' };
       if (i.nearVehicle) return { kind: 'take', label: `${VEH_ICON[i.nearVehicle.kind] || '🚗'} Take` };
+      if (i.nearShop) return { kind: 'shop', label: '🛒 Shop', door: i.nearShop.door, name: i.nearShop.name }; // beats Pet: walk in
+      if (i.door) return { kind: 'door', label: `🚪 Enter ${i.door.name}` };
       if (i.nearContact) return { kind: 'talk', label: `💬 ${i.nearContact}`, who: i.nearContact };
-      if (i.nearShop) return { kind: 'shop', label: '🛒 Shop' };
       return { kind: null, label: '' };
+    }
+    function buyWare(id) {
+      const it = surface.game.shopItem(id); if (!it) return;
+      if (it.equipped || (it.owned && !it.id.includes(':') && it.kind !== 'weapon' && it.kind !== 'melee')) { toast(`✓ ${it.name}: already yours.`, 1800); return; }
+      const r = surface.game.buy(id); toast((r.ok ? (it.owned ? '✓ ' : '🛒 ') : '❌ ') + r.msg, 2600); if (!r.ok) au7.fx.dry();
+      surface.world.refreshWares(); updateSurfHud(true);
+    }
+    function doSpot(s) {
+      const g = surface.game;
+      if (s.act === 'leave') { surface.leaveBuilding(); }
+      else if (s.act === 'shop') openShop(s.venue, s.who);
+      else if (s.act === 'talk') g.talk(s.who);
+      else if (s.act === 'bribe') { const r = g.bribe(); showRadio({ text: r.msg, contact: 'Deputy Rusk' }); if (r.ok) au7.fx.cash(); }
+      else if (s.act === 'vip') {
+        if (!g.flag('vip')) { if (!g.spend(60)) { toast('Tiny: VIP is 60. You are not VIP.', 2600); return; } g.setFlag('vip'); au7.fx.cash(); }
+        surface.world.openVip(); toast('Tiny unhooks the rope. "Ines will see you. Don\u2019t touch anything."', 3200);
+      }
+      else if (s.act === 'stash') { if (g.stash(s.stash, s.perm, s.perm === 'maxhp' ? 'Stolen biomod' : 'Spare bandolier')) toast('📦 Somebody forgot this. 40 cr and something better.', 3000); }
+      updateSurfHud(true);
     }
     function doInteract() {
       const i = surface.info; if (!i) return; const act = actionFor(i);
       if (act.kind === 'talk') { surface.game.talk(act.who); return; }
-      if (act.kind === 'shop') { openShop(); return; }
+      if (act.kind === 'shop' || act.kind === 'door') { surface.enterBuilding(act.kind === 'shop' ? act.door : undefined); updateSurfHud(true); return; }
+      if (act.kind === 'buy') { buyWare(act.ware); return; }
+      if (act.kind === 'spot') { doSpot(act.spot); return; }
       const r = surface.interact();
       updateSurfHud(true);
     }
     // ===== v7 shop =====
     const shopPanel = document.getElementById('shopPanel'), shopListEl = document.getElementById('shopList'), shopMsg = document.getElementById('shopMsg');
+    let shopVenue = null, shopWho = '';
+    const VENUE_NAME = { guns: 'Gun counter', supply: 'Supply counter', depot: 'Parts counter', bar: 'Bar' };
     function renderShop() {
-      const L = surface.game.shopList(), groups = {};
+      const L = surface.game.shopList(shopVenue), groups = {};
       for (const it of L.items) (groups[it.group] = groups[it.group] || []).push(it);
-      document.getElementById('shopTitle').textContent = `🛒 ${surface.info?.colony?.name || 'Colony'} Supply · 💰 ${L.credits} cr`;
+      document.getElementById('shopTitle').textContent = `${shopVenue === 'bar' ? '🍸' : '🛒'} ${shopVenue ? (shopWho ? shopWho + ' · ' : '') + VENUE_NAME[shopVenue] : (surface.info?.colony?.name || 'Colony') + ' Supply'} · 💰 ${L.credits} cr`;
       shopListEl.innerHTML = Object.entries(groups).map(([g, items]) => `<h3>${esc(g)}</h3>` + items.map(it => {
         const lbl = it.owned ? (it.id.includes(':') ? (it.desc === 'Equipped' ? 'Equipped' : 'Equip') : 'Owned') : `${it.price} cr`;
         const no = (!it.ok && !it.owned) || (!it.owned && !it.afford) || (it.owned && !it.id.includes(':'));
         return `<div class="item${no ? ' no' : ''}">${it.color != null ? `<span style="width:14px;height:14px;border-radius:4px;background:#${it.color.toString(16).padStart(6, '0')}"></span>` : ''}<div><b>${esc(it.name)}</b><br><small>${esc(it.why || it.desc || '')}</small></div><button class="btn" data-buy="${esc(it.id)}">${lbl}</button></div>`;
       }).join('')).join('') + `<p style="opacity:.6;font-size:.75rem">Carrying ${L.medkits}/3 medkits · ${L.shells} shells.</p>`;
-      shopListEl.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); updateSurfHud(true); });
+      shopListEl.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); surface.world.refreshWares?.(); updateSurfHud(true); });
     }
-    function openShop() { shopMsg.textContent = 'Cash only. No refunds. No questions.'; renderShop(); shopPanel.style.display = 'block'; au7.fx.door(); if (document.pointerLockElement) document.exitPointerLock(); }
+    function openShop(venue = null, who = '') { shopVenue = venue; shopWho = who || ''; shopMsg.textContent = venue === 'bar' ? `${who || 'Bartender'}: What\u2019ll it be?` : 'Cash only. No refunds. No questions.'; renderShop(); shopPanel.style.display = 'block'; au7.fx.door(); if (document.pointerLockElement) document.exitPointerLock(); }
     document.getElementById('shopClose').onclick = () => shopPanel.style.display = 'none';
     // v7.1: iOS WebKit (Safari and Chrome on iPhone) drops the synthetic click when another finger is down,
     // so with a thumb on the joystick Take/Drive/Pet did nothing. Fire these on the pointer itself instead.
@@ -1199,8 +1310,8 @@
       // settings + cosmetics
       const pick = kind => Object.entries(COSMETICS[kind]).map(([id, c]) => { const own = P.unlocks.includes(`${kind}:${id}`); return `<button class="chip${P.equip[kind] === id ? ' on' : ''}${own ? '' : ' lock'}" data-kind="${kind}" data-id="${id}">${own ? '' : '🔒 '}${esc(c.name)}</button>`; }).join('');
       const sb = document.getElementById('settingsBody');
-      sb.innerHTML = `<div class="sw"><span>☣️ Hostiles &amp; combat<br><small style="opacity:.7">Off = peaceful exploring (colonies and security stay)</small></span><button class="btn" id="setAliens">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
-        + `<div class="sw"><span>📻 Radio voice (text-to-speech)</span><button class="btn" id="setVoice">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
+      sb.innerHTML = `<div class="sw"><span>☣️ Hostiles &amp; combat<br><small style="opacity:.7">Off = peaceful exploring (colonies and security stay)</small></span><button class="btn ${P.settings.aliens ? 'on' : 'off'}" id="setAliens" aria-pressed="${!!P.settings.aliens}">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
+        + `<div class="sw"><span>📻 Radio voice (text-to-speech)</span><button class="btn ${P.settings.voice ? 'on' : 'off'}" id="setVoice" aria-pressed="${!!P.settings.voice}">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
         + `<h3>🎨 Rover paint</h3><div class="chips">${pick('paint')}</div><h3>🧣 ${esc(dogName)}'s bandana</h3><div class="chips">${pick('bandana')}</div>`;
       sb.querySelector('#setAliens').onclick = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '☣️ Hostiles ON. Check your corners.' : '🕊 Peaceful mode: no hostiles.', 2500); renderLogTabs(); updateSurfHud(true); };
       sb.querySelector('#setVoice').onclick = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
@@ -1219,9 +1330,9 @@
       const i = surface.info; if (!i) return;
       document.body.classList.toggle('driving', i.driving);
       const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : '';
-      surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g${extra}`;
+      surfInfo.innerHTML = `<b>${i.name}</b><span class="gv"> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g</span>${extra}`;
       const act = actionFor(i);
-      const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName, act.label].join('|');
+      const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName, act.label, !!i.inside, !!(i.colony && i.colony.dist < 400)].join('|');
       if (force || key !== hudKey) {
         hudKey = key;
         viewBtn.textContent = VIEW_LABEL[surface.info.camGoal < 0.8 ? 'first' : surface.info.camGoal < 60 ? 'third' : 'aerial'];
@@ -1229,9 +1340,12 @@
         driveBtn.style.display = act.label ? 'block' : 'none';
         driveBtn.textContent = act.label ? act.label + (isTouch ? '' : ' (E)') : '';
         driveBtn.dataset.act = act.kind || '';
-        petBtn.style.display = !i.driving && i.nearDog ? 'block' : 'none';
+        petBtn.style.display = !i.driving && i.nearDog && !i.inside && act.kind !== 'shop' && act.kind !== 'door' ? 'block' : 'none';
         petBtn.textContent = `🐾 Pet${isTouch ? '' : ' (P)'}`;
-        runBtnEl.textContent = i.driving ? 'Boost' : 'Run';
+        runBtnEl.textContent = i.driving ? (isTouch ? '⚡ Boost' : '⚡ Boost (Shift)') : 'Run';
+        if (i.driving && !wasDriving && !isTouch && !boostHinted) { boostHinted = true; window.__boostHint = true; toast('⚡ Hold Shift to boost (or hold the ⚡ Boost button). Space = thrust in your rover.', 3500); }
+        wasDriving = i.driving;
+        document.getElementById('rmShopNav').style.display = i.colony && i.colony.dist < 400 ? '' : 'none';
       }
       updateGameHud(); drawMiniMap();
     }
@@ -1246,20 +1360,21 @@
       hpBar.style.width = `${(100 * g.hp / g.hpMax).toFixed(0)}%`; hpBarEl.classList.toggle('low', g.hp < 35);
       heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
       document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
-      rankLine.textContent = `💰 ${g.credits} · ⭐ ${g.xp}`; rankLine.title = `${g.rank} · ${g.xp} XP`;
+      rankLine.innerHTML = `💰 ${g.credits}<span class="xp"> · ⭐ ${g.xp}</span>`; rankLine.title = `${g.rank} · ${g.xp} XP`;
       const si = surface.info, wl = si?.wanted || 0, ws = document.getElementById('wantedStars');
       document.body.classList.toggle('wanted', wl > 0);
       if (wl > 0) { ws.textContent = '★'.repeat(wl); ws.classList.toggle('evade', !!si.evading); }
       const gc = document.getElementById('gearChip');
       // weapon + its ammo, then medkits: "🔫∞ ✚1" (blaster never runs dry), "💥12 ✚1" (shotgun shells), "🗡️ ✚1"
-      const wtxt = si?.driving && !si.stolen ? (g.turret ? `${g.rover.icon} ${g.rover.short}` : '🚙') : g.weapon === 'shotgun' ? `💥${g.shells}` : g.weapon === 'blade' ? '🗡️' : '🔫∞';
+      const WI = { shotgun: '💥', smg: '🔫', railrifle: '⚡', launcher: '💣' };
+      const wtxt = si?.driving && !si.stolen ? (g.turret ? `${g.rover.icon} ${g.rover.short}` : '🚙') : g.weapon === 'blade' ? '🗡️' : g.weapon === 'cleaver' ? '🪓' : g.ammo && WI[g.weapon] ? `${WI[g.weapon]}${g.ammo.n}` : '🔫∞';
       const gtxt = `${wtxt}<span class="k">✚${g.medkits}</span>`;
       if (gc.dataset.t !== gtxt) { gc.dataset.t = gtxt; gc.innerHTML = gtxt; }
       document.body.classList.toggle('canfire', !!g.canFire && !(si?.driving && !si.stolen));
       document.body.classList.toggle('meleeok', !!g.meleeNear);
-      const fb = document.getElementById('fireBtn'), ftxt = g.weapon === 'blade' && !si?.driving ? '🗡️' : 'FIRE';
+      const fb = document.getElementById('fireBtn'), ftxt = (g.weapon === 'blade' || g.weapon === 'cleaver') && !si?.driving ? (g.weapon === 'cleaver' ? '🪓' : '🗡️') : 'FIRE';
       if (fb.textContent !== ftxt) fb.textContent = ftxt; fb.classList.toggle('blade', ftxt !== 'FIRE');
-      const mb = document.getElementById('meleeBtn'), mtxt = g.hasBlade ? '🗡️' : '👊'; if (mb.textContent !== mtxt) mb.textContent = mtxt; mb.classList.toggle('blade', !!g.hasBlade);
+      const mb = document.getElementById('meleeBtn'), mtxt = g.hasCleaver ? '🪓' : g.hasBlade ? '🗡️' : '👊'; if (mb.textContent !== mtxt) mb.textContent = mtxt; mb.classList.toggle('blade', !!g.hasBlade);
       if (g.quest) {
         questTrack.style.display = 'block';
         questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b><br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
@@ -1294,7 +1409,12 @@
       const W7 = md.world;
       if (W7) {
         if (W7.colony) { const p = proj(W7.colony.x, W7.colony.z, true); c.beginPath(); c.arc(p[0], p[1], (p[2] ? 4 : Math.max(5, 26 * k)) * (p[2] ? dpr : 1), 0, Math.PI * 2); c.strokeStyle = '#ff9b5a'; c.lineWidth = 1.5 * dpr; c.stroke(); out.colony = true; }
-        if (W7.shop) { const p = proj(W7.shop.x, W7.shop.z, false); if (p) { c.fillStyle = '#4ade80'; c.font = `900 ${Math.round(9 * dpr)}px system-ui`; c.textAlign = 'center'; c.fillText('$', p[0], p[1] + 3 * dpr); out.shop = true; } }
+        // v7.3: every store is a big green $ (outlined so it reads on the red dirt); the ☰ 🛒 Shop target pulses
+        c.font = `900 ${Math.round(13 * dpr)}px system-ui`; c.textAlign = 'center'; c.lineJoin = 'round';
+        for (const sh of W7.shops || []) { const mk = shopMark && Math.hypot(shopMark.x - sh.x, shopMark.z - sh.z) < 1; const p = proj(sh.x, sh.z, mk); if (!p) continue;
+          if (mk) { const pr = (4 + 3 * (0.5 + 0.5 * Math.sin(performance.now() / 180))) * dpr; c.beginPath(); c.arc(p[0], p[1], 6 * dpr + pr, 0, Math.PI * 2); c.strokeStyle = '#4ade80'; c.lineWidth = 2 * dpr; c.stroke(); out.shopMark = true; }
+          c.lineWidth = 3 * dpr; c.strokeStyle = '#06210f'; c.strokeText('$', p[0], p[1] + 4.5 * dpr); c.fillStyle = '#4ade80'; c.fillText('$', p[0], p[1] + 4.5 * dpr); out.shop = (out.shop || 0) + 1; }
+        for (const d of W7.doors || []) { if (d.store) continue; const p = proj(d.x, d.z, false); if (!p) continue; c.fillStyle = d.kind === 'club' ? '#ff3cc8' : d.kind === 'security' ? '#4a8aff' : '#ffb347'; c.fillRect(p[0] - 2 * dpr, p[1] - 2.5 * dpr, 4 * dpr, 5 * dpr); out.doors = (out.doors || 0) + 1; }
         for (const v of W7.vehicles || []) { const p = proj(v.x, v.z, false); if (!p) continue; c.fillStyle = '#e5e7eb'; c.fillRect(p[0] - 2.5 * dpr, p[1] - 1.5 * dpr, 5 * dpr, 3 * dpr); out.vehicles = (out.vehicles || 0) + 1; }
         for (const q of W7.people || []) { const p = proj(q.x, q.z, false); if (!p) continue;
           if (q.kind === 'contact') { c.save(); c.translate(p[0], p[1]); c.rotate(Math.PI / 4); c.fillStyle = '#c084fc'; c.fillRect(-3 * dpr, -3 * dpr, 6 * dpr, 6 * dpr); c.restore(); out.contacts = (out.contacts || 0) + 1; }
@@ -1320,6 +1440,23 @@
       setTimeout(() => { const r = fn(); toast(r.ok ? (kind === 'warp' ? `✨ Warped to your rover, with ${dogName}!` : '🚀 Back at the Starship.') : `🚫 ${r.why}`, 2500); updateSurfHud(true); setTimeout(() => { fadeEl.style.opacity = 0; setTimeout(() => { fadeEl.style.transition = ''; }, 300); }, 120); }, 260);
       return { ok: true, pending: true };
     }
+    // v7.3: ⛶ Full screen (Fullscreen API with the webkit prefix). Hidden where element fullscreen isn't supported (iPhone); F11 still works
+    const fsBtn = document.getElementById('fsBtn'), de = document.documentElement;
+    const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+    const fsOK = !!(de.requestFullscreen || de.webkitRequestFullscreen) && (document.fullscreenEnabled ?? document.webkitFullscreenEnabled ?? true) !== false && !/iPhone|iPod/.test(navigator.userAgent);
+    function fsLabel() { fsBtn.textContent = fsEl() ? '⛶ Exit full screen' : '⛶ Full screen'; }
+    function toggleFullscreen() {
+      try {
+        if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        else { const r = (de.requestFullscreen || de.webkitRequestFullscreen).call(de, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => toast('Full screen was blocked by the browser. Try F11.', 3000)); }
+      } catch (e) { toast('Full screen is not available here. Try F11.', 3000); }
+      roverMenu.classList.remove('show');
+    }
+    fsBtn.style.display = fsOK ? '' : 'none'; fsBtn.onclick = toggleFullscreen;
+    document.addEventListener('fullscreenchange', fsLabel); document.addEventListener('webkitfullscreenchange', fsLabel); fsLabel();
+    const ctlPanel = document.getElementById('ctlPanel');
+    function openControls(on = true) { ctlPanel.style.display = on ? 'block' : 'none'; if (on) { roverMenu.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } }
+    document.getElementById('ctlBtn').onclick = () => openControls(true); document.getElementById('ctlClose').onclick = () => openControls(false);
     function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
     miniMap.onclick = () => toggleMenu(); document.getElementById('menuBtn').onclick = () => toggleMenu();
     function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
@@ -1329,6 +1466,23 @@
     document.getElementById('rmSummon').onclick = () => travel('summon');
     document.getElementById('rmWarp').onclick = () => travel('warp');
     document.getElementById('rmShip').onclick = () => travel('ship');
+    // v7.3 modding API (see README): add colonies, missions, interiors and ☰ menu items from the console or an extra <script type="module">
+    window.SSX = {
+      registerColony, registerMission, registerInterior,
+      registerMenuItem({ id, label, onClick }) {
+        if (!label || typeof onClick !== 'function') throw new Error('registerMenuItem({ id, label, onClick })');
+        const b = document.createElement('button'); b.className = 'btn'; b.id = id || 'rmx-' + Math.random().toString(36).slice(2, 8); b.textContent = label;
+        b.onclick = () => { roverMenu.classList.remove('show'); onClick(window.__app); };
+        roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b.id;
+      }
+    };
+    // v7.3 ☰ 🛒 Shop: mark the nearest store on the radar
+    document.getElementById('rmShopNav').onclick = () => {
+      roverMenu.classList.remove('show');
+      const s = surface.world.nearestStore?.(); if (!s) { toast('🛒 No stores out here. Head for a colony.', 2500); return; }
+      if (surface.info?.inside) { toast(`🛒 You\u2019re in ${surface.info.inside.name}. Walk up to a tag to buy.`, 2500); return; }
+      shopMark = { x: s.x, z: s.z, name: s.name }; toast(`🛒 ${s.name}: ${Math.round(s.dist)} m. Look for the pulsing $ on the radar.`, 3200); updateSurfHud(true);
+    };
     document.getElementById('rmClose').onclick = () => roverMenu.classList.remove('show');
     // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
     const a2hsBtn = document.getElementById('a2hsBtn'), A2HS_KEY = 'ssx.a2hs.seen';
@@ -1382,6 +1536,7 @@
       const locked = !!document.pointerLockElement;
       const hit = locked ? surface.tap(0, 0) : surface.tap((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
       if (performance.now() - lastPinch < 400) return;
+      if (hit && hit.ware) { buyWare(hit.ware); return; }
       if (hit && hit.fired) return;
       if (hit && hit.pet) return updateSurfHud(true);
       if (hit && hit.discovered) return;
@@ -1391,7 +1546,11 @@
     document.getElementById('exitBtn').onclick = () => setFlying(false);
 
     window.addEventListener('keydown', e => {
+      if (ctlPanel.style.display === 'block') { if (['Escape', 'Slash', 'F1', 'Enter'].includes(e.code)) { e.preventDefault(); openControls(false); } return; }
+      if ((e.key === '?' || e.code === 'F1') && !e.repeat) { e.preventDefault(); openControls(true); return; }
       keys[e.code] = true;
+      // v7.3 (playtest m6): accept / skip a radio job from the keyboard, even with the mouse locked
+      if (radioOffer && radioEl.style.display === 'block' && !e.repeat && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Backspace')) { e.preventDefault(); document.getElementById(e.code === 'Backspace' ? 'radioLater' : 'radioAccept').click(); return; }
       if (onSurface) {
         if (logPanel.style.display === 'block') { if (e.code === 'Escape') logPanel.style.display = 'none'; return; }
         if (shopPanel.style.display === 'block') { if (e.code === 'Escape' || e.code === 'KeyE') shopPanel.style.display = 'none'; return; }
@@ -1421,6 +1580,7 @@
       if (flying && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     });
     window.addEventListener('keyup', e => keys[e.code] = false);
+    window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; }); // no stuck Shift/W after alt-tab
     window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
     function look(dx, dy, k) {
@@ -1498,7 +1658,8 @@
       if (onSurface) {
         if (document.pointerLockElement && !isTouch) { mouseAim.x = 0; mouseAim.y = 0; surface.aim(0, 0, true); }
         const fireHeld = !!(keys['KeyF'] || touchBtns.fire || mouseAim.held);
-        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run,
+        const runHeld = !!(keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run); document.body.classList.toggle('boosting', runHeld && document.body.classList.contains('driving'));
+        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: runHeld,
           fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
         tickAudio7(realDt); updateThrustHud();
@@ -1653,14 +1814,14 @@
     setTimeout(onResize, 100);
 
     // test hooks
-    window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v7.2', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+    window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
+      landOn, landAction, renderer, version: 'v7.3', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.2').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.3').catch(() => {}));
 </script>
 </body>
 </html>

@@ -102,7 +102,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 6. vibro-machete from the shop, cuts deeper ----------
     await G(() => { const s = window.__app.surface, sh = s.world.mapData().shop; window.__app.game.debug.clear(); window.__app.game.debug.credits(600); s.debugMove(sh.x, sh.z + 2, 0); });
     await wait(() => /Shop/.test(document.getElementById('driveBtn').textContent), 8000);
-    await tapAt('#driveBtn'); await sleep(400);
+    await G(() => window.__app.openShop('guns', 'Ozzie')); await sleep(400); // v7.3: 🛒 Shop now walks you into the store; the counter list is the same panel
     ok('shopHasBlade', null, await G(() => !!document.querySelector('[data-buy="blade"]')));
     await G(() => document.querySelector('[data-buy="blade"]').click()); await sleep(200);
     await G(() => document.querySelector('[data-buy="shotgun"]')?.click()); await sleep(200);

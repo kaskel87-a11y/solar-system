@@ -3,28 +3,39 @@
 // security drones and patrol buggies. Everything here is game fiction. Cheap by design: shared geometry,
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
+import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.3';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
   Mars: {
     name: 'Ares Junction', a: 0, d: 200, tint: 0xff6a3a,
     domes: [[0, 0, 14, 'ARES JUNCTION', 0xff7a2a], [-22, -16, 8], [24, 6, 9, 'HAB 3', 0x6ad0ff]],
-    blocks: [[31, -17, 9, 5, 6, 'CANTINA', 0xff2a5a], [-6, 23, 5, 3, 3, 'SUPPLY', 0x3cff8a], [-44, -14, 6, 4, 5, 'DEPOT', 0xffd040]],
+    // [x, z, w, d, h, sign, colour, interior kind?, inside title?]; the door is the middle of the +z face
+    blocks: [[31, -17, 9, 5, 6, 'CANTINA', 0xff2a5a, 'cantina', 'CANTINA'], [-6, 23, 7, 4, 4, 'SUPPLY', 0x3cff8a, 'supply', 'ARES SUPPLY'], [-44, -14, 6, 4, 5, 'DEPOT', 0xffd040, 'depot', 'MERIDIAN DEPOT'],
+      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -36, 12, 7, 7, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'], [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
     pad: [-38, 10, 9], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]],
-    shop: [-6, 20.5], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
+    shop: [-6, 26.2], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
+    // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the VIP room
+    inside: { cantina: { barkeep: 'Dutch', talk: 'Dutch' }, guns: { dealer: 'Ozzie', talk: 'Ozzie' }, club: { owner: 'Ines' } },
     vehicles: [['buggy', -14, 30, 0.4], ['hauler', -50, -24, 1.6], ['hoverbike', 20, 30, -0.3], ['shuttle', -38, 10, 0.9], ['buggy', 42, 12, 2.4]],
     guards: [[0, -22], [-26, 4], [22, -20]], colonists: 5, lamps: 12
   },
   Moon: {
     name: 'Freeport Tranquility', a: 35, d: 210, tint: 0x8ad8ff,
     domes: [[0, 0, 12, 'FREEPORT', 0x6ad0ff], [20, -10, 7]],
-    blocks: [[-20, 12, 6, 4, 4, 'SUPPLY', 0x3cff8a], [16, 18, 7, 4, 5, 'BAR', 0xff2a5a]],
+    blocks: [[-20, 12, 6, 4, 4, 'SUPPLY', 0x3cff8a, 'supply', 'FREEPORT SUPPLY'], [16, 18, 7, 4, 5, 'THE DRY SEA', 0xff2a5a, 'cantina', 'THE DRY SEA'], [30, 14, 6, 4, 4, 'GUNS', 0xffd040, 'guns', 'FREEPORT ARMS']],
     pad: [-28, -12, 9], crates: [[-24, -4], [-30, -2], [10, 24], [26, 4]],
-    shop: [-20, 9.5], contacts: [{ name: 'Kestrel', at: [12, 20], blurb: 'Runs the crater races. Takes a cut.' }],
+    shop: [-20, 15.2], contacts: [{ name: 'Kestrel', at: [12, 20], blurb: 'Runs the crater races. Takes a cut.' }],
     vehicles: [['hoverbike', 6, 26, 0.2], ['buggy', -12, 24, 1.1], ['hauler', 28, -20, 2.2], ['shuttle', -28, -12, 0.3]],
     guards: [[0, -18], [-18, 0]], colonists: 3, lamps: 8
   }
 };
+// v7.3 modding: add or replace a colony. def = { name, a, d, tint, domes, blocks:[[x,z,w,d,h,sign,colour,interiorKind?,title?]], pad, crates, shop, contacts, inside, vehicles, guards, colonists, lamps }
+export function registerColony(world, def) {
+  if (!world || !def?.name) throw new Error('registerColony(worldName, { name, a, d, ... })');
+  COLONIES[world] = { a: 0, d: 200, tint: 0xffa060, domes: [], blocks: [], pad: [-30, 10, 9], crates: [], shop: [0, 20], contacts: [], inside: {}, vehicles: [], guards: [], colonists: 3, lamps: 8, ...def };
+  return world;
+}
 
 export const VEHICLES = {
   rover: { name: 'Rover', vmax: 17, boost: 30, acc: 9, bacc: 15, turn: 1.5, wy: 0.62, wr: 0.62, r: 2.4 },
@@ -41,7 +52,8 @@ function neonTex(text, color) {
   const col = '#' + color.toString(16).padStart(6, '0');
   x.fillStyle = 'rgba(8,8,12,0.85)'; x.fillRect(0, 0, 512, 128);
   x.strokeStyle = col; x.lineWidth = 6; x.strokeRect(6, 6, 500, 116);
-  x.font = 'bold 74px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  let fs = 74; x.font = `bold ${fs}px system-ui, sans-serif`; while (x.measureText(text).width > 470 && fs > 20) { fs -= 2; x.font = `bold ${fs}px system-ui, sans-serif`; }
+  x.textAlign = 'center'; x.textBaseline = 'middle';
   x.shadowColor = col; x.shadowBlur = 24; x.fillStyle = col; x.fillText(text, 256, 68); x.shadowBlur = 8; x.fillStyle = '#fff'; x.globalAlpha = 0.55; x.fillText(text, 256, 68);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
@@ -135,6 +147,7 @@ export function createWorld(ctx) {
   let C = null, col = null, cx = 0, cz = 0, time = 0;
   let solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
   let wanted = 0, evade = 0, bustT = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
+  let doors = [], rooms = new Map(), inside = null, coverPaid = false, interiorsRoot = null, roomIdx = 0;
   const caps = { drones: isMobile ? 2 : 3, buggies: isMobile ? 1 : 2 };
   const toW = (p) => ({ x: cx + p[0], z: cz + p[1] });
 
@@ -161,10 +174,17 @@ export function createWorld(ctx) {
       if (sign) addSign(sign, color, X, y0 + 3.6, Z + r + 1.75, 0, 7);
       solids.push({ x: X, z: Z, r: r + 0.3, h: r * 0.8 });
     }
-    for (const [x, z, w, d, h, sign, color] of C.blocks) {
+    for (const [x, z, w, d, h, sign, color, kind, title] of C.blocks) {
       const X = cx + x, Z = cz + z;
       add(mesh(R.box, R.hull, X, y0 + h / 2, Z, w, h, d)); add(mesh(R.box, R.frame, X, y0 + h + 0.15, Z, w + 0.4, 0.3, d + 0.4));
-      if (sign) addSign(sign, color, X, y0 + h + 1.3, Z + d / 2 + 0.05, 0, Math.min(6, w));
+      if (sign) addSign(sign, color, X, y0 + h + 1.3, Z + d / 2 + 0.05, 0, Math.min(kind === 'club' ? 9 : 6, w));
+      if (kind && INTERIORS[kind]) { // v7.3: a walk-in door on the front face
+        const gy = height(X, Z + d / 2 + 1);
+        add(mesh(R.box, R.dark, X, gy + 1.3, Z + d / 2 + 0.04, 1.7, 2.6, 0.12));
+        const tm = B(color); for (const [dx, dy, sx, sy] of [[-0.88, 1.3, 0.1, 2.7], [0.88, 1.3, 0.1, 2.7], [0, 2.66, 1.86, 0.1]]) add(mesh(R.box, tm, X + dx, gy + dy, Z + d / 2 + 0.1, sx, sy, 0.08));
+        if (kind === 'club') { const b = buildPerson('guard', 9); b.group.position.set(X + 1.8, gy, Z + d / 2 + 0.9); b.group.rotation.y = -0.3; b.group.scale.setScalar(1.25); add(b.group); } // Brick on the door
+        doors.push({ i: doors.length, kind, name: sign ? sign.replace(/\b([A-Z])([A-Z\u2019']+)/g, (m, a, b) => a + b.toLowerCase()) : INTERIORS[kind].name, title: title || sign, color, x: X, z: Z + d / 2 + 0.9, block: [x, z] });
+      }
       solids.push({ x: X, z: Z, r: Math.max(w, d) / 2 + 0.4, h, box: [w / 2 + 0.4, d / 2 + 0.4] });
     }
     // landing pad with blinking edge lights
@@ -209,6 +229,10 @@ export function createWorld(ctx) {
     for (const s of signs) { s.material.map.dispose(); s.material.dispose(); s.geometry.dispose(); }
     if (col) { col.traverse(o => { if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }); scene.remove(col); }
     for (const p of people) p.group.traverse(o => { if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } });
+    if (inside) inside = null;
+    for (const r of rooms.values()) { r.dispose(); }
+    if (interiorsRoot) { scene.remove(interiorsRoot); interiorsRoot = null; }
+    rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0;
     col = null; solids = []; vehicles = []; people = []; flick = []; lights = []; security = []; shots = []; signs = []; C = null; wanted = 0;
   }
 
@@ -227,6 +251,17 @@ export function createWorld(ctx) {
   function solidAt(x, y, z) {
     if (!C) return false;
     for (const s of solids) { if (y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
+    return false;
+  }
+
+  // v7.3: camera occlusion test (solid building boxes + full dome volumes), used to pull the chase camera in
+  function camBlocked(x, y, z) {
+    if (!C) return false;
+    for (const s of solids) {
+      const gy = height(s.x, s.z);
+      if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
+      const r = s.r - 0.1; if (Math.hypot(x - s.x, (y - gy) * (r / Math.max(0.5, s.h || r)), z - s.z) < r) return true;
+    }
     return false;
   }
 
@@ -290,7 +325,7 @@ export function createWorld(ctx) {
       } else if (s.kind === 'drone') {
         const keep = 9, sp = 26; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 5 + Math.sin(s.phase * 2) - s.y) * Math.min(1, dt * 3);
-        s.cd -= dt; if (d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
+        s.cd -= dt; if (!inside && d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
       } else {
         // patrol buggy: chase, cut you off, ram; shoots from the window at 3+ stars
         const lead = st.driving ? 0.6 : 0, gx = tx - Math.sin(st.car?.yaw || 0) * pv * lead, gz = tz - Math.cos(st.car?.yaw || 0) * pv * lead;
@@ -300,8 +335,8 @@ export function createWorld(ctx) {
         const c = collide(nx, nz, 1.8); if (c) { nx = c.x; nz = c.z; s.speed *= 0.6; }
         s.x = nx; s.z = nz; s.y = height(s.x, s.z);
         s.group.rotation.set(0, s.yaw, 0); s.wheels.forEach(w => { w.spin.rotation.x -= s.speed * dt / 0.48; w.pivot.position.y = 0.48; });
-        if (d < 4.2 && s.speed > 6) { s.speed *= 0.3; game.hurtPlayer(6 + wanted * 2, { x: s.x, z: s.z, security: true }); onEvent('crash', {}); }
-        s.cd -= dt; if (d < 35 && s.cd <= 0 && wanted >= 3) { s.cd = 1.3; secShoot(s, 6 + wanted); }
+        if (!inside && d < 4.2 && s.speed > 6) { s.speed *= 0.3; game.hurtPlayer(6 + wanted * 2, { x: s.x, z: s.z, security: true }); onEvent('crash', {}); }
+        s.cd -= dt; if (!inside && d < 35 && s.cd <= 0 && wanted >= 3) { s.cd = 1.3; secShoot(s, 6 + wanted); }
         if (d > 260) { recall(s); continue; } // left behind
       }
       s.group.position.set(s.x, s.y, s.z); if (s.kind === 'drone') s.group.rotation.y += dt;
@@ -312,17 +347,19 @@ export function createWorld(ctx) {
     for (const p of people) if (p.kind === 'guard' && !p.stun && wanted > 0 && !down) { const d = Math.hypot(tx - p.x, tz - p.z); nearest = Math.min(nearest, d); if (d < 4 && (!st.driving || pv < 2.5)) close = true; }
     // busted: they get hands on you (on foot or boxed in while stopped)
     if (wanted > 0 && !down) {
+      if (inside) close = false; // they can't see you in here
       bustT = close ? bustT + dt : Math.max(0, bustT - dt * 0.5);
       if (bustT > (st.driving ? 3 : 2)) { bustT = 0; game.bust(); }
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
       const lyingLow = !st.driving && (player.moving || 0) < 0.05;
-      if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else evade = Math.max(0, evade - dt * 0.5);
+      if (inside) evade += dt * 1.5; // hiding indoors: the heat cools off (faster at low stars)
+      else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else evade = Math.max(0, evade - dt * 0.5);
       if (evade > 5 + wanted * 2.5) setWanted(0);
     }
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
       const p = s.m.position, ty = st.driving ? st.car.y + 1.2 : player.y - 0.6;
-      if (Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
+      if (!inside && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
       if (p.y < height(p.x, p.z) || s.life <= 0) { scene.remove(s.m); shots.splice(shots.indexOf(s), 1); }
     }
   }
@@ -357,12 +394,14 @@ export function createWorld(ctx) {
       else if (f.flicker) f.m.material = Math.random() < (Math.sin(time * 0.7 + f.m.position.x) > 0.6 ? 0.25 : 0.02) ? R.lampOff : R.lampOn;
       else if (f.sign) f.m.visible = !(Math.sin(time * 1.3 + f.m.position.z) > 0.93 && Math.random() < 0.5);
     }
-    if (lights[0]) lights[0].intensity = 60 * (0.85 + Math.random() * 0.15 * (Math.sin(time * 9) > 0.8 ? 1 : 0.2));
+    if (inside && lights[0]) { const L = inside.room.def.light; lights[0].intensity = L.int * (L.pulse ? 0.75 + 0.25 * Math.abs(Math.sin(time * 118 / 60 * Math.PI)) : 1); }
+    else if (lights[0]) lights[0].intensity = 60 * (0.85 + Math.random() * 0.15 * (Math.sin(time * 9) > 0.8 ? 1 : 0.2));
   }
   function update(dt) {
     if (!C) return;
     time += dt; crimeCd -= dt;
     updatePeople(dt); updateSecurity(dt); updateFx(dt);
+    if (inside) inside.room.tick(dt);
     // parked vehicles hug the ground (hover ones bob)
     const st = ctx.st();
     for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = height(v.x, v.z) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
@@ -439,11 +478,70 @@ export function createWorld(ctx) {
   }
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
-  function nearShop() { if (!C) return false; const s = toW(C.shop); return Math.hypot(s.x - player.x, s.z - player.z) < 4.5; }
+  // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
+  const isStore = d => !!INTERIORS[d.kind]?.store;
+  function stores() { return doors.filter(isStore); }
+  function nearShop() {
+    if (!C || inside) return null; let best = null, bd = 1e9;
+    for (const d of stores()) { const dd = Math.hypot(d.x - player.x, d.z - player.z), r = d.kind === 'supply' ? 7 : 4.5; if (dd < r && dd < bd) { bd = dd; best = d; } }
+    return best ? { kind: d2k(best), name: best.name, door: best.i, x: best.x, z: best.z } : null;
+  }
+  const d2k = d => d.kind;
+  function nearestStore(x = player.x, z = player.z) { let best = null, bd = 1e9; for (const d of stores()) { const dd = Math.hypot(d.x - x, d.z - z); if (dd < bd) { bd = dd; best = d; } } return best ? { kind: best.kind, name: best.name, door: best.i, x: best.x, z: best.z, dist: bd } : null; }
   function gate() { if (!C) return null; return { x: cx, z: cz - 24 }; }
 
+  // ----- v7.3 enterable buildings -----
+  function nearDoor(range = 2.6) {
+    if (!C || inside) return null; let best = null, bd = range;
+    for (const d of doors) { const dd = Math.hypot(d.x - player.x, d.z - player.z); if (dd < bd) { bd = dd; best = d; } }
+    return best;
+  }
+  const doorMatch = (d, q) => { q = String(q || '').toLowerCase().replace(/^the\s+/, ''); const n = (d.name + ' ' + d.title + ' ' + INTERIORS[d.kind].name + ' ' + d.kind).toLowerCase(); return n.includes(q) || (q.includes('gun') && d.kind === 'guns') || (q.includes('bar') && d.kind === 'cantina'); };
+  function doorFor(q) { return doors.find(d => doorMatch(d, q)) || null; }
+  function enterBuilding(door) {
+    door = typeof door === 'number' ? doors[door] : (door || nearDoor()); if (!door || inside) return { ok: false, msg: '' };
+    const game = ctx.game(), def = INTERIORS[door.kind];
+    if (door.kind === 'club' && wanted > 0) return { ok: false, msg: 'Brick: Not tonight. You’ve got security crawling up your ass. Lose them first.' };
+    if (wanted >= 3 && door.kind !== 'security') return { ok: false, msg: `${door.name}: shutters down. Nobody opens a door for a ${wanted}★ fugitive.` };
+    let paid = 0;
+    if (def.cover && !coverPaid) {
+      if (!game.spend(def.cover)) return { ok: false, msg: `Brick: Cover’s ${def.cover}. You’ve got lint. Beat it.` };
+      coverPaid = true; paid = def.cover;
+    }
+    let room = rooms.get(door.i);
+    if (!room) {
+      if (!interiorsRoot) { interiorsRoot = new THREE.Group(); interiorsRoot.userData.keep = true; scene.add(interiorsRoot); }
+      const ins = C.inside?.[door.kind] || {};
+      room = buildRoom(door.kind, { title: door.title, ...ins, taken: id => game.flag('stash:' + id), vip: game.flag('vip'), shop: { item: id => game.shopItem(id), list: v => game.shopList(v).items } });
+      const ay = height(cx, cz) + 60 + (roomIdx++) * 12;
+      room.group.position.set(cx, ay, cz); room.ay = ay; room.group.visible = false; interiorsRoot.add(room.group); rooms.set(door.i, room);
+    }
+    room.group.visible = true;
+    inside = { door, room, ax: cx, ay: room.ay, az: cz };
+    if (lights[0]) { const L = room.def.light; lights[0].position.set(cx, room.ay + room.h - 0.5, cz); lights[0].color.setHex(L.color); lights[0].distance = 60; lights[0].decay = 1.2; lights[0].intensity = L.int; }
+    onEvent('door', {});
+    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx, y: room.ay, z: cz + room.d / 2 - 1.3, yaw: 0 } };
+  }
+  function exitBuilding() {
+    if (!inside) return null; const { door, room } = inside; room.group.visible = false; inside = null;
+    if (lights[0]) { const y0 = height(cx, cz); lights[0].position.set(cx, y0 + 9, cz); lights[0].color.setHex(C.tint); lights[0].distance = 70; lights[0].decay = 1.6; }
+    onEvent('door', {});
+    return { x: door.x, z: door.z + 0.6, yaw: Math.PI };
+  }
+  function collidePlayer(x, z, r) {
+    if (!inside) return collide(x, z, r);
+    const c = inside.room.collide(x - inside.ax, z - inside.az, r); return c ? { x: c.x + inside.ax, z: c.z + inside.az } : null;
+  }
+  function nearSpot() { if (!inside) return null; return inside.room.nearSpot(player.x - inside.ax, player.z - inside.az); }
+  function openVip() { for (const r of rooms.values()) r.openRope(); }
+  function wareTargets() { return inside ? inside.room.targets : []; }
+  function refreshWares() { inside?.room.refresh(); }
+  function wareList() { return inside ? inside.room.wares.map(w => ({ id: w.id, x: w.spot.x + inside.ax, z: w.spot.z + inside.az })) : []; }
+
   return {
-    layout, enter, exit, update, collide, solidAt, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, openVip, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
+    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; },
     get colony() { return C ? { name: C.name, x: cx, z: cz, dist: distC() } : null; },
@@ -454,7 +552,7 @@ export function createWorld(ctx) {
       return { colony: { x: cx, z: cz, r: 55, name: C.name }, shop: toW(C.shop),
         vehicles: vehicles.filter(v => v.parked).map(v => ({ x: v.x, z: v.z, kind: v.kind })),
         people: people.map(p => ({ x: p.x, z: p.z, kind: p.kind, name: p.name || null })),
-        security: security.map(s => ({ x: s.x, z: s.z, kind: s.kind })), wanted };
+        security: security.map(s => ({ x: s.x, z: s.z, kind: s.kind })), wanted, doors: doors.map(d => ({ x: d.x, z: d.z, kind: d.kind, name: d.name, store: isStore(d) })), shops: stores().map(d => ({ x: d.x, z: d.z, kind: d.kind, name: d.name })) };
     },
     debug: { vehicles: () => vehicles.map(v => ({ kind: v.kind, x: v.x, z: v.z, parked: v.parked })), security: () => security.map(s => ({ kind: s.kind, x: s.x, z: s.z, hp: s.hp })), people: () => people.map(p => ({ kind: p.kind, x: p.x, z: p.z, name: p.name })), evade: () => evade, bustT: () => bustT }
   };
