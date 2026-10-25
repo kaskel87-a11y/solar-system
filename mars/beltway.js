@@ -385,16 +385,17 @@ function tap(el, fn) {
   (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g);
 }
 const isTouch = () => document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
-// Phone hotkey dock, shared by the Marsmania add-ons (contraband B, jobs J, turf K, beltway O). Whichever loads first
-// creates #ssxDock on the right edge (between the top HUD and the Jump/Run column); each adds one 48px black button.
-// Shown only on touch devices on the surface, where there's no keyboard. Bound with window.__onTap.
+// Phone hotkey button (🛣️ Belt, order 4) on the shared #ssxDock (v7.5.3: owned by mars/turf.js, right edge above Jump/Run, styles in
+// #ssxDockCss). We never create a dock: if #ssxDock isn't on the page yet we wait for it (turf may load after us) and
+// attach once it appears; with no dock at all this adds nothing. Bound with window.__onTap.
 function dockButton(id, label, aria, order, fn) {
-  if (!document.getElementById('ssxDockCss')) { const st = document.createElement('style'); st.id = 'ssxDockCss'; st.textContent = `#ssxDock{position:fixed;z-index:12;right:calc(8px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));display:none;flex-direction:column;gap:8px;pointer-events:none}
-body.surface.touch #ssxDock{display:flex} @media (pointer:coarse){body.surface #ssxDock{display:flex}}
-#ssxDock button{pointer-events:auto;min-width:52px;min-height:48px;padding:3px 6px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 11px/1.15 system-ui,sans-serif;white-space:pre-line;touch-action:manipulation}`; document.head.appendChild(st); }
-  let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); }
-  let b = document.getElementById(id); if (b) return b;
-  b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return b;
+  const attach = () => {
+    const d = document.getElementById('ssxDock'); if (!d) return false;
+    if (document.getElementById(id)) return true;
+    const b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return true;
+  };
+  if (attach()) return;
+  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no observer: no dock button */ }
 }
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);

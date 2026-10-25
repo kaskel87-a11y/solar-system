@@ -19,7 +19,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const A = () => G(() => window.SSX.beltway.active());
   const C = () => G(() => window.__app.game.progress.credits);
   const calm = () => G(() => { try { window.__app.game.debug.calm(true); const H = window.__app.game.debug.H(); if (H) H.hp = H.max; } catch (e) {} });
-  const openPanel = async () => { if (desk) await page.keyboard.press('KeyO'); else await tapSel('#dockBelt'); return wait(() => document.getElementById('beltPanel').classList.contains('show'), 4000); };
+  const openPanel = async () => { if (desk) await page.keyboard.press('KeyO'); else if (await G(() => !!document.getElementById('dockBelt'))) await tapSel('#dockBelt'); else { await tapSel('#menuBtn'); await sleep(400); await tapSel('#rmBeltway'); } return wait(() => document.getElementById('beltPanel').classList.contains('show'), 4000); };
   const act = async () => { if (desk) { await page.keyboard.press('KeyI'); await sleep(300); } else await tapSel('#beltAct'); };
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
@@ -32,7 +32,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
     await G(() => { window.SSX.beltway.debug.reset(); window.__app.surface.world.setWanted(0); window.__app.game.debug.credits?.(500); window.__evs = []; window.SSX.beltway.on(e => { if (e.type !== 'change') window.__evs.push(e.activity + ':' + e.type); }); });
     ok('highwayOnMain', await G(() => { const h = window.__app.surface.world.highway(); return h && h.checkpoints.length; }), (await G(() => window.__app.surface.world.highway()?.checkpoints.length)) === 4);
-    if (!desk) { const d = await center('#dockBelt'); ok('dockBtn', d && `${Math.round(d.w)}x${Math.round(d.h)}`, d && d.w >= 44 && d.h >= 44); }
+    R.docks = await G(() => document.querySelectorAll('#ssxDock').length); ok('noSecondDock', R.docks <= 1); // the dock belongs to turf.js (v7.5.3); we only attach to it
+    if (!desk && R.docks) { const d = await center('#dockBelt'); ok('dockBtn', d && `${Math.round(d.w)}x${Math.round(d.h)}`, d && d.w >= 44 && d.h >= 44); }
+    if (!R.docks) ok('noDockNoButton', await G(() => !document.getElementById('dockBelt')));
     // ---- panel
     ok('panelOpen', await openPanel());
     const tg = await G(() => [...document.querySelectorAll('#beltPanel button')].filter(b => b.offsetParent).map(b => b.getBoundingClientRect().height)); ok('panelTargets44', Math.min(...tg), Math.min(...tg) >= 44);

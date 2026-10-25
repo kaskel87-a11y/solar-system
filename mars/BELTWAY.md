@@ -14,7 +14,7 @@ crime activities on the **existing** Ares Beltway. It doesn't add a traffic syst
 | `SSX.city.hostiles`, `SSX.minimap.addMarks`, `SSX.height`, `SSX.time.isNight` | All feature-detected. |
 
 ## Activities and how to trigger them
-Open the panel with **O**, ☰ **🛣️ Beltway**, or the phone dock button **🛣️ Belt**. The context action is **I**, or the black button on
+Open the panel with **O**, ☰ **🛣️ Beltway**, or the phone dock button **🛣️ Belt** (attached to the shared `#ssxDock` from mars/turf.js, v7.5.3+; Beltway never creates a dock, so without turf the ☰ menu item is the phone route). The context action is **I**, or the black button on
 the left at 54% height, which shows only when the action works. The HUD bar has **Quit**.
 
 1. **🚚 Convoy hijack** (`start('hijack')`): get near the Beltway. The nearest traffic hauler within 190 m is marked (beacon + minimap).
@@ -53,4 +53,4 @@ Persistence: localStorage `ssx.beltway.v1` (crew, booth cooldowns, stats, sol-cl
 - **Traffic has no public accessor.** We use `world.debug.traffic()` + `world.nearVehicle()`. A `world.traffic()` that returns live
   objects, or `world.trafficAt(x, z)`, would remove the debug dependency. No hauler HP exists in core, so the Beltway keeps its own.
 - **Key G is used by both heist.js and mars/jobs.js** (both contextual), which other bots should check. The Beltway uses free keys **O** / **I**.
-- Phone layout: the HUD sits at top 244px (desktop 166px), below the jobs and turf HUDs. The action button is at left 54%, and the dock button has order 4.
+- Phone layout: the HUD sits at top 244px (desktop 166px), below the jobs and turf HUDs. The action button is at left 54%, and the 🛣️ Belt button has order 4 on `#ssxDock` (attach-only, waits for turf.js to create the dock).
