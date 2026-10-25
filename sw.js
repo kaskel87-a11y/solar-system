@@ -9,7 +9,7 @@ const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
   `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
-  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, `storymars.js${q}`, `marsshops.js${q}`, ...['dealership', 'garagecore', 'carmeet', 'rides'].map(n => `${n}.js${q}`), `mars/contraband.js${q}`, `mars/jobs.js${q}`, `mars/turf.js${q}`, ...['modes/hook', 'modes/raids', 'modes/rags', 'modes/ragscore'].map(n => `${n}.js${q}`), `modes/rags-data.json${q}`, ...['danger', 'dangercore', 'dangerhooks', 'pursuit', 'ambient', 'ambientcore', 'streetdata'].map(n => `${n}.js${q}`), 'data/barter.json', 'data/random-events.json', 'mars/barter.json', ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks'].map(n => `${n}.js${q}`),
+  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, `storymars.js${q}`, `marsshops.js${q}`, ...['dealership', 'garagecore', 'carmeet', 'rides'].map(n => `${n}.js${q}`), `mars/contraband.js${q}`, `mars/jobs.js${q}`, `mars/turf.js${q}`, `mars/dress.js${q}`, ...['modes/hook', 'modes/raids', 'modes/rags', 'modes/ragscore'].map(n => `${n}.js${q}`), `modes/rags-data.json${q}`, ...['danger', 'dangercore', 'dangerhooks', 'pursuit', 'ambient', 'ambientcore', 'streetdata'].map(n => `${n}.js${q}`), 'data/barter.json', 'data/random-events.json', 'mars/barter.json', ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks'].map(n => `${n}.js${q}`),
   ...['mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
@@ -41,8 +41,8 @@ self.addEventListener('fetch', e => {
   }
   // three.js, textures, icons: cache first
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
-    if (r.ok && (url.pathname.includes('/textures/') || url.pathname.includes('/vendor/') || url.pathname.includes('/icons/') || url.search.includes('v=') || url.pathname.endsWith('.webmanifest'))) {
-      const cp = r.clone(); caches.open(url.pathname.includes('/textures/') ? ASSETS : SHELL).then(c => c.put(req, cp));
+    if (r.ok && (url.pathname.includes('/textures/') || url.pathname.includes('/assets/') || url.pathname.includes('/vendor/') || url.pathname.includes('/icons/') || url.search.includes('v=') || url.pathname.endsWith('.webmanifest'))) {
+      const cp = r.clone(); caches.open(/\/(textures|assets)\//.test(url.pathname) ? ASSETS : SHELL).then(c => c.put(req, cp));
     }
     return r;
   })));

@@ -376,6 +376,7 @@ export function createWorld(ctx) {
     if (!C) return false;
     for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
+      if (s.nocam) continue; // v7.5.4: street dressing never pulls the camera in
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
       const r = s.r - 0.1; if (Math.hypot(x - s.x, (y - gy) * (r / Math.max(0.5, s.h || r)), z - s.z) < r) return true;
@@ -994,6 +995,8 @@ export function createWorld(ctx) {
     npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
     coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
+    // v7.5.4 API: add-on solids (street dressing). nocam defaults to true. Cleared on world exit; returns a remover.
+    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },
     highway: () => HW ? { name: HW.def.name, len: HW.len, closed: HW.closed, checkpoints: cps.map(c => ({ id: c.id, name: c.name, faction: c.faction, x: c.x, z: c.z })), ramps: HW.ramps.map(r => ({ x: r.x, z: r.z, len: r.len, h: r.h })), at: s2 => roadAt(s2), project: (x, z) => projectRoad(x, z) } : null,
