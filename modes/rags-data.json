@@ -19,21 +19,21 @@
       "blurb": "Porter knows your name now. The gate opens before you reach it." }
   ],
   "spawns": {
-    "crashpad": { "name": "Crash pad · Hab stack 9", "aj": [-262, -58], "tier": 0 },
-    "loft":     { "name": "Loft over The Static",    "aj": [-6, -414], "tier": 1 },
+    "crashpad": { "name": "Crash pad · Hab stack 9", "aj": [-294, -74], "tier": 0 },
+    "loft":     { "name": "Loft over Red Shift",     "aj": [-4, -388], "tier": 1 },
     "suite":    { "name": "Helios Crest guest suite", "aj": [334, 52],  "tier": 2 }
   },
   "helios_gate": { "aj": [324, 118], "outside": [324, 150], "line": "Porter: Residents and guests only. Come back when your name means something." },
   "properties": [
-    { "id": "noodle", "name": "Dust Bowl Noodle Cart", "tier": 0, "district": "flats", "door": [-252, -30], "size": [4, 3, 2.6],
+    { "id": "noodle", "name": "Dust Bowl Noodle Cart", "tier": 0, "district": "flats", "door": [-270, -74], "size": [4, 3, 2.6],
       "price": 120, "incomePerMin": 12, "cap": 120, "raidAttackers": ["gang"], "raidPerMin": 0.05, "raidWaves": 1, "raidSize": 2, "integrity": 60,
       "color": "#c9782b", "sign": "NOODLES", "pitch": "Cheap broth, steady customers. The Rustline crew will want a cut." },
-    { "id": "chop", "name": "Back Bay Chop Shop", "tier": 0, "district": "flats", "door": [-292, -10], "size": [12, 9, 5], "contact": "Wrench", "contraband": true,
+    { "id": "chop", "name": "Back Bay Chop Shop", "tier": 0, "district": "flats", "door": [-296, -14], "size": [12, 9, 5], "building": "WRENCH'S", "contact": "Wrench", "contraband": true,
       "price": 600, "incomePerMin": 45, "cap": 450, "raidAttackers": ["gang"], "raidPerMin": 0.08, "raidWaves": 2, "raidSize": 3, "integrity": 100,
-      "color": "#7a3b2a", "sign": "BACK BAY", "pitch": "Wrench needs a silent partner. Hot rovers in, clean parts out." },
-    { "id": "club", "name": "Red Shift Lounge", "tier": 1, "district": "olympus", "door": [40, -404], "size": [14, 10, 7], "contact": "Nyx",
+      "color": "#7a3b2a", "sign": "BACK BAY", "pitch": "Wrench needs a silent partner. Buy into the back bay of his shop: hot rovers in, clean parts out." },
+    { "id": "club", "name": "Red Shift Lounge", "tier": 1, "district": "olympus", "door": [-20, -394], "size": [10, 7, 6], "building": "RED SHIFT", "contact": "Nyx",
       "price": 2400, "incomePerMin": 150, "cap": 1500, "raidAttackers": ["colsec", "gang"], "raidPerMin": 0.08, "raidWaves": 2, "raidSize": 4, "integrity": 140,
-      "color": "#5b1f6e", "sign": "RED SHIFT", "pitch": "Two doors down from The Static. Door money, bar money, back-room money." },
+      "color": "#5b1f6e", "sign": "RED SHIFT", "pitch": "The owner wants out and the back room comes with it. Across the street from The Static. Door money, bar money, back-room money." },
     { "id": "mansion", "name": "Helios Crest Mansion", "tier": 2, "district": "helios", "door": [362, 40], "size": [18, 14, 8], "contact": "Porter",
       "price": 8500, "incomePerMin": 340, "cap": 3400, "raidAttackers": ["gang", "colsec"], "raidPerMin": 0.06, "raidWaves": 3, "raidSize": 4, "integrity": 200,
       "color": "#d8d2c4", "sign": "HELIOS CREST", "pitch": "Parties, private rentals, and a view of everyone you used to owe money to." }
@@ -46,8 +46,8 @@
   "hustles": [
     { "id": "r2r-h-scrap", "tier": 0, "title": "R2R: Scrap Run", "contact": "Wrench", "pay": 70, "xp": 20,
       "intro": "Wrench: You want in? Haul me the scrap behind the hab stacks. Don't ask whose it was.",
-      "steps": [ { "type": "goto", "at": [-238, -74], "r": 6, "text": "Grab the scrap behind the hab stacks" },
-                 { "type": "goto", "at": [-292, -10], "r": 6, "text": "Drop it at the Back Bay door" } ] },
+      "steps": [ { "type": "goto", "at": [-310, -80], "r": 6, "text": "Grab the scrap behind the hab stacks" },
+                 { "type": "goto", "at": [-296, -14], "r": 6, "text": "Drop it at the Back Bay door" } ] },
     { "id": "r2r-h-envelope", "tier": 0, "title": "R2R: Envelope for Marrow", "contact": "Marrow", "pay": 90, "xp": 25,
       "intro": "Marrow: One envelope, two stops, zero questions. Walk fast.",
       "steps": [ { "type": "goto", "at": [-274, -56], "r": 6, "text": "Pick up the envelope from Marrow" },
@@ -56,7 +56,7 @@
       "intro": "Nyx: Paper the Row before doors open. Three corners. Go.",
       "steps": [ { "type": "goto", "at": [-30, -440], "r": 7, "text": "Flyer the west corner" },
                  { "type": "goto", "at": [26, -458], "r": 7, "text": "Flyer the south corner" },
-                 { "type": "goto", "at": [44, -410], "r": 7, "text": "Flyer the Red Shift door" } ] },
+                 { "type": "goto", "at": [-20, -394], "r": 7, "text": "Flyer the Red Shift door" } ] },
     { "id": "r2r-h-valet", "tier": 2, "title": "R2R: Gate Errand", "contact": "Porter", "pay": 420, "xp": 60,
       "intro": "Porter: A resident left a case at the Junction. Bring it up the hill. Discreetly.",
       "steps": [ { "type": "goto", "at": [16, -38], "r": 6, "text": "Collect the case at Ozzie's Iron" },

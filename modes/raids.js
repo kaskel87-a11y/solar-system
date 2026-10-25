@@ -20,6 +20,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 function emit(ev, data) {
   for (const fn of [...(listeners.get(ev) || [])]) { try { fn(data); } catch (e) { console.warn('[raids] listener', ev, e); } }
+  try { window.SSX?.emit?.(ev, data); } catch {} // v7.5 event bus: SSX.on('raid:end', ...) works too
 }
 function on(ev, fn) {
   if (typeof fn !== 'function') return () => {};
@@ -38,12 +39,34 @@ function resolvePos(pos) {
 }
 function npcCap() { return mobile ? CAP_PHONE : CAP_DESKTOP; }
 function securityCount() { try { return C?.world?.securityList?.().length || 0; } catch { return 0; } }
-// ColSec spawns on its own schedule, so leave room for what the current wanted level will bring (world.js caps: phone 2 drones + 1 buggy)
-function securityReserve() {
-  const w = C?.world?.wanted || 0, d = mobile ? 2 : 3, b = mobile ? 1 : 2;
-  const want = w > 0 ? Math.min(d, Math.ceil(w / 2) + (w >= 4 ? 1 : 0)) + (w >= 2 ? Math.min(b, w - 1) : 0) : 0;
-  return Math.max(securityCount(), want);
+// ColSec spawns on its own schedule, so leave room for what the current wanted level will bring
+// (mirrors world.js caps; phone: 2 drones, 1 buggy, 2 officers (+1 backup), 1 heavy, 1 gunship)
+function expectedSecurity(w) {
+  if (!(w > 0)) return { all: 0, foot: 0 };
+  const c = mobile ? { d: 2, b: 1, o: 2, h: 1 } : { d: 3, b: 2, o: 4, h: 2 };
+  const d = Math.min(c.d, Math.ceil(w / 2) + (w >= 4 ? 1 : 0)), b = w >= 2 ? Math.min(c.b, w - 1) : 0;
+  const o = w >= 2 ? Math.min(c.o, w) : 0, h = w >= 4 ? Math.min(c.h, w - 3) : 0, g = w >= 5 ? 1 : 0;
+  return { all: d + b + o + h + g, foot: o + h };
 }
+function securityReserve() { return Math.max(securityCount(), expectedSecurity(C?.world?.wanted || 0).all); }
+// how many raiders may be alive right now. With the v7.5 NPC budget, walkers + ColSec on foot + human enemies + every
+// add-on reservation must fit the phone cap of 12 (ambient walkers never drop below 4).
+function allowedAttackers() {
+  let n = npcCap() - securityReserve();
+  const W = C?.world;
+  if (typeof W?.npcBudget === 'function') {
+    try {
+      const b = W.npcBudget(), res = b.reserved || {}, others = Object.entries(res).reduce((a, [k, v]) => a + (k === 'raids' ? 0 : v), 0);
+      let footNow = 0; try { footNow = (W.securityList?.() || []).filter(s => s.kind === 'officer' || s.kind === 'heavy').length; } catch {}
+      const foot = Math.max(footNow, expectedSecurity(W.wanted || 0).foot), hum = C.game?.humanCount?.() || 0;
+      const room = (b.cap || npcCap()) - (mobile ? 4 : 0) - foot - hum - others;
+      n = Math.min(n, room);
+    } catch {}
+  }
+  return Math.max(0, n);
+}
+function reserve(n) { try { if (typeof C?.world?.npcReserve === 'function' && reserved !== n) { reserved = n; C.world.npcReserve('raids', n); } } catch {} }
+let reserved = 0;
 function aliveAttackers() { return raid ? raid.npcs.filter(n => n.alive) : []; }
 const playerXZ = () => C.car ? { x: C.car.x, z: C.car.z } : { x: C.player.x, z: C.player.z };
 const bark = (cat, who) => { try { window.SSX?.bark?.({ name: who || 'Raider', kind: 'raider' }, cat); } catch {} };
@@ -82,7 +105,7 @@ function finish(result, why) {
   if (!raid || raid.ended) return;
   const r = raid; r.ended = true;
   for (const n of r.npcs) removeNpc(n);
-  raid = null;
+  raid = null; reserve(0);
   const info = { id: r.id, result, why, kills: r.kills, waves: r.plan.length, wave: r.wave, integrity: Math.max(0, Math.round(r.integrity)) };
   emit('raid:end', info);
   bark(result === 'win' ? 'raid_win' : 'raid_lose', KIND[r.kind].label);
@@ -195,7 +218,12 @@ function tickRaid(dt) {
     }
   }
   r.nextSpawn -= dt;
-  if (r.queue > 0 && r.nextSpawn <= 0 && aliveAttackers().length + securityReserve() < npcCap()) { spawnNpc(); r.queue--; r.nextSpawn = 0.45; }
+  const allow = allowedAttackers(), alive = aliveAttackers().length;
+  reserve(Math.min(allow, alive + r.queue));
+  if (r.queue > 0 && r.nextSpawn <= 0 && alive < Math.min(allow, reserved || allow)) { spawnNpc(); r.queue--; r.nextSpawn = 0.45; }
+  // nothing can spawn (city is full) and nobody's left: the crew scatters
+  r.stall = r.queue > 0 && alive === 0 && allow <= 0 ? (r.stall || 0) + dt : 0;
+  if (r.stall > 25) return finish('win', 'scattered');
   // attackers
   for (const n of r.npcs) {
     if (n.tracer && (n.tracerT -= dt) <= 0) { n.tracer.parent?.remove(n.tracer); n.tracer.geometry.dispose(); n.tracer = null; }
@@ -221,7 +249,7 @@ export function raidsTick(dt, ctx) {
   if (!own) own = { start, on, off, stop, active: () => pub(raid), attackers: () => aliveAttackers().map(handle), cap: npcCap, fromAJ: ajToWorld, version: 1, engine: 'modes/raids.js' };
   if (typeof window !== 'undefined') {
     if (window.SSX && !window.SSX.raids) window.SSX.raids = own; // no-op guard: never replace another engine
-    window.__raids = { get state() { return pub(raid); }, get npcs() { return aliveAttackers().length; }, get security() { return securityCount(); }, get cap() { return npcCap(); },
+    window.__raids = { get state() { return pub(raid); }, get npcs() { return aliveAttackers().length; }, get security() { return securityCount(); }, get cap() { return npcCap(); }, get allowed() { return allowedAttackers(); }, get reserved() { return reserved; },
       killAll: () => { for (const n of aliveAttackers()) hitNpc(n, 99, 'debug', null); }, flushQueue: () => { if (raid) raid.queue = 0; }, get installed() { return window.SSX?.raids === own; } };
   }
   if (!ctx.world) return;

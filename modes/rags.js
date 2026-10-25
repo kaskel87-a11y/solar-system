@@ -15,14 +15,15 @@ const P = () => C?.game?.debug?.P?.() || C?.game?.progress || null;
 
 function loadData() {
   if (data || loading) return loading;
-  loading = fetch(new URL('./rags-data.json', import.meta.url), { cache: 'no-cache' }).then(r => r.json()).then(d => {
+  // same ?v= as the modules, so the service worker caches it per release
+  loading = fetch(new URL('./rags-data.json' + (new URL(import.meta.url).search || ''), import.meta.url)).then(r => r.json()).then(d => {
     data = d;
     // feature-detect district registration: use whatever centres the city pack registered
     try {
-      const reg = window.SSX?.districtsOf?.('Mars') || [];
+      const city = window.SSX?.city?.districts, reg = [...(window.SSX?.districtsOf?.('Mars') || []), ...(city ? Object.entries(city).map(([id, d]) => ({ id, ...d })) : [])];
       for (const k of Object.keys(data.districts)) {
         const dd = data.districts[k], hit = reg.find(r => r.id === dd.districtId || r.name === dd.name);
-        const c = hit?.center || hit?.centre || hit?.aj; if (Array.isArray(c) && c.length === 2) dd.center = c;
+        const c = hit?.origin || hit?.centre || hit?.center; if (Array.isArray(c) && c.length === 2 && c.every(Number.isFinite)) dd.center = [c[0], c[1]]; // colony-relative, same frame as our data
       }
     } catch {}
     S = load();
@@ -87,11 +88,16 @@ function buildProps() {
     const [w, d, h] = def.size, cx = door.x + dx * d / 2, cz = door.z + dz * d / 2, y = C.height(cx, cz);
     const g = new THREE.Group(); g.position.set(cx, y, cz); g.rotation.y = Math.atan2(-dx, -dz);
     const mat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.85 });
-    const body = new THREE.Mesh(box, mat); body.scale.set(w, h, d); body.position.y = h / 2; g.add(body);
-    const dm = new THREE.Mesh(plane, doorMat); dm.scale.set(1.6, 2.4, 1); dm.position.set(0, 1.2, d / 2 + 0.02); g.add(dm);
+    // properties in an existing city building (WRENCH'S, RED SHIFT) only get a door marker, sign and flag
+    if (!def.building) { const body = new THREE.Mesh(box, mat); body.scale.set(w, h, d); body.position.y = h / 2; g.add(body); }
+    const dm = new THREE.Mesh(plane, doorMat); dm.scale.set(1.6, 2.4, 1); dm.position.set(0, 1.2, def.building ? -d / 2 + 0.3 : d / 2 + 0.02); g.add(dm);
+    if (def.building) { g.position.set(door.x, C.height(door.x, door.z), door.z); dm.position.z = 0; }
     const sm = new THREE.MeshBasicMaterial({ map: signTexture(def.sign, '#ff5a8a') });
-    const sign = new THREE.Mesh(plane, sm); sign.scale.set(Math.min(w * 0.8, 8), Math.min(w * 0.8, 8) / 4, 1); sign.position.set(0, h + 0.9, d / 2 * 0.6); g.add(sign);
-    const flag = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: 0x3cff9a })); flag.scale.set(0.15, 1.6, 0.15); flag.position.set(w / 2 - 0.4, h + 0.8, d / 2 - 0.4); g.add(flag);
+    const sign = new THREE.Mesh(plane, sm); sign.scale.set(Math.min(w * 0.8, 8), Math.min(w * 0.8, 8) / 4, 1);
+    const flag = new THREE.Mesh(box, new THREE.MeshBasicMaterial({ color: 0x3cff9a })); flag.scale.set(0.15, 1.6, 0.15);
+    if (def.building) { sign.scale.multiplyScalar(0.45); sign.position.set(0, 3.2, 0); flag.position.set(1.4, 3.0, 0); }
+    else { sign.position.set(0, h + 0.9, d / 2 * 0.6); flag.position.set(w / 2 - 0.4, h + 0.8, d / 2 - 0.4); }
+    g.add(sign); g.add(flag);
     root.add(g); meshes[def.id] = { g, flag, sign: sm };
   }
   // crash pad + unlocked spawns: a mattress-and-tarp marker

@@ -2,7 +2,7 @@
 // BASE=http://127.0.0.1:8788/ BR=webkit DEV="iPhone 14" node tests/test-r2r.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8788/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || 'iPhone 14';
-const out = process.env.OUT || '/tmp/r2r-shots/', PFX = 'r2r';
+const out = (process.env.SHOTS_DIR || process.env.OUT || require('path').join(__dirname, '..', 'shots', 'r2r')) + '/', PFX = 'r2r';
 const fs = require('fs'); try { fs.mkdirSync(out, { recursive: true }); } catch (e) {}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
@@ -53,7 +53,7 @@ function measureHud() {
     const t0 = Date.now(); let maxNpc = 0, maxAtt = 0, sawAtt = false;
     while (Date.now() - t0 < maxMs) {
       const s = await G(() => {
-        const g = window.__app.surface.game, H = g.debug.H(); H.hp = Math.max(H.hp, 80); if (H.down > 0) return { down: true };
+        const g = window.__app.surface.game, H = g.debug.H(); H.hp = Math.max(H.hp, 80); H.inv = 2; if (H.down > 0) return { down: true };
         const w = window.__app.surface.world, i = window.__app.surface.info, list = window.SSX.raids.attackers();
         const p0 = { x: i.x, y: (window.__app.surface.debugHeight?.(i.x, i.z) ?? 0) + 1.5, z: i.z };
         for (const a of list.slice(0, 2)) { const n = window.__raids; const pos = { x: a.x, y: 0, z: a.z };
@@ -146,20 +146,30 @@ function measureHud() {
     await sleep(800);
     R.wantedAtRaid = await G(() => window.__app.surface.world.wanted);
     ok('colsecWanted', R.wantedAtRaid, R.wantedAtRaid >= 2);
+    // ColSec officers bust you at 2★ (in play: bribe, evade or lose the shakedown). Here we drop the heat and fight the squad.
+    await G(() => window.__app.surface.world.setWanted(0));
     const f2 = await fight(90000); R.raid2 = f2;
     const ev2 = await G(() => window.__t.ev); R.events2 = ev2;
     ok('raid2Won', null, ev2.some(e => e[0] === 'raid:end' && e[1] === 'win'));
     const cap = await G(() => window.__raids.cap); R.cap = cap;
     ok('npcCap', null, Math.max(f1.maxNpc || 0, f2.maxNpc || 0) <= cap && (DEV === 'desktop' || cap === 12));
     await G(() => window.__app.surface.world.setWanted(0));
-    // cap stress: a 20-strong wave plus 4-star ColSec never puts more than the phone cap on screen
-    await G(() => { window.__app.surface.world.setWanted(4, 'test'); window.SSX.raids.start({ id: 'cap-test', pos: [-262, -58], radius: 20, attackers: 'gang', waves: [{ count: 20 }], wanted: false }); });
-    let capMax = 0; for (let i = 0; i < 90 && capMax < cap; i++) { await sleep(400); capMax = Math.max(capMax, await G(() => { const H = window.__app.surface.game.debug.H(); H.hp = Math.max(H.hp, 80); window.__capLog = (window.__capLog || []).concat([[window.__raids.npcs, window.__raids.security, window.__raids.state?.queued]]); return window.__raids.npcs + window.__raids.security; })); }
-    R.capLog = await G(() => window.__capLog.slice(-3).map(x => x.join('/')).join(' '));
-    await sleep(2500); capMax = Math.max(capMax, await G(() => window.__raids.npcs + window.__raids.security)); // stays capped while the queue waits
-    R.capStress = capMax;
+    await wait(() => window.__app.surface.game.debug.H().down <= 0, 10000);
+    R.capStart = await G(() => { const H = window.__app.surface.game.debug.H(); H.inv = 5; return { down: H.down, raid: !!window.SSX.raids.active() }; });
+    // cap stress: a 20-strong wave plus 4-star ColSec never puts more than the phone cap of people on screen
+    await G(() => { window.__app.surface.world.setWanted(4, 'test'); window.__capRes = window.SSX.raids.start({ id: 'cap-test', pos: [-294, -74], radius: 20, attackers: 'gang', waves: [{ count: 20 }], wanted: false }); });
+    const cs = { total: 0, used: 0, att: 0, allowed: 0, queued: 0, n: 0 };
+    const sample = () => G(() => { const H = window.__app.surface.game.debug.H(); H.hp = Math.max(H.hp, 80); H.inv = 2;
+      const W = window.__app.surface.world, b = W.npcBudget ? W.npcBudget() : { used: 0 };
+      return { total: window.__raids.npcs + window.__raids.security, used: b.used, att: window.__raids.npcs, allowed: window.__raids.allowed, queued: window.__raids.state?.queued ?? 0 }; });
+    for (let i = 0; i < 90; i++) { await sleep(400); const x = await sample(); cs.n++;
+      cs.total = Math.max(cs.total, x.total); cs.used = Math.max(cs.used, x.used); cs.att = Math.max(cs.att, x.att); cs.allowed = x.allowed; cs.queued = x.queued;
+      if (i > 10 && x.att >= x.allowed && x.queued > 0) break; }
+    await sleep(2500); { const x = await sample(); cs.total = Math.max(cs.total, x.total); cs.used = Math.max(cs.used, x.used); cs.queued = x.queued; }
+    R.capStress = cs; R.capRes = await G(() => window.__capRes);
     const stopped = await G(() => window.SSX.raids.stop('cap-test', 'test'));
-    ok('capStress', capMax, capMax <= cap && capMax >= cap - 1 && stopped);
+    ok('capStress', cs, cs.total <= cap && cs.used <= cap && cs.att >= 3 && cs.queued > 0 && stopped);
+    ok('reservationReleased', null, await G(() => !(window.__app.surface.world.npcBudget?.().reserved?.raids)));
     await G(() => window.__app.surface.world.setWanted(0)); await sleep(300);
     // the no-op guard: a second engine install keeps the first one
     ok('noopGuard', null, await G(() => { const a = window.SSX.raids; const fake = { start() {}, on() {} }; const keep = window.SSX.raids; window.SSX.raids = fake;

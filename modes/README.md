@@ -40,7 +40,7 @@ Rules:
 - **One raid at a time.** A second `start` returns `{ ok: false }`.
 - **Hittable without changing world.js.** Attackers are wrapped into `world.hitWorld`, `targets`, `meleeTarget`, `meleeWorld` and `blast` once per world, the same pattern street danger uses. Blasters, melee, grenades and auto-aim all work on them.
 - **Wanted level.** A ColSec raid sets wanted to 2 or more at start. A gang raid sets wanted 1 at wave 2 (a gunfight draws ColSec). Pass `wanted: false` to opt out.
-- **NPC cap.** Live attackers plus ColSec units on screen stay at 12 or fewer on phones and 20 or fewer on desktop. The engine reserves room for the ColSec the current wanted level will spawn; extra attackers wait in a queue.
+- **NPC cap.** Raiders fit inside the v7.5 NPC budget (`world.npcBudget()` / `npcReserve`, phone cap 12). Live raiders are limited to the smaller of two numbers: the cap minus the ColSec the current wanted level will field, and the budget cap minus the 4-walker floor (phone), ColSec on foot, `game.humanCount()` and other add-ons' reservations. The engine reserves its slots as `npcReserve('raids', n)` and releases them when the raid ends. Extra attackers wait in a queue; if nothing can spawn for 25 s the raid ends as a win (`scattered`).
 - **How a raid is lost:**
   - the core's integrity reaches 0
   - you go down
@@ -71,9 +71,9 @@ Rules:
 | Property | District | Price | Income | Raided by |
 | --- | --- | --- | --- | --- |
 | Dust Bowl Noodle Cart | Red Tape Flats | 120 | 12/min | gang |
-| Back Bay Chop Shop | Red Tape Flats (Wrench) | 600 | 45/min | gang |
-| Red Shift Lounge | Olympus Row, by The Static (Nyx) | 2400 | 150/min | ColSec or gang |
-| Helios Crest Mansion | Helios Heights (Porter) | 8500 | 340/min | gang or ColSec |
+| Back Bay Chop Shop | Red Tape Flats, buy-in to Wrench's existing WRENCH'S block | 600 | 45/min | gang |
+| Red Shift Lounge | Olympus Row, the city's existing RED SHIFT block by The Static (Nyx) | 2400 | 150/min | ColSec or gang |
+| Helios Crest Mansion | Helios Heights (Porter), new dome clear of the heist mansions | 8500 | 340/min | gang or ColSec |
 
 - **Income** builds up to a cap whether or not you're there, but you collect it in person at the door.
 - **The chop shop's take** follows hot-parts street prices when `SSX.contraband` is present.

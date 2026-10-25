@@ -31,6 +31,29 @@ ok('Helios gate exit is outside the gate radius', !inside(data.helios_gate.outsi
 const lita = [[292, 108], [346, 112], [350, 72], [292, 70]];
 ok('mansion clear of the heist houses', lita.every(h => Math.hypot(h[0] - 362, h[1] - 40) > 25));
 ok('tiers monotonic', data.tiers.every((t, i) => !i || (t.netWorth >= data.tiers[i - 1].netWorth && t.rep >= data.tiers[i - 1].rep)));
+// nothing we build sits on the v7.5 city's domes, blocks, parked vehicles or add-on lots
+try {
+  const { DISTRICT_DATA } = await import('../citydata.js');
+  const ORIGIN = { olympus: ['downtown', [0, -430]], flats: ['rough', [-280, -40]], helios: ['gated', [320, 80]] };
+  const LOTS = { downtown: [[40, 30, 9]], rough: [[36, -34, 10]], gated: [[34, 46, 8]] };
+  const clash = [];
+  const check = (name, aj, rad, dk, skipSign) => {
+    const [key, o] = ORIGIN[dk], P = DISTRICT_DATA[key], x = aj[0] - o[0], z = aj[1] - o[1];
+    for (const d of P.domes) if (Math.hypot(x - d[0], z - d[1]) < d[2] + rad) clash.push(`${name}×dome ${d[3]}`);
+    for (const b of P.blocks) if (b[5] !== skipSign && Math.abs(x - b[0]) < b[2] / 2 + rad && Math.abs(z - b[1]) < b[3] / 2 + rad) clash.push(`${name}×block ${b[5]}`);
+    for (const v of P.vehicles) if (Math.hypot(x - v[1], z - v[2]) < rad + 2) clash.push(`${name}×${v[0]}`);
+    for (const l of LOTS[key]) if (Math.hypot(x - l[0], z - l[1]) < l[2] + rad) clash.push(`${name}×lot`);
+  };
+  for (const p of data.properties) {
+    const dc = data.districts[p.district].center, dx = p.door[0] - dc[0], dz = p.door[1] - dc[1], L = Math.hypot(dx, dz);
+    const c = p.building ? p.door : [p.door[0] + dx / L * p.size[2] / 2, p.door[1] + dz / L * p.size[2] / 2];
+    check(p.id, c, p.building ? 0.8 : Math.hypot(p.size[0], p.size[2]) / 2, p.district, p.building);
+  }
+  const spD = { crashpad: 'flats', loft: 'olympus', suite: 'helios' };
+  for (const [id, sp] of Object.entries(data.spawns)) check('spawn ' + id, sp.aj, 1.5, spD[id]);
+  ok('clear of city buildings, vehicles and lots' + (clash.length ? ': ' + clash.join(', ') : ''), !clash.length);
+  for (const p of data.properties.filter(p => p.building)) ok(`${p.id} is the city's ${p.building}`, DISTRICT_DATA[ORIGIN[p.district][0]].blocks.some(b => b[5] === p.building));
+} catch (e) { ok('citydata import (' + e.message + ')', false); }
 const txt = JSON.stringify(data).toLowerCase();
 ok('no real company names / nudity', !/\bspacex\b|\btesla\b|\bnude|\bnaked|\btopless/.test(txt));
 console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
