@@ -227,7 +227,11 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
     addDjLines(id, lines) { addDjLines(STATIONS.find(s => s.id === id), lines); },
     stations: () => STATIONS.map((s, i) => ({ i, id: s.id, name: s.name, tag: s.tag, procedural: typeof s.step === 'function' })),
     // npc: index into world people | name | { x, z, kind? } | null (nearest). what: a BARKS category or literal text.
-    bark(npc, what = 'street', { force = false, blip = true } = {}) {
+    // v7.5.3: callers also pass (npc, category, fallbackLine). An unknown category with no line is a key, not text: return
+    // null so the caller's own toast/caption runs instead of a caption that reads "activity_complete".
+    bark(npc, what = 'street', opts = {}) {
+      const line3 = typeof opts === 'string' ? opts : null, { force = false, blip = true } = typeof opts === 'object' && opts ? opts : {};
+      if (!BARKS[what]) { if (line3) what = line3; else if (/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/.test(String(what))) return null; }
       const info = app.surface?.info; if (!info || !app.state?.onSurface) return null;
       const ps = people().map((p, i) => ({ ...p, i }));
       let p = typeof npc === 'number' ? ps[npc] : typeof npc === 'string' ? ps.find(q => q.name === npc) : npc && isFinite(npc.x) ? { kind: npc.kind || 'colonist', name: npc.name, x: npc.x, z: npc.z, i: -1 } : null;
