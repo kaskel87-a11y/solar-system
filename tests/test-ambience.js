@@ -20,6 +20,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const center = sel => G(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, h: r.height, top: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button')?.id || null }; }, sel);
   const tap = async sel => { const c = await center(sel); if (!c) return null; if (desk) await page.mouse.click(c.x, c.y); else await page.touchscreen.tap(c.x, c.y); return c; };
+  // screenshots are evidence, not assertions: a swiftshader frame can take >30 s on a loaded box
+  const shot = async path => { try { await page.screenshot({ path, timeout: 90000 }); } catch (e) { (R.shotWarn ||= []).push(path.split('/').pop() + ': ' + e.message.split('\n')[0]); } };
   const S = () => G(() => window.__app.marsAudio.state);
   const land = async () => {
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
@@ -33,7 +35,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.interact()); return wait(() => window.__app.surface.info.driving, 6000);
   };
   try {
-    await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
+    await page.goto(base + '?t=' + Date.now(), { timeout: 120000 }); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear());
     ok('loaded', await wait(() => !!window.__app?.marsAudio, 15000));
     ok('api', await G(() => ['registerStation', 'bark', 'registerBarks', 'registerSoundscape', 'audio'].every(k => !!window.SSX[k])));
@@ -68,7 +70,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('captionVisible', cap && JSON.stringify(cap), cap && cap.w > 20 && cap.op !== '0');
     ok('captionOffCentre', cap && !(cap.x < vw / 2 && cap.x + cap.w > vw / 2 && cap.y < vh / 2 && cap.y + cap.h > vh / 2 + 4));
     ok('captionNoInput', cap?.pe === 'none');
-    await page.screenshot({ path: `${out}ambience-${tag}-bark.png` });
+    await shot(`${out}ambience-${tag}-bark.png`);
     R.rateLimited = await G(() => window.SSX.bark(null, 'street')) === null; ok('rateLimited', R.rateLimited);
     // ---- radio while driving
     ok('roverIn', await enterRover());
@@ -85,9 +87,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('savedRadioId', await G(() => window.__app.game.progress.settings.radioId), await G(() => window.__app.game.progress.settings.radioId === 'olympus'));
     const tk = await G(() => { const r = document.getElementById('ssxTicker').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
     ok('tickerOffCentre', JSON.stringify(tk), tk.y + tk.h < vh * 0.3);
-    await page.screenshot({ path: `${out}ambience-${tag}-radio.png` });
+    await shot(`${out}ambience-${tag}-radio.png`);
     await tap('#sndClose'); await wait(() => !document.getElementById('sndPanel').classList.contains('show'), 2000);
-    await page.screenshot({ path: `${out}ambience-${tag}-radio-ticker.png` });
+    await shot(`${out}ambience-${tag}-radio-ticker.png`);
     // 📻 Next cycles from our station to the next one
     const before = (await S()).tuned; await tap('#radioBtn'); await sleep(400); const after = (await S()).tuned;
     ok('nextButton', `${before}->${after}`, before !== after);
@@ -119,7 +121,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('radioOffOnFoot', await wait(() => !window.__app.marsAudio.state.station, 3000));
     // ---- persistence across a reload: last station + mix come back
     await G(() => window.__app.game.save?.()); await sleep(300);
-    await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading') && !!window.__app?.marsAudio, 120000);
+    await page.goto(base + '?t=' + Date.now(), { timeout: 120000 }); await wait(() => window.__frames > 3 && !document.getElementById('loading') && !!window.__app?.marsAudio, 120000);
     ok('reloadSaved', await G(() => { const s = window.__app.game.progress.settings; return `${s.radioId}/${s.radio}/${s.mix?.music}`; }), await G(() => { const s = window.__app.game.progress.settings; return s.radioId === 'helios' && s.mix?.music === 0.6; }));
     if (desk) await page.mouse.click(vw * 0.5, vh * 0.45); else await page.touchscreen.tap(vw * 0.5, vh * 0.45);
     await land(); ok('roverIn2', await enterRover());
