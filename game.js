@@ -3,8 +3,8 @@
 // rewards, rare finds and salvage. The world layer (colonies, NPCs, vehicles, wanted level) plugs in
 // through ctx hooks: targets(), friendlies(), allowFire(), solidAt(), colony(), world.
 import * as THREE from 'three';
-import { STORY } from './missions-data.js?v=7.3';
-import { mergeGeos } from './models.js?v=7.3';
+import { STORY } from './missions-data.js?v=7.4';
+import { mergeGeos } from './models.js?v=7.4';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -1555,6 +1555,8 @@ export function createGame(ctx) {
 
   return {
     enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, shopItem, buy, talk, spend, flag, setFlag, grantPerm, bribe, bribeCost, idleLine, ammoCap, registerMission,
+    restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
+    bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
     stash(id, perm, name) { if (flag('stash:' + id)) return false; setFlag('stash:' + id); P.credits += 40; grantPerm(perm, name || 'Stash'); return true; }, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },

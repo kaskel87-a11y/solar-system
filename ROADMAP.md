@@ -4,7 +4,7 @@ This is an ordered backlog: future runs take the top unchecked item. Tick items 
 
 House rules for all of it:
 - Adult, gritty, M-rated tone.
-- No nudity and no sexual content or interactions.
+- No nudity. Nothing sexual is shown, animated or explicitly described. Adult club content (v7.4) stays costumed, fades to black and sits behind a one-time 18+ prompt.
 - No real brands, logos or trademarks.
 - Keep the phone HUD minimal: the middle 50% of the screen stays clear, and `tests/test-hud.js` must pass.
 - Every feature gets a Playwright test on the iPhone matrix, plus live iPhone 14 WebKit screenshots.
@@ -37,18 +37,23 @@ House rules for all of it:
 - [x] **Laptop boost:** Shift boosts every drivable vehicle, a mouse-holdable ⚡ Boost (Shift) button while driving, first-drive hint, no stuck keys after alt-tab.
 - [x] **Modding API:** `SSX.registerColony`, `SSX.registerMission`, `SSX.registerInterior`, `SSX.registerMenuItem` (see README).
 
-## v7.4 (next)
+## v7.4 (shipped Oct 25, 2026)
+- [x] **Multi-planet merge (PR #1, steve/multi-planet):** colonies on Venus, Mercury, Titan, Europa and Io, with contacts, jobs, radio, signature rides and walk-in storefronts, plus ☰ 🌍 Colonies fast travel. Core hooks: `registerVehicle(kind, spec, builder)` with `VEHICLE_BUILDERS`, the VEH_ICON fallback to `VEHICLES[kind].icon`, `spec.amphibious` for the Titan skiff, and a `registerBody` stub.
+- [x] **Race track merge (PR #2, cos/race-track):** street races, track builder and best-lap ghosts. `raceTick` is hooked in surface.js, and all four files are precached.
+- [x] **Barrel rolls:** Q/E in the air or double-tap A/D on a laptop, a double flick of the stick on touch, and the Starship in space. Clean landing = stunt bonus; roof landing = damage.
+- [x] **Laptop ☰ fix:** a mouse click on ☰ didn't open it after landing because pointer lock was still held from flight. Landing now frees the mouse, and **M** opens the menu.
+- [x] **Touch ghost-click fix** for ☰ entries that open panels.
+- [x] **Velvet Airlock strip club (non-explicit):** pole routines in costumes that stay on, stage tipping (make it rain), costumed VIP private dances (letterboxed), and an adult upstairs host who fades to black and restores health. All behind an 18+ prompt.
+
+## v7.5 (next)
 1. [ ] **Full security combat:** guards take cover, return fire and call backup; they're killable; heavies at 4-5★. Lose stars by hiding or bribing.
 2. [ ] **Gorier combat:** blood decals, dismemberment-lite on aliens, heavier hit reactions.
 3. [ ] **More missions:** the rest of the Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk), with thug/goon/enforcer waves, hold, choice, pay, tail and nonlethal steps; the cartel storyline's dark choices (betray, spare, execute, take the cut).
 4. [ ] **NPC interactions:** dialogue, bribes, hire muscle, buy rumors that mark finds and jobs, random street events.
-5. [ ] **Barrel rolls:** anything airborne (thruster rover, hover bike, shuttle skimmer, stolen rides that catch air) can roll left/right. Touch: a quick double-flick of the joystick sideways, or a swipe on the Thrust button. Desktop: Q/E while airborne (or double-tap A/D). A full 360° roll with a stable camera; a small credit/style bonus for landing clean after a roll (stunt-bonus style); crash damage for landing upside down. The Starship can barrel roll in space flight too.
-6. [ ] **Multi-planet merge (PR #1, steve/multi-planet):** add the hooks it needs (registerColony(world, def), registerMission(q), app.registerMenuItem({id, label, onTap}), registerVehicle(kind, spec, builder) or keep VEHICLE_BUILDERS, VEH_ICON[kind] || VEHICLES[kind]?.icon, spec.amphibious, registerBody()), include planets/ in the ?v bumps and the sw.js cache, review for HUD/perf/tone, run the full matrix, then ship it.
 
 ## Later (rough order)
 - [ ] Rocks/boulders as obstacles for the rover and player (playtest p1).
 - [ ] **Base and structure building:** place habitats, walls, turrets, landing pads and storage.
-- [ ] **Race track** with a simple track builder (checkpoints, ramps, lap timer, ghost runs).
 - [ ] **Space bank heist** in stages: plan (scout and intel), crew (hire specialists), vault (drill/hack under pressure), getaway (pursuit to the ship).
 - [ ] **Contraband business** in fictional "space drugs" (e.g. glow-dust):
   - buy low and sell high across colonies;

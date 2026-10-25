@@ -3,7 +3,7 @@
 // security drones and patrol buggies. Everything here is game fiction. Cheap by design: shared geometry,
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
-import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.3';
+import { buildRoom, INTERIORS, textTex } from './interiors.js?v=7.4';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -102,6 +102,13 @@ function wheelSet(g, body, list, r) {
 }
 // ext hook (planets/): extra vehicle kinds build here, usually as a stock body + livery. fn({ R, mesh, build, sec }) -> { group, body, wheels, seat, paint }
 export const VEHICLE_BUILDERS = {};
+// v7.4 modding: add a drivable kind. spec = VEHICLES-style numbers (+ name, icon, hover, amphibious, tough); builder = fn({ R, mesh, build, sec }) -> { group, body, wheels, seat, paint }
+export function registerVehicle(kind, spec, builder) {
+  if (!kind || !spec || typeof spec.vmax !== 'number') throw new Error('registerVehicle(kind, { name, vmax, boost, acc, bacc, turn, r, ... }, builder?)');
+  VEHICLES[kind] = { boost: spec.vmax * 1.5, acc: 9, bacc: 14, turn: 1.4, r: 2.4, ...spec };
+  if (builder) VEHICLE_BUILDERS[kind] = builder;
+  return kind;
+}
 export function buildVehicle(kind, sec = false) {
   res(); if (VEHICLE_BUILDERS[kind]) return VEHICLE_BUILDERS[kind]({ R, mesh, build: buildVehicle, sec });
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body); g.rotation.order = 'YXZ';
@@ -536,12 +543,13 @@ export function createWorld(ctx) {
   }
   function nearSpot() { if (!inside) return null; return inside.room.nearSpot(player.x - inside.ax, player.z - inside.az); }
   function openVip() { for (const r of rooms.values()) r.openRope(); }
+  function clubFx(kind, n) { const r = inside?.room; return r ? (kind === 'rain' ? r.rain(n) : r.privateDance(n)) : 0; } // v7.4
   function wareTargets() { return inside ? inside.room.targets : []; }
   function refreshWares() { inside?.room.refresh(); }
   function wareList() { return inside ? inside.room.wares.map(w => ({ id: w.id, x: w.spot.x + inside.ax, z: w.spot.z + inside.az })) : []; }
 
   return {
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, openVip, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, openVip, clubFx, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,

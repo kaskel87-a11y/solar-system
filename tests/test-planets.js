@@ -41,7 +41,7 @@ function measure() {
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const shot = s => page.screenshot({ path: `${out}${PFX}-${tag}-${s}.png` });
-  const tapAt = async sel => { const r = await G(s => { const e = document.querySelector(s); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, sel); if (r) await page.touchscreen.tap(r.x, r.y); return !!r; };
+  const tapAt = async sel => { const r = await G(s => { const e = document.querySelector(s); if (!e) return null; e.scrollIntoView({ block: 'center', behavior: 'instant' }); return true; }, sel) && await (async () => { await sleep(250); return G(s => { const b = document.querySelector(s).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, sel); })(); if (r) await page.touchscreen.tap(r.x, r.y); return !!r; };
   const landed = w => wait(w => { const s = window.__app.state; return s.onSurface && !s.transitioning && s.info?.name === w && window.__app.surface.info?.intro === 0; }, 120000, w);
   const calls = () => G(async () => { await new Promise(r => setTimeout(r, 600)); return window.__app.renderer.info.render.calls; });
   try {

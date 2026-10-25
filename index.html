@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <meta name="theme-color" content="#05060c">
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-  <meta name="app-version" content="v7.3">
+  <meta name="app-version" content="v7.4">
   <link rel="canonical" href="https://kaskel87-a11y.github.io/solar-system/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Solar System Explorer">
@@ -250,6 +250,13 @@
     #surfHelp { position: fixed; bottom: calc(10px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 9px; font-size: 0.7rem; z-index: 7; white-space: nowrap; opacity: 0.7; }
     body.surface #fact-panel { display: none !important; }
     /* cinematic: everything off except a faint restore button (the stick still works, just faded) */
+    #adultGate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.72); }
+    #adultGate .wrap { max-width: 360px; margin: 16px; padding: 18px; border-radius: 16px; background: #000; color: #fff; border: 1px solid #ff3cc8; }
+    #adultGate .row { display: flex; gap: 10px; margin-top: 12px; } #adultGate .btn { flex: 1; min-height: 44px; }
+    #fadeBlack { position: fixed; inset: 0; z-index: 55; background: #000; color: #e8e0f0; opacity: 0; pointer-events: none; transition: opacity .6s; display: flex; align-items: center; justify-content: center; padding: 0 12%; text-align: center; font: italic 17px/1.5 system-ui, sans-serif; }
+    #fadeBlack.on { opacity: 1; pointer-events: auto; }
+    body.cinebars::before, body.cinebars::after { content: ''; position: fixed; left: 0; right: 0; height: 11vh; background: #000; z-index: 5; pointer-events: none; }
+    body.cinebars::before { top: 0; } body.cinebars::after { bottom: 0; }
     body.cinematic #surfHud > *:not(#hudShow) { display: none !important; }
     body.cinematic #hudShow { display: block; }
     body.cinematic.surface #joy { opacity: 0.18; }
@@ -291,7 +298,7 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Solar System Explorer<span class="ver">v7.3</span></h1>
+    <h1>🌌 Solar System Explorer<span class="ver">v7.4</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
@@ -313,7 +320,7 @@
     <button id="factLand" class="btn">🛬 Land here</button>
   </div>
 
-  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v7.3 · Alien content in quests is fiction; science facts are real.</div>
+  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v7.4 · Alien content in quests is fiction; science facts are real.</div>
 
   <div id="hud">
     <div id="hudHint"></div>
@@ -381,8 +388,10 @@
   <div id="shopPanel"><div class="wrap"><button id="shopClose" class="btn">✕ Close</button><h2 id="shopTitle">🛒 Supply</h2><div id="shopMsg"></div><div id="shopList"></div></div></div>
   <div id="ctlPanel"><div class="wrap"><button id="ctlClose" class="btn">✕ Close</button><h2>❔ Controls</h2>
     <p style="opacity:.8">Phone: left stick moves, drag anywhere to look, and the big buttons do the rest. Keyboard and mouse:</p>
-    <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
+    <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td>Double-tap <kbd>A</kbd> / <kbd>D</kbd></td><td>Barrel roll the Starship</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd> in the air (or double-tap <kbd>A</kbd>/<kbd>D</kbd>)</td><td>🌀 Barrel roll when airborne. Land on your wheels for a stunt bonus; land on the roof and it hurts. Touch: flick the stick sideways twice</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
     <p style="opacity:.7">Shop panels: click to buy, <kbd>E</kbd> or <kbd>Esc</kbd> closes. The mouse is freed whenever a menu or shop opens.</p></div></div>
+  <div id="adultGate" role="dialog" aria-modal="true"><div class="wrap"><h2>🔞 Adults only</h2><p>The Velvet Airlock's stage shows, private dances and upstairs rooms are for players 18 and over. Costumes stay on, nothing explicit is shown, and the upstairs fades to black.</p><div class="row"><button id="adultYes" class="btn">I'm 18+</button><button id="adultNo" class="btn">Not now</button></div></div></div>
+  <div id="fadeBlack"></div>
   <div id="logPanel"><div class="wrap">
     <button id="logClose" class="btn">✕ Close</button>
     <h2>🛰 Mission Log</h2>
@@ -417,13 +426,13 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.3';
-    import { buildStarship } from './models.js?v=7.3';
-    import { COSMETICS, registerMission } from './game.js?v=7.3';
-    import { registerColony } from './world.js?v=7.3';
-    import { registerInterior } from './interiors.js?v=7.3';
-    import { createAudio7 } from './audio7.js?v=7.3';
-    import { initPlanets } from './planets/index.js?v=7.3'; // multi-planet expansion (data-driven, planets/*.js)
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.4';
+    import { buildStarship } from './models.js?v=7.4';
+    import { COSMETICS, registerMission } from './game.js?v=7.4';
+    import { registerColony, registerVehicle, VEHICLES } from './world.js?v=7.4';
+    import { registerInterior } from './interiors.js?v=7.4';
+    import { createAudio7 } from './audio7.js?v=7.4';
+    import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -838,6 +847,9 @@
     let yaw = 0, pitch = 0;
     const joy = { x: 0, y: 0, id: null };
     const touchBtns = { up: false, down: false, boost: false, jump: false, run: false, fire: false };
+    // v7.4: a barrel-roll request lives for one frame of the vehicle/ship sim (-1 left, +1 right)
+    let rollReq = 0, rollReqT = 0, shipRoll = null, shipRolls = 0; const rollTap = {};
+    function requestRoll(d) { rollReq = d; rollReqT = performance.now(); if (flying && !onSurface && !shipRoll && !landAnim) shipRoll = { dir: d, t: 0 }; }
     const mouseAim = { x: 0, y: 0, has: false, held: false };
     const flyBtn = document.getElementById('flyBtn');
 
@@ -948,6 +960,7 @@
         u.rate = 1.05; u.pitch = 0.95; u.volume = 0.9; speechSynthesis.speak(u);
       } catch (e) { /* no speech on this device */ }
     }
+    let talkedAt = -1e9;
     function showRadio(ev) {
       quindar(false); setTimeout(() => quindar(true), 900);
       radioText.textContent = ev.text;
@@ -957,7 +970,7 @@
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       // v7.3 (playtest m7): an offer during the landing reveal arrives as a one-line pill; tap it (or Enter) to read and accept
-      const early = radioOffer && performance.now() - landedAt < 12000; if (early) radioEl.classList.add('mini');
+      const early = radioOffer && performance.now() - landedAt < 12000 && performance.now() - talkedAt > 3000; // v7.4: you asked, so it opens if (early) radioEl.classList.add('mini');
       if (!isTouch) { document.getElementById('radioAccept').textContent = '✅ Accept (Enter)'; document.getElementById('radioLater').textContent = 'Later (⌫)'; }
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
       speak(ev.text);
@@ -1015,6 +1028,8 @@
       else if (type === 'wantedLost') { au7.fx.lost(); sfxLog.push('lost'); toast('😮‍💨 Security lost you. Act natural.', 2600); updateSurfHud(true); }
       else if (type === 'siren') { au7.fx.siren(); sfxLog.push('siren'); }
       else if (type === 'crash') { au7.fx.crash(); sfxLog.push('crash'); }
+      else if (type === 'roll') { au7.fx.whoosh?.(); sfxLog.push('roll'); }
+      else if (type === 'stunt') { if (ev.bad) { au7.fx.crash(); toast('💥 Landed on the roof. That one hurt.', 2200); } else { au7.fx.cash?.(); toast(`🌀 ${ev.rolls > 1 ? ev.rolls + 'x barrel roll' : 'Barrel roll'}! Clean landing +${ev.bonus} cr`, 2400); } sfxLog.push('stunt'); updateSurfHud(true); }
       else if (type === 'thud') { au7.fx.thud(); sfxLog.push('thud'); }
       else if (type === 'secDown') toast(ev.kind === 'drone' ? '💥 Drone down. That\'s going on your record.' : '💥 Security down. They will remember that.', 2200);
       else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
@@ -1083,7 +1098,7 @@
         try {
           surface.resize(innerWidth, innerHeight);
           surface.enter(landedBody.userData.name);
-          onSurface = true; landAnim = null; landedAt = performance.now();
+          onSurface = true; landAnim = null; landedAt = performance.now(); if (document.pointerLockElement) document.exitPointerLock?.(); // v7.4: land with a free mouse so ☰ and the HUD are clickable; click the ground to lock aim
           document.body.classList.add('surface');
           factPanel.style.display = 'none'; au7.startAmbient();
           updateSurfHud(true);
@@ -1198,7 +1213,7 @@
         return { kind: 'spot', label: s.label, spot: s };
       }
       if (i.nearRover) return { kind: 'drive', label: '🚙 Drive' };
-      if (i.nearVehicle) return { kind: 'take', label: `${VEH_ICON[i.nearVehicle.kind] || '🚗'} Take` };
+      if (i.nearVehicle) return { kind: 'take', label: `${VEH_ICON[i.nearVehicle.kind] || VEHICLES[i.nearVehicle.kind]?.icon || '🚗'} Take` };
       if (i.nearShop) return { kind: 'shop', label: '🛒 Shop', door: i.nearShop.door, name: i.nearShop.name }; // beats Pet: walk in
       if (i.door) return { kind: 'door', label: `🚪 Enter ${i.door.name}` };
       if (i.nearContact) return { kind: 'talk', label: `💬 ${i.nearContact}`, who: i.nearContact };
@@ -1210,22 +1225,49 @@
       const r = surface.game.buy(id); toast((r.ok ? (it.owned ? '✓ ' : '🛒 ') : '❌ ') + r.msg, 2600); if (!r.ok) au7.fx.dry();
       surface.world.refreshWares(); updateSurfHud(true);
     }
+    // ===== v7.4 Velvet Airlock: stage tips, private dances, upstairs. Adults only, nothing explicit shown or described =====
+    const pickL = a => a[Math.floor(Math.random() * a.length)];
+    function adultGate(fn) {
+      if (localStorage.getItem('ssx.adult') === '1') return fn();
+      const g = document.getElementById('adultGate'); g.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
+      g._yes = () => { localStorage.setItem('ssx.adult', '1'); g.style.display = 'none'; fn(); };
+    }
+    function clubAct(s) {
+      const g = surface.game, W = surface.world;
+      if (s.act === 'tip') {
+        if (!g.spend(20)) { toast('Tiny: Tips are 20. Air doesn’t count.', 2400); au7.fx.dry(); return; }
+        W.clubFx('rain', 24); au7.fx.cash();
+        toast(pickL(['💸 You make it rain. The dancers work the poles harder and somebody whistles.', '💸 Credits flutter down. Jade catches one mid-spin without missing a beat.', '💸 Tiny, from the rope: “Big spender. Don’t get ideas.”', '💸 A chit lands in the drink of the guy next to you. He’s too drunk to care.']), 2800);
+      } else if (s.act === 'private') {
+        if (!g.spend(50)) { toast('Nova: Fifty for a song, sugar. Come back when you’re liquid.', 2600); au7.fx.dry(); return; }
+        W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
+        clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
+        toast('💃 Nova dances one song just for you. Costume stays on, hands stay on the armrests, Tiny watches from the rope.', 4200);
+      } else if (s.act === 'companion') {
+        if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
+        au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
+        setTimeout(() => { f.textContent = pickL(['An hour later. Sable walks you back down and straightens your collar. “Same time next week, spacer.”', 'Later. Sable lights a cigarette at the top of the stairs. “You look like a new man. Go get shot at.”', 'Some time later. Sable holds the door. “Tell Ines you behaved.”']); }, 700);
+        setTimeout(() => { g.restore(); f.classList.remove('on'); updateSurfHud(true); toast('❤️ Health and shield full. −150 cr', 2600); }, 3600);
+      }
+      updateSurfHud(true);
+    }
     function doSpot(s) {
       const g = surface.game;
       if (s.act === 'leave') { surface.leaveBuilding(); }
       else if (s.act === 'shop') openShop(s.venue, s.who);
-      else if (s.act === 'talk') g.talk(s.who);
+      else if (s.act === 'talk') { talkedAt = performance.now(); g.talk(s.who); }
       else if (s.act === 'bribe') { const r = g.bribe(); showRadio({ text: r.msg, contact: 'Deputy Rusk' }); if (r.ok) au7.fx.cash(); }
       else if (s.act === 'vip') {
         if (!g.flag('vip')) { if (!g.spend(60)) { toast('Tiny: VIP is 60. You are not VIP.', 2600); return; } g.setFlag('vip'); au7.fx.cash(); }
         surface.world.openVip(); toast('Tiny unhooks the rope. "Ines will see you. Don\u2019t touch anything."', 3200);
       }
+      else if (s.act === 'tip' || s.act === 'private' || s.act === 'companion') adultGate(() => clubAct(s));
       else if (s.act === 'stash') { if (g.stash(s.stash, s.perm, s.perm === 'maxhp' ? 'Stolen biomod' : 'Spare bandolier')) toast('📦 Somebody forgot this. 40 cr and something better.', 3000); }
       updateSurfHud(true);
     }
     function doInteract() {
       const i = surface.info; if (!i) return; const act = actionFor(i);
-      if (act.kind === 'talk') { surface.game.talk(act.who); return; }
+      if (act.kind === 'talk') { talkedAt = performance.now(); surface.game.talk(act.who); return; }
       if (act.kind === 'shop' || act.kind === 'door') { surface.enterBuilding(act.kind === 'shop' ? act.door : undefined); updateSurfHud(true); return; }
       if (act.kind === 'buy') { buyWare(act.ware); return; }
       if (act.kind === 'spot') { doSpot(act.spot); return; }
@@ -1458,6 +1500,8 @@
     const ctlPanel = document.getElementById('ctlPanel');
     function openControls(on = true) { ctlPanel.style.display = on ? 'block' : 'none'; if (on) { roverMenu.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } }
     document.getElementById('ctlBtn').onclick = () => openControls(true); document.getElementById('ctlClose').onclick = () => openControls(false);
+    let lockTipShown = false;
+    document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && onSurface && !lockTipShown) { lockTipShown = true; toast('🖱 Mouse aim on. Esc frees the mouse for ☰ and buttons (or press M for the menu).', 3200); } });
     function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
     miniMap.onclick = () => toggleMenu(); document.getElementById('menuBtn').onclick = () => toggleMenu();
     function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
@@ -1468,14 +1512,33 @@
     document.getElementById('rmWarp').onclick = () => travel('warp');
     document.getElementById('rmShip').onclick = () => travel('ship');
     // v7.3 modding API (see README): add colonies, missions, interiors and ☰ menu items from the console or an extra <script type="module">
+    // v7.4: one menu hook for everyone (SSX and __app). Pointer-based: fires on pointerup of the same finger (a thumb on the
+    // joystick can't block it); mouse/keyboard use click. onTap or onClick both work. Returns the button element.
+    // v7.4: a touch menu item acts on pointerup and may open a panel right under the finger; swallow the synthetic click that
+    // follows (500 ms) so it can't press whatever button the new panel put there (it sent you to Titan instead of Io)
+    { const g = document.getElementById('adultGate'), hit = (el, fn) => { el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { e.preventDefault(); fn(); } }); el.addEventListener('click', fn); };
+      let lastG = 0; const once = fn => () => { const n = performance.now(); if (n - lastG < 500) return; lastG = n; fn(); };
+      hit(document.getElementById('adultYes'), once(() => g._yes?.())); hit(document.getElementById('adultNo'), once(() => { g.style.display = 'none'; toast('Tiny shrugs. "Bar’s that way."', 2200); })); }
+    function eatGhostClick(src) {
+      const t0 = performance.now(), eat = e => { if (performance.now() - t0 > 500) return document.removeEventListener('click', eat, true); if (src.contains(e.target)) return; e.stopPropagation(); e.preventDefault(); document.removeEventListener('click', eat, true); };
+      document.addEventListener('click', eat, true); setTimeout(() => document.removeEventListener('click', eat, true), 600);
+    }
+    function registerMenuItem({ id, label, onTap, onClick }) {
+      const fn = onTap || onClick; if (!label || typeof fn !== 'function') throw new Error('registerMenuItem({ id, label, onTap })');
+      const old = id && document.getElementById(id); if (old) old.remove();
+      const b = document.createElement('button'); b.className = 'btn'; b.id = id || 'rmx-' + Math.random().toString(36).slice(2, 8); b.textContent = label;
+      let pid = null, last = 0; const run = e => { roverMenu.classList.remove('show'); fn(window.__app, e); };
+      b.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { pid = e.pointerId; } });
+      b.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || e.pointerId !== pid) return; e.preventDefault(); pid = null; last = performance.now(); eatGhostClick(b); run(e); });
+      b.addEventListener('pointercancel', () => { pid = null; });
+      b.addEventListener('click', e => { if (performance.now() - last < 700) return; run(e); });
+      roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b;
+    }
     window.SSX = {
       registerColony, registerMission, registerInterior,
-      registerMenuItem({ id, label, onClick }) {
-        if (!label || typeof onClick !== 'function') throw new Error('registerMenuItem({ id, label, onClick })');
-        const b = document.createElement('button'); b.className = 'btn'; b.id = id || 'rmx-' + Math.random().toString(36).slice(2, 8); b.textContent = label;
-        b.onclick = () => { roverMenu.classList.remove('show'); onClick(window.__app); };
-        roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b.id;
-      }
+      registerVehicle, registerMenuItem,
+      // v7.4 stub: extra bodies (Ceres, a cloud station) land in v7.5+. Recorded now so mods can declare them early.
+      registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
     };
     // v7.3 ☰ 🛒 Shop: mark the nearest store on the radar
     document.getElementById('rmShopNav').onclick = () => {
@@ -1550,6 +1613,8 @@
       if (ctlPanel.style.display === 'block') { if (['Escape', 'Slash', 'F1', 'Enter'].includes(e.code)) { e.preventDefault(); openControls(false); } return; }
       if ((e.key === '?' || e.code === 'F1') && !e.repeat) { e.preventDefault(); openControls(true); return; }
       keys[e.code] = true;
+      if (!e.repeat && ['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) { const now = performance.now(); if (now - (rollTap[e.code] || 0) < 280) { requestRoll(e.code === 'KeyA' || e.code === 'ArrowLeft' ? -1 : 1); rollTap[e.code] = 0; } else rollTap[e.code] = now; }
+      if (onSurface && !e.repeat && (e.code === 'KeyQ' || e.code === 'KeyE') && surface.info?.driving && surface.info.air) { requestRoll(e.code === 'KeyQ' ? -1 : 1); return; }
       // v7.3 (playtest m6): accept / skip a radio job from the keyboard, even with the mouse locked
       if (radioOffer && radioEl.style.display === 'block' && !e.repeat && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Backspace')) { e.preventDefault(); document.getElementById(e.code === 'Backspace' ? 'radioLater' : 'radioAccept').click(); return; }
       if (onSurface) {
@@ -1627,10 +1692,19 @@
       if (len > max) { dx *= max / len; dy *= max / len; }
       joy.x = dx / max; joy.y = dy / max;
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
+      flickCheck(joy.x);
+    }
+    // v7.4 barrel rolls on touch: flick the stick sideways twice, fast (or swipe across the Thrust button)
+    const flick = { armed: true, dir: 0, t: 0 };
+    function flickCheck(x) {
+      if (Math.abs(x) < 0.35) { flick.armed = true; return; }
+      if (!flick.armed || Math.abs(x) < 0.75) return;
+      flick.armed = false; const d = Math.sign(x), now = performance.now();
+      if (flick.dir === d && now - flick.t < 450) { requestRoll(d); flick.t = 0; } else { flick.dir = d; flick.t = now; }
     }
     joyEl.addEventListener('pointerdown', e => { e.preventDefault(); joy.id = e.pointerId; try { joyEl.setPointerCapture(e.pointerId); } catch (_) {} joyMove(e); });
     joyEl.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
-    const joyEnd = e => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
+    const joyEnd = e => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; flick.armed = true; knob.style.transform = ''; };
     joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
 
     // Hold buttons
@@ -1643,6 +1717,12 @@
       el.addEventListener('contextmenu', e => e.preventDefault());
     });
     const hudSpeed = document.getElementById('hudSpeed');
+    { // v7.4: swipe sideways across Thrust/Jump to barrel roll
+      const jb = document.getElementById('jumpBtn'); let sx = null;
+      jb.addEventListener('pointerdown', e => { sx = e.clientX; });
+      jb.addEventListener('pointermove', e => { if (sx !== null && Math.abs(e.clientX - sx) > 36) { requestRoll(Math.sign(e.clientX - sx)); sx = null; } });
+      jb.addEventListener('pointerup', () => { sx = null; }); jb.addEventListener('pointercancel', () => { sx = null; });
+    }
 
     // ===== Animate =====
     const clock = new THREE.Clock();
@@ -1660,7 +1740,8 @@
         if (document.pointerLockElement && !isTouch) { mouseAim.x = 0; mouseAim.y = 0; surface.aim(0, 0, true); }
         const fireHeld = !!(keys['KeyF'] || touchBtns.fire || mouseAim.held);
         const runHeld = !!(keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run); document.body.classList.toggle('boosting', runHeld && document.body.classList.contains('driving'));
-        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: runHeld,
+        const roll = rollReq && performance.now() - rollReqT < 700 ? rollReq : 0; // consumed by the next frame; 700 ms covers slow frames rollReq = 0;
+        surface.update(realDt, { keys, joy, roll, jump: keys['Space'] || touchBtns.jump, run: runHeld,
           fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
         tickAudio7(realDt); updateThrustHud();
@@ -1690,6 +1771,7 @@
 
       if (flying) {
         const boost = keys['Space'] || keys['ShiftLeft'] || touchBtns.boost;
+        rocket.rotation.z = 0; // v7.4: the barrel roll is cosmetic, re-applied after the camera follows (camera stays level)
         const speed = boost ? 90 : 30;
         move.set(0, 0, 0);
         if (keys['KeyW'] || keys['ArrowUp']) move.z -= 1;
@@ -1759,6 +1841,7 @@
         camera.position.lerp(ideal, 1 - Math.pow(0.0005, realDt));
         tmpV2.set(0, 0, -8).applyQuaternion(rocket.quaternion).add(rocket.position);
         camera.lookAt(tmpV2);
+        if (shipRoll) { shipRoll.t += realDt; const p = Math.min(1, shipRoll.t / 0.9), e = p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p); rocket.rotation.z = -shipRoll.dir * Math.PI * 2 * e; if (p >= 1) { shipRoll = null; rocket.rotation.z = 0; shipRolls++; } }
         if ((frame++ & 7) === 0) hudSpeed.textContent = `🚀 ${boost ? 'BOOST' : 'Cruise'} · ${Math.round(rocket.position.length())}${innerWidth < 420 ? '' : ' from the Sun'}`;
       } else {
         if (follow) {
@@ -1816,14 +1899,15 @@
 
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, renderer, version: 'v7.3', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
+      landOn, landAction, renderer, version: 'v7.4', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app);
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.3').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.4').catch(() => {}));
 </script>
 </body>
 </html>

@@ -5,8 +5,8 @@
 //
 // The per-frame hook can't come from here: race.js needs the surface's private scene/camera/player/car, so surface.js
 // calls raceTick(dt, ctx) directly (one import + one call). If core grows a registerSurfaceTick(fn) it can move here.
-export { buildVehicle, VEHICLES } from './world.js?v=7.2';
-export { QUESTS } from './game.js?v=7.2';
+export { buildVehicle, VEHICLES } from './world.js?v=7.4';
+export { QUESTS } from './game.js?v=7.4';
 
 // ☰ menu: app.registerMenuItem({ id, label, onTap }) if core provides it; else inject a .btn into #roverMenu above Settings.
 export function addMenuItem(app, { id, label, onTap }) {

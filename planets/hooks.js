@@ -1,11 +1,10 @@
 // THE ONE PLACE that talks to core. Everything else in planets/ is data.
-// v7.3 is expected to add registerColony / registerMission / menu hooks on main. Each wrapper below uses the real core hook
-// when it exists and otherwise falls back to the v7.2 registries, so after the rebase only this file needs to change.
+// v7.4: rebased onto the core modding API (world.registerColony / registerVehicle, game.registerMission, app.registerMenuItem).
 // Import URLs must match the core's ?v= exactly (shared module instances).
 import * as THREE from 'three';
-import * as W from '../world.js?v=7.2';
-import * as GM from '../game.js?v=7.2';
-import * as AU from '../audio7.js?v=7.2';
+import * as W from '../world.js?v=7.4';
+import * as GM from '../game.js?v=7.4';
+import * as AU from '../audio7.js?v=7.4';
 
 // ---------- building / prop style keys -> v7.2 placeholder shape (v8: glTF per key) ----------
 // 'dome' reuses the core glass-dome renderer; 'block' reuses the core storefront renderer (same as Mars's SUPPLY/CANTINA).
@@ -14,6 +13,9 @@ export const BUILDING_TYPES = {
   supply: 'block', store: 'block', depot: 'block', chapel: 'block', canteen: 'block', icehouse: 'block', chandlery: 'block', bar: 'block',
   bunks: 'block', cellblock: 'block', office: 'block'
 };
+// v7.4: every storefront is a walk-in interior (core INTERIORS kinds), picked by building type
+export const INTERIOR_OF = { supply: 'supply', store: 'supply', chandlery: 'supply', depot: 'depot', icehouse: 'depot', bar: 'cantina', canteen: 'cantina',
+  chapel: 'cantina', bunks: 'cantina', cellblock: 'security', office: 'security', guns: 'guns', club: 'club' };
 // props (vent-stack, solar-row, fuel-tower, drill-derrick, guard-tower) are layout data only in v7.2: not rendered, no new boxes.
 
 // semantic colony -> v7.2 COLONIES entry (the semantic layout rides along as .layout for v8)
@@ -22,22 +24,18 @@ export function toCoreColony(c) {
   for (const b of c.buildings) {
     const shape = BUILDING_TYPES[b.type] || (b.size ? 'block' : 'dome');
     if (shape === 'dome') domes.push([b.at[0], b.at[1], b.r ?? (b.size ? Math.max(b.size[0], b.size[1]) / 2 : 7), b.sign, b.neon]);
-    else { const [w, d, h] = b.size || [6, 4, 4]; blocks.push([b.at[0], b.at[1], w, d, h, b.sign, b.neon]); }
+    else { const [w, d, h] = b.size || [6, 4, 4]; blocks.push([b.at[0], b.at[1], w, d, h, b.sign, b.neon ?? 0x3cff8a, INTERIOR_OF[b.type] || 'supply', b.sign]); }
   }
   return { name: c.name, a: c.site.a, d: c.site.d, tint: c.palette.tint, domes, blocks, pad: [c.pad.at[0], c.pad.at[1], c.pad.r], crates: c.crates, lamps: c.lamps,
     shop: c.shop, contacts: c.contacts, vehicles: c.vehicles, guards: c.guards, colonists: c.colonists, layout: c };
 }
-export function registerColony(world, c) {
-  if (typeof W.registerColony === 'function') return W.registerColony(world, toCoreColony(c));
-  if (!W.COLONIES[world]) W.COLONIES[world] = toCoreColony(c);
-}
+export function registerColony(world, c) { if (!W.COLONIES[world]) return W.registerColony(world, toCoreColony(c)); }
 export const colonyOf = world => W.COLONIES[world];
 
 const haveQ = new Set(GM.QUESTS.map(q => q.id));
 export function registerMission(q) {
   if (haveQ.has(q.id)) return; haveQ.add(q.id);
-  if (typeof GM.registerMission === 'function') return GM.registerMission(q);
-  GM.QUESTS.push(q);
+  return GM.registerMission(q);
 }
 export const missionsFor = world => GM.QUESTS.filter(q => q.world === world);
 export function registerCosmetics(items) { for (const [kind, set] of Object.entries(items || {})) Object.assign(GM.COSMETICS[kind] ||= {}, set); }
@@ -67,9 +65,7 @@ function lookBuilder(kind, look) {
 }
 export function registerVehicles(defs) {
   for (const [kind, { look, ...spec }] of Object.entries(defs)) {
-    if (typeof W.registerVehicle === 'function') { W.registerVehicle(kind, spec, lookBuilder(kind, look)); continue; }
-    W.VEHICLES[kind] = spec;
-    if (W.VEHICLE_BUILDERS) W.VEHICLE_BUILDERS[kind] = lookBuilder(kind, look);
+    W.registerVehicle(kind, spec, lookBuilder(kind, look));
   }
 }
 

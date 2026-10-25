@@ -6,7 +6,7 @@ export const EXT_VEHICLES = {
     look: { base: 'hauler', scale: [1.1, 1.05, 1.1], livery: { color: 0xc89a3a, metalness: 0.85, roughness: 0.28 }, accents: ['beacon-amber', 'ram'] } },
   sun_skimmer: { name: 'Sun skimmer', icon: '🏎', vmax: 30, boost: 44, acc: 15, bacc: 22, turn: 1.6, wy: 0.42, wr: 0.42, r: 2.2,
     look: { base: 'buggy', scale: [1.12, 0.85, 1.12], livery: { color: 0xe6ecf4, metalness: 1, roughness: 0.08 }, accents: ['beacon-cyan'] } },
-  methane_skiff: { name: 'Methane skiff', icon: '🛥', vmax: 24, boost: 36, acc: 11, bacc: 17, turn: 1.3, hover: 1.3, r: 2.8, lean: 0.3,
+  methane_skiff: { name: 'Methane skiff', icon: '🛥', amphibious: true, vmax: 24, boost: 36, acc: 11, bacc: 17, turn: 1.3, hover: 1.3, r: 2.8, lean: 0.3,
     look: { base: 'shuttle', scale: [0.8, 0.7, 0.8], livery: { color: 0x8a4a22, metalness: 0.45, roughness: 0.5 }, accents: ['skirt-green'] } },
   crevasse_sled: { name: 'Crevasse sled', icon: '🛷', vmax: 19, boost: 28, acc: 10, bacc: 15, turn: 1.4, wy: 0.62, wr: 0.62, r: 2.6, tough: true,
     look: { base: 'hauler', scale: [0.95, 0.95, 0.95], livery: { color: 0xe8eef4, metalness: 0.3, roughness: 0.35 }, accents: ['drill', 'beacon-cyan'] } },

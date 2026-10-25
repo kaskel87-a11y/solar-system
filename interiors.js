@@ -80,6 +80,20 @@ export function dance(h, t, style = 0, bpm = 118, yaw0 = 0) {
   else { const up = Math.floor(beat) % 2; R.rotation.x = up ? 2.7 : 0.6; R.rotation.z = up ? 0.3 : 0.5; L.rotation.x = up ? 0.4 : 2.7; L.rotation.z = up ? -0.5 : -0.3; h.torso.rotation.y = up ? -0.3 : 0.3; h.legs[up].rotation.x = 0.5; h.head.rotation.x = -0.15; }
   h.group.rotation.y = yaw0 + spin;
 }
+// v7.4 pole routine (club dancers): orbit the pole holding it with one hand, lean-backs, a climb-and-spin and a slow
+// slide down. Athletic, costumes stay on, nothing suggestive: spins, holds and poses only.
+export function poleDance(h, t, k = 0, px = 0, pz = 0, y0 = 0) {
+  resetPose(h);
+  const beat = t * 118 / 60 + k * 5, phase = Math.floor(beat / 8) % 4, f = (beat % 8) / 8, L = h.arms[0], R = h.arms[1];
+  let ang = beat * 0.55 + k * 2, rad = 0.42, lift = 0;
+  R.rotation.z = 2.6; R.rotation.x = 0.2; // grip arm up on the pole
+  if (phase === 0) { L.rotation.z = -1.3 + Math.sin(beat * Math.PI) * 0.3; h.legs[0].rotation.x = Math.sin(beat * Math.PI) * 0.35; h.torso.rotation.z = -0.15; }
+  else if (phase === 1) { h.torso.rotation.z = -0.5 * Math.sin(f * Math.PI); L.rotation.z = -2.2; h.legs[1].rotation.z = 0.35 * Math.sin(f * Math.PI); ang += f * 0.8; }
+  else if (phase === 2) { lift = Math.sin(f * Math.PI) * 0.9; ang += f * Math.PI * 3; L.rotation.z = -2.5; for (const l of h.legs) l.rotation.x = 0.6 * Math.sin(f * Math.PI); h.legs[1].rotation.x = -0.4 * Math.sin(f * Math.PI); }
+  else { h.hips.position.y = h.base - 0.25 * Math.sin(f * Math.PI); L.rotation.z = -0.9; L.rotation.x = 0.6; h.legs[0].rotation.x = 0.5 * Math.sin(f * Math.PI); }
+  h.group.position.set(px + Math.sin(ang) * rad, y0 + lift, pz + Math.cos(ang) * rad);
+  h.group.rotation.y = ang + Math.PI / 2; // side-on to the pole, grip hand towards it
+}
 function idle(h, t, k = 0) { resetPose(h); const s = Math.sin(t * 1.6 + k); h.hips.position.y = h.base - Math.abs(s) * 0.02; h.torso.rotation.z = s * 0.03; h.head.rotation.y = Math.sin(t * 0.4 + k * 2) * 0.4; h.arms[0].rotation.x = 0.1; h.arms[1].rotation.x = 0.1; }
 function bob(h, t, k = 0, bpm = 118) { resetPose(h); const b = t * bpm / 60 * Math.PI + k; h.hips.position.y = h.base - Math.abs(Math.sin(b)) * 0.05; h.torso.rotation.z = Math.sin(b) * 0.07; h.head.rotation.x = Math.abs(Math.sin(b)) * 0.15; h.arms[1].rotation.x = 1.2 + Math.sin(b) * 0.15; h.arms[0].rotation.x = 0.3; }
 function drink(h, t, k = 0) { idle(h, t, k); const c = (t * 0.25 + k) % 1; if (c < 0.18) h.arms[1].rotation.x = 2.1 * Math.sin(c / 0.18 * Math.PI); else h.arms[1].rotation.x = 0.9; h.arms[1].rotation.z = 0.2; }
@@ -347,14 +361,28 @@ export const INTERIORS = {
       for (const s of [-1, 1]) for (const z of [-7.6, -4.7]) box(s * 4.8, 3.2, z, 0.16, 5, 0.16, mat(0x7af0ff, { basic: true }));
       const led = box(0, 3.6, -d / 2 + 0.1, 10, 4.6, 0.06, mat(0x6020a0, { basic: true }));
       api.sign('THE VELVET AIRLOCK', 0xff3cc8, 0, 5.75, -d / 2 + 0.16, 0, 7.5, { w: 1024, h: 160, font: 'bold 96px system-ui, sans-serif' });
-      // three performers in full sequinned flight-suit costumes (long sleeves, boots), dancing a stage routine
+      // v7.4: three pole dancers in sequinned bodysuits and boots (the costumes never come off), rotating pole routines
       const looks = [
         { top: 0xc8a0ff, bottom: 0xc8a0ff, shoes: 0xe8e8f0, hair: 0xf0e0a0, hairStyle: 'long', skin: 0xe8b894, accent: 0x7af0ff, glow: 0x8040ff },
         { top: 0xff4a8a, bottom: 0x1a1a24, shoes: 0x1a1a24, hair: 0x101010, hairStyle: 'bun', skin: 0x8a5a3a, accent: 0xffd040, glow: 0xff2060 },
         { top: 0x40e0d0, bottom: 0x40e0d0, shoes: 0xd0d0d8, hair: 0xff5a2a, hairStyle: 'long', skin: 0xc68a64, accent: 0xff3cc8, glow: 0x20a0a0 }
       ];
       const stageY = 0.7;
-      [[-2.8, -6.0], [0, -6.6], [2.8, -6.0]].forEach(([x, z], i) => { const p = api.person(looks[i], x, z, 0, (p, t, k) => dance(p, t, k, 118, 0), i); p.group.position.y = stageY; });
+      const poleM = chrome, poles = [[-2.8, -6.0], [0, -6.6], [2.8, -6.0]];
+      poles.forEach(([x, z]) => { box(x, (stageY + api.h) / 2, z, 0.07, api.h - stageY, 0.07, poleM); box(x, stageY + 0.03, z, 0.6, 0.05, 0.6, mat(0xff3cc8, { basic: true })); });
+      const dancers = poles.map(([x, z], i) => api.person(looks[i], x, z, 0, (p, t, k) => poleDance(p, t, k, x, z, stageY), i));
+      api.sign('LIVE ON STAGE', 0x7af0ff, -w / 2 + 0.06, 3.6, -1.2, Math.PI / 2, 3.6, { h: 96 });
+      // make it rain: credit chits flutter down over the stage (one instanced pool, parked off-stage when idle)
+      const chitM = new THREE.MeshBasicMaterial({ color: 0x7dff9a, side: THREE.DoubleSide }); api.disposables.push(chitM);
+      const NCH = 48, chits = new THREE.InstancedMesh(G.box, chitM, NCH), cs = []; const q = new THREE.Quaternion(), e3 = new THREE.Euler(), sc = new THREE.Vector3(0.22, 0.01, 0.11), pv = new THREE.Vector3();
+      for (let i = 0; i < NCH; i++) cs.push({ x: 0, y: -9, z: 0, vy: 0, r: 0, live: false });
+      chits.frustumCulled = false; api.g.add(chits); let rainT = 0;
+      api.rain = (n = 24) => { let c = 0; for (const ch of cs) { if (c >= n) break; if (ch.live) continue; ch.live = true; ch.x = (Math.random() - 0.5) * 8; ch.z = -6.2 + (Math.random() - 0.5) * 2.6; ch.y = 2.4 + Math.random() * 1.6; ch.vy = -0.6 - Math.random() * 0.6; ch.r = Math.random() * 6; c++; } rainT = 4; dancers.forEach(d => d.cheer = 1.5); return c; };
+      api.ticks.push((t, dt = 0.016) => {
+        for (let i = 0; i < NCH; i++) { const ch = cs[i]; if (ch.live) { ch.y += ch.vy * dt; ch.r += dt * 4; ch.x += Math.sin(ch.r) * dt * 0.3; if (ch.y < stageY + 0.03) { ch.y = stageY + 0.03; if (rainT <= 0) ch.live = false; } } e3.set(ch.live ? Math.sin(ch.r) * 0.6 : 0, ch.r, 0); m4.compose(pv.set(ch.x, ch.live ? ch.y : -9, ch.z), q.setFromEuler(e3), sc); chits.setMatrixAt(i, m4); }
+        chits.instanceMatrix.needsUpdate = true; rainT -= dt;
+      });
+      api.spot({ id: 'tip', x: 0, z: -3.9, r: 1.5, label: '💸 Tip · 20 cr', act: 'tip' });
       // dance floor: one instanced grid, colours chase to the beat
       const tiles = new THREE.InstancedMesh(G.box, new THREE.MeshBasicMaterial({ color: 0xffffff }), 24); api.disposables.push(tiles.material);
       const m4 = new THREE.Matrix4(), cc = new THREE.Color();
@@ -390,12 +418,26 @@ export const INTERIORS = {
       box(X1 - 2.0, 0.42, -4.6, 1.0, 0.06, 1.6, chrome); box(X1 - 2.0, 0.2, -4.6, 0.1, 0.4, 0.1, chrome); api.col(X1 - 2.0, -4.6, 0.55, 0.85);
       box(X1 - 2.0, 0.5, -4.3, 0.08, 0.12, 0.08, mat(0xffd040, { basic: true }));
       api.person({ top: 0x2a0a18, bottom: 0x2a0a18, shoes: 0x0a0a0a, hair: 0xe8e8f0, hairStyle: 'bun', skin: 0xd8a888, accent: 0xffd040 }, X1 - 0.75, -4.6, Math.PI / 2, (p, t) => { sitPose(p); p.arms[1].rotation.x = 1.1 + Math.sin(t * 0.7) * 0.15; p.head.rotation.y = Math.sin(t * 0.3) * 0.3; });
-      api.person({ top: 0x22222a, bottom: 0x22222a, hair: 0x3a2a1a, hairStyle: 'short', skin: 0xb07a54, shades: true, bulk: 1.2 }, X1 - 1.0, -7.0, Math.PI * 0.75, (p, t) => guard(p, t));
-      const lb = box(X0 + 0.8, 0.25, Z0 + 0.7, 0.6, 0.4, 0.4, mat(0x3a2a10, { metalness: 0.6 })), lg = box(X0 + 0.8, 0.46, Z0 + 0.7, 0.5, 0.03, 0.3, mat(0xffd040, { basic: true }));
+      api.person({ top: 0x22222a, bottom: 0x22222a, hair: 0x3a2a1a, hairStyle: 'short', skin: 0xb07a54, shades: true, bulk: 1.2 }, X1 - 0.5, Z0 + 0.5, Math.PI * 0.75, (p, t) => guard(p, t));
+      // v7.4 private dance: a little round stage with its own pole and a club chair facing it. Paid dances are one song, costumed, hands off.
+      const PX = X0 + 1.6, PZ = -6.6;
+      box(PX, 0.12, PZ, 1.5, 0.24, 1.5, black); box(PX, 0.26, PZ, 1.3, 0.04, 1.3, mat(0xffd040, { basic: true })); box(PX, (0.24 + api.h) / 2, PZ, 0.06, api.h - 0.24, 0.06, chrome); api.col(PX, PZ, 0.8, 0.8);
+      box(PX, 0.25, PZ + 2.1, 0.8, 0.5, 0.8, velvet); box(PX, 0.75, PZ + 2.45, 0.8, 0.6, 0.15, velvet);
+      let privT = 0; const prvLook = { top: 0x1a1a2a, bottom: 0x1a1a2a, shoes: 0xc0c4cc, hair: 0x2a0a3a, hairStyle: 'long', skin: 0xc8946c, accent: 0xff3cc8, glow: 0xa040ff };
+      const prv = api.person(prvLook, PX, PZ, 0, (p, t, k, y, dt = 0.016) => { if (privT > 0) { privT -= dt; poleDance(p, t, 3, PX, PZ, 0.24); } else { idle(p, t, 2); p.group.position.set(PX + 0.45, 0.24, PZ + 0.3); p.group.rotation.y = 0.3; p.arms[0].rotation.z = 2.4; } });
+      api.privateDance = (sec = 9) => { privT = sec; return sec; };
+      api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: 'Nova' });
+      // v7.4 upstairs: a door in the back wall and its host. Adults only; the game fades to black and never shows or describes anything.
+      const UX = X1 - 1.6;
+      box(UX, 1.3, Z0 + 0.08, 1.4, 2.6, 0.08, mat(0x3a0a20, { roughness: 0.6 })); box(UX, 2.66, Z0 + 0.1, 1.5, 0.08, 0.08, mat(0xffd040, { basic: true }));
+      api.sign('UPSTAIRS · PRIVATE', 0xffd040, UX, 3.2, Z0 + 0.14, 0, 2.4, { w: 512, h: 72, font: 'bold 40px system-ui, sans-serif' });
+      api.person({ top: 0x0e0e14, bottom: 0x0e0e14, shoes: 0x0a0a0a, hair: 0xb02030, hairStyle: 'bun', skin: 0xe0b090, accent: 0xffd040, size: 1.02 }, UX - 0.9, Z0 + 0.9, Math.PI * 0.85, (p, t) => { idle(p, t, 4); p.arms[1].rotation.x = 0.35; });
+      api.spot({ id: 'upstairs', x: UX - 0.6, z: Z0 + 1.9, r: 0.9, label: '🚪 Upstairs · 150', act: 'companion', who: 'Sable' });
+      const lb = box(X0 + 0.5, 0.25, Z1 - 0.9, 0.4, 0.4, 0.6, mat(0x3a2a10, { metalness: 0.6 })), lg = box(X0 + 0.5, 0.46, Z1 - 0.9, 0.3, 0.03, 0.5, mat(0xffd040, { basic: true }));
       api.ticks.push(t => { const on = !(o.taken?.('club-lockbox')); lb.visible = lg.visible = on; });
       api.spot({ id: 'vip', x: ropeX, z: Z1 + 1.0, r: 1.5, label: '🍾 VIP room', act: 'vip', who: 'Tiny', cond: () => ropeCol.on });
-      api.spot({ id: 'owner', x: X1 - 2.3, z: -3.0, r: 1.9, label: '💬 Ines', act: 'talk', who: o.owner || 'Ines' });
-      api.spot({ id: 'stash', x: X0 + 1.2, z: Z0 + 1.5, r: 1.4, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
+      api.spot({ id: 'owner', x: X1 - 2.3, z: -3.4, r: 1.3, label: '💬 Ines', act: 'talk', who: o.owner || 'Ines' });
+      api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();
@@ -420,7 +462,7 @@ export function buildRoom(kind, opts = {}) {
   let t = 0, wt = 0;
   const targets = []; for (const w of api.wares) { w.m.traverse(c => { if (c.isMesh) targets.push(c); }); targets.push(w.tag); }
   return {
-    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, openRope: () => api.openRope?.(),
+    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
     wares: api.wares, targets, refresh() { wareTick(api, opts); },
     tick(dt) { t += dt; for (const f of api.ticks) f(t, dt); if ((wt += dt) > 0.4) { wt = 0; wareTick(api, opts); } },
     collide(x, z, r) {

@@ -21,6 +21,17 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.4: five new colonies, street races and barrel rolls
+- **Colonies on Venus, Mercury, Titan, Europa and Io** (merged from PR #1): Sulfur Gate, Shadowline Array, Kraken Landing, Conamara Station and Loki Forge. Each one has its own contacts, jobs, radio lines and a signature ride (acid crawler, sun skimmer, methane skiff, crevasse sled, lava runner). Every storefront is a walk-in interior. You get a world's travel permit by finishing a referral job, then fast travel from ☰ **🌍 Colonies** (40 cr the first time, free after that). The Titan methane skiff is amphibious and skims the methane seas.
+- **Street races and a track builder** (merged from PR #2): ☰ **🏁 Street races** has checkpoint gates, a 3-2-1 countdown, lap times, best-lap ghosts, an AI rival and a buy-in purse. ☰ **🛠 Track builder** lets you lay out your own gates and race them.
+- **Barrel rolls:** anything airborne can roll, including the thruster rover, hover bikes, stolen rides that catch air and the Starship in space.
+  - **Laptop:** press **Q / E** in the air, or double-tap **A / D**.
+  - **Phone:** flick the stick sideways twice, fast, or swipe across the Thrust button.
+  - Land on your wheels for a stunt bonus: 25 cr × rolls², plus 10 cr with the body kit. Land on the roof and you take damage.
+- **The Velvet Airlock goes full strip club (non-explicit):** pole dancers in sequinned bodysuits that stay on. Stand at the stage and **💸 Tip · 20 cr** to make it rain credit chits. In the VIP room, **💃 Dance · 50 cr** buys Nova's one-song private dance, costumed and letterboxed, with Tiny watching. **🚪 Upstairs · 150** with Sable (an adult host) fades to black with one line and brings you back with full health and shield. Nothing sexual is shown or described. A one-time **🔞 18+** prompt guards all three.
+- **Laptop fix:** you land with a free mouse, so a click on ☰ always opens it. Click the ground to lock mouse aim. Esc frees the mouse again, and **M** opens the menu at any time.
+- **Phone fix:** a ☰ entry that opens a panel can no longer press the button that appears under your finger.
+
 ## v7.3: walk in, go shopping, and the Velvet Airlock
 
 **Every building is enterable.** Walk up to a door in a colony and the context button says **🚪 Enter <name>** (stores say **🛒 Shop**). Inside, the camera pulls in close and stays in the room, guns are holstered ("house rules"), and **🚪 Leave** by the door takes you back out.
@@ -56,7 +67,7 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **E** enters buildings and buys the item in front of you. Inside, a crosshair appears, and clicking an item on the wall buys it.
 - Opening a menu or shop frees the mouse.
 
-### Modding API (v7.3)
+### Modding API (v7.3, extended in v7.4)
 Call these from the browser console or an extra `<script type="module">` before you land:
 
 ```js
@@ -74,8 +85,20 @@ SSX.registerMission({ id: 'mara-01', world: 'Europa', contact: 'Mara', title: 'C
 // a new interior kind: build(api, opts) with api.box/col/spot/sign/person; spots { id, x, z, r, label, act: 'shop'|'talk'|'leave'|'bribe', venue, who }
 SSX.registerInterior('chapel', { name: 'Chapel', w: 10, d: 12, h: 6, build(api) { api.sign('QUIET PLEASE', 0xffffff, 0, 3.5, -5.9); } });
 
-// a ☰ menu entry
-SSX.registerMenuItem({ label: '🎲 Random warp', onClick: app => app.toast('Not today.') });
+// a ☰ menu entry (pointer-based: touch fires on pointerup, mouse on click). Returns the <button>
+const btn = SSX.registerMenuItem({ id: 'warpBtn', label: '🎲 Random warp', onTap: app => app.toast('Not today.') });
+
+// v7.4: a vehicle kind. spec merges over defaults (boost = vmax × 1.5); optional builder(THREE, spec) returns a Group.
+// spec.amphibious rides on liquid (cfg.water) instead of bouncing off it; spec.icon is used on the Take button.
+SSX.registerVehicle('ice_cart', { name: 'Ice cart', icon: '🛷', vmax: 18, hover: 0.6, amphibious: true });
+
+// v7.4: stub. Records a body in SSX.bodies for a later release; it doesn't add a planet yet
+SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
+```
+
+Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js) once per surface frame, and `planets/index.js` runs `initPlanets(window.__app)` at startup. Colony packs live in `planets/<world>.js`, and `planets/hooks.js` is their only bridge to the core API.
+
+```js
 ```
 
 ## v7.2: fly the rover, bolt guns to it, and install it as an app

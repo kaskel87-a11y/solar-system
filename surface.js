@@ -1,9 +1,9 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.3';
-import { createGame } from './game.js?v=7.3';
-import { createWorld, VEHICLES } from './world.js?v=7.3';
-import { raceTick } from './race.js?v=7.3';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.4';
+import { createGame } from './game.js?v=7.4';
+import { createWorld, VEHICLES } from './world.js?v=7.4';
+import { raceTick } from './race.js?v=7.4';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -792,6 +792,30 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     else if (!r.air && time - r.jetT > 0.6) r.fuel = Math.min(mx, r.fuel + (r.kit ? 34 : 25) * dt);
   }
   const canThrust = r => !!r && (r === rover || r.kind === 'hoverbike');
+  // v7.4 barrel rolls: anything you drive that's airborne can roll a full 360. Land it clean for a stunt bonus; land upside down and it hurts.
+  const ROLL_T = 0.75; let stuntLog = { rolls: 0, clean: 0, crash: 0, last: null };
+  function stunt(r, dt, input, me) {
+    let ang = 0;
+    if (!me) { r.wasAir = r.air; r.barrel = null; return 0; }
+    if (input.roll && r.air && !r.barrel) { r.barrel = { dir: input.roll, t: 0 }; onEvent('roll', { dir: input.roll }); }
+    if (r.barrel) {
+      r.barrel.t += dt; const p = Math.min(1, r.barrel.t / ROLL_T), e = p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p);
+      ang = -r.barrel.dir * Math.PI * 2 * e;
+      if (p >= 1) { r.rolls = (r.rolls || 0) + 1; stuntLog.rolls++; r.barrel = null; ang = 0; }
+    }
+    if (r.wasAir && !r.air) { // touchdown
+      const p = r.barrel ? r.barrel.t / ROLL_T : 1;
+      if (r.barrel && p > 0.22 && p < 0.78) { // on the roof
+        r.barrel = null; r.rolls = 0; ang = 0; r.speed *= 0.3; stuntLog.crash++;
+        game.hurtPlayer(22, null); onEvent('stunt', { bad: true }); stuntLog.last = 'crash';
+      } else {
+        if (r.barrel) { r.rolls = (r.rolls || 0) + 1; stuntLog.rolls++; r.barrel = null; ang = 0; }
+        if (r.rolls) { const n = r.rolls, bonus = 25 * n * n + (r.kit ? 10 : 0); game.bonus?.(bonus, n); stuntLog.clean++; stuntLog.last = 'clean'; onEvent('stunt', { rolls: n, bonus }); }
+        r.rolls = 0;
+      }
+    }
+    r.wasAir = r.air; return ang;
+  }
   function updateRover(dt, input, g, r = rover) {
     const sp = r.spec || VEHICLES.rover, me = driving && car === r;
     let thr = 0, st = 0;
@@ -811,7 +835,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!r.air) r.yaw -= r.steer * sp.turn * Math.min(1, as / 4) * (1 - 0.45 * Math.min(1, as / 30)) * Math.sign(r.speed || 1) * dt;
     else r.yaw -= r.steer * (sp.airTurn || 1.5) * (wantThr ? 1.25 : 1) * dt; // v7.2 air control: yaw with the stick, at any speed
     const nx = r.x - Math.sin(r.yaw) * r.speed * dt, nz = r.z - Math.cos(r.yaw) * r.speed * dt;
-    if (cfg.water !== undefined && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2;
+    if (cfg.water !== undefined && !sp.amphibious && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2; // v7.4: spec.amphibious rides on the sea
     else {
       const c = world.collide(nx, nz, sp.r * 0.75, r);
       if (c) { if (Math.abs(r.speed) > 9 && me) { onEvent('crash', { speed: Math.abs(r.speed) }); if (Math.abs(r.speed) > 16) game.hurtPlayer(Math.abs(r.speed) * 0.6, null); } r.speed *= -0.25; }
@@ -820,12 +844,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (sp.hover) { // hover vehicles: ride a cushion above the ground, lean into turns
       if (wantThr && !r.jets && r.body) r.jets = buildThrusters(r.body, true);
       r.lift = Math.max(0, Math.min(18, (r.lift || 0) + (wantThr ? 7 : -5) * dt)); r.air = r.lift > 0.6; updateJets(r, dt);
-      const gh = height(r.x, r.z), want = gh + sp.hover + r.lift + Math.sin(time * 3) * 0.08;
+      const gh = sp.amphibious && cfg.water !== undefined ? Math.max(height(r.x, r.z), cfg.water) : height(r.x, r.z), want = gh + sp.hover + r.lift + Math.sin(time * 3) * 0.08;
       r.y += (Math.max(want, gh + 0.4) - r.y) * Math.min(1, dt * 6); r.vy = 0; r.prevG = gh;
       const fx = -Math.sin(r.yaw), fz = -Math.cos(r.yaw);
       const tp = Math.atan2(height(r.x + fx * 2.5, r.z + fz * 2.5) - height(r.x - fx * 2.5, r.z - fz * 2.5), 5) * 0.6;
       r.pitch += ((r.air ? -thr * 0.15 : tp) - r.pitch) * Math.min(1, dt * 4); r.roll += (-r.steer * (sp.lean || 0.15) * (r.air ? 1.2 : Math.min(1, as / 10)) - r.roll) * Math.min(1, dt * 5);
-      r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
+      const bang = stunt(r, dt, input, me);
+      r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll + bang);
       if (dust && as > 4 && Math.random() < dt * as * 1.5) spawnDust(r.x + (Math.random() - 0.5) * 2, gh + 0.2, r.z + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 6, 1 + Math.random() * 2, (Math.random() - 0.5) * 6);
       return;
     }
@@ -849,7 +874,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     }
     updateJets(r, dt);
     r.susp *= Math.exp(-dt * 6);
-    r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
+    const bang = stunt(r, dt, input, me);
+    r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll + bang);
     r.body.position.y = -r.susp + (r.air ? 0.06 : Math.sin(time * 31) * 0.012 * Math.min(1, as / 17));
     for (const w of r.wheels) {
       const wx = r.x + rx * w.x - fx * w.z, wz = r.z + rz * w.x - fz * w.z;
@@ -1289,6 +1315,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding,
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
+    debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
     debugMove(x, z, yaw = 0) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     mapData() {
@@ -1304,7 +1331,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = nearestUndiscovered(player.x, player.z), c = discCount();
       return {
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
-        view: viewName(camDist), camDist, camGoal, camPulled: camOcc, camPos: [camera.position.x, camera.position.y, camera.position.z], driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, boosting: driving ? !!car.boosting : false, vcap: driving ? car.vcap || 0 : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
+        view: viewName(camDist), camDist, camGoal, camPulled: camOcc, camPos: [camera.position.x, camera.position.y, camera.position.z], driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, air: driving ? !!car.air : false, rolling: driving ? !!car.barrel : false, stunts: { ...stuntLog }, boosting: driving ? !!car.boosting : false, vcap: driving ? car.vcap || 0 : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
         nearVehicle: (() => { if (driving || indoor || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
         nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, nearShop: !driving && !indoor ? world.nearShop() : null,
         door: !driving && !indoor ? (() => { const d = world.nearDoor(); return d ? { name: d.name, kind: d.kind } : null; })() : null,
