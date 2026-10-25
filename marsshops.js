@@ -6,9 +6,11 @@
 // into the matching district; otherwise (v7.4 main) they are placed AJ-relative on the colony with a flattened pad each.
 // All game fiction. M-rated: guns, booze, back-alley pharmacology, crime rumours. No nudity, no sexual content.
 import * as THREE from 'three';
-import { COLONIES, districtsOf } from './world.js?v=7.5.1';
-import { COSMETICS, WEAPONS } from './game.js?v=7.5.1';
-import { registerInterior, INTERIORS, buildHuman } from './interiors.js?v=7.5.1';
+// Version-independent core imports: reuse this module's own ?v= so world/game/interiors resolve to the exact instances
+// index.html loaded (a mismatched ?v would load second copies and our registrations would land on the wrong one).
+const VQ = new URL(import.meta.url).search;
+const [{ COLONIES, districtsOf }, { COSMETICS, WEAPONS }, { registerInterior, INTERIORS, buildHuman }] =
+  await Promise.all([import('./world.js' + VQ), import('./game.js' + VQ), import('./interiors.js' + VQ)]);
 
 // ---------- districts (AJ-relative centres, from the v7.5 brief) ----------
 const DIST = {
