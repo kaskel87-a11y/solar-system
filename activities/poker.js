@@ -1,6 +1,6 @@
 // Static Hold'em — phone-friendly Texas Hold'em modal for act-static-poker.
 // No new core hooks. Uses game credits via spend/debug.credits. Optional SSX.bark.
-import { tap } from '../racehooks.js';
+import { tap, panelTap } from '../racehooks.js';
 import {
   freshDeck, evalBest, cmpScore, strength01, cardLabel, HAND_NAMES,
 } from './poker-eval.js';
@@ -127,7 +127,7 @@ function openBuyIn(ctx) {
     if (!spend(buy)) { toast('Short on credits.'); return; }
     startTable(buy, ctx);
   };
-  el.onclick = on;
+  panelTap(el, on);
   tryBark({ name: 'Nyx', kind: 'contact' }, 'poker_offer') || tryBark({ name: 'Nyx' }, "VIP table. Ante's up. Don't make Brick invent stairs.");
 }
 
@@ -398,7 +398,7 @@ function cashOut(voluntary = true, banned = false) {
 function closeTable(why, silent = false) {
   if (why && !silent) toast(why);
   G = null;
-  if (panel) { panel.classList.remove('on'); panel.innerHTML = ''; panel.onclick = null; }
+  if (panel) { panel.classList.remove('on'); panel.innerHTML = ''; panel.__ptap = null; }
   document.body.classList.remove('poker-open');
 }
 
@@ -436,14 +436,14 @@ function render(showdown = false) {
       </div>
     </div>`;
   el.classList.add('on');
-  el.onclick = e => {
+  panelTap(el, e => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.cash) { cashOut(true); return; }
     if (t.dataset.fold) { humanFold(); return; }
     if (t.dataset.call) { humanCall(); return; }
     if (t.dataset.raise) { humanRaise(); return; }
     if (t.dataset.tip) { tipDealer(); return; }
-  };
+  });
 }
 
 /** Open the Hold'em modal. opts.onClose({ok, credits, delta, banned}) */

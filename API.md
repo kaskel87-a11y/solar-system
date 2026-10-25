@@ -66,3 +66,6 @@ Import first-party modules with **plain relative paths, never a `?v=` query**: `
 `index.html` holds an import map that sends every module URL (and its `ssx/<path>` alias) to `<path>.js?v=<release>`, so each module loads exactly once.
 A hand-written `?v=` makes the browser load a second, separate copy of that module (its own QUESTS, world state, and so on).
 `tests/test-imports-unit.mjs` fails on any `?v=` import. After adding a new `.js` file, run `python3 tools/importmap.py` to add it to the map (release bumps run it too: `python3 tools/importmap.py 7.5.3`).
+
+- `SSX.city.radio(text, contact, offerId?)` (v7.5.2): with an offer id the card shows ✅ Accept / Later for that quest.
+- Buttons: bind with `window.__onTap(el, fn)` (or `window.__tapOf(el).fn = fn` to replace a handler like `onclick`). Plain `onclick` never fires on iPhone while a thumb is on the joystick.

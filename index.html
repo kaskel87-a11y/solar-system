@@ -958,11 +958,11 @@
     }
     let overviewAnim = 0;
 
-    const mk = (label, name, fn) => { const b = document.createElement('button'); b.className = 'glass'; b.textContent = label; b.dataset.name = name; b.onclick = fn; planetBar.appendChild(b); };
+    const mk = (label, name, fn) => { const b = document.createElement('button'); b.className = 'glass'; b.textContent = label; b.dataset.name = name; tapOf(b).fn = fn; planetBar.appendChild(b); };
     mk('☀︎ Overview', 'Overview', overview);
     bodies.forEach(b => mk(b.name, b.name, () => select(b.mesh)));
     planetBar.firstChild.classList.add('active');
-    document.getElementById('fact-close').onclick = () => { factPanel.style.display = 'none'; };
+    tapOf(document.getElementById('fact-close')).fn = () => { factPanel.style.display = 'none'; };
 
     // Tap / click to select (ignores drags), with a generous screen-space fallback for small planets
     const raycaster = new THREE.Raycaster();
@@ -993,7 +993,7 @@
     // On phones, shrink the help box after a few seconds; tap it to toggle
     const infoEl = document.getElementById('info');
     if (isMobile) setTimeout(() => infoEl.classList.add('collapsed'), 7000);
-    infoEl.addEventListener('click', () => infoEl.classList.toggle('collapsed'));
+    onTap(infoEl, () => infoEl.classList.toggle('collapsed'));
 
     let timeSpeed = 0.6;
     document.getElementById('speed').oninput = e => timeSpeed = parseFloat(e.target.value);
@@ -1048,7 +1048,7 @@
         controls.update();
       }
     }
-    flyBtn.onclick = () => setFlying(!flying);
+    tapOf(flyBtn).fn = () => setFlying(!flying);
 
     // ===== Landing / surface =====
     // ===== Sound (WebAudio, unlocked on first gesture for iOS) =====
@@ -1101,7 +1101,7 @@
     function showPop(ev) {
       noteCard('✨ DISCOVERED', ev.name, ev.fact, ev.found === ev.total ? `🏆 All ${ev.total} discoveries on ${ev.world} found!` : `${ev.world} · ${ev.found}/${ev.total} discovered · saved in your log`);
     }
-    discPop.addEventListener('click', () => {
+    onTap(discPop, () => {
       toastEl.classList.remove('on'); const open = discPop.classList.toggle('open');
       clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show', 'open'), open ? 12000 : 2500);
     });
@@ -1134,10 +1134,10 @@
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
       speak(ev.text);
     }
-    radioEl.addEventListener('click', e => { if (e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
+    onTap(radioEl, e => { if (e.target.closest && e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
     // pointer-bound (onTap): a plain onclick drops the tap on iOS while a thumb rests on the joystick
     onTap(document.getElementById('radioAccept'), () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); });
-    document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Jobs stay in the Log (L).', 2500); };
+    tapOf(document.getElementById('radioLater')).fn = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Jobs stay in the Log (L).', 2500); };
     const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
     let hurtTimer = 0;
     function toast(msg, ms = 4000) {
@@ -1338,7 +1338,7 @@
       if (!flying) { follow = mesh; setFlying(true); nearBody = mesh; mesh.getWorldPosition(prevNearPos); return land(); }
       flyTarget = autopilot = mesh; updateLandUI(true);
     }
-    factLandBtn.onclick = e => { e.stopPropagation(); landOn(factLandTarget); };
+    tapOf(factLandBtn).fn = e => { e.stopPropagation(); landOn(factLandTarget); };
     function updateLandUI(force) {
       if (!flying || onSurface) return;
       if (transitioning || landAnim) { landBtn.style.display = 'none'; return; }
@@ -1359,17 +1359,17 @@
       }
       landBtn.style.display = 'block';
     }
-    landBtn.onclick = landAction;
-    document.getElementById('takeoffBtn').onclick = takeOff;
+    tapOf(landBtn).fn = landAction;
+    tapOf(document.getElementById('takeoffBtn')).fn = takeOff;
 
     // ===== Surface: view, rover, dog, discoveries log =====
     const viewBtn = document.getElementById('viewBtn'), discBtn = document.getElementById('discBtn'), driveBtn = document.getElementById('driveBtn'), petBtn = document.getElementById('petBtn');
     let wasDriving = false, boostHinted = false;
     const runBtnEl = document.getElementById('runBtn'), logPanel = document.getElementById('logPanel');
     const VIEW_LABEL = { first: '👁 First person', third: '👁 Third person', aerial: '🛰 Aerial view' };
-    viewBtn.onclick = () => { surface.cycleView(); updateSurfHud(true); };
-    discBtn.addEventListener('click', () => roverMenu.classList.remove('show'));
-    document.getElementById('takeoffBtn').addEventListener('click', () => roverMenu.classList.remove('show'));
+    tapOf(viewBtn).fn = () => { surface.cycleView(); updateSurfHud(true); };
+    onTap(discBtn, () => roverMenu.classList.remove('show'));
+    onTap(document.getElementById('takeoffBtn'), () => roverMenu.classList.remove('show'));
     const VEH_ICON = { rover: '🚙', buggy: '🏎', hauler: '🚛', hoverbike: '🏍', shuttle: '🛸' };
     let shopMark = null;
     // v7.3: what the context button says for an item on a rack or in a case
@@ -1474,17 +1474,27 @@
       shopListEl.querySelectorAll('[data-buy]').forEach(b => onTap(b, () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); surface.world.refreshWares?.(); updateSurfHud(true); }));
     }
     function openShop(venue = null, who = '') { shopVenue = venue; shopWho = who || ''; shopMsg.textContent = venue === 'bar' ? `${who || 'Bartender'}: What\u2019ll it be?` : 'Cash only. No refunds. No questions.'; renderShop(); shopPanel.style.display = 'block'; au7.fx.door(); if (document.pointerLockElement) document.exitPointerLock(); }
-    document.getElementById('shopClose').onclick = () => shopPanel.style.display = 'none';
+    tapOf(document.getElementById('shopClose')).fn = () => shopPanel.style.display = 'none';
     // v7.1: iOS WebKit (Safari and Chrome on iPhone) drops the synthetic click when another finger is down,
     // so with a thumb on the joystick Take/Drive/Pet did nothing. Fire these on the pointer itself instead.
+    // v7.5.2 (iPhone Accept bug): every in-game button fires on its own finger's pointerup (matched pointerId). With a thumb
+    // held on the joystick, iOS WebKit sends no click for a second finger's tap, so plain onclick handlers never ran.
+    // Mouse and keyboard (.click(), Enter/Backspace) still arrive as click; a click within 700 ms of a touch tap is the duplicate.
     function onTap(el, fn) {
-      let lastTouch = 0, downId = null;
-      el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; e.preventDefault(); downId = e.pointerId; el.classList.add('on'); });
-      const up = e => { if (e.pointerId !== downId) return; downId = null; el.classList.remove('on'); if (e.type !== 'pointerup') return; e.preventDefault(); lastTouch = performance.now(); fn(e); };
+      if (!el) return;
+      let lastTouch = 0, downId = null, dx = 0, dy = 0;
+      el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; e.preventDefault(); downId = e.pointerId; dx = e.clientX; dy = e.clientY; el.classList.add('on'); });
+      const up = e => { if (e.pointerId !== downId) return; downId = null; el.classList.remove('on'); if (e.type !== 'pointerup') return; if (Math.hypot(e.clientX - dx, e.clientY - dy) > 14) return; e.preventDefault(); lastTouch = performance.now(); tapGhost(el); fn(e); };
       el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
       el.addEventListener('click', e => { if (performance.now() - lastTouch < 700) return; fn(e); });
     }
-    window.__onTap = onTap;
+    // the late click iOS may still send after a touch tap lands on whatever slid under the finger; swallow it
+    let ghostSrc = null, ghostT = 0;
+    function tapGhost(el) { ghostSrc = el; ghostT = performance.now(); }
+    document.addEventListener('click', e => { if (!ghostSrc || performance.now() - ghostT > 500 || !e.isTrusted || e.detail === 0) return; if (ghostSrc.contains(e.target)) return; e.stopPropagation(); e.preventDefault(); ghostSrc = null; }, true);
+    // tapOf(el).fn = handler: drop-in for tapOf(el).fn = handler (re-assigning replaces it; listeners are installed once)
+    function tapOf(el) { if (!el.__tap) { const t = el.__tap = { fn: null }; onTap(el, e => t.fn && t.fn.call(el, e)); } return el.__tap; }
+    window.__onTap = onTap; window.__tapOf = tapOf;
     onTap(document.getElementById('gearChip'), () => surface.game.switchWeapon());
     onTap(document.getElementById('tbBars'), () => surface.game.useMedkit());
     onTap(driveBtn, doInteract);
@@ -1510,7 +1520,7 @@
       document.querySelectorAll('#logTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
       document.querySelectorAll('#logPanel .tab').forEach(t => t.classList.toggle('active', t.id === id));
     }
-    document.querySelectorAll('#logTabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+    document.querySelectorAll('#logTabs button').forEach(b => tapOf(b).fn = () => showTab(b.dataset.tab));
     const QUEST_WORLDS = ['Moon', 'Mars', 'Venus', 'Mercury', 'Earth', 'Io', 'Europa', 'Titan'];
     function renderLogTabs() {
       const G = surface.game, P = G.progress, here = onSurface ? surface.info?.name : null, gi = G.info;
@@ -1526,8 +1536,8 @@
         }).join('');
       }
       const tq = document.getElementById('tabQuests'); tq.innerHTML = qh;
-      tq.querySelectorAll('[data-accept]').forEach(b => b.onclick = () => { G.accept(b.dataset.accept); logPanel.style.display = 'none'; updateSurfHud(true); });
-      tq.querySelectorAll('[data-abandon]').forEach(b => b.onclick = () => { G.abandon(); renderLogTabs(); updateSurfHud(true); });
+      tq.querySelectorAll('[data-accept]').forEach(b => tapOf(b).fn = () => { G.accept(b.dataset.accept); logPanel.style.display = 'none'; updateSurfHud(true); });
+      tq.querySelectorAll('[data-abandon]').forEach(b => tapOf(b).fn = () => { G.abandon(); renderLogTabs(); updateSurfHud(true); });
       // rewards
       const r = gi;
       const rareTotal = Object.values(P.rare || {}).reduce((n, a) => n + a.length, 0);
@@ -1540,13 +1550,13 @@
       sb.innerHTML = `<div class="sw"><span>☣️ Hostiles &amp; combat<br><small style="opacity:.7">Off = peaceful exploring (colonies and security stay)</small></span><button class="btn ${P.settings.aliens ? 'on' : 'off'}" id="setAliens" aria-pressed="${!!P.settings.aliens}">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
         + `<div class="sw"><span>📻 Radio voice (text-to-speech)</span><button class="btn ${P.settings.voice ? 'on' : 'off'}" id="setVoice" aria-pressed="${!!P.settings.voice}">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
         + `<h3>🎨 Rover paint</h3><div class="chips">${pick('paint')}</div><h3>🧣 ${esc(dogName)}'s bandana</h3><div class="chips">${pick('bandana')}</div>`;
-      sb.querySelector('#setAliens').onclick = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '☣️ Hostiles ON. Check your corners.' : '🕊 Peaceful mode: no hostiles.', 2500); renderLogTabs(); updateSurfHud(true); };
-      sb.querySelector('#setVoice').onclick = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
-      sb.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Earn it on a job, or buy it at a colony shop.', 2500); });
+      tapOf(sb.querySelector('#setAliens')).fn = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '☣️ Hostiles ON. Check your corners.' : '🕊 Peaceful mode: no hostiles.', 2500); renderLogTabs(); updateSurfHud(true); };
+      tapOf(sb.querySelector('#setVoice')).fn = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
+      sb.querySelectorAll('[data-kind]').forEach(b => tapOf(b).fn = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Earn it on a job, or buy it at a colony shop.', 2500); });
     }
-    discBtn.onclick = openLog;
-    document.getElementById('logClose').onclick = () => logPanel.style.display = 'none';
-    document.getElementById('dogSave').onclick = () => {
+    tapOf(discBtn).fn = openLog;
+    tapOf(document.getElementById('logClose')).fn = () => logPanel.style.display = 'none';
+    tapOf(document.getElementById('dogSave')).fn = () => {
       const v = document.getElementById('dogName').value.trim().slice(0, 20) || 'Frankie'; dogName = v;
       try { localStorage.setItem(DOG_KEY, v); } catch (e) { /* ignore */ }
       toast(`🐶 ${v} it is.`, 2500); updateSurfHud(true);
@@ -1686,25 +1696,25 @@
     document.addEventListener('fullscreenchange', fsLabel); document.addEventListener('webkitfullscreenchange', fsLabel); fsLabel();
     const ctlPanel = document.getElementById('ctlPanel');
     function openControls(on = true) { ctlPanel.style.display = on ? 'block' : 'none'; if (on) { roverMenu.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } }
-    document.getElementById('ctlBtn').onclick = () => openControls(true); document.getElementById('ctlClose').onclick = () => openControls(false);
+    tapOf(document.getElementById('ctlBtn')).fn = () => openControls(true); tapOf(document.getElementById('ctlClose')).fn = () => openControls(false);
     let lockTipShown = false;
     document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('mlocked', !!document.pointerLockElement); });
     document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && onSurface && !lockTipShown) { lockTipShown = true; toast('🖱 Mouse aim on. Esc frees the mouse for ☰ and buttons (or press M for the menu).', 3200); } });
     function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
-    miniMap.onclick = () => toggleMenu(); document.getElementById('menuBtn').onclick = () => toggleMenu();
+    tapOf(miniMap).fn = () => toggleMenu(); tapOf(document.getElementById('menuBtn')).fn = () => toggleMenu();
     function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
-    document.getElementById('hideHudBtn').onclick = () => setCinematic(true);
-    document.getElementById('hudShow').onclick = () => setCinematic(false);
-    document.getElementById('settingsBtn').onclick = () => { roverMenu.classList.remove('show'); openLog(); showTab('tabSettings'); };
-    document.getElementById('rmSummon').onclick = () => travel('summon');
-    document.getElementById('rmWarp').onclick = () => travel('warp');
-    document.getElementById('rmShip').onclick = () => travel('ship');
+    tapOf(document.getElementById('hideHudBtn')).fn = () => setCinematic(true);
+    tapOf(document.getElementById('hudShow')).fn = () => setCinematic(false);
+    tapOf(document.getElementById('settingsBtn')).fn = () => { roverMenu.classList.remove('show'); openLog(); showTab('tabSettings'); };
+    tapOf(document.getElementById('rmSummon')).fn = () => travel('summon');
+    tapOf(document.getElementById('rmWarp')).fn = () => travel('warp');
+    tapOf(document.getElementById('rmShip')).fn = () => travel('ship');
     // v7.3 modding API (see README): add colonies, missions, interiors and ☰ menu items from the console or an extra <script type="module">
     // v7.4: one menu hook for everyone (SSX and __app). Pointer-based: fires on pointerup of the same finger (a thumb on the
     // joystick can't block it); mouse/keyboard use click. onTap or onClick both work. Returns the button element.
     // v7.4: a touch menu item acts on pointerup and may open a panel right under the finger; swallow the synthetic click that
     // follows (500 ms) so it can't press whatever button the new panel put there (it sent you to Titan instead of Io)
-    { const g = document.getElementById('adultGate'), hit = (el, fn) => { el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { e.preventDefault(); fn(); } }); el.addEventListener('click', fn); };
+    { const g = document.getElementById('adultGate'), hit = (el, fn) => onTap(el, () => fn());
       let lastG = 0; const once = fn => () => { const n = performance.now(); if (n - lastG < 500) return; lastG = n; fn(); };
       hit(document.getElementById('adultYes'), once(() => g._yes?.())); hit(document.getElementById('adultNo'), once(() => { g.style.display = 'none'; toast('Tiny shrugs. "Bar’s that way."', 2200); })); }
     // ===== v7.4 legal duels =====
@@ -1717,7 +1727,7 @@
       paintDuel(); duelPanel.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
     }
     function paintDuel() { duelPanel.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === duelPick.t)); duelPanel.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', +b.dataset.w === duelPick.w)); }
-    { const hit = (el, fn) => { el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { e.preventDefault(); fn(); } }); el.addEventListener('click', fn); };
+    { const hit = (el, fn) => onTap(el, () => fn());
       let lastD = 0; const once = fn => () => { const n = performance.now(); if (n - lastD < 350) return; lastD = n; fn(); };
       duelPanel.querySelectorAll('[data-t]').forEach(b => hit(b, () => { duelPick.t = b.dataset.t; paintDuel(); }));
       duelPanel.querySelectorAll('[data-w]').forEach(b => hit(b, () => { if (b.disabled) return; duelPick.w = +b.dataset.w; paintDuel(); }));
@@ -1763,19 +1773,19 @@
       registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
     };
     // v7.3 ☰ 🛒 Shop: mark the nearest store on the radar
-    document.getElementById('rmShopNav').onclick = () => {
+    tapOf(document.getElementById('rmShopNav')).fn = () => {
       roverMenu.classList.remove('show');
       const s = surface.world.nearestStore?.(); if (!s) { toast('🛒 No stores out here. Head for a colony.', 2500); return; }
       if (surface.info?.inside) { toast(`🛒 You\u2019re in ${surface.info.inside.name}. Walk up to a tag to buy.`, 2500); return; }
       shopMark = { x: s.x, z: s.z, name: s.name }; toast(`🛒 ${s.name}: ${Math.round(s.dist)} m. Look for the pulsing $ on the radar.`, 3200); updateSurfHud(true);
     };
-    document.getElementById('rmClose').onclick = () => roverMenu.classList.remove('show');
+    tapOf(document.getElementById('rmClose')).fn = () => roverMenu.classList.remove('show');
     // ===== v7.5 sheet (choices, job board, fast travel), space ☰, city API =====
     const sheetEl = document.getElementById('sheet');
     function openSheet(title, text, buttons, noClose) {
       document.getElementById('sheetTitle').textContent = title; document.getElementById('sheetText').textContent = text || '';
       const box = document.getElementById('sheetBtns'); box.textContent = '';
-      for (const b of noClose ? buttons : [...buttons, { label: '✖ Close', alt: true, fn: () => {} }]) { const e = document.createElement('button'); e.textContent = b.label; if (b.alt) e.className = 'alt'; e.disabled = !!b.disabled; e.onclick = () => { closeSheet(); b.fn(); updateSurfHud(true); }; box.appendChild(e); }
+      for (const b of noClose ? buttons : [...buttons, { label: '✖ Close', alt: true, fn: () => {} }]) { const e = document.createElement('button'); e.textContent = b.label; if (b.alt) e.className = 'alt'; e.disabled = !!b.disabled; tapOf(e).fn = () => { closeSheet(); b.fn(); updateSurfHud(true); }; box.appendChild(e); }
       roverMenu.classList.remove('show'); sheetEl.classList.add('show'); if (document.pointerLockElement) document.exitPointerLock();
     }
     function closeSheet() { sheetEl.classList.remove('show'); }
@@ -1791,8 +1801,8 @@
       openSheet('🏙 Fast travel', surface.world.wanted > 0 ? 'Lose the heat first. Nobody gives a lift to a wanted spacer.' : 'Hop a city shuttle. Your rover comes along.',
         ds.map(d => ({ label: `${d.id === surface.world.zone ? '📍 ' : ''}${d.name}`, disabled: surface.world.wanted > 0, fn: () => { const r = surface.fastTravel(d.id); toast(r.ok ? `🚌 ${r.name}` : `❌ Can’t travel: ${r.why}`, 2400); } })));
     }
-    document.getElementById('rmDistricts').onclick = () => openDistricts();
-    document.getElementById('spaceMenuBtn').onclick = () => toggleMenu();
+    tapOf(document.getElementById('rmDistricts')).fn = () => openDistricts();
+    tapOf(document.getElementById('spaceMenuBtn')).fn = () => toggleMenu();
     // window.SSX.city: what add-ons (Steve's events/activities, Pumpkin's lots, Ben's heists) build on. See API.md.
     const bus = new EventTarget();
     Object.assign(window.SSX, {
@@ -1808,7 +1818,7 @@
         hostiles: (types, x, z, o) => surface.game.hostiles(types, x, z, o), alarm: (lvl, at, why) => surface.world.alarm?.(lvl, at, why),
         cameras: () => surface.world.cameras?.() || [], caseCamera: id => surface.world.caseCamera?.(id), fastTravel: id => surface.fastTravel(id),
         choice: (prompt, options) => new Promise(res => openSheet('🤝 Your call', prompt, options.map(o => ({ label: o.label, fn: () => res(o.id) })))),
-        toast: (t, ms) => toast(t, ms), radio: (text, contact) => showRadio({ text, contact }),
+        toast: (t, ms) => toast(t, ms), radio: (text, contact, offer) => showRadio({ text, contact, offer: offer || null }),
         get zone() { return surface.world.zone; }, get wanted() { return surface.world.wanted; }, setWanted: (n, why) => surface.world.setWanted(n, why),
         get quest() { return surface.game.info?.quest || null; },
         // v7.5.1 asks from Ben's heist PR
@@ -1848,7 +1858,7 @@
     };
     // v7.2 share with friends: native share sheet (iMessage etc.), else copy the clean link. Progress stays per device (localStorage), so friends start fresh.
     const SHARE = { title: 'Solar System Explorer', text: 'Land on Mars, fly a thruster rover and raise hell in the colonies. Free, no App Store:', url: 'https://kaskel87-a11y.github.io/solar-system/' };
-    document.getElementById('shareBtn').onclick = async () => {
+    tapOf(document.getElementById('shareBtn')).fn = async () => {
       roverMenu.classList.remove('show'); window.__lastShare = null;
       if (navigator.share) {
         try { await navigator.share(SHARE); window.__lastShare = 'shared'; return; }
@@ -1892,7 +1902,7 @@
       if (hit) showFact({ userData: hit });
       else { factPanel.style.display = 'none'; const tb = document.getElementById('topBar').getBoundingClientRect(); if (!isTouch && !locked && !roverMenu.classList.contains('show') && e.clientY > tb.bottom + 8) lockPointer(); } // v7.4: clicks near the top bar never grab the mouse
     });
-    document.getElementById('exitBtn').onclick = () => setFlying(false);
+    tapOf(document.getElementById('exitBtn')).fn = () => setFlying(false);
 
     window.addEventListener('keydown', e => {
       if (ctlPanel.style.display === 'block') { if (['Escape', 'Slash', 'F1', 'Enter'].includes(e.code)) { e.preventDefault(); openControls(false); } return; }

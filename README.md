@@ -22,6 +22,7 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
 ## v7.5.2: street life
+- **Fixed on iPhone:** ✅ Accept and Later on radio job offers (and every other in-game button: Log ▶ Start, duel, race and shop buttons, ☰, map, Land/Take off) now work while your thumb is on the joystick. iOS sends no click for a second finger's tap, so these now fire on the finger's own touch release.
 - Street danger: knife muggings with Pay / Fight / Run / Talk, street fights, gang and junkie car chases, the Red Tape Run highway set-piece, and ambient street vignettes. Toggle it from ☰ (🔪 Street danger).
 - Side jobs: taxi, paramedic and vigilante runs with levels, across all four districts.
 - The Raccoon Mobile (900 cr at Meridian Depot) and Silas & Tam's junkyard lab: five portal missions.
