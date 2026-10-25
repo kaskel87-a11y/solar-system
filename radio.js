@@ -1,7 +1,7 @@
 // Mars city ambience: four more procedural car-radio stations. They join audio7.js STATIONS (after "Radio off", so the
 // saved station index of older saves still means the same thing), and play through their own scheduler while audio7's
 // in-car radio is "on" and tuned to one of them. All music is generated with Web Audio; no samples, no licences needed.
-import { midi as N, tone, burst, babble } from './synth.js?v=7.5.1';
+import { midi as N, tone, burst, babble } from './synth.js';
 
 // ---------- station definitions (pure data + a step() pattern) ----------
 // step(x, t, s, bar, spb): x = { out, osc(type, f, t, dur, vol, f1), hit(t, dur, vol, freq, q, type) }, s = 16th step 0..63

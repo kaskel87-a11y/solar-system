@@ -2,9 +2,9 @@
 // Everything goes through the v7.4 world add-on API: world.setWanted(n, why), world.crime(min, why), world.securityList(),
 // world.wanted / evading / inDuel / inside / colony, world.colonyAt([x, z]). No police/security AI lives in the heist code:
 // alarms only raise the wanted level and Grok Bot's security (world.js) answers it.
-// Import URLs must match the core's ?v= exactly (shared module instances).
-import { alarmAction } from './heistcore.js?v=7.5.1';
-export { addMenuItem, tap } from './racehooks.js?v=7.5.1';
+// Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
+import { alarmAction } from './heistcore.js';
+export { addMenuItem, tap } from './racehooks.js';
 
 // raise heat for an alarm. Returns what it did ({ op, n }) so callers / tests can see it.
 export function raiseAlarm(world, level, why, opts) {

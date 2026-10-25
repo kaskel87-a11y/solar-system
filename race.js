@@ -6,9 +6,9 @@
 // racehooks.js (same shim pattern as planets/hooks.js). Everything else (DOM, ☰ menu entries, the context button, minimap gate) is set up lazily from here. All geometry and materials are
 // flagged userData.shared so surface.exit()'s dispose pass leaves them alone; we re-add our root after scene.clear().
 import * as THREE from 'three';
-import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js?v=7.5.1';
-import * as RC from './racecore.js?v=7.5.1';
-import { createBuilder } from './trackbuilder.js?v=7.5.1';
+import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
+import * as RC from './racecore.js';
+import { createBuilder } from './trackbuilder.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 let C = null;                       // latest surface context from the hook
@@ -443,7 +443,7 @@ function ensureUI() {
   const mRace = addMenuItem(app(), { id: 'rmRaces', label: '\ud83c\udfc1 Street races', onTap: () => { if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); } });
   const mBuild = addMenuItem(app(), { id: 'rmBuilder', label: '\ud83d\udee0 Track builder', onTap: () => openBuilder() });
   const panel = document.createElement('div'); panel.id = 'racePanel'; document.body.appendChild(panel);
-  panel.addEventListener('click', onPanelClick);
+  panelTap(panel, onPanelClick); // v7.5.2: works with a thumb on the joystick
   // keys stay ours while a race panel or the builder is open (Escape closes)
   window.addEventListener('keydown', e => {
     if (panel.classList.contains('on')) { e.stopImmediatePropagation(); if (e.code === 'Escape') closePanel(); }

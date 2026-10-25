@@ -1,11 +1,13 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5.1';
-import { createGame } from './game.js?v=7.5.1';
-import { createWorld, VEHICLES } from './world.js?v=7.5.1';
-import { raceTick } from './race.js?v=7.5.1';
-import { activityTick } from './activities/runner.js?v=7.5.1';
-import { heistTick } from './heist.js?v=7.5.1';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js';
+import { createGame } from './game.js';
+import { createWorld, VEHICLES } from './world.js';
+import { raceTick } from './race.js';
+import { activityTick } from './activities/runner.js';
+import { heistTick } from './heist.js';
+import { sciTick } from './scihooks.js'; // junkyard lab pack: Raccoon Mobile + scientist portal jobs
+import { dangerTick } from './danger.js'; // Chief of Staff's street danger (PR #3)
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1147,8 +1149,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    sciTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     game.update(dt, input);
+    dangerTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, inside: !!indoor, dog, intro: state.intro });
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
     updateChunks(px, pz, false, driving ? 2 : 1);
