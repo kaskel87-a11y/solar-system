@@ -1,6 +1,6 @@
 // v7.5 Mars base building e2e: ☰ 🏠 Mars base -> buy Junction East Lot via the context button -> 🏗️ Build -> place a wall,
 // gate, garage, stash and turret with the toolbar + context button (taps with a second finger while a thumb holds the
-// joystick on phones; mouse + B key on desktop) -> rotate -> remove/refund -> stash deposit -> turret fires at a raider /
+// joystick on phones; mouse + J key on desktop) -> rotate -> remove/refund -> stash deposit -> turret fires at a raider /
 // security -> SSX.base.raid emits base:raid -> reload the page -> everything is restored.
 // BASE=http://127.0.0.1:8853/ BR=webkit DEV="iPhone 14 Pro" VP=393x852 OUT=/workspace/pw-ben-base/shots/ node test-base.js
 const pw = require('playwright');
@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ev(j, 'pointerdown', 50, jr); await sl(60); ev(b, 'pointerdown', 51, br); await sl(60); ev(b, 'pointerup', 51, br); await sl(60); ev(j, 'pointerup', 50, jr); return 'ok';
   }, sel);
   const ourTap = async sel => { if (desk) await page.click(sel); else { const r = await stickTap(sel); if (r !== 'ok') R['stickTap ' + sel] = r; } };
-  const act = async () => { if (desk) await page.keyboard.press('KeyB'); else await ourTap('#baseBtn'); };
+  const act = async () => { if (desk) await page.keyboard.press('KeyJ'); else await ourTap('#baseBtn'); };
   const shot = async name => { for (let i = 0; i < 2; i++) { try { await page.screenshot({ path: `${out}${tag}-${name}.png`, timeout: 90000 }); return true; } catch (e) { R['shotRetry-' + name] = i + 1; } } return false; };
   const move = (x, z, yaw = 0) => G(([x, z, yaw]) => window.__app.surface.debugMove(x, z, yaw), [x, z, yaw]);
   const PID = 'aj-east';
@@ -117,9 +117,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await shot('stash');
     await ourTap('#baseStashClose'); await wait(() => !document.getElementById('basePanel').classList.contains('on'), 3000);
     // ---- garage: 🚙 Rover home parks the rover in the bay; with SSX.garage present (stubbed here if absent) the action becomes 🔧 Customize
-    const gp = await G(id => { const B = window.SSX.base, g = B.state(id).pieces.find(p => p.type === 'garage'), w = B.plots().find(p => p.id === id).world; return { x: w.x + (g.i + 1) * 2 - 10, z: w.z + (g.j + 1.5) * 2 - 10 }; }, PID);
-    await move(gp.x + 2.6, gp.z + 3.2, 0);
-        ok('roverHomeBtn', await wait(() => window.SSX.base.action === '🚙 Rover home' || window.SSX.base.action === '🔧 Customize', 8000));
+    const gp = await G(id => { const B = window.SSX.base, g = B.state(id).pieces.find(p => p.type === 'garage'), w = B.plots().find(p => p.id === id).world, [fw, fd] = g.r & 1 ? [3, 2] : [2, 3]; return { x: w.x + (g.i + fw / 2) * 2 - 10, z: w.z + (g.j + fd / 2) * 2 - 10, r: g.r }; }, PID);
+    const gAct = () => wait(() => ['🚙 Rover home', '🔧 Customize'].includes(window.SSX.base.action), 6000);
+    let gOk = false; for (const [ox, oz] of [[0, 3], [3, 0], [0, -3], [-3, 0]]) { await move(gp.x + ox, gp.z + oz, 0); if ((gOk = await gAct())) { R.garageSide = `${ox},${oz} r${gp.r}`; break; } }
+    ok('roverHomeBtn', gOk);
     if ((await G(() => window.SSX.base.action)) === '🚙 Rover home') { await act(); await sleep(800); }
     R.stubGarage = await G(() => { if (window.SSX.garage) return false; window.__gOpen = 0; window.SSX.garage = { openGarage() { window.__gOpen++; } }; return true; });
     ok('customizeBtn', await wait(() => window.SSX.base.action === '🔧 Customize', 8000));
