@@ -51,7 +51,7 @@ The rover turret now works with **hostiles off** and **while flying**. When you'
 
 **Install it as an app (PWA).**
 - The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Starship-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
-- `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.2`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` is fetched network-first, so new releases still land.
+- `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.2`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` and the game's own modules are fetched network-first, with the cache as the offline fallback, so new releases and hotfixes still land. three.js, textures and icons are served cache-first.
 - The HUD already respects the notch and home-bar safe areas in standalone mode.
 - **On iPhone:** open https://kaskel87-a11y.github.io/solar-system/ in Safari, tap **Share (□↑) → Add to Home Screen → Add**. On iOS 16.4+ Chrome works too: **Share → Add to Home Screen**. Launch it from the home-screen icon for full screen with no browser bars.
 - **On Android or desktop Chrome:** use the ☰ menu → **📲 Add to Home Screen**, which triggers the install prompt, or use the browser's Install button.
@@ -172,6 +172,8 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
   - **Venus and Titan:** the haze is lighter and fades with distance, so nearby ground stays clear.
   - **HUD:** the pills are smaller, have solid backgrounds and sit stacked in the corners.
 - **Return to rover:** on foot, the **🚙 Rover · 1.2 km** pill shows how far away your rover is and which way it is. Tap it to **summon the rover** to you, **warp to the rover** (Frankie comes too) or **return to the Starship**. This works at any distance. It's disabled while aliens are attacking. On desktop: **R** summons, **Shift+R** warps, **H** goes to the ship.
+
+See [ROADMAP.md](ROADMAP.md) for what's next (v7.3: buildings, gun shop, security combat, more missions).
 
 ## Running locally
 It uses ES modules, so you need a local server: `python3 -m http.server` then open http://localhost:8000/.

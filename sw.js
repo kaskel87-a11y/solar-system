@@ -2,7 +2,9 @@
 // The version comes from the registration URL (sw.js?v=7.2), the same number as the ?v cache bust on the modules,
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
-const SHELL = `ssx-shell-${V}`, ASSETS = `ssx-assets-${V}`;
+// BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
+const BUILD = 2;
+const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
@@ -27,7 +29,12 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.pathname.endsWith('/sw.js')) return;
-  // versioned modules, three.js, textures, icons: cache first (the ?v in the URL changes every release)
+  // game code (our own .js modules + manifest): network first, cache as the offline fallback, so fixes land even without a ?v bump
+  if ((url.pathname.endsWith('.js') && !url.pathname.includes('/vendor/')) || url.pathname.endsWith('.webmanifest')) {
+    e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(SHELL).then(c => c.put(req, cp)); } return r; }).catch(() => caches.match(req)));
+    return;
+  }
+  // three.js, textures, icons: cache first
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
     if (r.ok && (url.pathname.includes('/textures/') || url.pathname.includes('/vendor/') || url.pathname.includes('/icons/') || url.search.includes('v=') || url.pathname.endsWith('.webmanifest'))) {
       const cp = r.clone(); caches.open(url.pathname.includes('/textures/') ? ASSETS : SHELL).then(c => c.put(req, cp));
