@@ -25,7 +25,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   const land = async () => { await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 90000); await sleep(800); };
   const credits = () => G(() => window.__app.surface.game.progress.credits);
   // ---- taps: touch = with a thumb held on the joystick the whole time ----
-  let cdp = null; const T = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+  let cdp = null; const T = async (type, pts) => (cdp = cdp || await ctx.newCDPSession(page)).send('Input.dispatchTouchEvent', { type, touchPoints: pts });
   // the thumb goes down on the stick BEFORE the first tap and stays down (pointer-captured by #joy) while the sheets open over it
   let held = 0, stick = null, tid = 2;
   const holdStick = async () => {
