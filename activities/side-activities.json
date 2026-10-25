@@ -1,0 +1,1871 @@
+{
+  "format": "solar-system-story/mars-city side-activities v1",
+  "world": "Mars",
+  "notes": [
+    "Repeatable loops for Olympus Row, Red Tape Flats, Helios Heights, and the Ares Beltway.",
+    "Coords: at_local = district-local; at_aj = Ares Junction-relative (same as missions.json).",
+    "Engine steps used where possible: goto/collect/defeat/return/take/clean/race/enter (README Modding API). duel uses v7.4 world.inDuel.",
+    "Scope fence: no CoS holdups/gang chases; no Ben safe-crack/camera/alarm heists; no Pumpkin dealership/garage/car-meet/radio; no Jeff Rook/Vesna/Kestrel/Ines/Rusk chains.",
+    "Contacts are Steve district NPCs (Nyx, Vale, Pixel, Kline, Marrow, Wrench, Blue, Penny-ante, Porter, Lita, Rhee).",
+    "Mobile caps listed per activity; all phone_npc_max <= 12.",
+    "registerMission can host one-shot instances; a real activity loop needs core support (see README gaps)."
+  ],
+  "api_mapping": {
+    "registerMission": "One-shot offer of an activity instance (steps/reward/contact). Mark fiction+repeatable in save manually until API exists.",
+    "registerDistrict": "v7.4 stub — districts already declared in district JSON; activities key off district ids.",
+    "duel": "v7.4 world.inDuel / sanctioned duel for The Pit and street duel invite.",
+    "race": "Beltway time trial + Rhee drill + parkour use race pts (AJ-relative)."
+  },
+  "by_district": {
+    "mars-downtown": [
+      "act-static-bounce",
+      "act-vale-scanner",
+      "act-pixel-photo",
+      "act-kline-armored",
+      "act-trust-range",
+      "act-parkour-ridge",
+      "act-static-poker"
+    ],
+    "mars-rough": [
+      "act-pit-fight",
+      "act-wrench-scrap",
+      "act-funeral-bets",
+      "act-blue-courier"
+    ],
+    "mars-gated": [
+      "act-porter-valet",
+      "act-lita-openhouse",
+      "act-rhee-drill"
+    ],
+    "mars-highway": [
+      "act-beltway-trial",
+      "act-beltway-taxi",
+      "act-beltway-delivery"
+    ]
+  },
+  "activities": [
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10,
+        "note": "bouncer + up to 4 troublemakers + Nyx"
+      },
+      "scope_ok": true,
+      "id": "act-static-bounce",
+      "district": "mars-downtown",
+      "name": "Door Shift",
+      "contact": "Nyx",
+      "board": "The Static VIP board",
+      "summary": "Timed bouncer shift at The Static. Keep the door clear, no civilian kills, music stays on.",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          10,
+          28
+        ],
+        "at_aj": [
+          10,
+          -402
+        ],
+        "label": "THE STATIC door"
+      },
+      "loop": {
+        "type": "shift",
+        "duration_s": 180,
+        "waves": 3,
+        "steps_template": [
+          {
+            "type": "enter",
+            "building": "THE STATIC",
+            "text": "Clock in with Nyx"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              10,
+              32
+            ],
+            "r": 4,
+            "text": "Hold the door"
+          },
+          {
+            "type": "defeat",
+            "at_local": [
+              10,
+              32
+            ],
+            "wave": [
+              "crawler",
+              "crawler"
+            ],
+            "text": "Bounce the trouble (stand-in wave)",
+            "ambush": true
+          },
+          {
+            "type": "enter",
+            "building": "THE STATIC",
+            "text": "Clock out"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 90,
+          "xp": 40
+        },
+        "per_wave_bonus": {
+          "credits": 25
+        },
+        "scaling": "credits *= 1 + 0.08 * min(clears, 10)",
+        "streak_bonus": {
+          "credits": 15,
+          "every": 3
+        }
+      },
+      "fail": [
+        "Kill dancer/patron",
+        "Wanted 3+",
+        "Leave the door for >20s"
+      ],
+      "engine_needs": [
+        "civilian-kill fail flag",
+        "timed shift / hold zone",
+        "wave:goon"
+      ],
+      "bark": {
+        "offer": "Nyx: Door. Two hours. Music stays on.",
+        "success": "Nyx: Tips in your tab. Come back meaner.",
+        "fail": "Nyx: You bled on the neon. Out."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 5,
+        "desktop_npc_max": 8
+      },
+      "scope_ok": true,
+      "id": "act-vale-scanner",
+      "district": "mars-downtown",
+      "name": "Scanner Duty",
+      "contact": "Detective Vale",
+      "board": "Downtown Precinct",
+      "summary": "Vigilante / off-books ColSec scanner jobs. Ping a warrant, bring them in, get paid under the table.",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          -34,
+          10
+        ],
+        "at_aj": [
+          -34,
+          -420
+        ],
+        "label": "COLSEC DOWNTOWN"
+      },
+      "loop": {
+        "type": "bounty",
+        "pool": "downtown_warrants",
+        "cooldown_s": 120,
+        "steps_template": [
+          {
+            "type": "enter",
+            "building": "COLSEC DOWNTOWN",
+            "text": "Pick a warrant off Vale's board"
+          },
+          {
+            "type": "goto",
+            "at_aj_random_in": "mars-downtown",
+            "r": 8,
+            "text": "Find the mark",
+            "limit": 120
+          },
+          {
+            "type": "defeat",
+            "wave": [
+              "crawler"
+            ],
+            "text": "Drop their muscle (stand-in)",
+            "nonlethal_preferred": true
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -34,
+              10
+            ],
+            "r": 5,
+            "text": "Dump them at the precinct"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 140,
+          "xp": 55
+        },
+        "scaling": "tier 1-3 warrants; tier3 pays 280",
+        "rep": {
+          "colsec_downtown": 1
+        }
+      },
+      "fail": [
+        "Mark escaped",
+        "Timer",
+        "Kill the mark when alive was required"
+      ],
+      "engine_needs": [
+        "bounty board UI",
+        "random mark spawn in district",
+        "nonlethal cuff",
+        "wave:goon"
+      ],
+      "bark": {
+        "offer": "Vale: Board's full. Pick a face. Bring it back.",
+        "success": "Vale: Credits. Don't ask which ledger.",
+        "fail": "Vale: Paperwork for nothing. Thanks."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 4,
+        "note": "almost no NPCs — landmark route"
+      },
+      "scope_ok": true,
+      "id": "act-pixel-photo",
+      "district": "mars-downtown",
+      "name": "Strip Shots",
+      "contact": "Pixel",
+      "board": "Red Planet Noodle",
+      "summary": "Drone photography gigs. Hit 4–6 rooftop / neon landmarks with a camera item before the timer.",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          14,
+          14
+        ],
+        "at_aj": [
+          14,
+          -416
+        ],
+        "label": "RED PLANET NOODLE"
+      },
+      "loop": {
+        "type": "collect_route",
+        "n_shots": 5,
+        "limit_s": 150,
+        "landmarks_local": [
+          [
+            0,
+            0
+          ],
+          [
+            -18,
+            -22
+          ],
+          [
+            22,
+            -18
+          ],
+          [
+            -34,
+            10
+          ],
+          [
+            10,
+            28
+          ],
+          [
+            0,
+            -40
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              14,
+              14
+            ],
+            "r": 3,
+            "item": "camera",
+            "text": "Grab Pixel's lens"
+          },
+          {
+            "type": "collect",
+            "n": 5,
+            "item": "camera",
+            "spread_from": "landmarks_local",
+            "text": "Shoot the landmarks"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              14,
+              14
+            ],
+            "r": 4,
+            "text": "Hand the card back to Pixel"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 110,
+          "xp": 45
+        },
+        "perfect_bonus": {
+          "credits": 60,
+          "badge": "Neon Eye"
+        },
+        "scaling": "+10 cr per clear, cap +80"
+      },
+      "fail": [
+        "Timer",
+        "Lens destroyed"
+      ],
+      "engine_needs": [
+        "camera item already exists in stock quests",
+        "rooftop height markers (nice)"
+      ],
+      "bark": {
+        "offer": "Pixel: Five shots. Neon, Trust, Precinct, Static, Transit. Don't shake.",
+        "success": "Pixel: Crisp. Buyer's already pinging.",
+        "fail": "Pixel: Blurry garbage. Lens tax."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "act-kline-armored",
+      "district": "mars-downtown",
+      "name": "Armored Run",
+      "contact": "Mr. Kline",
+      "board": "First Junction Trust (downtown)",
+      "summary": "Escort or intercept Trust armored haulers on the Beltway spur. Escort = defend; Intercept = steal for a Quiet cut (choice).",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          -18,
+          -22
+        ],
+        "at_aj": [
+          -18,
+          -452
+        ],
+        "label": "FIRST JUNCTION TRUST"
+      },
+      "loop": {
+        "type": "convoy",
+        "variants": [
+          "escort",
+          "intercept"
+        ],
+        "cooldown_s": 300,
+        "route_aj": [
+          [
+            0,
+            -430
+          ],
+          [
+            0,
+            -390
+          ],
+          [
+            0,
+            -220
+          ],
+          [
+            0,
+            -55
+          ]
+        ],
+        "steps_escort": [
+          {
+            "type": "goto",
+            "at_local": [
+              -18,
+              -22
+            ],
+            "r": 5,
+            "text": "Meet the armored hauler"
+          },
+          {
+            "type": "take",
+            "text": "Grab a chase vehicle"
+          },
+          {
+            "type": "goto",
+            "at_aj": [
+              0,
+              -55
+            ],
+            "r": 10,
+            "vehicle": "any",
+            "limit": 100,
+            "text": "Escort it to AJ south"
+          },
+          {
+            "type": "defeat",
+            "at_aj": [
+              0,
+              -120
+            ],
+            "wave": [
+              "drone",
+              "crawler"
+            ],
+            "text": "Brush off the hitchhikers",
+            "ambush": true
+          }
+        ],
+        "steps_intercept": [
+          {
+            "type": "take",
+            "text": "Steal something fast"
+          },
+          {
+            "type": "goto",
+            "at_aj": [
+              0,
+              -220
+            ],
+            "r": 8,
+            "vehicle": "stolen",
+            "text": "Cut off the hauler at the ridge"
+          },
+          {
+            "type": "defeat",
+            "wave": [
+              "drone",
+              "drone"
+            ],
+            "text": "Drop the escort drones"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -18,
+              -26
+            ],
+            "r": 4,
+            "item": "contraband",
+            "text": "Lift the case"
+          },
+          {
+            "type": "clean",
+            "text": "Lose the heat"
+          }
+        ]
+      },
+      "rewards": {
+        "escort": {
+          "credits": 200,
+          "xp": 70,
+          "rep": {
+            "trust": 1
+          }
+        },
+        "intercept": {
+          "credits": 320,
+          "xp": 90,
+          "rep": {
+            "quiet": 1,
+            "trust": -2
+          },
+          "wanted": 2
+        }
+      },
+      "fail": [
+        "Hauler destroyed",
+        "Timer",
+        "Busted with the case"
+      ],
+      "engine_needs": [
+        "convoy / follower vehicle (story pack flagged)",
+        "choice of variant at offer"
+      ],
+      "notes": "NOT a vault heist (Ben's lane). Street intercept/escort only.",
+      "bark": {
+        "offer": "Kline: Armored leaves in five. Escort it, or… don't. Quiet pays either way I book it.",
+        "success_escort": "Kline: Arrived. Boring. Good.",
+        "success_intercept": "Kline: Case is… misplaced. As discussed.",
+        "fail": "Kline: Scrap and sirens. Never again."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "act-trust-range",
+      "district": "mars-downtown",
+      "name": "Precinct Range",
+      "contact": "Detective Vale",
+      "board": "Downtown Precinct basement",
+      "summary": "Shooting-range challenges: timed targets, weapon tiers, wager optional.",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          -34,
+          6
+        ],
+        "at_aj": [
+          -34,
+          -424
+        ],
+        "label": "Precinct range (interior)"
+      },
+      "loop": {
+        "type": "range",
+        "tiers": [
+          "pistol",
+          "smg",
+          "rail"
+        ],
+        "limit_s": 45,
+        "steps_template": [
+          {
+            "type": "enter",
+            "building": "COLSEC DOWNTOWN",
+            "text": "Enter the precinct"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -34,
+              6
+            ],
+            "r": 2,
+            "text": "Step up to the range"
+          },
+          {
+            "type": "defeat",
+            "wave": [
+              "drone",
+              "drone",
+              "drone"
+            ],
+            "text": "Clear the target drones",
+            "range_mode": true
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 60,
+          "xp": 30
+        },
+        "perfect": {
+          "credits": 120,
+          "unlock_hint": "ammo discount at Ozzie's (Jeff/story, not this pack)"
+        },
+        "wager": {
+          "min": 50,
+          "max": 200,
+          "payout_mult": 2.2
+        }
+      },
+      "fail": [
+        "Timer",
+        "Friendly fire"
+      ],
+      "engine_needs": [
+        "range_mode (stationary targets, no wanted)",
+        "wager UI"
+      ],
+      "bark": {
+        "offer": "Vale: Basement range. Don't shoot the lights.",
+        "success": "Vale: Clean groups. Credits.",
+        "fail": "Vale: You shot my coffee. Out."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 8,
+        "desktop_npc_max": 12,
+        "note": "fighter + ref + up to 6 crowd props (instanced)"
+      },
+      "scope_ok": true,
+      "id": "act-pit-fight",
+      "district": "mars-rough",
+      "name": "The Pit",
+      "contact": "Marrow",
+      "board": "Under the water tower",
+      "summary": "Underground fight pit. Fists/blades (v7.4 duel API). Wager, win streak, don't pull a gun or you catch a beating from the crowd.",
+      "location": {
+        "district": "mars-rough",
+        "at_local": [
+          -36,
+          -18
+        ],
+        "at_aj": [
+          -316,
+          -58
+        ],
+        "label": "water tower pit"
+      },
+      "loop": {
+        "type": "duel_ladder",
+        "rounds": 3,
+        "wager_default": 100,
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              -36,
+              -18
+            ],
+            "r": 4,
+            "text": "Drop into the pit"
+          },
+          {
+            "type": "duel",
+            "style": "fists",
+            "text": "Win the bout",
+            "engine": "v7.4 world.inDuel / sanctioned duel"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              6,
+              -16
+            ],
+            "r": 4,
+            "text": "Collect from Marrow"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 150,
+          "xp": 60
+        },
+        "streak_3": {
+          "credits": 400,
+          "badge": "Pit Dog"
+        },
+        "scaling": "wager * (1.5 + 0.25*streak)"
+      },
+      "fail": [
+        "Draw a gun in the pit",
+        "Yield",
+        "Crowd riot (kill a spectator)"
+      ],
+      "engine_needs": [
+        "v7.4 duel API (exists)",
+        "fist-only enforce in zone",
+        "wager"
+      ],
+      "notes": "Uses legal duel hooks from v7.4 — not CoS street holdups.",
+      "bark": {
+        "offer": "Marrow: Pit's open. Fists. Wagers. Guns get you buried under the tower.",
+        "success": "Marrow: Crowd liked the blood. Here's yours in credits.",
+        "fail": "Marrow: Yield. Weak. Pay the door."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "act-wrench-scrap",
+      "district": "mars-rough",
+      "name": "Scrap Run",
+      "contact": "Wrench",
+      "board": "Wrench's chop yard",
+      "summary": "Scavenge parts in the Flats, fence them at the chop shop. Not a car meet / dealership (Pumpkin's lane).",
+      "location": {
+        "district": "mars-rough",
+        "at_local": [
+          -22,
+          18
+        ],
+        "at_aj": [
+          -302,
+          -22
+        ],
+        "label": "WRENCH'S"
+      },
+      "loop": {
+        "type": "scavenge_fence",
+        "n": 4,
+        "limit_s": 180,
+        "scrap_spots_local": [
+          [
+            32,
+            8
+          ],
+          [
+            18,
+            20
+          ],
+          [
+            -10,
+            -28
+          ],
+          [
+            30,
+            -24
+          ],
+          [
+            -40,
+            10
+          ],
+          [
+            8,
+            -26
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              -22,
+              18
+            ],
+            "r": 4,
+            "text": "Get the list from Wrench"
+          },
+          {
+            "type": "collect",
+            "n": 4,
+            "item": "salvage",
+            "spread_from": "scrap_spots_local",
+            "text": "Pull scrap from the piles"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -22,
+              18
+            ],
+            "r": 4,
+            "text": "Fence it to Wrench"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 100,
+          "xp": 40
+        },
+        "scaling": "+15 cr per clear, rare salvage +80",
+        "rep": {
+          "saltblood_trade": 1
+        }
+      },
+      "fail": [
+        "Timer",
+        "Parts sold elsewhere"
+      ],
+      "engine_needs": [
+        "salvage item (exists as rare type)",
+        "repeatable collect spawns"
+      ],
+      "notes": "Scavenge+fence only. No garage upgrades, no car meets.",
+      "bark": {
+        "offer": "Wrench: Four piles. No questions. Don't bring Gus into it.",
+        "success": "Wrench: Ugly parts, pretty credits.",
+        "fail": "Wrench: Empty hands. Empty head."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "act-funeral-bets",
+      "district": "mars-rough",
+      "name": "Ashes Odds",
+      "contact": "Penny-ante",
+      "board": "Ashes to Orbit funeral bar",
+      "summary": "Street-race betting board (watch + wager). You can also run a short alley sprint. Not a car-meet event.",
+      "location": {
+        "district": "mars-rough",
+        "at_local": [
+          8,
+          28
+        ],
+        "at_aj": [
+          -272,
+          -12
+        ],
+        "label": "ASHES TO ORBIT"
+      },
+      "loop": {
+        "type": "bet_or_run",
+        "variants": [
+          "wager_npc_race",
+          "run_yourself"
+        ],
+        "alley_pts_local": [
+          [
+            8,
+            28
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            -22,
+            18
+          ],
+          [
+            24,
+            -14
+          ],
+          [
+            8,
+            28
+          ]
+        ],
+        "limit_s": 55
+      },
+      "rewards": {
+        "wager_win": {
+          "credits": "stake * 1.8"
+        },
+        "run_win": {
+          "credits": 160,
+          "xp": 50
+        },
+        "scaling": "NPC race odds shift with your Saltblood rep"
+      },
+      "fail": [
+        "Bust during the race",
+        "Can't pay a lost wager"
+      ],
+      "engine_needs": [
+        "NPC race simulation OR race step for run_yourself",
+        "wager ledger"
+      ],
+      "notes": "Betting + one alley race. Car meets / radio belong to Pumpkin.",
+      "bark": {
+        "offer": "Penny-ante: Two haulers, one alley. Odds on the board. Or run it yourself, hero.",
+        "success": "Penny-ante: Paid. Don't smile so loud.",
+        "fail": "Penny-ante: You owe the board. The board remembers."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 3,
+        "desktop_npc_max": 5
+      },
+      "scope_ok": true,
+      "id": "act-blue-courier",
+      "district": "mars-rough",
+      "name": "Blue Drop",
+      "contact": "Blue",
+      "board": "The Blue Room",
+      "summary": "Repeatable glow-dust courier loops Flats → noodle alley / Beltway dead-drops. Fiction powder only.",
+      "location": {
+        "district": "mars-rough",
+        "at_local": [
+          24,
+          -14
+        ],
+        "at_aj": [
+          -256,
+          -54
+        ],
+        "label": "THE BLUE ROOM"
+      },
+      "loop": {
+        "type": "delivery",
+        "drops_aj": [
+          [
+            14,
+            -416
+          ],
+          [
+            0,
+            -220
+          ],
+          [
+            -60,
+            -4
+          ]
+        ],
+        "limit_s": 120,
+        "wanted_on_scan": 2,
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              24,
+              -14
+            ],
+            "r": 3,
+            "item": "contraband",
+            "text": "Pick up the vial case"
+          },
+          {
+            "type": "take",
+            "text": "Grab a quiet ride"
+          },
+          {
+            "type": "goto",
+            "at_aj_from": "drops_aj",
+            "r": 5,
+            "vehicle": "stolen",
+            "limit": 120,
+            "text": "Hit the dead-drop"
+          },
+          {
+            "type": "clean",
+            "text": "Cool off if you glowed"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 180,
+          "xp": 55
+        },
+        "scaling": "+20 cr per clean drop streak, cap +100",
+        "rep": {
+          "saltblood": 1
+        }
+      },
+      "fail": [
+        "Busted with contraband",
+        "Timer",
+        "Case destroyed"
+      ],
+      "engine_needs": [
+        "contraband wanted multiplier (nice)",
+        "random drop pick"
+      ],
+      "bark": {
+        "offer": "Blue: Case. Drop. No tasting. Eyes stay brown.",
+        "success": "Blue: Clean. Come back blue.",
+        "fail": "Blue: Spilled. You're done today."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 4,
+        "desktop_npc_max": 6
+      },
+      "scope_ok": true,
+      "id": "act-porter-valet",
+      "district": "mars-gated",
+      "name": "Valet Borrow",
+      "contact": "Porter",
+      "board": "Helios gate",
+      "summary": "Borrow a guest's luxury buggy for a timed joyride / errand, return it unscratched. Not a chop / dealership loop.",
+      "location": {
+        "district": "mars-gated",
+        "at_local": [
+          0,
+          44
+        ],
+        "at_aj": [
+          320,
+          124
+        ],
+        "label": "HELIOS GATE"
+      },
+      "loop": {
+        "type": "joyride_return",
+        "limit_s": 90,
+        "vehicle_slots_local": [
+          [
+            -20,
+            -8
+          ],
+          [
+            24,
+            -6
+          ],
+          [
+            12,
+            46
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              4,
+              38
+            ],
+            "r": 3,
+            "text": "Tip Porter for a keycard"
+          },
+          {
+            "type": "take",
+            "text": "Borrow the marked luxury buggy"
+          },
+          {
+            "type": "goto",
+            "at_aj": [
+              0,
+              -55
+            ],
+            "r": 8,
+            "vehicle": "stolen",
+            "limit": 60,
+            "text": "Quick errand to AJ south"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              0,
+              44
+            ],
+            "r": 5,
+            "vehicle": "stolen",
+            "text": "Return it before the guest finishes lunch"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 160,
+          "xp": 50
+        },
+        "scratch_free_bonus": 80,
+        "rep": {
+          "helios_staff": 1
+        }
+      },
+      "fail": [
+        "Timer",
+        "Vehicle wrecked",
+        "Rhee spots you (wanted 2)"
+      ],
+      "engine_needs": [
+        "vehicle damage score",
+        "timed return"
+      ],
+      "notes": "Valet borrow — not Gus/Pumpkin dealership, not Wrench chop.",
+      "bark": {
+        "offer": "Porter: Guest's buggy. Lunch is forty minutes. Don't sand it.",
+        "success": "Porter: Shiny. Tip earned.",
+        "fail": "Porter: Scratch. You're off the list."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 5,
+        "desktop_npc_max": 8
+      },
+      "scope_ok": true,
+      "id": "act-lita-openhouse",
+      "district": "mars-gated",
+      "name": "Open House",
+      "contact": "Lita Quinn",
+      "board": "Quinn Villa",
+      "summary": "Tour / photograph mansions for Lita's listings. Parkour rooftops optional. No safe-cracking (Ben's lane).",
+      "location": {
+        "district": "mars-gated",
+        "at_local": [
+          -22,
+          22
+        ],
+        "at_aj": [
+          298,
+          102
+        ],
+        "label": "QUINN VILLA"
+      },
+      "loop": {
+        "type": "tour_photo",
+        "n": 4,
+        "limit_s": 160,
+        "stops_local": [
+          [
+            -28,
+            -18
+          ],
+          [
+            30,
+            -16
+          ],
+          [
+            -22,
+            22
+          ],
+          [
+            26,
+            24
+          ],
+          [
+            0,
+            -36
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              -18,
+              26
+            ],
+            "r": 3,
+            "item": "camera",
+            "text": "Get Lita's shot list"
+          },
+          {
+            "type": "collect",
+            "n": 4,
+            "item": "camera",
+            "spread_from": "stops_local",
+            "text": "Photo each facade"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -18,
+              26
+            ],
+            "r": 4,
+            "text": "Deliver the card"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 130,
+          "xp": 45
+        },
+        "rooftop_bonus": 40,
+        "scaling": "+10 cr per clear"
+      },
+      "fail": [
+        "Timer",
+        "Aggro private security (keep wanted 0)"
+      ],
+      "engine_needs": [
+        "camera item",
+        "optional rooftop nodes"
+      ],
+      "notes": "Listing photos only — burglary/safe/cameras-as-heist stay with Ben + lita-* story missions.",
+      "bark": {
+        "offer": "Lita: Four facades. Pretty light. No sticky fingers today.",
+        "success": "Lita: Buyers will fight. Here's your cut.",
+        "fail": "Lita: Blurry. And Rhee's asking questions."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 6,
+        "desktop_npc_max": 10
+      },
+      "scope_ok": true,
+      "id": "act-rhee-drill",
+      "district": "mars-gated",
+      "name": "White Drill",
+      "contact": "Captain Rhee",
+      "board": "Helios gate",
+      "summary": "Private-security training drills. Timed course around the wall; nonlethal targets. Can raise Helios access.",
+      "location": {
+        "district": "mars-gated",
+        "at_local": [
+          0,
+          40
+        ],
+        "at_aj": [
+          320,
+          120
+        ],
+        "label": "HELIOS GATE"
+      },
+      "loop": {
+        "type": "timed_course",
+        "limit_s": 70,
+        "pts_local": [
+          [
+            0,
+            40
+          ],
+          [
+            -28,
+            -18
+          ],
+          [
+            0,
+            -36
+          ],
+          [
+            30,
+            -16
+          ],
+          [
+            26,
+            24
+          ],
+          [
+            -22,
+            22
+          ],
+          [
+            0,
+            40
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_local": [
+              -6,
+              36
+            ],
+            "r": 3,
+            "text": "Report to Rhee"
+          },
+          {
+            "type": "race",
+            "pts_local": [
+              [
+                0,
+                40
+              ],
+              [
+                -28,
+                -18
+              ],
+              [
+                0,
+                -36
+              ],
+              [
+                30,
+                -16
+              ],
+              [
+                26,
+                24
+              ],
+              [
+                -22,
+                22
+              ],
+              [
+                0,
+                40
+              ]
+            ],
+            "limit": 70,
+            "text": "Hit every drill gate"
+          },
+          {
+            "type": "goto",
+            "at_local": [
+              -6,
+              36
+            ],
+            "r": 3,
+            "text": "Debrief"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 140,
+          "xp": 55
+        },
+        "par_bonus": 70,
+        "rep": {
+          "helios_security": 1
+        }
+      },
+      "fail": [
+        "Timer",
+        "Kill a staff NPC"
+      ],
+      "engine_needs": [
+        "race pts in district-local (compile to AJ)",
+        "staff-kill fail"
+      ],
+      "bark": {
+        "offer": "Rhee: Course is live. White armor watches. Don't embarrass me.",
+        "success": "Rhee: Adequate. Credits. Access ticks up.",
+        "fail": "Rhee: Slow. Soft. Leave."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 4,
+        "traffic_during": "phone 2 / desktop 4"
+      },
+      "scope_ok": true,
+      "id": "act-beltway-trial",
+      "district": "mars-highway",
+      "name": "Beltway Time Trial",
+      "contact": "Pixel",
+      "board": "Noodle bar / Beltway billboard",
+      "summary": "Timed gate run on the Ares Beltway polyline. Ghost best time local-only (no online leaderboard yet).",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          14,
+          14
+        ],
+        "at_aj": [
+          14,
+          -416
+        ],
+        "label": "Pixel's board (start voucher)"
+      },
+      "loop": {
+        "type": "time_trial",
+        "limit_s": 100,
+        "pts_aj": [
+          [
+            0,
+            -55
+          ],
+          [
+            0,
+            -220
+          ],
+          [
+            0,
+            -390
+          ],
+          [
+            0,
+            -430
+          ],
+          [
+            60,
+            -430
+          ],
+          [
+            180,
+            -200
+          ],
+          [
+            280,
+            40
+          ],
+          [
+            320,
+            80
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "take",
+            "text": "Grab something fast"
+          },
+          {
+            "type": "race",
+            "pts": [
+              [
+                0,
+                -55
+              ],
+              [
+                0,
+                -220
+              ],
+              [
+                0,
+                -390
+              ],
+              [
+                0,
+                -430
+              ],
+              [
+                60,
+                -430
+              ],
+              [
+                180,
+                -200
+              ],
+              [
+                280,
+                40
+              ],
+              [
+                320,
+                80
+              ]
+            ],
+            "limit": 100,
+            "text": "Hit every Beltway gate"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 120,
+          "xp": 50
+        },
+        "medals": {
+          "gold_s": 75,
+          "silver_s": 88,
+          "bronze_s": 100
+        },
+        "gold_bonus": {
+          "credits": 200,
+          "badge": "Beltway Gold"
+        }
+      },
+      "fail": [
+        "Timer",
+        "Busted mid-trial"
+      ],
+      "engine_needs": [
+        "race step (exists)",
+        "local ghost / best-time save",
+        "leaderboard (core gap)"
+      ],
+      "notes": "Time trial only — not Pumpkin car meets.",
+      "bark": {
+        "offer": "Pixel: Gates are hot. Beat your ghost. Bill me if you don't cry.",
+        "success": "Pixel: Time locked. Credits stacked.",
+        "fail": "Pixel: Slow. Try walking."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 3,
+        "desktop_npc_max": 5
+      },
+      "scope_ok": true,
+      "id": "act-beltway-taxi",
+      "district": "mars-highway",
+      "name": "Dust Fare",
+      "contact": "Penny-ante",
+      "board": "Ashes board / AJ south hitch",
+      "summary": "Taxi / fare loops across Beltway districts. Smooth driving; hard hits wake the passenger.",
+      "location": {
+        "district": "mars-highway",
+        "at_aj": [
+          0,
+          -55
+        ],
+        "at_local": null,
+        "label": "AJ south hitch"
+      },
+      "loop": {
+        "type": "taxi",
+        "limit_s": 90,
+        "pickups_aj": [
+          [
+            0,
+            -55
+          ],
+          [
+            -280,
+            -40
+          ],
+          [
+            0,
+            -430
+          ],
+          [
+            320,
+            80
+          ]
+        ],
+        "dropoffs_aj": [
+          [
+            0,
+            -430
+          ],
+          [
+            320,
+            80
+          ],
+          [
+            -280,
+            -40
+          ],
+          [
+            0,
+            60
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "take",
+            "text": "Grab any ride"
+          },
+          {
+            "type": "goto",
+            "at_aj_from": "pickups_aj",
+            "r": 4,
+            "vehicle": "any",
+            "text": "Pick up the fare"
+          },
+          {
+            "type": "goto",
+            "at_aj_from": "dropoffs_aj",
+            "r": 6,
+            "vehicle": "any",
+            "limit": 90,
+            "text": "Drop them off"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 80,
+          "xp": 30
+        },
+        "tip_smooth": 40,
+        "scaling": "distance * 0.12 cr"
+      },
+      "fail": [
+        "3 hard hits",
+        "Timer",
+        "Vehicle wrecked"
+      ],
+      "engine_needs": [
+        "passenger hitch flag (dutch-02 pattern)",
+        "smooth-drive meter"
+      ],
+      "bark": {
+        "offer": "Fare: You free? Don't kill me. Credits if you don't.",
+        "success": "Fare: Still breathing. Tip.",
+        "fail": "Fare: I'm walking. Jerk."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 2,
+        "desktop_npc_max": 4
+      },
+      "scope_ok": true,
+      "id": "act-beltway-delivery",
+      "district": "mars-highway",
+      "name": "Pad to Plaza",
+      "contact": "Pixel",
+      "board": "Side board",
+      "summary": "Cargo crate deliveries along the Beltway. Repeatable side-cargo style, Mars districts only.",
+      "location": {
+        "district": "mars-highway",
+        "at_aj": [
+          -38,
+          10
+        ],
+        "label": "AJ pad (cargo)"
+      },
+      "loop": {
+        "type": "delivery",
+        "limit_s": 100,
+        "drops_aj": [
+          [
+            0,
+            -430
+          ],
+          [
+            -280,
+            -40
+          ],
+          [
+            320,
+            80
+          ],
+          [
+            0,
+            -220
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_aj": [
+              -38,
+              10
+            ],
+            "r": 5,
+            "item": "cargo",
+            "text": "Load cargo at the pad"
+          },
+          {
+            "type": "take",
+            "text": "Grab a hauler if you can"
+          },
+          {
+            "type": "goto",
+            "at_aj_from": "drops_aj",
+            "r": 6,
+            "limit": 100,
+            "text": "Deliver to the marked drop"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 90,
+          "xp": 35
+        },
+        "scaling": "distance * 0.1 + streak * 10"
+      },
+      "fail": [
+        "Timer",
+        "Cargo destroyed"
+      ],
+      "engine_needs": [
+        "repeatable random drop (side-cargo pattern)"
+      ],
+      "bark": {
+        "offer": "Board: Crates. Point B. Go.",
+        "success": "Board: Delivered.",
+        "fail": "Board: Scrap."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 1,
+        "desktop_npc_max": 2
+      },
+      "scope_ok": true,
+      "id": "act-parkour-ridge",
+      "district": "mars-downtown",
+      "name": "Ridge Run",
+      "contact": "Pixel",
+      "board": "Noodle / mid-ridge billboard",
+      "summary": "On-foot parkour checkpoint race: AJ south → ridge overlook → Olympus plaza roofs.",
+      "location": {
+        "district": "mars-downtown",
+        "at_aj": [
+          0,
+          -220
+        ],
+        "at_local": [
+          0,
+          210
+        ],
+        "label": "Ridge overlook"
+      },
+      "loop": {
+        "type": "parkour",
+        "limit_s": 80,
+        "pts_aj": [
+          [
+            0,
+            -55
+          ],
+          [
+            0,
+            -140
+          ],
+          [
+            0,
+            -220
+          ],
+          [
+            8,
+            -390
+          ],
+          [
+            0,
+            -430
+          ],
+          [
+            14,
+            -416
+          ]
+        ],
+        "steps_template": [
+          {
+            "type": "goto",
+            "at_aj": [
+              0,
+              -55
+            ],
+            "r": 3,
+            "text": "Start on foot at AJ south"
+          },
+          {
+            "type": "race",
+            "pts": [
+              [
+                0,
+                -55
+              ],
+              [
+                0,
+                -140
+              ],
+              [
+                0,
+                -220
+              ],
+              [
+                8,
+                -390
+              ],
+              [
+                0,
+                -430
+              ],
+              [
+                14,
+                -416
+              ]
+            ],
+            "limit": 80,
+            "on_foot": true,
+            "text": "Hit every rooftop/ridge gate"
+          }
+        ]
+      },
+      "rewards": {
+        "base": {
+          "credits": 100,
+          "xp": 55
+        },
+        "no_fall_bonus": 50,
+        "badge_on_gold": "Dust Goat"
+      },
+      "fail": [
+        "Timer",
+        "Enter a vehicle",
+        "Fall reset >3"
+      ],
+      "engine_needs": [
+        "on_foot race flag",
+        "fall counter",
+        "rooftop gate props"
+      ],
+      "bark": {
+        "offer": "Pixel: Feet only. Ridge to plaza. Fall and I laugh on CERES 94.7 — wait, that's Halo's job.",
+        "success": "Pixel: Goat legs. Credits.",
+        "fail": "Pixel: Gravity 0.38 and you still faceplanted."
+      }
+    },
+    {
+      "format_note": "repeatable activity — NOT a one-shot story mission",
+      "world": "Mars",
+      "repeatable": true,
+      "fiction": true,
+      "caps": {
+        "phone_npc_max": 5,
+        "desktop_npc_max": 7,
+        "note": "Nyx + 3-4 players + Brick"
+      },
+      "scope_ok": true,
+      "id": "act-static-poker",
+      "district": "mars-downtown",
+      "name": "Static Hold'em",
+      "contact": "Nyx",
+      "board": "The Static VIP",
+      "summary": "Poker back room. Ante, 3–5 hands, cash out. Fiction chips. No strip anything — cards and threats only.",
+      "location": {
+        "district": "mars-downtown",
+        "at_local": [
+          10,
+          28
+        ],
+        "at_aj": [
+          10,
+          -402
+        ],
+        "label": "THE STATIC VIP"
+      },
+      "loop": {
+        "type": "poker",
+        "ante": 50,
+        "hands": 4,
+        "npc_players_phone": 3,
+        "npc_players_desktop": 4
+      },
+      "rewards": {
+        "win_hand": "pot share",
+        "table_wipe": {
+          "credits": 400,
+          "xp": 80,
+          "badge": "Static Stack"
+        },
+        "scaling": "buy-in tiers 50 / 150 / 400"
+      },
+      "fail": [
+        "Can't cover ante",
+        "Pull a gun at the table (wanted 2 + banned)"
+      ],
+      "engine_needs": [
+        "poker minigame OR abstract hand resolver",
+        "VIP room seat spots"
+      ],
+      "notes": "Cards/threats only. Club rules: no nudity/sexual content.",
+      "bark": {
+        "offer": "Nyx: VIP table. Ante's fifty. Guns stay holstered or Brick invents stairs.",
+        "success": "Nyx: Stack's yours. Don't die in my booth.",
+        "fail": "Nyx: Broke. Bar's still open. Table isn't."
+      }
+    }
+  ]
+}

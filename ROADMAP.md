@@ -50,39 +50,19 @@ House rules for all of it:
 - [x] **BUGS-v7.3 fixes:** mouse-lock chip and no re-lock from top-bar clicks (major 1), indoor camera vs interior walls (major 2, also m2), entry spawn and player fade (m1), 44 px targets (m4), landscape menu vs Pet/Jump (m5), autopilot label (m6), crates block the camera (m3), 'basic' warning (p1), talk offers (p2).
 - Carried over to v7.5: ☰ in space view (p7), the VIP back room as the mission hub (p6, ships with mission chains), and the clipping polish items p3/p4/p5.
 
-## v7.5 (next): Mars city
-Mars is the main focus now. Steve's other colonies stay as they shipped in v7.4, with no more polish for now.
-
-**Input:** Steve's Mars city pack (solar-system-story/mars-city):
-- Olympus Row downtown at [0,-430]
-- Red Tape Flats at [-280,-40]
-- Helios Heights at [320,80], with 4 mansion burglaries
-- The Ares Beltway: 18 waypoints, checkpoints and 2 chase set-pieces
-- 16 chained missions
-- v8 palette data
-
-**Engine gaps to close:**
-- `registerDistrict` is stubbed in v7.4; v7.5 builds the districts.
-- Bank and mansion interiors.
-- Thug, goon, enforcer and guard wave types.
-- Security cameras tied to wanted level.
-- A safe-crack minigame.
-- Highway traffic.
-- A choice step type.
-
-Chief of Staff's street-danger add-on (danger.js / pursuit.js) hooks in through `world.setWanted`, `world.crime`, `world.securityList()` and the `wanted` / `evading` getters.
-1. [ ] **Grow Ares Junction into a real city** with three districts:
-   - **Downtown:** towers, the bank (the heist target), clubs and cops.
-   - **The rough side:** gangs, corner dealers and a cheap chop shop.
-   - **A rich gated community:** mansion burglaries. Case the place, break in, crack safes and avoid private security.
-2. [ ] **A highway with traffic** linking the districts, with on/off ramps.
-3. [ ] **More enterable, working buildings** across the districts.
-4. [ ] **Mars missions:** the story-pack chains (Rook, Vesna, Kestrel, Ines, Rusk), with thug/goon/enforcer waves, hold, choice, pay, tail and nonlethal steps, plus the cartel storyline's dark choices (betray, spare, execute, take the cut).
-   - The VIP back room (Ines) becomes the mission hub (playtest p6).
-5. [ ] **Full security combat in the districts:** guards take cover, return fire and call backup; they're killable; heavies at 4-5★. Lose stars by hiding or bribing. Downtown cops, gated-community private security.
-6. [ ] **Gorier combat:** blood decals, dismemberment-lite on aliens, heavier hit reactions.
-7. [ ] **NPC interactions:** dialogue, bribes, hire muscle, buy rumors that mark finds and jobs, random street events.
-8. [ ] **Ready for v8 visuals:** the realistic look-dev ran at 60 fps on medium on Collin's iPhone, and it gets integrated next. The new districts keep geometry and materials swappable: shared material slots by role (concrete, glass, metal, neon, asphalt), with no baked colours in the geometry builders, so the v8 PBR set drops straight in.
+## v7.5 (shipped Oct 25, 2026): Mars city
+- [x] **Three districts** next to Ares Junction, from Steve's pack (additive `registerDistrict`): Olympus Row (downtown, First Junction Trust bank, Red Shift cantina), Red Tape Flats (Saltblood turf, chop shop and dealer lots), Helios Heights (4 mansions to burgle: case the cameras, break in, crack the safe, beat private security, fence it).
+- [x] **The Ares Beltway**: 18 waypoints with on/off ramps, traffic, faction checkpoints, billboards and 2 chase set-pieces.
+- [x] **Bank and mansion interiors** with vault and safe spots. Safe-cracking uses Ben's `SSX.heist.safeCrack` when it lands, with a timed-hold fallback until then.
+- [x] **16 chained city missions** (Vale, Marrow, Rhee, Lita, Kline, Nyx) with case, crack and choice steps. Ines's VIP room has a job board.
+- [x] **Security combat**: thugs, goons, enforcers, guards, drones and buggies. Guards take cover and peek, backup arrives, heavies show up at 4-5★, headshots count. Red blood, pools, corpses and gibs for people, sparks for machines (M-rated, no gore on aliens beyond their own goo).
+- [x] **☰ in space** and a 🏙 Districts fast-travel sheet. Phones keep the 12-NPC cap.
+- [x] **Add-on API** (API.md): `SSX.city` (districtAt, spawnPoints, npcBudget/npcReserve, lots, hostiles, alarms, cameras, choice), the `SSX.on/emit` event bus, mission helpers (advanceStep/failStep/spawnWave), `registerAgentModel` and material slots for v8.
+- [x] Merged in v7.5: Steve's 17 repeatable side activities incl. Static Hold'em (PR #4), Pumpkin's radio stations, district ambience and pedestrian barks (PR #5), Jeff's 11 story missions for Rook, Vesna, Kestrel, Ines and Rusk (PR #6).
+- [x] **v7.5.1**: Ben's heist mechanics (PR #8): a one-thumb safe-cracking dial now drives every bank and mansion safe, with security cameras and view cones, alarms that raise your wanted level, informant tips and a heist escape event. Private security answers alarms, informant tips mark cameras and guards on the minimap, and there are new add-on helpers (player position, line of sight, safe spots, minimap marks, `registerSurfaceTick`).
+- [x] **v7.5.1**: Marsmania's contraband economy and barter (PR #9), Jeff's guarded barter hooks, and fixes from the v7.4 playtest (duel camera, rocks and crates blocking the camera, the Security pay-off spot, the world name in the top bar, 44 px race buttons, gentler builder pinch).
+- Still to come in v7.5.x point releases: Ben's raccoon scientist, Pumpkin's dealership and garages, Chief of Staff's street danger, Marsmania's contraband economy, Steve's ambient random events.
+- Deferred: rook-05 (set on Ceres; Ceres stays out of scope for now).
 
 ## v8: realistic visuals
 - [ ] Integrate the look-dev materials, lighting and post-processing, with quality tiers (low / med / high). Medium is the iPhone default at 60 fps.

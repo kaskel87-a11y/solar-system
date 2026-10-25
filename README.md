@@ -21,6 +21,28 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.5.1: heists
+- Safes in the First Junction Trust bank and the Helios Heights mansions now use a cracking dial: drag anywhere to turn it, and stop on each notch while keeping the noise down. Too much noise trips the alarm.
+- Security cameras sweep view cones and raise your wanted level when they spot you. Private security responds to alarms.
+- Informant tips mark cameras and guard posts on your minimap.
+- The street economy: buy low in one district and sell high in another, barter with fixers for guns, tips and backup, and watch out for undercover busts. Chop shops scrap hot rides.
+- Fixes: the duel camera finds a clear side, rocks and crate stacks no longer swallow the camera, and the Security pay-off spot is easier to hit.
+- Radio messages you didn't ask for arrive as a one-line pill (tap to read), and on portrait phones the pill replaces the toast, so the centre of the screen stays clear.
+- Fixed: the Mars story pack loaded a second copy of the game module.
+
+## v7.5: the Mars city
+Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Districts** to hop between them (lose your wanted stars first).
+
+- **Olympus Row**: downtown towers, the First Junction Trust bank (crack the vault in Kline's job), the Red Shift cantina and the precinct.
+- **Red Tape Flats**: Saltblood gang turf, the chop shop and dealer lots. Thugs here don't call the cops; they call their friends.
+- **Helios Heights**: four gated mansions. Case the camera grid, get in, hold still on the safe, and get out before private security arrives.
+- **The Ares Beltway**: the highway between them, with traffic, ramps, faction checkpoints and two chase missions.
+- **16 city missions** from Detective Vale, Marrow, Captain Rhee, Lita Quinn, Kline and Nyx, including a choice you can't take back. Ines's VIP room has a job board.
+- **Security fights back**: guards take cover and pop up to shoot, backup rolls in, heavies come at 4-5★. People bleed red; machines throw sparks.
+- **Also in v7.5**: 17 repeatable side jobs (with Static Hold'em poker) by Steve, four in-car radio stations and district soundscapes by Pumpkin, and 11 story missions for Rook, Vesna, Kestrel, Ines and Rusk by Jeff.
+- ☰ now works in space too.
+- Modders: see [API.md](API.md).
+
 ## v7.4: five new colonies, street races and barrel rolls
 - **Colonies on Venus, Mercury, Titan, Europa and Io** (merged from PR #1): Sulfur Gate, Shadowline Array, Kraken Landing, Conamara Station and Loki Forge. Each one has its own contacts, jobs, radio lines and a signature ride (acid crawler, sun skimmer, methane skiff, crevasse sled, lava runner). Every storefront is a walk-in interior. You get a world's travel permit by finishing a referral job, then fast travel from ☰ **🌍 Colonies** (40 cr the first time, free after that). The Titan methane skiff is amphibious and skims the methane seas.
 - **Street races and a track builder** (merged from PR #2): ☰ **🏁 Street races** has checkpoint gates, a 3-2-1 countdown, lap times, best-lap ghosts, an AI rival and a buy-in purse. ☰ **🛠 Track builder** lets you lay out your own gates and race them.
@@ -116,10 +138,48 @@ SSX.registerDistrict('Mars', 'olympus-row', { name: 'Olympus Row', centre: [0, -
 SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 ```
 
-Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js) once per surface frame, and `planets/index.js` runs `initPlanets(window.__app)` at startup. Colony packs live in `planets/<world>.js`, and `planets/hooks.js` is their only bridge to the core API.
+### Heist mechanics (v7.5 add-on: heist.js)
+Generic, data-driven heist pieces for the Mars city builder. `SSX.heist` (also `__app.heist`, or `import { heist } from './heist.js?v=7.4'`):
+
+```js
+// one-thumb safe-crack minigame (pointer drag round the dial; desktop ←/→ or A/D, Shift = fine). Tiers easy/medium/hard/vault.
+const r = await SSX.heist.safeCrack({ tier: 'hard', time: 40, title: 'Voss House safe' }); // { success, reason: 'cracked'|'noise'|'timeout'|'abort', time, noise, tier, tumblers }
+// cameras: world metres (or rel: 'colony' = relative to the world's colony centre, i.e. Ares Junction on Mars). yaw 0 looks toward -z.
+SSX.heist.addCamera({ id: 'voss-cam0', world: 'Mars', rel: 'colony', x: 286, z: 68, yaw: 2.4, fov: 70, range: 12, sweep: 30, level: 2 });
+SSX.heist.disableCamera('voss-cam0', 60); SSX.heist.removeCamera('voss-cam0');
+SSX.heist.alarm(2, 'Voss House alarm'); // wanted -> 2★ (setWanted), or +1★ via crime() if you're already that hot
+// a full job: case -> break in -> crack safe -> escape -> lose the heat. Steve's mansions convert with fromMansion().
+const g = await (await fetch('gated-community.json')).json();
+for (const b of g.buildings.filter(b => b.type === 'mansion')) SSX.heist.registerHeist(SSX.heist.fromMansion(b, g.coords.origin_aj, { tier: 'medium', credits: 300 }));
+const res = await SSX.heist.startHeist('heist-voss'); // { success, loot, fail, stage, t, alarm }
+SSX.heist.applyTip('heist-voss', { type: 'safe', ease: 0.3 }); // informant intel: 'cameras' | 'safe' | 'patrol'; unknown types ignored
+SSX.heist.on('escape', e => { /* pursuit.js: { id, title, world, pos:{x,z}, site:{x,z,r}, heat, evading, security, alarm, loot, t, vehicle } */ });
+```
+Events (also `window` CustomEvents named `heist:<evt>`): `start`, `stage`, `tip`, `camera:alert`, `camera:disabled`, `alarm`, `alarm:response`, `safe:open`, `safe:result`, `loot`, `escape`, `done`, `clean`, `fail`.
+No security AI or chase lives here: alarms only raise the wanted level and the getaway is the `escape` event. `?heisttest=1` adds a throwaway sample villa east of Ares Junction under ☰ → 🕵️ Heists. Context action key: **G**.
+
+Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js) and `heistTick(dt, ctx)` (heist.js) once per surface frame, and `planets/index.js` runs `initPlanets(window.__app)` at startup. Colony packs live in `planets/<world>.js`, and `planets/hooks.js` is their only bridge to the core API.
 
 ```js
 ```
+
+## Mars city ambience (add-on: radio stations, district soundscapes, pedestrian barks)
+
+Files: `mars-audio.js` (glue, mixer, ☰ 🔊 panel), `radio.js`, `ambience.js`, `barks.js`, `synth.js`. Everything is synthesized with Web Audio: no samples, nothing downloaded, no licences to track.
+
+- **Radio:** four new stations join the stock three (after *Radio off*, so old saves keep their station): **RUST 103.5** (Red Tape hip-hop/industrial), **OLYMPUS 90.1** (Meridian talk & news: news, in-world ads and host banter as small captions over a TTS-free babble voice), **HELIOS 107.7** (Quiet Money lounge), **BELTWAY 99.9** (outrun darksynth). NPC_BARKS.md DJ lines are added to KRED/VOID/CERES. Switch with **📻 Next** while driving or from **☰ → 🔊 Sound & radio** (pick a station on foot and it plays on your next drive). Radio only plays in vehicles; the station is saved as `settings.radioId` + `settings.radio`.
+- **Mixer:** Master, Music and Ambience sliders plus Mute in the same panel, saved in `settings.mix`. Master/Mute cover every game sound.
+- **District soundscapes (Mars):** Ares Junction hum and PA, Olympus Row traffic, horns and crowds, Red Tape Flats sirens, dogs, arguments and far-off shots, Helios Heights fountain, chimes and drone flybys, Ares Beltway wind and pass-bys. They crossfade by your AJ-relative position, using the mars-city centres (`AMBIENCE_CONFIG` in ambience.js), and switch to `registerDistrict` centres/radii once v7.5 registers them. They're muffled in a vehicle and almost silent indoors. Phones play at most 2 beds and 5 one-shot voices.
+- **Barks:** short captions above nearby colonists and guards, triggered by being close, bumping into them, wanted level (guard lines scale with ★), gunfire, hits, stealing a car, speeding past or showing off a flashy ride. They're rate-limited (global, per NPC and per category gaps, at most 2 on screen), kept off the screen centre and the control band, and never take input.
+
+```js
+SSX.registerStation({ id: 'mine', name: 'MINE 88.8', tag: 'Test', bpm: 100, dj: ['Hi.'], step(x, t, s, bar, spb) { if (s % 4 === 0) x.osc('sine', 120, t, 0.2, 0.5, 40); } });
+SSX.bark(npc, 'flats')            // npc: people index | name | { x, z } | null (nearest); category from barks.js BARKS or literal text; { force: true } skips the rate limit
+SSX.registerBarks('heist', ['You\'re the Exchange guy!'])
+SSX.registerSoundscape('spaceport', { centre: [500, 0], r: 60, profile: 'downtown' })  // AJ-relative
+SSX.audio.mix.set({ master: 0.8, music: 0.5, amb: 1, mute: false }); SSX.audio.setRideFlash(info => 0.8) // garages: how flashy the current ride is (0..1)
+```
+Core hooks: one dynamic import line in `index.html`, `a.__ssxMusic || a.destination` in `audio7.js`, the new files in `sw.js` PRECACHE. Tests: `node tests/test-ambience-unit.mjs`, `BR=webkit VP=393x852 node tests/test-ambience.js`.
 
 ## v7.2: fly the rover, bolt guns to it, and install it as an app
 

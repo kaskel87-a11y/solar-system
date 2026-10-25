@@ -1,9 +1,11 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.4';
-import { createGame } from './game.js?v=7.4';
-import { createWorld, VEHICLES } from './world.js?v=7.4';
-import { raceTick } from './race.js?v=7.4';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5.1';
+import { createGame } from './game.js?v=7.5.1';
+import { createWorld, VEHICLES } from './world.js?v=7.5.1';
+import { raceTick } from './race.js?v=7.5.1';
+import { activityTick } from './activities/runner.js?v=7.5.1';
+import { heistTick } from './heist.js?v=7.5.1';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -171,6 +173,7 @@ export function loadFound() { try { return JSON.parse(localStorage.getItem(DISC_
 function saveFound(f) { try { localStorage.setItem(DISC_KEY, JSON.stringify(f)); } catch (e) { /* private mode */ } }
 
 export function createSurface({ renderer, textures, isMobile, onEvent = () => {} }) {
+  const extraTicks = []; // v7.5.1: add-on per-frame hooks (SSX.registerSurfaceTick)
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 2400);
   camera.rotation.order = 'YXZ';
@@ -179,6 +182,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const EYE = 1.7;
   let cfg = null, name = null, noise = null, noise2 = null;
   const chunks = new Map();
+  const rockBlk = new Map(); // v7.5.1 (M4/m2): big rocks per chunk block the camera boom
+  const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
   const poiObjects = [];
   let state = null;
 
@@ -229,7 +234,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const pad = cfg.padH ?? 0;
     const b = baseHeight(x, z);
     let h = THREE.MathUtils.lerp(pad + b * 0.15, b, s);
-    for (let i = 0; i < flats.length; i++) { const f = flats[i], d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
+    for (let i = 0; i < flats.length; i++) { const f = flats[i];
+      if (f.seg) { // v7.5 highway corridor: flatten to the road's own height along the segment
+        if (x < f.minx || x > f.maxx || z < f.minz || z > f.maxz) continue;
+        const ex = f.bx - f.ax, ez = f.bz - f.az, L2 = ex * ex + ez * ez, t = L2 ? Math.max(0, Math.min(1, ((x - f.ax) * ex + (z - f.az) * ez) / L2)) : 0, d = Math.hypot(x - f.ax - ex * t, z - f.az - ez * t);
+        if (d < f.r2) h = THREE.MathUtils.lerp(f.ya + (f.yb - f.ya) * t, h, smooth(f.r1, f.r2, d)); continue; }
+      if (f.ramp) { // v7.5 jump ramp: a wedge rising along (ux,uz), sheer drop at the lip
+        const dx = x - f.x, dz = z - f.z, u = dx * f.ux + dz * f.uz + f.len / 2, v = Math.abs(dx * -f.uz + dz * f.ux);
+        if (u > 0 && u < f.len && v < f.w / 2) h += f.h * (u / f.len) * Math.min(1, (f.w / 2 - v) * 3); continue; }
+      const d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
     return h;
   }
 
@@ -280,7 +293,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // Rocks (instanced, shared geometry)
     const nR = cfg.rocksPerChunk;
     const rocks = new THREE.InstancedMesh(rockGeo, rockMat, nR);
-    let placed = 0;
+    let placed = 0; const blk = [];
     for (let r = 0; r < nR; r++) {
       const hx = hash2(ix * 131 + r, iz * 71 - r, cfg.seed + 5), hz = hash2(ix * 17 - r, iz * 191 + r, cfg.seed + 6), hs = hash2(ix + r * 7, iz - r * 3, cfg.seed + 7);
       const x = ox + hx * CHUNK, z = oz + hz * CHUNK; const y = height(x, z);
@@ -289,11 +302,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const sc = 0.2 + Math.pow(hs, 3) * (name === 'Mars' ? 2.2 : 1.8);
       tmpS.set(sc * (0.8 + hx * 0.6), sc * (0.6 + hz * 0.6), sc * (0.8 + hs * 0.5));
       tmpE.set(hx * 3, hz * 6.28, hs * 2); tmpQ.setFromEuler(tmpE); tmpP.set(x, y + sc * 0.2, z);
-      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS));
+      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS)); if (sc > 0.5) blk.push({ x, z, y: y + sc * 0.2, r: sc * 1.25 + 0.3 });
       rocks.setColorAt(placed, tmpC.copy(cfg.rock).multiplyScalar(0.75 + hs * 0.5));
       placed++;
     }
-    rocks.count = placed; rocks.instanceMatrix.needsUpdate = true; if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
+    rockBlk.set(`${ix},${iz}`, blk); rocks.count = placed; rocks.instanceMatrix.needsUpdate = true; if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
     rocks.computeBoundingSphere();
     group.add(rocks);
 
@@ -353,7 +366,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK);
     const want = new Set();
     for (let j = -RADIUS; j <= RADIUS; j++) for (let i = -RADIUS; i <= RADIUS; i++) want.add(`${cx + i},${cz + j}`);
-    for (const [k, c] of chunks) if (!want.has(k)) { disposeChunk(c); chunks.delete(k); }
+    for (const [k, c] of chunks) if (!want.has(k)) { disposeChunk(c); chunks.delete(k); rockBlk.delete(k); }
     // build nearest missing first; limit per frame to avoid hitches
     const missing = [...want].filter(k => !chunks.has(k)).map(k => k.split(',').map(Number))
       .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cz) - Math.hypot(b[0] - cx, b[1] - cz));
@@ -485,6 +498,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const ROVER_VIEW_KEY = 'ssx.view.rover.v1', FP_DRIVE_PITCH = -0.07;
   const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
   let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
+  let duelYaw = null;
   let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawS = null, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
   let indoor = null, hiddenOut = [];
   let car = null, astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
@@ -614,6 +628,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
+    coverNear: (x, z, px, pz, r) => world.coverNear?.(x, z, px, pz, r), collide: (x, z, r) => world.collide?.(x, z, r), freeSpot: (x, z, r) => world.freeSpot?.(x, z, r), civHits: () => world.civHits || 0, caseCamera: id => world.caseCamera?.(id), npcRefresh: () => world.npcRefresh?.(), // v7.5 city
     respawn(why) {
       if (indoor) leaveBuilding(true);
       if (driving) interact();
@@ -1072,6 +1087,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         camera.rotation.set(player.pitch - introP, player.yaw, 0);
       } else camT.set(player.x, player.y - EYE + 1.5, player.z);
     }
+    const dS = !first && !driving && !indoor ? world.duel : null; // v7.5.1 (M4): duel cam frames both fighters from the clearest side
+    if (dS && dS.phase !== 'done' && dS.x != null) {
+      const ang = Math.atan2(player.x - dS.x, player.z - dS.z), clear = yw => { const sx = Math.sin(yw), sz = Math.cos(yw); for (let i = 1; i <= 8; i++) { const t = camDist * i / 8, x = camT.x + sx * t, z = camT.z + sz * t, y = camT.y + t * 0.35; if (world.camBlocked(x, y, z) || rockAt(x, y, z)) return i; } return 9; };
+      let best = duelYaw ?? ang, bs = duelYaw != null ? clear(duelYaw) + 0.5 : -1; for (const o of [0, 0.5, -0.5, 1.0, -1.0, 1.57, -1.57]) { const s = clear(ang + o); if (s > bs) { bs = s; best = ang + o; } }
+      duelYaw = duelYaw == null ? best : duelYaw + Math.atan2(Math.sin(best - duelYaw), Math.cos(best - duelYaw)) * (1 - Math.exp(-dt * 2.5)); viewYaw = duelYaw;
+      camT.set((player.x * 2 + dS.x) / 3, camT.y, (player.z * 2 + dS.z) / 3);
+    } else duelYaw = null;
     if (!first) {
       const ep = clamp(player.pitch - lerp(0.28, 1.0, zt) - introP, -1.52, 0.5);
       camDir.set(-Math.sin(viewYaw) * Math.cos(ep), Math.sin(ep), -Math.cos(viewYaw) * Math.cos(ep));
@@ -1085,7 +1107,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       }
       else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
         const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
-        const blocked = (x, y, z) => world.camBlocked(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
+        const blocked = (x, y, z) => world.camBlocked(x, y, z) || rockAt(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
         const N = 14; let hit = cd;
         for (let i = 1; i <= N; i++) { const t = cd * i / N; if (blocked(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { hit = Math.max(0.9, cd * (i - 1) / N - 0.25); break; } }
         camPull = hit < camPull ? hit : camPull + (hit - camPull) * (1 - Math.exp(-dt * 3));
@@ -1123,6 +1145,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateAstro(dt);
     updateCamera(dt);
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
+    heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
@@ -1311,11 +1336,25 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dx = rover.x - player.x, dz = rover.z - player.z, a = Math.atan2(-dx, -dz) - viewYaw;
     return { dist: Math.round(Math.hypot(dx, dz)), ang: Math.atan2(Math.sin(a), Math.cos(a)), ship: Math.round(Math.hypot(SHIP.x - player.x, SHIP.z - player.z)) };
   }
+  // v7.5 ☰ Districts: fast travel between the colony and its districts (same world). Your car comes with you.
+  function fastTravel(id) {
+    const b = travelBlocked(); if (b) return { ok: false, why: b };
+    if (world.wanted > 0) return { ok: false, why: 'lose the heat first' };
+    const q = String(id || '').toLowerCase(), d = world.districts().find(s => s.id === id || s.name.toLowerCase().includes(q)); if (!d) return { ok: false, why: 'no such district here' };
+    let { x, z } = d.fast; const c = world.collide(x, z, driving ? 2.5 : 0.6); if (c) { x = c.x; z = c.z; }
+    if (driving) { car.x = x; car.z = z; car.yaw = 0; car.y = height(x, z) + (car.spec.hover || 0); car.prevG = null; car.vy = 0; car.speed = 0; car.group.position.set(car.x, car.y, car.z); car.group.rotation.set(0, 0, 0); player.x = x; player.z = z; }
+    else { player.x = x; player.z = z; player.y = height(x, z) + EYE; player.vy = 0; player.yaw = 0; player.faceYaw = 0; dogTo(x, z); }
+    updateChunks(x, z, true); world.debug.zones(); dustRing(x, z, 40);
+    return { ok: true, id: d.id, name: d.name };
+  }
   function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; player.faceYaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
-    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding,
+    chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
+      let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
+      return v ? world.despawnVehicle(v) : false; },
+    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
@@ -1338,7 +1377,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         nearVehicle: (() => { if (driving || indoor || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
         nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, duelist: !driving && !indoor ? world.nearDuelist() : null, duel: world.duel, nearShop: !driving && !indoor ? world.nearShop() : null,
         door: !driving && !indoor ? (() => { const d = world.nearDoor(); return d ? { name: d.name, kind: d.kind } : null; })() : null,
-        inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
+        inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null, crack: s.crack || null, difficulty: s.difficulty || 0 } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
         carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,
         faceYaw: player.faceYaw, camYawOff, lookIdle: time - lastLook,
         thrust: (() => { const r = driving ? car : rover; const can = driving && canThrust(car); return { can, on: !!(can && r.thrusting), fuel: r ? Math.round(r.fuel ?? 100) : 0, max: r ? FUEL_MAX(r) : 100, jet: r?.jet || 0 }; })(), viewYaw,
