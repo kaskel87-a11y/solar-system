@@ -135,10 +135,11 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('ambientCentreClear', null, await centreClear());
     await sleep(400); await shot('ambient');
     ok('ambientBudget', JSON.stringify(await G(() => window.__danger.budget())), await G(() => { const b = window.__danger.budget(); return b.world + b.ours + b.chase <= Math.max(b.cap, b.world); }));
+    await G(() => { const w = window.__app.surface.world; window.__crimes = []; if (!w.__dzWrapped) { const f = w.crime; w.crime = (n, why) => { window.__crimes.push([n, why]); return f.call(w, n, why); }; w.__dzWrapped = 1; } });
     const evBtn = await G(() => { const b = document.querySelector('#dzEvChoices [data-choice="interrupt"]'); return !!b; });
     if (evBtn) await tapAt('#dzEvChoices [data-choice="interrupt"]'); else await G(() => window.__danger.ambientChoose('interrupt'));
     ok('ambientFight', JSON.stringify(await G(() => window.__danger.ambient.state.active)), await wait(() => window.__danger.ambient.state.active?.phase === 'fight', 5000));
-    ok('ambientCrimeViaWorld', await G(() => window.__app.surface.world.wanted), await wait(() => window.__app.surface.world.wanted >= 1, 4000));
+    ok('ambientCrimeViaWorld', JSON.stringify(await G(() => window.__crimes)), await wait(() => window.__crimes.some(c => c[0] >= 1), 4000)); // world.crime has its own 2.5 s cooldown, so assert the call, not the star
     await G(() => window.__app.surface.world.setWanted(0, 'test'));
     for (let i = 0; i < 60; i++) { const left = await G(() => { const s = window.__app.surface, p = s.info, hs = window.__danger.npcs().filter(n => n.alive && n.hostile); for (const n of hs.slice(0, 1)) s.world.hitWorld({ x: p.x, y: n.y + 1.3, z: p.z }, { x: n.x, y: n.y + 1.2, z: n.z }, { dmg: 1.5 }); const H = s.game.debug.H?.(); if (H) H.hp = 100; return hs.length; }); if (!left) break; await sleep(150); }
     ok('ambientWon', JSON.stringify(await G(() => window.__danger.ambient.state)), await wait(() => (window.__danger.ambient.state.ended.won || 0) >= 1, 8000));

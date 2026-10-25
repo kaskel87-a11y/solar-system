@@ -89,8 +89,13 @@ function bubbleTex(text, color) {
   x.strokeStyle = color; x.lineWidth = 3; x.stroke(); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 256, 47);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
+// our bark key -> SSX.bark category (mugger lines keep their beat as a hint: npc.barkBeat)
+const barkCat = key => /^junkie/.test(key) ? 'mugger' : /^fight/.test(key) ? 'fighter' : key === 'bystander' ? 'bystander' : null;
 function say(n, key, vars, ms = 2600, color = '#ff5a5a') {
   const line = DC.fill(DC.pick(DC.BARKS[key] || [key]), vars); if (!line) return '';
+  // Pumpkin's PR #5 captioned barks: SSX.bark(npc, category). Use it when present; it handles the line unless it returns false.
+  const ext = typeof window !== 'undefined' && typeof window.SSX?.bark === 'function' ? window.SSX.bark : null;
+  if (ext && barkCat(key)) { try { n.barkBeat = key; const r = ext(n, barkCat(key)); if (r !== false) { n.lastLine = typeof r === 'string' ? r : line; return n.lastLine; } } catch (e) { /* fall back to our bubble */ } }
   if (n.bubble) { n.bubble.material.map.dispose(); n.bubble.material.dispose(); n.g.remove(n.bubble); }
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex(line, color), transparent: true, depthWrite: false, depthTest: false }));
   s.position.y = 2.45; s.scale.set(3.6, 0.68, 1); s.renderOrder = 20; n.g.add(s); n.bubble = s; n.bubbleT = ms / 1000; n.lastLine = line;
