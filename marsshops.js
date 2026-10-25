@@ -8,9 +8,9 @@
 import * as THREE from 'three';
 // Version-independent core imports: reuse this module's own ?v= so world/game/interiors resolve to the exact instances
 // index.html loaded (a mismatched ?v would load second copies and our registrations would land on the wrong one).
-const VQ = new URL(import.meta.url).search;
+// v7.5.3: plain specifiers; index.html's import map adds the version (one module instance)
 const [{ COLONIES, districtsOf }, { COSMETICS, WEAPONS }, { registerInterior, INTERIORS, buildHuman }] =
-  await Promise.all([import('./world.js' + VQ), import('./game.js' + VQ), import('./interiors.js' + VQ)]);
+  await Promise.all([import('./world.js'), import('./game.js'), import('./interiors.js')]);
 
 // ---------- districts (AJ-relative centres, from the v7.5 brief) ----------
 const DIST = {
