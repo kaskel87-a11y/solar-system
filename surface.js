@@ -1,10 +1,13 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=7.5';
-import { createGame } from './game.js?v=7.5';
-import { createWorld, VEHICLES } from './world.js?v=7.5';
-import { raceTick } from './race.js?v=7.5';
-import { activityTick } from './activities/runner.js?v=7.5';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js';
+import { createGame } from './game.js';
+import { createWorld, VEHICLES } from './world.js';
+import { raceTick } from './race.js';
+import { activityTick } from './activities/runner.js';
+import { heistTick } from './heist.js';
+import { sciTick } from './scihooks.js'; // junkyard lab pack: Raccoon Mobile + scientist portal jobs
+import { dangerTick } from './danger.js'; // Chief of Staff's street danger (PR #3)
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -172,6 +175,7 @@ export function loadFound() { try { return JSON.parse(localStorage.getItem(DISC_
 function saveFound(f) { try { localStorage.setItem(DISC_KEY, JSON.stringify(f)); } catch (e) { /* private mode */ } }
 
 export function createSurface({ renderer, textures, isMobile, onEvent = () => {} }) {
+  const extraTicks = []; // v7.5.1: add-on per-frame hooks (SSX.registerSurfaceTick)
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 2400);
   camera.rotation.order = 'YXZ';
@@ -180,6 +184,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const EYE = 1.7;
   let cfg = null, name = null, noise = null, noise2 = null;
   const chunks = new Map();
+  const rockBlk = new Map(); // v7.5.1 (M4/m2): big rocks per chunk block the camera boom
+  const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
   const poiObjects = [];
   let state = null;
 
@@ -289,7 +295,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // Rocks (instanced, shared geometry)
     const nR = cfg.rocksPerChunk;
     const rocks = new THREE.InstancedMesh(rockGeo, rockMat, nR);
-    let placed = 0;
+    let placed = 0; const blk = [];
     for (let r = 0; r < nR; r++) {
       const hx = hash2(ix * 131 + r, iz * 71 - r, cfg.seed + 5), hz = hash2(ix * 17 - r, iz * 191 + r, cfg.seed + 6), hs = hash2(ix + r * 7, iz - r * 3, cfg.seed + 7);
       const x = ox + hx * CHUNK, z = oz + hz * CHUNK; const y = height(x, z);
@@ -298,11 +304,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const sc = 0.2 + Math.pow(hs, 3) * (name === 'Mars' ? 2.2 : 1.8);
       tmpS.set(sc * (0.8 + hx * 0.6), sc * (0.6 + hz * 0.6), sc * (0.8 + hs * 0.5));
       tmpE.set(hx * 3, hz * 6.28, hs * 2); tmpQ.setFromEuler(tmpE); tmpP.set(x, y + sc * 0.2, z);
-      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS));
+      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS)); if (sc > 0.5) blk.push({ x, z, y: y + sc * 0.2, r: sc * 1.25 + 0.3 });
       rocks.setColorAt(placed, tmpC.copy(cfg.rock).multiplyScalar(0.75 + hs * 0.5));
       placed++;
     }
-    rocks.count = placed; rocks.instanceMatrix.needsUpdate = true; if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
+    rockBlk.set(`${ix},${iz}`, blk); rocks.count = placed; rocks.instanceMatrix.needsUpdate = true; if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
     rocks.computeBoundingSphere();
     group.add(rocks);
 
@@ -362,7 +368,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK);
     const want = new Set();
     for (let j = -RADIUS; j <= RADIUS; j++) for (let i = -RADIUS; i <= RADIUS; i++) want.add(`${cx + i},${cz + j}`);
-    for (const [k, c] of chunks) if (!want.has(k)) { disposeChunk(c); chunks.delete(k); }
+    for (const [k, c] of chunks) if (!want.has(k)) { disposeChunk(c); chunks.delete(k); rockBlk.delete(k); }
     // build nearest missing first; limit per frame to avoid hitches
     const missing = [...want].filter(k => !chunks.has(k)).map(k => k.split(',').map(Number))
       .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cz) - Math.hypot(b[0] - cx, b[1] - cz));
@@ -494,6 +500,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const ROVER_VIEW_KEY = 'ssx.view.rover.v1', FP_DRIVE_PITCH = -0.07;
   const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
   let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
+  let duelYaw = null;
   let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawS = null, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
   let indoor = null, hiddenOut = [];
   let car = null, astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
@@ -1082,6 +1089,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         camera.rotation.set(player.pitch - introP, player.yaw, 0);
       } else camT.set(player.x, player.y - EYE + 1.5, player.z);
     }
+    const dS = !first && !driving && !indoor ? world.duel : null; // v7.5.1 (M4): duel cam frames both fighters from the clearest side
+    if (dS && dS.phase !== 'done' && dS.x != null) {
+      const ang = Math.atan2(player.x - dS.x, player.z - dS.z), clear = yw => { const sx = Math.sin(yw), sz = Math.cos(yw); for (let i = 1; i <= 8; i++) { const t = camDist * i / 8, x = camT.x + sx * t, z = camT.z + sz * t, y = camT.y + t * 0.35; if (world.camBlocked(x, y, z) || rockAt(x, y, z)) return i; } return 9; };
+      let best = duelYaw ?? ang, bs = duelYaw != null ? clear(duelYaw) + 0.5 : -1; for (const o of [0, 0.5, -0.5, 1.0, -1.0, 1.57, -1.57]) { const s = clear(ang + o); if (s > bs) { bs = s; best = ang + o; } }
+      duelYaw = duelYaw == null ? best : duelYaw + Math.atan2(Math.sin(best - duelYaw), Math.cos(best - duelYaw)) * (1 - Math.exp(-dt * 2.5)); viewYaw = duelYaw;
+      camT.set((player.x * 2 + dS.x) / 3, camT.y, (player.z * 2 + dS.z) / 3);
+    } else duelYaw = null;
     if (!first) {
       const ep = clamp(player.pitch - lerp(0.28, 1.0, zt) - introP, -1.52, 0.5);
       camDir.set(-Math.sin(viewYaw) * Math.cos(ep), Math.sin(ep), -Math.cos(viewYaw) * Math.cos(ep));
@@ -1095,7 +1109,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       }
       else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
         const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
-        const blocked = (x, y, z) => world.camBlocked(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
+        const blocked = (x, y, z) => world.camBlocked(x, y, z) || rockAt(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6);
         const N = 14; let hit = cd;
         for (let i = 1; i <= N; i++) { const t = cd * i / N; if (blocked(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { hit = Math.max(0.9, cd * (i - 1) / N - 0.25); break; } }
         camPull = hit < camPull ? hit : camPull + (hit - camPull) * (1 - Math.exp(-dt * 3));
@@ -1134,7 +1148,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateCamera(dt);
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
+    heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    sciTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
+    if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     game.update(dt, input);
+    dangerTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, inside: !!indoor, dog, intro: state.intro });
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
     updateChunks(px, pz, false, driving ? 2 : 1);
@@ -1337,7 +1355,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
-    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel,
+    chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
+      let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
+      return v ? world.despawnVehicle(v) : false; },
+    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air

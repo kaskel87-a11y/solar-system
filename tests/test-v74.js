@@ -4,7 +4,7 @@
 // BASE=http://localhost:8765/ BR=chromium DEV=desktop node test-v74.js   (DEV="iPhone 14" BR=webkit for touch)
 const pw = require('playwright');
 const base = process.env.BASE || 'http://localhost:8765/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
-const out = process.env.OUT || '/workspace/solar-system/shots/', desk = DEV === 'desktop';
+const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', desk = DEV === 'desktop';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
@@ -118,7 +118,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.leaveBuilding()); await sleep(300);
     // ---- Titan methane skiff is amphibious, and its icon falls back from the vehicle spec
     const sk = await G(() => { const V = window.__app.surface.world?.VEHICLES || null; return null; });
-    const spec = await page.evaluate(async () => { const m = await import('./world.js?v=7.4'); const v = m.VEHICLES.methane_skiff; return v && { amph: !!v.amphibious, icon: v.icon, cart: !!m.VEHICLES.v74cart, builder: typeof m.VEHICLE_BUILDERS.methane_skiff }; });
+    const spec = await page.evaluate(async () => { const m = await import('./world.js'); const v = m.VEHICLES.methane_skiff; return v && { amph: !!v.amphibious, icon: v.icon, cart: !!m.VEHICLES.v74cart, builder: typeof m.VEHICLE_BUILDERS.methane_skiff }; });
     ok('skiffAmphibious', JSON.stringify(spec), spec?.amph && !!spec.icon && spec.cart && spec.builder === 'function');
     ok('restoreUnit', await G(() => { const g = window.__app.game; g.hurtPlayer(90); const a = g.info.hp; g.restore(); return `${a} → ${g.info.hp}`; }), await G(() => window.__app.game.info.hp === window.__app.game.info.hpMax));
     ok('controlsListRolls', await G(() => /Barrel roll/i.test(document.getElementById('ctlPanel').textContent)));

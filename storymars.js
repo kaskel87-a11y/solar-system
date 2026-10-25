@@ -3,12 +3,12 @@
 // this file only re-maps each job's steps onto what v7.4 can run, adds human wave types (goon, enforcer, guard, squad, sdrone)
 // through game.registerAgentType, and drives the step types the core doesn't know (hold, choice, tail, escort2, cleanexit,
 // rrace, build, runtrack) from its own tick. Core touch points: one import + initStoryMars(window.__app) in index.html and the
-// registerAgentType hook in game.js. Import URLs must match the core's ?v= exactly (shared module instances).
+// registerAgentType hook in game.js. Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
 import * as THREE from 'three';
-import * as GM from './game.js?v=7.5';
-import * as W from './world.js?v=7.5';
-import { tap } from './planets/hooks.js?v=7.5';
-import { STORY } from './missions-data.js?v=7.5';
+import * as GM from './game.js';
+import * as W from './world.js';
+import { tap } from './planets/hooks.js';
+import { STORY } from './missions-data.js';
 
 // ---------- core shims: prefer a real core API when Grok Bot adds one, else the v7.4 debug/test surface ----------
 const nextStep = g => (typeof g.advanceStep === 'function' ? g.advanceStep() : g.debug.advance());
@@ -217,7 +217,58 @@ function choiceSheet(app, g, q, s) {
   S.sheetFor = S.key;
   if (s.options.every(o => o.cost && credits < o.cost)) { closeSheet(); failJob(app, g, `Can\u2019t afford the fees (${Math.min(...s.options.map(o => o.cost))} cr).`); }
 }
+
+// ---- v7.5 contraband barter (Marsmania's SSX.contraband API), fully guarded: nothing runs until window.SSX.contraband
+// exists, so this ships before that code lands. Offers are the Ozzie / Rusk / Ines / Vesna / Rook rows of Steve's
+// solar-system-story/mars-city/barter.json, copied verbatim (do not edit here; re-copy when the file changes).
+// Marsmania loads barter.json itself, so when an offer is already registered we only ATTACH our story handler
+// (unlock a job) and never re-register or re-apply its gives. We register an offer ourselves only if it is missing,
+// and then we apply the engine-side give (weapon/ammo/wanted_clear/venue_access) too. Items stay Marsmania's.
+export const BARTER = [{"id":"ozzie-iron-t1-breacher","npc":"Ozzie","venue":"Ozzie's Iron (back counter)","district":"red_tape_flats","location":[16,-38],"tier":1,"wants":[{"item":"glow_dust","qty":2}],"gives":{"type":"weapon","weaponId":"shotgun","ammo":{"ammoId":"shells","qty":12}},"cooldownSec":600,"rep":{"factions":[{"faction":"ozzie","min":0}]},"risk":{"bust_chance":0.03,"wanted_on_bust":1,"wanted_on_trade":0},"lines":{"offer":"Ozzie: Tier 1. No receipts, no serials.","accept":"Ozzie: Keep it pointed at strangers.","decline":"Ozzie: Then stop fogging my glass.","caught":"Ozzie: ColSec at the door. You never bought anything here."},"repeatable":true},{"id":"ozzie-iron-t2-viper","npc":"Ozzie","venue":"Ozzie's Iron (back counter)","district":"red_tape_flats","location":[16,-38],"tier":2,"wants":[{"item":"glow_dust","qty":3},{"item":"salvage","qty":4}],"gives":{"type":"weapon","weaponId":"smg","ammo":{"ammoId":"rounds","qty":60}},"cooldownSec":900,"rep":{"factions":[{"faction":"ozzie","min":15}]},"risk":{"bust_chance":0.05,"wanted_on_bust":1,"wanted_on_trade":0},"lines":{"offer":"Ozzie: Tier 2. No receipts, no serials.","accept":"Ozzie: Keep it pointed at strangers.","decline":"Ozzie: Then stop fogging my glass.","caught":"Ozzie: ColSec at the door. You never bought anything here."},"repeatable":true},{"id":"ozzie-iron-t3-railrifle","npc":"Ozzie","venue":"Ozzie's Iron (back counter)","district":"red_tape_flats","location":[16,-38],"tier":3,"wants":[{"item":"glow_dust_brick","qty":1}],"gives":{"type":"weapon","weaponId":"railrifle","ammo":{"ammoId":"slugs","qty":6}},"cooldownSec":1800,"rep":{"factions":[{"faction":"ozzie","min":35}],"missions_done":["ozzie-01-testfire"]},"risk":{"bust_chance":0.08,"wanted_on_bust":2,"wanted_on_trade":0},"lines":{"offer":"Ozzie: Tier 3. No receipts, no serials.","accept":"Ozzie: Keep it pointed at strangers.","decline":"Ozzie: Then stop fogging my glass.","caught":"Ozzie: ColSec at the door. You never bought anything here."},"repeatable":true},{"id":"ozzie-iron-t4-launcher","npc":"Ozzie","venue":"Ozzie's Iron (back counter)","district":"red_tape_flats","location":[16,-38],"tier":4,"wants":[{"item":"glow_dust_brick","qty":1},{"item":"ledger_chip","qty":1}],"gives":{"type":"weapon","weaponId":"launcher","ammo":{"ammoId":"grenades","qty":4}},"cooldownSec":3600,"rep":{"factions":[{"faction":"ozzie","min":60}],"missions_done":["ozzie-02-hotiron"]},"risk":{"bust_chance":0.12,"wanted_on_bust":2,"wanted_on_trade":0},"lines":{"offer":"Ozzie: Tier 4. No receipts, no serials.","accept":"Ozzie: Keep it pointed at strangers.","decline":"Ozzie: Then stop fogging my glass.","caught":"Ozzie: ColSec at the door. You never bought anything here."},"repeatable":true},{"id":"ozzie-iron-ammo-bulk","npc":"Ozzie","venue":"Ozzie's Iron (back counter)","district":"red_tape_flats","location":[16,-38],"tier":1,"wants":[{"item":"salvage","qty":6}],"gives":{"type":"ammo_bundle","ammo":[{"ammoId":"shells","qty":12},{"ammoId":"rounds","qty":60}],"onlyOwned":true},"cooldownSec":300,"rep":{"factions":[{"faction":"ozzie","min":5}]},"risk":{"bust_chance":0.0,"wanted_on_bust":0,"wanted_on_trade":0},"lines":{"offer":"Ozzie: Scrap for brass. Fair trade, for once.","accept":"Ozzie: Loaded. Go be loud somewhere else.","decline":"Ozzie: Brass costs, friend.","caught":"Ozzie: Not today. Badge outside."},"repeatable":true},{"id":"rusk-wipe-1","npc":"Deputy Rusk","venue":"RUSK TAKES wall","district":"red_tape_flats","location":[-270,-24],"wants":[{"item":"glow_dust","qty":2}],"gives":{"type":"wanted_clear","stars":1},"requires":{"wanted_min":1},"cooldownSec":600,"rep":{"factions":[{"faction":"colsec_dirty","min":0}]},"risk":{"bust_chance":0.1,"wanted_on_bust":1,"wanted_on_trade":0,"note":"On bust Rusk keeps the product and adds a star."},"lines":{"offer":"Rusk: One star? Two baggies and the paperwork gets lost.","accept":"Rusk: Who? Never heard of you.","decline":"Rusk: Then enjoy the attention.","caught":"Rusk: You tried to bribe a deputy? That's another star, genius."},"repeatable":true},{"id":"rusk-wipe-2","npc":"Deputy Rusk","venue":"RUSK TAKES wall","district":"red_tape_flats","location":[-270,-24],"wants":[{"item":"glow_dust_brick","qty":1},{"item":"colsec_tag","qty":1}],"gives":{"type":"wanted_clear","stars":2},"requires":{"wanted_min":2},"cooldownSec":1800,"rep":{"factions":[{"faction":"colsec_dirty","min":20}],"missions_done":["rusk-01-protection"]},"risk":{"bust_chance":0.15,"wanted_on_bust":1,"wanted_on_trade":0,"note":"On bust Rusk keeps the product and adds a star."},"lines":{"offer":"Rusk: Two stars is real work. Brick and an evidence tag.","accept":"Rusk: Your file just fell in the recycler.","decline":"Rusk: Your funeral. Literally, maybe.","caught":"Rusk: You tried to bribe a deputy? That's another star, genius."},"repeatable":true},{"id":"rusk-raid-tip","npc":"Deputy Rusk","venue":"RUSK TAKES wall","district":"red_tape_flats","location":[-270,-24],"wants":[{"item":"glow_dust","qty":1},{"item":"credits","qty":120}],"gives":{"type":"raid_tip","scope":"next_colsec_raid","warnSec":90,"reveals":["district","target","eta"]},"cooldownSec":1200,"rep":{"factions":[{"faction":"colsec_dirty","min":10}]},"risk":{"bust_chance":0.05,"wanted_on_bust":1,"wanted_on_trade":0},"lines":{"offer":"Rusk: Want to know where the boys hit next? It'll cost you.","accept":"Rusk: Ninety seconds' warning. Don't say I'm generous.","decline":"Rusk: Then be surprised.","caught":"Rusk: You tried to bribe a deputy? That's another star, genius."},"repeatable":true},{"id":"ines-velvet-vip","npc":"Ines","venue":"Velvet Airlock","district":"red_tape_flats","location":[-30,-36],"wants":[{"item":"red_dust_whiskey","qty":2},{"item":"credits","qty":80}],"gives":{"type":"venue_access","venueId":"velvet_airlock_vip","durationSec":900},"cooldownSec":900,"rep":{"factions":[{"faction":"velvet","min":0}],"missions_done":["ines-01-door"]},"risk":{"bust_chance":0.0,"wanted_on_bust":0,"wanted_on_trade":0},"lines":{"offer":"Ines: VIP is for people who bring something. Bottles talk.","accept":"Ines: Booth three. Hands to yourself, eyes on the stage.","decline":"Ines: Floor's fine for you, then.","caught":"Ines: Not tonight. ColSec is drinking at the bar."},"repeatable":true},{"id":"ines-velvet-vip-dust","npc":"Ines","venue":"Velvet Airlock","district":"red_tape_flats","location":[-30,-36],"wants":[{"item":"glow_dust","qty":1}],"gives":{"type":"venue_access","venueId":"velvet_airlock_vip","durationSec":1800},"cooldownSec":1800,"rep":{"factions":[{"faction":"velvet","min":20}],"missions_done":["ines-02-pour"]},"risk":{"bust_chance":0.08,"wanted_on_bust":1,"wanted_on_trade":0,"note":"Ines hates dust in her bar; she takes it off the street, not into it."},"lines":{"offer":"Ines: That baggie leaves with me, not with a patron. Deal?","accept":"Ines: Off the floor and into my safe. VIP all night.","decline":"Ines: Then keep it out of my club.","caught":"Ines: Bouncers. Now. Get him out."},"repeatable":true},{"id":"vesna-product-unlock-cook","npc":"Vesna","venue":"The Blue Room back door","district":"red_tape_flats","location":[-256,-54],"wants":[{"item":"hive_resin","qty":6}],"gives":{"type":"unlock_job","missionId":"vesna-04-cook","chain":"vesna-glow"},"repeatable":false,"cooldownSec":0,"rep":{"factions":[{"faction":"saltblood","min":0}],"missions_done":["vesna-03-resin"]},"risk":{"bust_chance":0.05,"wanted_on_bust":1,"wanted_on_trade":0},"wiredBy":"Jeff","lines":{"offer":"Vesna: Keep your credits. I need resin. Six jars.","accept":"Vesna: Good. Now I need a real lab. Talk to me.","decline":"Vesna: No resin, no lab, no money.","caught":"Vesna: Patrol. Drop it and walk."}},{"id":"vesna-product-restock","npc":"Vesna","venue":"The Blue Room back door","district":"red_tape_flats","location":[-256,-54],"wants":[{"item":"hive_resin","qty":4}],"gives":{"type":"item","item":"glow_dust","qty":3},"cooldownSec":900,"rep":{"factions":[{"faction":"saltblood","min":10}],"missions_done":["vesna-04-cook"]},"risk":{"bust_chance":0.08,"wanted_on_bust":1,"wanted_on_trade":0},"wiredBy":"Jeff","lines":{"offer":"Vesna: Resin in, dust out. Don't sample.","accept":"Vesna: Three baggies. Sell, don't smoke.","decline":"Vesna: Then go burn more nests.","caught":"Vesna: Cook shack's hot. Not now."},"repeatable":true},{"id":"rook-product-unlock-crew","npc":"Rook","venue":"Red Planet Noodle back booth","district":"olympus_row","location":[18,-416],"wants":[{"item":"glow_dust_brick","qty":1},{"item":"contraband","qty":1}],"gives":{"type":"unlock_job","missionId":"rook-04-crew","chain":"rook-heist"},"repeatable":false,"cooldownSec":0,"rep":{"factions":[{"faction":"quiet","min":0}],"missions_done":["rook-03-case"]},"risk":{"bust_chance":0.06,"wanted_on_bust":1,"wanted_on_trade":0},"wiredBy":"Jeff","lines":{"offer":"Rook: Credits leave trails. Product doesn't. Bring me a brick and a crate.","accept":"Rook: That buys a seat at the table. Let's pick a crew.","decline":"Rook: Then you're still a courier.","caught":"Rook: Eyes on us. Order the noodles and leave."}},{"id":"rook-product-unlock-withdrawal","npc":"Rook","venue":"Red Planet Noodle back booth","district":"olympus_row","location":[18,-416],"wants":[{"item":"ledger_chip","qty":2}],"gives":{"type":"unlock_job","missionId":"rook-05-withdrawal","chain":"rook-heist"},"repeatable":false,"cooldownSec":0,"rep":{"factions":[{"faction":"quiet","min":20}],"missions_done":["rook-04-crew"]},"risk":{"bust_chance":0.08,"wanted_on_bust":1,"wanted_on_trade":0},"wiredBy":"Jeff","lines":{"offer":"Rook: Two Quiet chips and I can read the vault schedule.","accept":"Rook: Schedule's cracked. The Big Withdrawal is on.","decline":"Rook: No chips, no vault.","caught":"Rook: Kline's people. Go."}}];
+export const BARTER_STORY = { // the chain hooks wired by Jeff (wiredBy: "Jeff" in barter.json)
+  'vesna-product-unlock-cook': 'vesna-04-cook', 'rook-product-unlock-crew': 'rook-04-crew', 'rook-product-unlock-withdrawal': null, // null = mission deferred: inert
+};
+const unlockJob = (g, id) => { const q = GM.QUESTS.find(x => x.id === id); if (!q) return false; q.requires = []; g.setFlag('barter:unlock:' + id); return true; };
+function storyTrade(app, o) { // our part of a trade: advance the story chain
+  const g = app.game; if (!(o.id in BARTER_STORY)) return { ok: true };
+  const mid = BARTER_STORY[o.id];
+  if (!mid) return { ok: false, inert: true, msg: 'Rook: Withdrawal\u2019s not ready. Keep your chips.' };
+  if (g.progress.quests[mid]?.everDone || g.flag('barter:unlock:' + mid)) return { ok: false, msg: `${o.npc}: Already yours.` };
+  unlockJob(g, mid); const q = GM.QUESTS.find(x => x.id === mid);
+  return { ok: true, unlocked: mid, msg: `${o.lines?.accept || o.npc + ': Deal.'} New job: ${q?.title || mid}.` };
+}
+function engineGive(app, o) { // only for offers we registered ourselves (Marsmania absent from the list)
+  const g = app.game, P = g.progress, W = app.surface?.world, gv = o.gives || {}, own = w => P.unlocks.includes('weapon:' + w);
+  const addA = (id, n) => { P.inv[id] = (P.inv[id] || 0) + n; };
+  if (gv.type === 'weapon') { if (!own(gv.weaponId)) P.unlocks.push('weapon:' + gv.weaponId); if (gv.ammo) addA(gv.ammo.ammoId, gv.ammo.qty); }
+  else if (gv.type === 'ammo_bundle') { const need = { shells: 'shotgun', rounds: 'smg', slugs: 'railrifle', grenades: 'launcher' };
+    for (const a of gv.ammo || []) if (!gv.onlyOwned || a.ammoId === 'shells' || own(need[a.ammoId])) addA(a.ammoId, a.qty); }
+  else if (gv.type === 'wanted_clear') { if (!W?.wanted) return { ok: false, msg: 'Rusk: You\u2019re clean. Don\u2019t waste my evidence.' }; W.setWanted(Math.max(0, W.wanted - (gv.stars || 1)), 'rusk wipe'); }
+  else if (gv.type === 'venue_access' && gv.venueId === 'velvet_airlock_vip') g.setFlag('vip');
+  g.save?.(); return { ok: true };
+}
+const B = { mine: new Set(), attached: new Map(), last: 0 };
+function barterCheck(app) {
+  const C = window.SSX?.contraband; if (!C) return;
+  const getO = id => C.getOffer?.(id) ?? C.offers?.[id] ?? (C.offers instanceof Map ? C.offers.get(id) : undefined);
+  for (const o of BARTER) {
+    const story = o.id in BARTER_STORY, cur = getO(o.id);
+    if (B.mine.has(o.id)) continue;
+    if (cur) { // Marsmania's: attach the story hook once per offer object; nothing to do for non-story rows
+      if (!story || B.attached.get(o.id) === cur) continue;
+      if (typeof C.onTrade === 'function') C.onTrade(o.id, ctx => storyTrade(app, o, ctx));
+      else { const prev = cur.onTrade; cur.onTrade = ctx => { const r = storyTrade(app, o, ctx); if (r.ok === false) return r; const p = prev ? prev(ctx) : { ok: true }; return { ...r, ...(p || {}), msg: r.msg || p?.msg }; }; }
+      B.attached.set(o.id, cur); continue;
+    }
+    if (typeof C.registerOffer !== 'function') continue;
+    try {
+      const r = C.registerOffer({ ...JSON.parse(JSON.stringify(o)), onTrade: ctx => { const s = storyTrade(app, o, ctx); if (s.ok === false) return s; const e = { ok: true }; /* v7.5.1: contraband.js applies every built-in give itself (wanted_clear, weapon, ammo, venue_access), so applying engineGive here doubled it (Rusk wiped 2 stars) */ const res = { ...s, ...e, msg: e.msg || s.msg || o.lines?.accept }; if (res.msg) app.toast?.(`💬 ${res.msg}`, 3200); return res; } });
+      if (r !== false) B.mine.add(o.id);
+    } catch (e) { console.warn('storymars barter', o.id, e); B.mine.add(o.id); }
+  }
+}
 function tick(app, dt) {
+  if (window.SSX?.contraband && performance.now() - B.last > 1000) { B.last = performance.now(); barterCheck(app); }
   const g = app.game; if (!g?.debug || !app.state?.onSurface) { if (S.key) { cleanup(app); S.key = null; } return; }
   const q = g.debug.quest(), def = q && GM.QUESTS.find(x => x.id === q.id);
   if (!q || !def?.storymars) { if (S.key) { cleanup(app); S.key = null; } return; }
@@ -306,9 +357,10 @@ function tick(app, dt) {
 }
 export function initStoryMars(app) {
   if (!app || app.__storymars) return; app.__storymars = true;
+  for (const mid of Object.values(BARTER_STORY)) if (mid && app.game?.flag?.('barter:unlock:' + mid)) unlockJob(app.game, mid); // barter unlocks survive reloads
   let last = performance.now();
   setInterval(() => { const now = performance.now(), dt = Math.min(0.5, (now - last) / 1000); last = now; if (document.hidden) return; try { tick(app, dt); } catch (e) { console.warn('storymars', e); } }, 100);
   // test/debug hooks
   window.__storymars = { shipped: SHIPPED, deferred: DEFERRED, get state() { return { key: S.key, t: S.t, tail: S.tail ? { x: S.tail.group.position.x, z: S.tail.group.position.z, i: S.tail.i } : null, esc: S.esc ? { x: S.esc.x, z: S.esc.z, hp: S.esc.hp } : null, sheet: sheet?.style.display === 'block' }; },
-    skip(sec) { S.t += sec; }, types: Object.keys(HUMAN_TYPES) };
+    skip(sec) { S.t += sec; }, types: Object.keys(HUMAN_TYPES), barter: { offers: BARTER.map(o => o.id), get registered() { return [...B.mine]; }, get attached() { return [...B.attached.keys()]; } } };
 }

@@ -1,12 +1,12 @@
 // THE ONE PLACE race.js / trackbuilder.js talk to core, same pattern as steve/multi-planet's planets/hooks.js.
 // Grok Bot's generic hooks (registerMission / registerColony / menu items) are expected on main later; each wrapper
 // uses the real core hook when it exists and otherwise falls back to the v7.2 DOM/registries, so after that lands
-// only this file needs to change. Import URLs must match the core's ?v= exactly (shared module instances).
+// only this file needs to change. Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
 //
 // The per-frame hook can't come from here: race.js needs the surface's private scene/camera/player/car, so surface.js
 // calls raceTick(dt, ctx) directly (one import + one call). If core grows a registerSurfaceTick(fn) it can move here.
-export { buildVehicle, VEHICLES } from './world.js?v=7.5';
-export { QUESTS } from './game.js?v=7.5';
+export { buildVehicle, VEHICLES } from './world.js';
+export { QUESTS } from './game.js';
 
 // ☰ menu: app.registerMenuItem({ id, label, onTap }) if core provides it; else inject a .btn into #roverMenu above Settings.
 export function addMenuItem(app, { id, label, onTap }) {
@@ -19,6 +19,16 @@ export function addMenuItem(app, { id, label, onTap }) {
 }
 // pointer-based tap: fires on pointerup of the same pointer, so a thumb resting on the joystick doesn't block it
 // (iOS WebKit drops the synthetic click while another finger is down). Mouse/keyboard still use click.
+// v7.5.2: delegated version for panels that re-render their buttons (race, side jobs, poker). panelTap(panel, fn) replaces
+// the previous handler like panel.onclick = fn; fn gets { target: button } on a touch tap, or the click event otherwise.
+export function panelTap(el, fn) {
+  el.__ptap = fn; if (el.__ptapOn) return; el.__ptapOn = true;
+  let id = null, btn = null, x = 0, y = 0, last = 0;
+  el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const b = e.target.closest && e.target.closest('button'); if (!b || !el.contains(b)) return; id = e.pointerId; btn = b; x = e.clientX; y = e.clientY; });
+  el.addEventListener('pointerup', e => { if (e.pointerId !== id) return; const b = btn; id = null; btn = null; if (!b || b.disabled || Math.hypot(e.clientX - x, e.clientY - y) > 14) return; e.preventDefault(); last = performance.now(); el.__ptap?.({ target: b, type: 'tap', pointerType: e.pointerType, preventDefault() {}, stopPropagation() {} }); });
+  el.addEventListener('pointercancel', e => { if (e.pointerId === id) { id = null; btn = null; } });
+  el.addEventListener('click', e => { if (performance.now() - last < 700) return; el.__ptap?.(e); });
+}
 export function tap(el, fn) {
   let id = null, last = 0;
   el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; e.preventDefault(); id = e.pointerId; });
