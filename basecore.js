@@ -13,7 +13,7 @@ export const PIECE_CAP = 60;          // pieces per plot (render budget: a few h
 // Plots: AJ-relative centres picked off the Ares Beltway polyline, the race-track gates and the other v7.5 lots
 // (Red Line Motors [58,46]/[80,30], car meet [-6,-78]). See /workspace/solar-system-story/mars-city/*.json.
 export const PLOTS = [
-  { id: 'aj-east', name: 'Junction East Lot', district: 'Ares Junction', aj: [62, -32], price: 1500, blurb: 'Two minutes from the cantina. Neighbours mind their own business, mostly.' },
+  { id: 'aj-north', name: 'Junction Ridge Lot', district: 'Ares Junction', aj: [65, -65], price: 1500, blurb: 'Two minutes from the cantina. Neighbours mind their own business, mostly.' },
   { id: 'flats-scrap', name: 'Flats Scrap Lot', district: 'Red Tape Flats', aj: [-180, -66], price: 900, blurb: 'Cheap because the Saltbloods drive past it every night. Build walls.' },
   { id: 'helios-ridge', name: 'Helios Ridge Lot', district: 'Helios Heights', aj: [215, 20], price: 4000, blurb: 'Ridge-top view of the mansions. The HOA can\u2019t see you from here.' }
 ];

@@ -4,7 +4,7 @@ let fails = 0; const ok = (name, c) => { if (!c) { fails++; console.log('FAIL', 
 const mem = () => { const m = {}; return { getItem: k => m[k] ?? null, setItem: (k, v) => { m[k] = String(v); }, m }; };
 ok('3 plots, unique ids', B.PLOTS.length === 3 && new Set(B.PLOTS.map(p => p.id)).size === 3);
 ok('5 piece types', ['wall', 'gate', 'garage', 'stash', 'turret'].every(t => B.PIECES[t]));
-const s = B.freshSave(), A = s.plots['aj-east'];
+const s = B.freshSave(), A = s.plots['aj-north'];
 ok('unowned refuses', !B.canPlace(A, 'wall', 0, 0, 0).ok);
 A.owned = true;
 ok('wall ok', B.canPlace(A, 'wall', 0, 0, 0, { credits: 100 }).ok);
@@ -29,10 +29,10 @@ ok('snap centres the footprint', JSON.stringify(B.snap('wall', 0, 0.1, 0.1)) ===
 ok('pickTarget nearest in range', B.pickTarget(0, 0, [{ x: 40, z: 0 }, { x: 10, z: 0 }, { x: 5, z: 3 }]).x === 5 && B.pickTarget(0, 0, [{ x: 40, z: 0 }]) === null);
 // save / load / migrate
 A.stash.credits = 250; const ls = mem(); B.save(ls, s); const L = B.load(ls);
-ok('roundtrip', L.plots['aj-east'].owned && L.plots['aj-east'].pieces.length === 2 && L.plots['aj-east'].stash.credits === 250 && L.plots['aj-east'].nextId === A.nextId);
-ok('corrupt -> fresh', !B.load({ getItem: () => '{bad' }).plots['aj-east'].owned);
-const m = B.migrate({ plots: { 'aj-east': { owned: true, pieces: [{ type: 'wall', i: 1, j: 1, r: 5, id: 3 }, { type: 'wall', i: 1, j: 1, r: 0, id: 4 }, { type: 'nuke', i: 2, j: 2 }, { type: 'turret', i: 99, j: 0 }], stash: { credits: -5 } }, bogus: {} } });
-ok('migrate drops overlap/unknown/off-grid, clamps', m.plots['aj-east'].pieces.length === 1 && m.plots['aj-east'].pieces[0].r === 1 && m.plots['aj-east'].stash.credits === 0 && m.plots['aj-east'].nextId === 4 && !m.plots.bogus);
-const cap = B.freshSave().plots['aj-east']; cap.owned = true; let n = 0; for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (B.canPlace(cap, 'wall', i, j, 0).ok) { B.addPiece(cap, 'wall', i, j, 0); n++; }
+ok('roundtrip', L.plots['aj-north'].owned && L.plots['aj-north'].pieces.length === 2 && L.plots['aj-north'].stash.credits === 250 && L.plots['aj-north'].nextId === A.nextId);
+ok('corrupt -> fresh', !B.load({ getItem: () => '{bad' }).plots['aj-north'].owned);
+const m = B.migrate({ plots: { 'aj-north': { owned: true, pieces: [{ type: 'wall', i: 1, j: 1, r: 5, id: 3 }, { type: 'wall', i: 1, j: 1, r: 0, id: 4 }, { type: 'nuke', i: 2, j: 2 }, { type: 'turret', i: 99, j: 0 }], stash: { credits: -5 } }, bogus: {} } });
+ok('migrate drops overlap/unknown/off-grid, clamps', m.plots['aj-north'].pieces.length === 1 && m.plots['aj-north'].pieces[0].r === 1 && m.plots['aj-north'].stash.credits === 0 && m.plots['aj-north'].nextId === 4 && !m.plots.bogus);
+const cap = B.freshSave().plots['aj-north']; cap.owned = true; let n = 0; for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (B.canPlace(cap, 'wall', i, j, 0).ok) { B.addPiece(cap, 'wall', i, j, 0); n++; }
 ok('wall cap', n === B.PIECES.wall.max);
 console.log(fails ? `FAIL ${fails}` : 'PASS unit'); process.exit(fails ? 1 : 0);

@@ -1,4 +1,4 @@
-// v7.5 Mars base building e2e: ☰ 🏠 Mars base -> buy Junction East Lot via the context button -> 🏗️ Build -> place a wall,
+// v7.5 Mars base building e2e: ☰ 🏠 Mars base -> buy Junction Ridge Lot via the context button -> 🏗️ Build -> place a wall,
 // gate, garage, stash and turret with the toolbar + context button (taps with a second finger while a thumb holds the
 // joystick on phones; mouse + K key on desktop) -> rotate -> remove/refund -> stash deposit -> turret fires at a raider /
 // security -> SSX.base.raid emits base:raid -> reload the page -> everything is restored.
@@ -30,7 +30,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const act = async () => { if (desk) await page.keyboard.press('KeyK'); else await ourTap('#baseBtn'); };
   const shot = async name => { for (let i = 0; i < 2; i++) { try { await page.screenshot({ path: `${out}${tag}-${name}.png`, timeout: 90000 }); return true; } catch (e) { R['shotRetry-' + name] = i + 1; } } return false; };
   const move = (x, z, yaw = 0) => G(([x, z, yaw]) => window.__app.surface.debugMove(x, z, yaw), [x, z, yaw]);
-  const PID = 'aj-east';
+  const PID = 'aj-north';
   const land = async () => {
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     const l = await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000); await sleep(800);
@@ -159,7 +159,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // live NPC budget (v7.5: SSX.city.npcBudget(); older cores: count the visible people)
     const npc = await G(() => { const W = window.__app.surface.world, b = W.npcBudget?.() || window.SSX?.city?.npcBudget?.(); if (b) return { used: b.used, cap: b.cap }; const p = window.__app.surface.world.debug.people(); return { used: p.filter(q => q.on !== false && q.visible !== false).length, cap: 12 }; });
     ok('npcCap', `${npc.used}/${npc.cap}`, npc.used <= npc.cap && (desk || npc.cap <= 12));
-    await move(c.x + 3, c.z + 26, 0); await sleep(1500); await shot('finished');
+    await move(c.x + 2, c.z + 18, 0); await sleep(2500); await shot('finished');
     // ---- reload: everything comes back
     const snap = await G(id => JSON.stringify(window.SSX.base.state(id)), PID);
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 }); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 150000);
