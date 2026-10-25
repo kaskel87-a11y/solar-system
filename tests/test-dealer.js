@@ -107,7 +107,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await tap('[data-close="1"]'); await sleep(200);
     await releaseStick();
     // brakes: a braking car with the brakes upgrade stops harder than the stock 26 m/s²
-    await G(() => { const st = window.__app.surface; st.debugMove(st.info.roverX, st.info.roverZ - 30, Math.PI); window.__race.setCarSpeed(20); });
+    await G(() => { const st = window.__app.surface, p = window.__dealer.spots.dealer; st.debugMove(p.x - 4, p.z + 14, Math.PI); window.__race.setCarSpeed(0); }); // flat dealer apron
+    await wait(() => !window.__race.car().air, 4000); await G(() => window.__race.setCarSpeed(20));
     const b0 = await G(() => { window.__app.joy.y = 1; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; }); // stick pulled back = brake
     await G(() => new Promise(r => { let n = 0; const f = () => (++n >= 8 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }));
     const b1 = await G(() => { window.__app.joy.y = 0; return { v: window.__race.car().speed, a: window.__dealer.brakeAssist }; });
