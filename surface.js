@@ -679,7 +679,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
 
   function look(dx, dy, k) {
-    if (driving) { camYawOff -= dx * k; lastLook = time; } else player.yaw -= dx * k;
+    if (driving) camYawOff -= dx * k; else player.yaw -= dx * k;
+    if (dx) lastLook = time;
     player.pitch -= dy * k;
     player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
   }
@@ -1011,7 +1012,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const introY = state.intro > 0 ? Math.pow(state.intro / 1.8, 2) * 40 : 0, introP = state.intro > 0 ? state.intro * 0.35 : 0;
     const first = camDist < 0.8;
     if (driving) {
-      if (time - lastLook > 1.2) camYawOff *= Math.exp(-dt * 2);
+      // v7.2 GTA-style: a manual orbit eases back behind the vehicle 1.5 s after the last drag, or as soon as it's moving
+      const lookIdle = time - lastLook;
+      if (lookIdle > 1.5 || (lookIdle > 0.35 && (Math.abs(car.speed) > 2 || car.air))) camYawOff *= Math.exp(-dt * (lookIdle > 1.5 ? 2.2 : 2.8));
       // v7.2: the chase cam swings after the car's heading (softer in the air, so banked turns read)
       if (camYawS === null || first) camYawS = car.yaw;
       else camYawS += Math.atan2(Math.sin(car.yaw - camYawS), Math.cos(car.yaw - camYawS)) * (1 - Math.exp(-dt * (car.air ? 3.5 : 9)));
@@ -1021,6 +1024,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         camera.position.copy(camT); camera.rotation.set(player.pitch + car.pitch * (car.air ? 0.6 : 1), viewYaw, car.roll * (car.air ? 0.5 : 1), 'YXZ');
       } else camT.set(car.x, car.y + 2.0, car.z);
     } else {
+      // v7.2 GTA-style third person: the camera eases round behind the way you face (you turn to face where you walk).
+      // Drag to orbit any time; it settles back 1.5 s after you let go, or as soon as you move. Desktop mouse-look (pointer lock) is left alone.
+      if (!first && state.intro <= 0 && !document.pointerLockElement) {
+        const idle = time - lastLook, d = Math.atan2(Math.sin(player.faceYaw - player.yaw), Math.cos(player.faceYaw - player.yaw));
+        let rate = 0;
+        if (player.moving > 0.05 && idle > 0.35) rate = 2.4 * player.moving * (0.25 + 0.75 * Math.max(0, Math.cos(d))); // full pull when running away from the lens, gentle when strafing or coming back toward it
+        else if (idle > 1.5) rate = 2.2;
+        player.yaw += d * (1 - Math.exp(-dt * rate));
+      }
       viewYaw = player.yaw; camYawS = null;
       if (first) {
         camera.position.set(player.x, player.y + introY + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
@@ -1242,6 +1254,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         nearVehicle: (() => { if (driving || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
         nearContact: !driving ? (world.nearContact()?.name || null) : null, nearShop: !driving && world.nearShop(), wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
         carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,
+        faceYaw: player.faceYaw, camYawOff, lookIdle: time - lastLook,
         thrust: (() => { const r = driving ? car : rover; const can = driving && canThrust(car); return { can, on: !!(can && r.thrusting), fuel: r ? Math.round(r.fuel ?? 100) : 0, max: r ? FUEL_MAX(r) : 100, jet: r?.jet || 0 }; })(), viewYaw,
         dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
         nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 7,

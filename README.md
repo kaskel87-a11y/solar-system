@@ -57,13 +57,20 @@ The rover turret now works with **hostiles off** and **while flying**. When you'
 - **On Android or desktop Chrome:** use the ☰ menu → **📲 Add to Home Screen**, which triggers the install prompt, or use the browser's Install button.
 - The ☰ menu item has a small dot until you've opened it once. It hides itself when the game is already running as an installed app. There are no banners.
 
+**Third-person camera stays behind you (GTA-style).**
+- On foot, your character turns to face the way you walk, and the camera eases round behind them. It pulls hard when you run away from the lens and gently when you strafe or walk back toward it.
+- The same follow works in your rover, stolen rides, and while flying.
+- Drag to orbit and look around whenever you like. The camera settles back behind you 1.5 s after you let go, or right away once you start moving.
+- Pinch or scroll zoom distance is kept.
+- First person and desktop mouse-look (pointer lock) are left alone.
+
 **Share with friends (free, no App Store).**
 - ☰ menu → **🔗 Share with friends** opens the phone's share sheet (iMessage, WhatsApp, etc.). It sends the title, a one-line pitch and the clean link https://kaskel87-a11y.github.io/solar-system/.
 - Where there's no share sheet, as on most desktop browsers, it copies the link and shows a small "Link copied" toast.
 - The page carries Open Graph and Twitter card tags, with a 1200×630 gameplay card (`share-card.jpg`: the Roadster thrusting past the Starship). Links unfurl with a big preview in iMessage, Slack, Discord and X.
 - Everyone's progress is their own. Credits, unlocks, quests and settings live in that device's localStorage, so nothing is shared through the link. A friend opening it starts fresh, and so does an installed home-screen copy on a new phone.
 
-Tests: `tests/test-v72.js` covers:
+Tests: `tests/test-cam.js` checks that the camera converges behind you after turning, and covers orbit hold, ease-back, zoom kept, rover, flying and stolen rides. `tests/test-v72.js` covers:
 - air turns left and right, plus bank sign, with and without thrust;
 - thrust lift, fuel drain, empty tank and ground recharge;
 - turret fire with hostiles off while flying;
