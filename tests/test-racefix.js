@@ -1,4 +1,4 @@
-// v7.4.2 race fixes (BUGS-v7.4 M1/M2) on Mars / Gutter Sprint:
+// Race fixes (BUGS-v7.4 M1/M2) on Mars / Gutter Sprint:
 //  M1 camera: the BUGS-v7.4 repro (stopped against the second chicane barrier, chase camera inside the gate-4 truss)
 //     plus samples along the whole chicane drive: the lens must stay clear of race geometry and no barrier/ramp may
 //     sit between the lens and the car, and race geometry may cover at most 2% of the frame within 3 m of the lens.

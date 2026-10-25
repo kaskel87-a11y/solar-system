@@ -178,7 +178,7 @@
     .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
     #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 50px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
       background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-    #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
+    #surfInfo { flex: 1 1 auto; min-width: 4.6em; /* v7.5.1 (p1): the world name never shrinks to 'M' */ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
     #tbBars { flex: 0 0 74px; display: flex; flex-direction: column; justify-content: center; gap: 1px; } #tbBars .bar { height: 5px; margin: 0; flex: 1 1 auto; min-width: 0; }
     /* v7.4: labelled meters. Icons only on phones, short words + numbers on wider screens. Thrust shows only when you can thrust */
     .tbRow { display: flex; align-items: center; gap: 4px; height: 12px; } .tbL { flex: 0 0 auto; width: 13px; text-align: center; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 800; letter-spacing: 0.02em; } .tbL b { display: none; } .tbV { display: none; }
@@ -190,6 +190,8 @@
     #miniMap { position: fixed; z-index: 7; top: calc(60px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
     #stackR { position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
+    /* v7.5.1: on portrait phones a radio pill outranks a toast, so the right stack never reaches the screen centre */
+    @media (max-aspect-ratio: 1/1) { #stackR:has(> #radio[style*="block"]) > #toast { display: none !important; } }
     #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
     #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #questTrack { border-color: rgba(80,200,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -214,6 +216,16 @@
     #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
     #roverMenu { position: fixed; z-index: 12; top: calc(60px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
     #roverMenu.show { display: flex; }
+    body:not(.surface) #roverMenu :is(#takeoffBtn, #discBtn, #viewBtn, #rmSummon, #rmWarp, #rmShopNav, #rmShip, #hideHudBtn, #rmDistricts) { display: none !important; }
+    body.surface #spaceMenuBtn { display: none; }
+    #spaceMenuBtn { min-width: 46px; min-height: 44px; font-size: 1.15rem; }
+    #rmDistricts { display: none; } body.has-districts #rmDistricts { display: block; }
+    #sheet { position: fixed; z-index: 40; left: 50%; bottom: calc(18px + var(--sab)); transform: translateX(-50%); width: min(420px, calc(100vw - 20px)); max-height: 70vh; overflow-y: auto; display: none; padding: 12px 12px 10px; border-radius: 14px; background: rgba(10,14,26,0.96); color: #fff; }
+    #sheet.show { display: block; }
+    #sheet h3 { margin: 0 0 4px; font-size: 1rem; } #sheet p { margin: 0 0 8px; font-size: 0.88rem; color: #dfe6f5; }
+    #sheetBtns { display: flex; flex-direction: column; gap: 6px; }
+    #sheetBtns button { min-height: 44px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; text-align: left; padding: 8px 12px; background: #1d2a4a; color: #fff; border: 1px solid rgba(255,255,255,0.55); }
+    #sheetBtns button.alt { background: #2a2f3a; }
     #roverMenu button { min-height: 44px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 5px 10px; white-space: nowrap; }
     @media (max-height: 1150px) and (min-height: 441px) { #roverMenu { width: min(380px, calc(100vw - 16px)); } #roverMenu.show { display: grid; grid-template-columns: 1fr 1fr; } #roverMenu button { white-space: normal; line-height: 1.15; } } /* v7.3: 13 items fit on an SE/iPhone 14 without scrolling */
     #roverMenu #takeoffBtn { background: linear-gradient(135deg, rgba(255,90,54,0.95), rgba(255,154,60,0.95)); border: none; box-shadow: none; }
@@ -258,6 +270,7 @@
     #duelPanel { position: fixed; inset: 0; z-index: 60; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
     #duelPanel .wrap { width: min(420px, calc(100vw - 16px)); margin: 0 8px calc(10px + var(--sab)); padding: 14px; border-radius: 16px; background: #0b0f1c; color: #fff; border: 1px solid #ffb020; }
     #duelPanel h2 { margin: 0 0 4px; font-size: 1.05rem; } #duelPanel p { margin: 0 0 8px; font-size: 0.8rem; color: #d6dcef; } #duelPanel .lbl { font-size: 0.72rem; color: #d6dcef; margin: 6px 0 2px; }
+    body:has(#duelPanel[style*="flex"]) #joy, body:has(#duelPanel[style*="flex"]) #surfBtns { visibility: hidden; } /* v7.5.1 (m4) */
     #duelPanel .row { display: flex; gap: 6px; margin-bottom: 4px; } #duelPanel .btn { flex: 1; min-height: 44px; font-size: 0.82rem; }
     #duelPanel .chipb.on { outline: 2px solid #ffb020; background: rgba(255,176,32,0.25); } #duelPanel .chipb:disabled { opacity: 0.4; }
     #duelBanner { display: none; position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); max-width: 340px; margin-left: auto; padding: 4px 6px 4px 10px; border-radius: 10px; background: rgba(8,10,20,0.78); border: 1px solid rgba(255,176,32,0.6); color: #fff; font-size: 0.72rem; }
@@ -325,6 +338,7 @@
   </div>
 
   <div id="topright">
+    <button id="spaceMenuBtn" class="btn" aria-label="Menu">☰</button>
     <button id="flyBtn" class="btn">🚀 Fly</button>
     <div id="speedbox" class="glass"><span>Speed</span><input type="range" id="speed" min="0" max="4" step="0.1" value="0.6" aria-label="Simulation speed"></div>
   </div>
@@ -355,6 +369,25 @@
     </div>
   </div>
 
+  <!-- v7.5: the ☰ menu lives outside the surface HUD so it opens in space too -->
+  <div id="roverMenu" class="glass">
+      <button id="takeoffBtn" class="btn">🚀 Take off</button>
+      <button id="rmDistricts" class="btn">🏙 Districts</button>
+      <button id="discBtn" class="btn">🔎 Discoveries 0/0</button>
+      <button id="viewBtn" class="btn">👁 Third person</button>
+      <button id="rmSummon" class="btn">🚙 Summon rover here</button>
+      <button id="rmWarp" class="btn">✨ Warp to rover</button>
+      <button id="rmShopNav" class="btn">🛒 Shop</button>
+      <button id="rmShip" class="btn">🏠 Return to ship</button>
+      <button id="hideHudBtn" class="btn">🎬 Hide HUD</button>
+      <button id="a2hsBtn" class="btn">📲 Add to Home Screen<span class="dot"></span></button>
+      <button id="shareBtn" class="btn">🔗 Share with friends</button>
+      <button id="settingsBtn" class="btn">⚙️ Settings &amp; log</button>
+      <button id="ctlBtn" class="btn">❔ Controls</button>
+      <button id="fsBtn" class="btn">⛶ Full screen</button>
+      <button id="rmClose" class="btn">✖ Close</button>
+    </div>
+  <div id="sheet" class="glass" role="dialog" aria-modal="true"><h3 id="sheetTitle"></h3><p id="sheetText"></p><div id="sheetBtns"></div></div>
   <div id="surfHud">
     <div id="lockChip">🖱 Esc frees mouse · M menu</div>
   <div id="topBar">
@@ -373,22 +406,6 @@
       <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
       <div id="toast" class="glass"></div>
       <div id="radio"><div class="from">📻 <span id="radioFrom">CONTROL</span></div><div id="radioText"></div><div class="btns" id="radioBtns"><button id="radioAccept">✅ Accept</button><button id="radioLater" class="btn">Later</button></div></div>
-    </div>
-    <div id="roverMenu" class="glass">
-      <button id="takeoffBtn" class="btn">🚀 Take off</button>
-      <button id="discBtn" class="btn">🔎 Discoveries 0/0</button>
-      <button id="viewBtn" class="btn">👁 Third person</button>
-      <button id="rmSummon" class="btn">🚙 Summon rover here</button>
-      <button id="rmWarp" class="btn">✨ Warp to rover</button>
-      <button id="rmShopNav" class="btn">🛒 Shop</button>
-      <button id="rmShip" class="btn">🏠 Return to ship</button>
-      <button id="hideHudBtn" class="btn">🎬 Hide HUD</button>
-      <button id="a2hsBtn" class="btn">📲 Add to Home Screen<span class="dot"></span></button>
-      <button id="shareBtn" class="btn">🔗 Share with friends</button>
-      <button id="settingsBtn" class="btn">⚙️ Settings &amp; log</button>
-      <button id="ctlBtn" class="btn">❔ Controls</button>
-      <button id="fsBtn" class="btn">⛶ Full screen</button>
-      <button id="rmClose" class="btn">✖ Close</button>
     </div>
     <button id="hudShow" aria-label="Show HUD">👁</button>
     <div id="surfBtns">
@@ -451,13 +468,16 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.4';
-    import { buildStarship } from './models.js?v=7.4';
-    import { COSMETICS, registerMission } from './game.js?v=7.4';
-    import { registerColony, registerVehicle, registerDistrict, districtsOf, VEHICLES } from './world.js?v=7.4';
-    import { registerInterior } from './interiors.js?v=7.4';
-    import { createAudio7 } from './audio7.js?v=7.4';
-    import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.5.1';
+    import { buildStarship } from './models.js?v=7.5.1';
+    import { COSMETICS, registerMission, registerAgentModel, AGENT_TYPES } from './game.js?v=7.5.1';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js?v=7.5.1';
+    import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js?v=7.5.1'; // v7.5 Mars city (Steve's pack)
+    import { registerInterior } from './interiors.js?v=7.5.1';
+    import { createAudio7 } from './audio7.js?v=7.5.1';
+    import { initPlanets } from './planets/index.js?v=7.5.1'; // multi-planet expansion (data-driven, planets/*.js)
+    import { initStoryMars } from './storymars.js?v=7.5.1'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import { initHeist } from './heist.js?v=7.5.1'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -995,7 +1015,9 @@
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       // v7.3 (playtest m7): an offer during the landing reveal arrives as a one-line pill; tap it (or Enter) to read and accept
-      const early = radioOffer && performance.now() - landedAt < 12000 && performance.now() - talkedAt > 3000; // v7.4: you asked, so it opens if (early) radioEl.classList.add('mini');
+      // v7.5.1: anything you didn't ask for arrives as the one-line pill (offers everywhere, chatter on touch) so the centre stays clear; tap to read
+      const early = performance.now() - talkedAt > 3000 && (!!radioOffer || isTouch);
+      if (early) radioEl.classList.add('mini'); // v7.5.1 (m1): landing offers arrive as the mini pill, keeping the centre clear
       if (!isTouch) { document.getElementById('radioAccept').textContent = '✅ Accept (Enter)'; document.getElementById('radioLater').textContent = 'Later (⌫)'; }
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
       speak(ev.text);
@@ -1012,7 +1034,7 @@
     function shrinkRadio() { if (radioEl.style.display === 'block') radioEl.classList.add('mini'); }
     const gameLog = [];
     function onSurfaceEvent(type, ev) {
-      if (type !== 'zap' && type !== 'hit') { gameLog.push(type); if (gameLog.length > 300) gameLog.splice(0, 150); }
+      if (type !== 'zap' && type !== 'hit') { gameLog.push(type); if (gameLog.length > 300) gameLog.splice(0, 150); try { window.SSX?.emit?.('game:' + type, ev); } catch (e) { console.warn(e); } }
       if (type === 'discover') { chime(); showPop(ev); updateSurfHud(true); }
       else if (type === 'bark') { if (ev.warn) growl(); else bark(); }
       else if (type === 'dogHint') toast(ev.quest ? `🐶 ${dogName} smells something for your quest ${ev.dir}, ${ev.dist} m away!` : `🐶 ${dogName} is sniffing at something ${ev.dir}, ${ev.dist} m away!`);
@@ -1064,6 +1086,20 @@
       else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
       else if (type === 'overheat') { overheatSnd(); toast('🔥 Blaster\'s cooking. Let it breathe, or punch something.', 2200); }
       else if (type === 'toast') toast(ev.text, ev.long ? 4200 : 3500);
+      // ----- v7.5 city -----
+      else if (type === 'zone') { if (ev.name && ev.id && ev.id !== 'aj') toast(`📍 ${ev.name}`, 2000); }
+      else if (type === 'checkpoint') { if (ev.msg) toast(`${ev.ok ? '🛂' : '⛔'} ${ev.msg}`, 3000); if (!ev.ok) au7.fx.siren?.(); }
+      else if (type === 'backup') { if (ev.deploy) { au7.fx.siren?.(); toast('🚓 Backup rolling. Officers deploying.', 2200); } else if (ev.officerDown) toast('📻 "Officer down! All units!"', 2200); }
+      else if (type === 'heavy') toast('🛡 Heavy security on scene. Armour, shotgun, bad attitude.', 2600);
+      else if (type === 'gunship') { au7.fx.siren?.(); toast('🚁 Gunship overhead. Get under something.', 2600); }
+      else if (type === 'alarm') { au7.fx.wanted?.(); toast(ev.safe ? '🚨 The safe screams. Private security is coming.' : '🚨 Alarm tripped. Private security inbound.', 2600); }
+      else if (type === 'camera') { if (ev.cased) toast('📷 Camera looped. You have two minutes.', 2400); else if (ev.seen) toast('📷 A camera saw that.', 2000); }
+      else if (type === 'honk') { au7.fx.honk?.(); sfxLog.push('honk'); }
+      else if (type === 'cover') { /* NPCs take cover: no toast */ }
+      else if (type === 'choice') openChoice(ev);
+      else if (type === 'choiceMade') closeSheet();
+      else if (type === 'crack') { if (ev.start) toast(`🔐 Working the dial… hold still (${Math.round(ev.secs)} s)`, 2200); else if (ev.done) { au7.fx.cash(); toast(`🔓 Cracked${ev.credits ? ` · +${ev.credits} cr` : ''}.`, 2600); } updateSurfHud(true); }
+      else if (type === 'chase') { au7.fx.siren?.(); toast('🏁 They’re on your tail. Floor it.', 2400); }
       else if (type === 'indoor') {
         document.body.classList.toggle('indoors', !!ev.on); shopPanel.style.display = 'none'; shopMark = null; au7.fx.door(); sfxLog.push(ev.on ? 'enter' : 'leave');
         au7.setVenue?.(ev.on ? (ev.kind === 'club' ? 'club' : ev.kind === 'cantina' ? 'cantina' : null) : null);
@@ -1129,7 +1165,7 @@
           surface.resize(innerWidth, innerHeight);
           surface.enter(landedBody.userData.name);
           onSurface = true; landAnim = null; landedAt = performance.now(); if (document.pointerLockElement) document.exitPointerLock?.(); // v7.4: land with a free mouse so ☰ and the HUD are clickable; click the ground to lock aim
-          document.body.classList.add('surface');
+          document.body.classList.add('surface'); document.body.classList.toggle('has-districts', (surface.world.districts?.() || []).length > 1);
           factPanel.style.display = 'none'; au7.startAmbient();
           updateSurfHud(true);
         } catch (err) { console.error(err); landAnim = null; }
@@ -1149,7 +1185,7 @@
       setTimeout(() => {
         surface.exit();
         onSurface = false;
-        au7.thruster(0); document.body.classList.remove('surface', 'driving', 'canthrust'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.classList.remove('on'); radioEl.style.display = 'none';
+        au7.thruster(0); document.body.classList.remove('surface', 'driving', 'canthrust', 'has-districts'); closeSheet?.(); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.classList.remove('on'); radioEl.style.display = 'none';
         // put the rocket back in space on the sunlit side of the body, pointing away from it
         landedBody.getWorldPosition(tmpV2);
         const r = landedBody.userData.r || 3;
@@ -1238,7 +1274,8 @@
       if (i.inside) {
         const s = i.spot; if (!s) return { kind: null, label: '' };
         if (s.act === 'buy') return { kind: 'buy', label: buyLabel(surface.game.shopItem(s.ware)), ware: s.ware };
-        if (s.act === 'bribe') { const c = surface.game.bribeCost(); return { kind: 'spot', label: c ? `💰 Pay off Rusk · ${c} cr` : s.label, spot: s }; }
+        if (s.act === 'bribe') { const c = surface.game.bribeCost(); return { kind: 'spot', label: c ? `💰 Pay off ${s.who || 'Rusk'} · ${c} cr` : s.label, spot: s }; }
+        if (s.act === 'crack') { const j = surface.game.crackJob; return { kind: 'spot', label: j ? `🔓 Cracking… ${Math.round(j.p * 100)}%` : s.label, spot: s }; }
         if (s.act === 'vip' && !surface.game.flag('vip')) return { kind: 'spot', label: '🍾 VIP room · 60 cr', spot: s };
         return { kind: 'spot', label: s.label, spot: s };
       }
@@ -1287,7 +1324,9 @@
       if (s.act === 'leave') { surface.leaveBuilding(); }
       else if (s.act === 'shop') openShop(s.venue, s.who);
       else if (s.act === 'talk') { talkedAt = performance.now(); g.talk(s.who); }
-      else if (s.act === 'bribe') { const r = g.bribe(); showRadio({ text: r.msg, contact: 'Deputy Rusk' }); if (r.ok) au7.fx.cash(); }
+      else if (s.act === 'bribe') { const r = g.bribe(); showRadio({ text: r.msg, contact: s.who && s.who !== 'Rusk' ? s.who : 'Deputy Rusk' }); if (r.ok) au7.fx.cash(); }
+      else if (s.act === 'crack') { if (g.crackJob) return; g.crack(s.crack, s.difficulty || 2).then(r => { if (!r.ok) toast(r.why === 'empty' ? '🔐 Already cleaned out.' : '🔐 You let go of the dial. It reset.', 2400); updateSurfHud(true); }); }
+      else if (s.act === 'jobs') openJobBoard(s.who || 'Ines');
       else if (s.act === 'vip') {
         if (!g.flag('vip')) { if (!g.spend(60)) { toast('Tiny: VIP is 60. You are not VIP.', 2600); return; } g.setFlag('vip'); au7.fx.cash(); }
         surface.world.openVip(); toast('Tiny unhooks the rope. "Ines will see you. Don\u2019t touch anything."', 3200);
@@ -1463,6 +1502,7 @@
     const fmtDist = d => d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`;
     // heading-up radar: you in the middle, rover, ship, objective, next discovery, aliens and your dog as icons
     let mapLast = null;
+    const mapMarks = new Map(); // v7.5.1: id -> [{ x, z, color, r, clamp }] (world coords), drawn on the minimap
     function drawMiniMap() {
       const md = surface.mapData?.(); if (!md) return;
       const css = miniMap.clientWidth || 92, dpr = Math.min(2, window.devicePixelRatio || 1), W = Math.round(css * dpr);
@@ -1498,6 +1538,7 @@
         const blink = (performance.now() / 250 | 0) % 2;
         for (const q of W7.security || []) { const p = proj(q.x, q.z, true); c.beginPath(); c.arc(p[0], p[1], 2.8 * dpr, 0, Math.PI * 2); c.fillStyle = blink ? '#ef4444' : '#3b82f6'; c.fill(); out.security = (out.security || 0) + 1; }
       }
+      for (const [, ms] of mapMarks) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (!p) continue; c.beginPath(); c.arc(p[0], p[1], (m.r || 2.6) * dpr, 0, Math.PI * 2); c.fillStyle = m.color || '#f59e0b'; c.fill(); if (m.ring) { c.strokeStyle = '#000'; c.lineWidth = dpr; c.stroke(); } out.marks = (out.marks || 0) + 1; } // v7.5.1 add-on blips (SSX.minimap)
       if (md.gate) { const p = proj(md.gate.x, md.gate.z, true); c.beginPath(); c.arc(p[0], p[1], 4 * dpr, 0, Math.PI * 2); c.strokeStyle = '#facc15'; c.lineWidth = 2 * dpr; c.stroke(); out.gate = true; }
       if (trackerFlash > 0.02) { c.beginPath(); c.arc(R, R, (R - 4 * dpr) * (1.05 - trackerFlash * 0.6), 0, Math.PI * 2); c.strokeStyle = `rgba(74,222,128,${(trackerFlash * 0.7).toFixed(2)})`; c.lineWidth = 2 * dpr; c.stroke(); trackerFlash *= 0.8; }
       c.save(); c.translate(R, R); c.beginPath(); c.moveTo(0, -6 * dpr); c.lineTo(4.5 * dpr, 5 * dpr); c.lineTo(0, 2.5 * dpr); c.lineTo(-4.5 * dpr, 5 * dpr); c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
@@ -1616,6 +1657,69 @@
       shopMark = { x: s.x, z: s.z, name: s.name }; toast(`🛒 ${s.name}: ${Math.round(s.dist)} m. Look for the pulsing $ on the radar.`, 3200); updateSurfHud(true);
     };
     document.getElementById('rmClose').onclick = () => roverMenu.classList.remove('show');
+    // ===== v7.5 sheet (choices, job board, fast travel), space ☰, city API =====
+    const sheetEl = document.getElementById('sheet');
+    function openSheet(title, text, buttons, noClose) {
+      document.getElementById('sheetTitle').textContent = title; document.getElementById('sheetText').textContent = text || '';
+      const box = document.getElementById('sheetBtns'); box.textContent = '';
+      for (const b of noClose ? buttons : [...buttons, { label: '✖ Close', alt: true, fn: () => {} }]) { const e = document.createElement('button'); e.textContent = b.label; if (b.alt) e.className = 'alt'; e.disabled = !!b.disabled; e.onclick = () => { closeSheet(); b.fn(); updateSurfHud(true); }; box.appendChild(e); }
+      roverMenu.classList.remove('show'); sheetEl.classList.add('show'); if (document.pointerLockElement) document.exitPointerLock();
+    }
+    function closeSheet() { sheetEl.classList.remove('show'); }
+    function openChoice(ev) { openSheet('🤝 Your call', ev.prompt, ev.options.map(o => ({ label: o.label, fn: () => surface.game.choose(o.id) })), true); }
+    function openJobBoard(who) {
+      const all = surface.game.jobBoard(true), jobs = all.filter(j => !j.locked), locked = all.filter(j => j.locked).slice(0, Math.max(2, 6 - jobs.length));
+      openSheet(`📋 ${who}’s job board`, jobs.length ? 'City work. Ines takes 10%, the contact pays the rest.' : 'Nothing open for you yet. Make a name with the jobs below and Ines will call.',
+        [...jobs.slice(0, 8).map(j => ({ label: `${j.active ? '▶ ' : ''}${j.title} · ${j.contact} · ${j.credits} cr`, fn: () => { if (surface.game.accept(j.id)) toast(`📜 ${j.title}: ${j.contact} is expecting you.`, 2800); } })),
+         ...locked.map(j => ({ label: `🔒 ${j.title} · after ${j.needs[0] || 'more work'}`, disabled: true, fn: () => {} }))]);
+    }
+    function openDistricts() {
+      const ds = surface.world.districts?.() || [];
+      openSheet('🏙 Fast travel', surface.world.wanted > 0 ? 'Lose the heat first. Nobody gives a lift to a wanted spacer.' : 'Hop a city shuttle. Your rover comes along.',
+        ds.map(d => ({ label: `${d.id === surface.world.zone ? '📍 ' : ''}${d.name}`, disabled: surface.world.wanted > 0, fn: () => { const r = surface.fastTravel(d.id); toast(r.ok ? `🚌 ${r.name}` : `❌ Can’t travel: ${r.why}`, 2400); } })));
+    }
+    document.getElementById('rmDistricts').onclick = () => openDistricts();
+    document.getElementById('spaceMenuBtn').onclick = () => toggleMenu();
+    // window.SSX.city: what add-ons (Steve's events/activities, Pumpkin's lots, Ben's heists) build on. See API.md.
+    const bus = new EventTarget();
+    Object.assign(window.SSX, {
+      registerHighway, registerAgentModel, AGENT_TYPES, MATERIAL_ROLES,
+      on(type, fn) { const h = e => fn(e.detail); bus.addEventListener(type, h); return () => bus.removeEventListener(type, h); },
+      emit(type, detail = {}) { bus.dispatchEvent(new CustomEvent(type, { detail })); },
+      city: {
+        districts: CITY_DISTRICTS, missions: CITY_MISSION_IDS,
+        get world() { return surface.world; }, get game() { return surface.game; },
+        districtAt: (x, z) => surface.world.districtAt?.(x, z), spawnPoints: (id, kind) => surface.world.spawnPoints?.(id, kind) || [], roadAhead: (m) => surface.world.roadAhead?.(m),
+        npcBudget: () => surface.world.npcBudget?.() || { cap: 0, used: 0, free: 0 }, npcReserve: (k, n) => surface.world.npcReserve?.(k, n),
+        freeSpot: (x, z, r = 0.8) => surface.world.freeSpot?.(x, z, r), lots: id => surface.world.lots?.(id) || [],
+        hostiles: (types, x, z, o) => surface.game.hostiles(types, x, z, o), alarm: (lvl, at, why) => surface.world.alarm?.(lvl, at, why),
+        cameras: () => surface.world.cameras?.() || [], caseCamera: id => surface.world.caseCamera?.(id), fastTravel: id => surface.fastTravel(id),
+        choice: (prompt, options) => new Promise(res => openSheet('🤝 Your call', prompt, options.map(o => ({ label: o.label, fn: () => res(o.id) })))),
+        toast: (t, ms) => toast(t, ms), radio: (text, contact) => showRadio({ text, contact }),
+        get zone() { return surface.world.zone; }, get wanted() { return surface.world.wanted; }, setWanted: (n, why) => surface.world.setWanted(n, why),
+        get quest() { return surface.game.info?.quest || null; },
+        // v7.5.1 asks from Ben's heist PR
+        colony: () => { const c = surface.info?.colony; return c ? { x: c.x, z: c.z } : null; },
+        player: () => { const i = surface.info; return i ? { x: i.x, z: i.z, y: i.y, driving: !!i.driving, inside: !!i.inside, world: i.name } : null; },
+        height: (x, z) => surface.world.groundAt?.(x, z) ?? null,
+        lineOfSight: (x1, z1, x2, z2, y = 1.6) => surface.world.lineOfSight?.(x1, z1, x2, z2, y) ?? true,
+        safeSpots: id => (surface.world.spawnPoints?.(id) || []).filter(p => /safe|vault/.test(p.kind || '')),
+        securityResponse: (x, z, level = 2, o = {}) => surface.game.hostiles(level >= 4 ? ['guard', 'guard', 'enforcer', 'sdrone'] : level >= 3 ? ['guard', 'guard', 'sdrone'] : ['guard', 'sdrone'], x, z, { r: 14, src: 'heist', faction: 'private', ...o })
+      },
+      get radar() { return this.minimap; },
+      minimap: { addMarks(id, marks) { mapMarks.set(id, (marks || []).map(m => ({ ...m }))); }, clear(id) { id ? mapMarks.delete(id) : mapMarks.clear(); }, list: () => [...mapMarks.keys()] },
+      registerSurfaceTick: fn => surface.registerTick?.(fn),
+      height: (x, z) => surface.world.groundAt?.(x, z) ?? null, // world coords; colony-relative callers add SSX.city.colony()
+      despawnVehicle: () => surface.chopVehicle?.() || false,
+    });
+    // Ben's heist: private security answers alarms; informant camera/patrol tips draw on the minimap
+    window.SSX.on('heist:alarm:response', d => { if (d && d.x != null && !surface.world.inside) window.SSX.city.securityResponse(d.x, d.z, d.wanted || 2); });
+    addEventListener('heist:alarm:response', e => window.SSX.emit('heist:alarm:response', e.detail));
+    addEventListener('heist:escape', e => window.SSX.emit('heist:escape', e.detail));
+    addEventListener('heist:tip', e => { const d = e.detail || {}; const pts = [...(d.cameras || []).map(c => ({ x: c.x, z: c.z, color: '#f43f5e', r: 2.4 })), ...(d.guards || []).map(g => ({ x: g.x, z: g.z, color: '#60a5fa', r: 2.4 }))]; if (pts.length) window.SSX.minimap.addMarks('tip:' + (d.id || 'heist'), pts); });
+    addEventListener('ssx:chop', () => window.SSX.despawnVehicle()); // Marsmania's chop shop scraps the stolen ride
+    addEventListener('heist:done', e => window.SSX.minimap.clear('tip:' + (e.detail?.id || 'heist')));
+    window.SSX.on('heist:escape', d => { toast(`🏃 Clean getaway${d?.name ? ' from ' + d.name : ''}. Now lose the heat.`, 2600); updateSurfHud(true); });
     // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
     const a2hsBtn = document.getElementById('a2hsBtn'), A2HS_KEY = 'ssx.a2hs.seen';
     const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
@@ -1968,14 +2072,16 @@
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
-      landOn, landAction, renderer, version: 'v7.4', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.5.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
-    initPlanets(window.__app);
+    initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
+    import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
+  <script type="module" src="./mars/contraband.js?v=7.5.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.4').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.1').catch(() => {}));
 </script>
 </body>
 </html>

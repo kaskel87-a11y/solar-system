@@ -58,7 +58,7 @@ const gh = RC.packGhost([[0, 0, 0, 0], [100, 10, 0, 0.5], [200, 20, 0, 1]]); con
 ok('ghost interp', Math.abs(ga.x - 15) < 1e-6 && Math.abs(ga.yaw - 0.75) < 1e-6 && !ga.done); ok('ghost end', RC.ghostAt(gh, 999).done);
 // format
 ok('fmt', RC.fmtTime(83456) === '1:23.45' && RC.fmtTime(NaN) === '--:--.--');
-// v7.4.2 barrier slide (BUGS-v7.4 M2): project onto the barrier tangent, push out, keep speed
+// race fix: barrier slide (BUGS-v7.4 M2): project onto the barrier tangent, push out, keep speed
 {
   const B = { t: 'barrier', x: 0, z: 0, yaw: 0 }; // long axis = x, normal = -z (along = -dz)
   const hd = y => [-Math.sin(y), -Math.cos(y)];
@@ -115,7 +115,7 @@ ok('fmt', RC.fmtTime(83456) === '1:23.45' && RC.fmtTime(NaN) === '--:--.--');
     ok(`chicane sim (${lane}): reaches gate 5`, done, JSON.stringify({ t: t.toFixed(2), car }));
   }
 }
-// v7.4.2 race props as camera blockers (BUGS-v7.4 M1)
+// race fix: race props as camera blockers (BUGS-v7.4 M1)
 {
   const B = { t: 'barrier', x: 0, z: 0, yaw: 0 }, Rp = { t: 'ramp', x: 0, z: 0, yaw: 0 };
   ok('cam: inside barrier', RC.propCamHit(B, 1, 0.8, 0.1, 0));

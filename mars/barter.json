@@ -1,0 +1,1770 @@
+{
+  "format": "solar-system-story/mars-barter v1",
+  "world": "Mars",
+  "rating": "M (violence, crime, fictional drugs). No nudity or sexual content.",
+  "fiction": "All contraband is fictional (glow-dust, hive resin). No real drugs, brands or companies.",
+  "api": {
+    "register": "SSX.contraband.registerOffer({id, npc, district, wants, gives, onTrade})",
+    "trade": "SSX.contraband.barter(item, qty, offerId)",
+    "bark": "SSX.bark(npc, 'barter_' + key) for key in lines (offer/accept/decline/caught); fall back to the line text."
+  },
+  "coords": "location is [x, z] AJ-relative (Ares Junction centre), world.js axes. AJ-core venues (Ozzie's Iron, Velvet Airlock, Cantina) use their existing anchors and the nearest district centre, Red Tape Flats.",
+  "districts": {
+    "olympus_row": {
+      "centre_aj": [
+        0,
+        -430
+      ],
+      "pack_id": "mars-downtown"
+    },
+    "red_tape_flats": {
+      "centre_aj": [
+        -280,
+        -40
+      ],
+      "pack_id": "mars-rough"
+    },
+    "helios_heights": {
+      "centre_aj": [
+        320,
+        80
+      ],
+      "pack_id": "mars-gated"
+    }
+  },
+  "schema": {
+    "offer": "{id, npc, venue, district, location:[x,z], wants:[{item,qty}], gives:{type,...}, cooldownSec, repeatable, rep:{factions:[{faction,min}], missions_done?, flags?}, requires?, risk:{bust_chance, wanted_on_bust, wanted_on_trade, note?}, lines:{offer,accept,decline,caught}, tier?, wiredBy?}",
+    "risk": "bust_chance 0..1 rolled per trade; on bust the wants are lost and wanted rises by wanted_on_bust; wanted_on_trade applies on success.",
+    "repeatable": "false = one-time (unlocks, upgrades, heist tips); cooldownSec ignored."
+  },
+  "give_types": {
+    "weapon": "Grant SHOP weapon id (game.js) plus starting ammo. Marsmania maps to engine shop grant.",
+    "ammo_bundle": "Ammo by SHOP ammo id; onlyOwned=true skips guns the player lacks.",
+    "wanted_clear": "Lower wanted by stars (world.setWanted(max(0, wanted - stars))).",
+    "raid_tip": "Toast/radio warning before the next ColSec raid; Marsmania owns raid timing.",
+    "venue_access": "Flag-based entry for venueId for durationSec (velvet_airlock_vip, the_static_door).",
+    "garage_vehicle": "SSX.garage.grantVehicle(vehicleId, opts), e.g. opts {noPlates:true} (Pumpkin).",
+    "garage_upgrade": "SSX.garage.grantUpgrade(upgradeId) (Pumpkin). ids match game.js SHOP upgrade/roverup ids.",
+    "heist_tip": "heist.applyTip(heistId, tip) (Ben). tip = {type:'cameras'} | {type:'safe', ease:0.3} | {type:'patrol'}.",
+    "gang_backup": "Spawn friendly faction escorts (count, durationSec). Needs Marsmania/CoS spawner; no-op if missing.",
+    "chop": "Despawn current stolen vehicle, clear its heat, pay payoutCredits + bonusItems.",
+    "unlock_job": "Unlock missionId (Jeff wires via registerOffer onTrade).",
+    "item": "Add inventory item qty (catalog id)."
+  },
+  "items": [
+    {
+      "id": "credits",
+      "name": "Credits",
+      "kind": "currency",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 1,
+        "red_tape_flats": 1,
+        "helios_heights": 1
+      },
+      "desc": "Game credits. Spent through the engine wallet, not inventory."
+    },
+    {
+      "id": "glow_dust",
+      "name": "Glow-dust baggie",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 1,
+      "base_value": {
+        "olympus_row": 70,
+        "red_tape_flats": 45,
+        "helios_heights": 95
+      },
+      "desc": "Shimmering blue powder cooked from hive resin. Fiction only."
+    },
+    {
+      "id": "glow_dust_brick",
+      "name": "Glow-dust brick",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 2,
+      "base_value": {
+        "olympus_row": 620,
+        "red_tape_flats": 400,
+        "helios_heights": 820
+      },
+      "desc": "Pressed wholesale brick, ~10 baggies. Glows through the wrap."
+    },
+    {
+      "id": "contraband",
+      "name": "Sealed contraband crate",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 2,
+      "base_value": {
+        "olympus_row": 300,
+        "red_tape_flats": 220,
+        "helios_heights": 360
+      },
+      "desc": "Generic Quiet crate used by missions (mars-smuggle, Blue Drop)."
+    },
+    {
+      "id": "hive_resin",
+      "name": "Raw hive resin",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 1,
+      "base_value": {
+        "olympus_row": 55,
+        "red_tape_flats": 40,
+        "helios_heights": 70
+      },
+      "desc": "Amber resin from hive nests. Vesna cooks it into dust."
+    },
+    {
+      "id": "salvage",
+      "name": "Salvage scrap",
+      "kind": "goods",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 18,
+        "red_tape_flats": 25,
+        "helios_heights": 14
+      },
+      "desc": "Pulled rover parts and hull plate. Scrap Run item."
+    },
+    {
+      "id": "hot_plates",
+      "name": "Hot rover plates",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 1,
+      "base_value": {
+        "olympus_row": 90,
+        "red_tape_flats": 60,
+        "helios_heights": 120
+      },
+      "desc": "Registration plates lifted off other people's rovers."
+    },
+    {
+      "id": "cold_cell",
+      "name": "Stolen fuel cell",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 1,
+      "base_value": {
+        "olympus_row": 110,
+        "red_tape_flats": 85,
+        "helios_heights": 130
+      },
+      "desc": "Depot fuel cell with the ColSec seal scraped off."
+    },
+    {
+      "id": "colsec_tag",
+      "name": "ColSec evidence tag",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 2,
+      "base_value": {
+        "olympus_row": 160,
+        "red_tape_flats": 140,
+        "helios_heights": 200
+      },
+      "desc": "Evidence locker tag. Makes a case file go missing."
+    },
+    {
+      "id": "ledger_chip",
+      "name": "Quiet ledger chip",
+      "kind": "contraband",
+      "contraband": true,
+      "heat": 2,
+      "base_value": {
+        "olympus_row": 450,
+        "red_tape_flats": 380,
+        "helios_heights": 520
+      },
+      "desc": "Encrypted chip off a Quiet courier. Meridian pays to get these back."
+    },
+    {
+      "id": "lungful",
+      "name": "Lungful can (cold)",
+      "kind": "goods",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 8,
+        "red_tape_flats": 6,
+        "helios_heights": 14
+      },
+      "desc": "Canned oxygen-tonic soda from AJ supply. Porter's weakness."
+    },
+    {
+      "id": "red_dust_whiskey",
+      "name": "Red Dust whiskey",
+      "kind": "goods",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 14,
+        "red_tape_flats": 10,
+        "helios_heights": 22
+      },
+      "desc": "Bottle of the cantina's worst. Tastes like rust."
+    },
+    {
+      "id": "medkit",
+      "name": "Trauma medkit",
+      "kind": "goods",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 40,
+        "red_tape_flats": 35,
+        "helios_heights": 50
+      },
+      "desc": "Same as the shop medkit (SHOP id medkit)."
+    },
+    {
+      "id": "ration_paste",
+      "name": "Ration paste crate",
+      "kind": "goods",
+      "contraband": false,
+      "heat": 0,
+      "base_value": {
+        "olympus_row": 12,
+        "red_tape_flats": 15,
+        "helios_heights": 10
+      },
+      "desc": "Grey, edible, legal. Dutch's first job."
+    }
+  ],
+  "offers": [
+    {
+      "id": "ozzie-iron-t1-breacher",
+      "npc": "Ozzie",
+      "venue": "Ozzie's Iron (back counter)",
+      "district": "red_tape_flats",
+      "location": [
+        16,
+        -38
+      ],
+      "tier": 1,
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "weapon",
+        "weaponId": "shotgun",
+        "ammo": {
+          "ammoId": "shells",
+          "qty": 12
+        }
+      },
+      "cooldownSec": 600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "ozzie",
+            "min": 0
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.03,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ozzie: Tier 1. No receipts, no serials.",
+        "accept": "Ozzie: Keep it pointed at strangers.",
+        "decline": "Ozzie: Then stop fogging my glass.",
+        "caught": "Ozzie: ColSec at the door. You never bought anything here."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ozzie-iron-t2-viper",
+      "npc": "Ozzie",
+      "venue": "Ozzie's Iron (back counter)",
+      "district": "red_tape_flats",
+      "location": [
+        16,
+        -38
+      ],
+      "tier": 2,
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 3
+        },
+        {
+          "item": "salvage",
+          "qty": 4
+        }
+      ],
+      "gives": {
+        "type": "weapon",
+        "weaponId": "smg",
+        "ammo": {
+          "ammoId": "rounds",
+          "qty": 60
+        }
+      },
+      "cooldownSec": 900,
+      "rep": {
+        "factions": [
+          {
+            "faction": "ozzie",
+            "min": 15
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.05,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ozzie: Tier 2. No receipts, no serials.",
+        "accept": "Ozzie: Keep it pointed at strangers.",
+        "decline": "Ozzie: Then stop fogging my glass.",
+        "caught": "Ozzie: ColSec at the door. You never bought anything here."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ozzie-iron-t3-railrifle",
+      "npc": "Ozzie",
+      "venue": "Ozzie's Iron (back counter)",
+      "district": "red_tape_flats",
+      "location": [
+        16,
+        -38
+      ],
+      "tier": 3,
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "weapon",
+        "weaponId": "railrifle",
+        "ammo": {
+          "ammoId": "slugs",
+          "qty": 6
+        }
+      },
+      "cooldownSec": 1800,
+      "rep": {
+        "factions": [
+          {
+            "faction": "ozzie",
+            "min": 35
+          }
+        ],
+        "missions_done": [
+          "ozzie-01-testfire"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 2,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ozzie: Tier 3. No receipts, no serials.",
+        "accept": "Ozzie: Keep it pointed at strangers.",
+        "decline": "Ozzie: Then stop fogging my glass.",
+        "caught": "Ozzie: ColSec at the door. You never bought anything here."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ozzie-iron-t4-launcher",
+      "npc": "Ozzie",
+      "venue": "Ozzie's Iron (back counter)",
+      "district": "red_tape_flats",
+      "location": [
+        16,
+        -38
+      ],
+      "tier": 4,
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        },
+        {
+          "item": "ledger_chip",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "weapon",
+        "weaponId": "launcher",
+        "ammo": {
+          "ammoId": "grenades",
+          "qty": 4
+        }
+      },
+      "cooldownSec": 3600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "ozzie",
+            "min": 60
+          }
+        ],
+        "missions_done": [
+          "ozzie-02-hotiron"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.12,
+        "wanted_on_bust": 2,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ozzie: Tier 4. No receipts, no serials.",
+        "accept": "Ozzie: Keep it pointed at strangers.",
+        "decline": "Ozzie: Then stop fogging my glass.",
+        "caught": "Ozzie: ColSec at the door. You never bought anything here."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ozzie-iron-ammo-bulk",
+      "npc": "Ozzie",
+      "venue": "Ozzie's Iron (back counter)",
+      "district": "red_tape_flats",
+      "location": [
+        16,
+        -38
+      ],
+      "tier": 1,
+      "wants": [
+        {
+          "item": "salvage",
+          "qty": 6
+        }
+      ],
+      "gives": {
+        "type": "ammo_bundle",
+        "ammo": [
+          {
+            "ammoId": "shells",
+            "qty": 12
+          },
+          {
+            "ammoId": "rounds",
+            "qty": 60
+          }
+        ],
+        "onlyOwned": true
+      },
+      "cooldownSec": 300,
+      "rep": {
+        "factions": [
+          {
+            "faction": "ozzie",
+            "min": 5
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ozzie: Scrap for brass. Fair trade, for once.",
+        "accept": "Ozzie: Loaded. Go be loud somewhere else.",
+        "decline": "Ozzie: Brass costs, friend.",
+        "caught": "Ozzie: Not today. Badge outside."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "rusk-wipe-1",
+      "npc": "Deputy Rusk",
+      "venue": "RUSK TAKES wall",
+      "district": "red_tape_flats",
+      "location": [
+        -270,
+        -24
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "wanted_clear",
+        "stars": 1
+      },
+      "requires": {
+        "wanted_min": 1
+      },
+      "cooldownSec": 600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "colsec_dirty",
+            "min": 0
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.1,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0,
+        "note": "On bust Rusk keeps the product and adds a star."
+      },
+      "lines": {
+        "offer": "Rusk: One star? Two baggies and the paperwork gets lost.",
+        "accept": "Rusk: Who? Never heard of you.",
+        "decline": "Rusk: Then enjoy the attention.",
+        "caught": "Rusk: You tried to bribe a deputy? That's another star, genius."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "rusk-wipe-2",
+      "npc": "Deputy Rusk",
+      "venue": "RUSK TAKES wall",
+      "district": "red_tape_flats",
+      "location": [
+        -270,
+        -24
+      ],
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        },
+        {
+          "item": "colsec_tag",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "wanted_clear",
+        "stars": 2
+      },
+      "requires": {
+        "wanted_min": 2
+      },
+      "cooldownSec": 1800,
+      "rep": {
+        "factions": [
+          {
+            "faction": "colsec_dirty",
+            "min": 20
+          }
+        ],
+        "missions_done": [
+          "rusk-01-protection"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.15,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0,
+        "note": "On bust Rusk keeps the product and adds a star."
+      },
+      "lines": {
+        "offer": "Rusk: Two stars is real work. Brick and an evidence tag.",
+        "accept": "Rusk: Your file just fell in the recycler.",
+        "decline": "Rusk: Your funeral. Literally, maybe.",
+        "caught": "Rusk: You tried to bribe a deputy? That's another star, genius."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "rusk-raid-tip",
+      "npc": "Deputy Rusk",
+      "venue": "RUSK TAKES wall",
+      "district": "red_tape_flats",
+      "location": [
+        -270,
+        -24
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 1
+        },
+        {
+          "item": "credits",
+          "qty": 120
+        }
+      ],
+      "gives": {
+        "type": "raid_tip",
+        "scope": "next_colsec_raid",
+        "warnSec": 90,
+        "reveals": [
+          "district",
+          "target",
+          "eta"
+        ]
+      },
+      "cooldownSec": 1200,
+      "rep": {
+        "factions": [
+          {
+            "faction": "colsec_dirty",
+            "min": 10
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.05,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Rusk: Want to know where the boys hit next? It'll cost you.",
+        "accept": "Rusk: Ninety seconds' warning. Don't say I'm generous.",
+        "decline": "Rusk: Then be surprised.",
+        "caught": "Rusk: You tried to bribe a deputy? That's another star, genius."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ines-velvet-vip",
+      "npc": "Ines",
+      "venue": "Velvet Airlock",
+      "district": "red_tape_flats",
+      "location": [
+        -30,
+        -36
+      ],
+      "wants": [
+        {
+          "item": "red_dust_whiskey",
+          "qty": 2
+        },
+        {
+          "item": "credits",
+          "qty": 80
+        }
+      ],
+      "gives": {
+        "type": "venue_access",
+        "venueId": "velvet_airlock_vip",
+        "durationSec": 900
+      },
+      "cooldownSec": 900,
+      "rep": {
+        "factions": [
+          {
+            "faction": "velvet",
+            "min": 0
+          }
+        ],
+        "missions_done": [
+          "ines-01-door"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Ines: VIP is for people who bring something. Bottles talk.",
+        "accept": "Ines: Booth three. Hands to yourself, eyes on the stage.",
+        "decline": "Ines: Floor's fine for you, then.",
+        "caught": "Ines: Not tonight. ColSec is drinking at the bar."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "ines-velvet-vip-dust",
+      "npc": "Ines",
+      "venue": "Velvet Airlock",
+      "district": "red_tape_flats",
+      "location": [
+        -30,
+        -36
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "venue_access",
+        "venueId": "velvet_airlock_vip",
+        "durationSec": 1800
+      },
+      "cooldownSec": 1800,
+      "rep": {
+        "factions": [
+          {
+            "faction": "velvet",
+            "min": 20
+          }
+        ],
+        "missions_done": [
+          "ines-02-pour"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0,
+        "note": "Ines hates dust in her bar; she takes it off the street, not into it."
+      },
+      "lines": {
+        "offer": "Ines: That baggie leaves with me, not with a patron. Deal?",
+        "accept": "Ines: Off the floor and into my safe. VIP all night.",
+        "decline": "Ines: Then keep it out of my club.",
+        "caught": "Ines: Bouncers. Now. Get him out."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "dutch-clean-rover",
+      "npc": "Dutch",
+      "venue": "Behind the Cantina",
+      "district": "red_tape_flats",
+      "location": [
+        36,
+        -22
+      ],
+      "wants": [
+        {
+          "item": "hot_plates",
+          "qty": 2
+        },
+        {
+          "item": "glow_dust",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "garage_vehicle",
+        "vehicleId": "rover",
+        "opts": {
+          "noPlates": true
+        }
+      },
+      "cooldownSec": 2400,
+      "rep": {
+        "factions": [
+          {
+            "faction": "cantina",
+            "min": 10
+          }
+        ],
+        "missions_done": [
+          "dutch-04-intro"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.06,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Dutch: Fresh rover out back. No plates, no history, no questions.",
+        "accept": "Dutch: Keys are in it. Don't park it out front.",
+        "decline": "Dutch: Walk, then. Mars is big.",
+        "caught": "Dutch: Sirens. That rover was never mine."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "dutch-clean-buggy",
+      "npc": "Dutch",
+      "venue": "Behind the Cantina",
+      "district": "red_tape_flats",
+      "location": [
+        36,
+        -22
+      ],
+      "wants": [
+        {
+          "item": "hot_plates",
+          "qty": 3
+        },
+        {
+          "item": "cold_cell",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "garage_vehicle",
+        "vehicleId": "buggy",
+        "opts": {
+          "noPlates": true
+        }
+      },
+      "cooldownSec": 3600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "cantina",
+            "min": 25
+          }
+        ],
+        "missions_done": [
+          "dutch-04-intro"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Dutch: Dune buggy. Quick, light, very unregistered.",
+        "accept": "Dutch: Try not to roll it. Insurance is a myth.",
+        "decline": "Dutch: Suit yourself.",
+        "caught": "Dutch: Somebody talked. Scatter."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "torque-upgrade-armor",
+      "npc": "Torque",
+      "venue": "Helios service bay",
+      "district": "helios_heights",
+      "location": [
+        342,
+        72
+      ],
+      "wants": [
+        {
+          "item": "salvage",
+          "qty": 8
+        }
+      ],
+      "gives": {
+        "type": "garage_upgrade",
+        "upgradeId": "roverarmor"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 0
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Torque: Bring me parts and I'll fit armor plate. Labour's on the house.",
+        "accept": "Torque: Done. She purrs now.",
+        "decline": "Torque: Bay's open when you've got scrap.",
+        "caught": "Torque: Helios security's sniffing around. Come back later."
+      }
+    },
+    {
+      "id": "torque-upgrade-turret2",
+      "npc": "Torque",
+      "venue": "Helios service bay",
+      "district": "helios_heights",
+      "location": [
+        342,
+        72
+      ],
+      "wants": [
+        {
+          "item": "salvage",
+          "qty": 10
+        },
+        {
+          "item": "cold_cell",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "garage_upgrade",
+        "upgradeId": "turret2"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 10
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.02,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Torque: Bring me parts and I'll fit a Mk II turret. Labour's on the house.",
+        "accept": "Torque: Done. She purrs now.",
+        "decline": "Torque: Bay's open when you've got scrap.",
+        "caught": "Torque: Helios security's sniffing around. Come back later."
+      }
+    },
+    {
+      "id": "torque-upgrade-turret3",
+      "npc": "Torque",
+      "venue": "Helios service bay",
+      "district": "helios_heights",
+      "location": [
+        342,
+        72
+      ],
+      "wants": [
+        {
+          "item": "salvage",
+          "qty": 14
+        },
+        {
+          "item": "cold_cell",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "garage_upgrade",
+        "upgradeId": "turret3",
+        "needsUpgrade": "turret2"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 25
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.04,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Torque: Bring me parts and I'll fit a Mk III turret. Labour's on the house.",
+        "accept": "Torque: Done. She purrs now.",
+        "decline": "Torque: Bay's open when you've got scrap.",
+        "caught": "Torque: Helios security's sniffing around. Come back later."
+      }
+    },
+    {
+      "id": "porter-tip-quinn-patrol",
+      "npc": "Porter",
+      "venue": "Helios Gate",
+      "district": "helios_heights",
+      "location": [
+        324,
+        118
+      ],
+      "wants": [
+        {
+          "item": "lungful",
+          "qty": 6
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-01-quinn",
+        "tip": {
+          "type": "patrol"
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 0
+          }
+        ],
+        "missions_done": [
+          "porter-01-list"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Porter: Six cold Lungfuls and I'll draw you the guard walk round Quinn Villa.",
+        "accept": "Porter: Posts are on your map. You didn't get them from me.",
+        "decline": "Porter: Then you go in blind.",
+        "caught": "Porter: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "porter-tip-voss-cameras",
+      "npc": "Porter",
+      "venue": "Helios Gate",
+      "district": "helios_heights",
+      "location": [
+        324,
+        118
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 2
+        },
+        {
+          "item": "lungful",
+          "qty": 6
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-04-voss",
+        "tip": {
+          "type": "cameras"
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 20
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.06,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Porter: Voss House camera plan. It's worth more than my job.",
+        "accept": "Porter: Every lens is marked. Burn the note.",
+        "decline": "Porter: Then you go in blind.",
+        "caught": "Porter: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "dorsey-tip-kline-safe",
+      "npc": "Dorsey",
+      "venue": "First Junction Trust staff door",
+      "district": "olympus_row",
+      "location": [
+        -8,
+        -452
+      ],
+      "wants": [
+        {
+          "item": "ledger_chip",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-02-kline",
+        "tip": {
+          "type": "safe",
+          "ease": 0.3
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 10
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Dorsey: Kline uses the same wall safe as the branch. I know its quirks.",
+        "accept": "Dorsey: Third tumbler sticks. Lean on it. Safe's easier now.",
+        "decline": "Dorsey: Then you go in blind.",
+        "caught": "Dorsey: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "dorsey-tip-kline-cameras",
+      "npc": "Dorsey",
+      "venue": "First Junction Trust staff door",
+      "district": "olympus_row",
+      "location": [
+        -8,
+        -452
+      ],
+      "wants": [
+        {
+          "item": "credits",
+          "qty": 200
+        },
+        {
+          "item": "glow_dust",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-02-kline",
+        "tip": {
+          "type": "cameras"
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 5
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.05,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Dorsey: Kline bought his cameras off the bank's order sheet. I have the sheet.",
+        "accept": "Dorsey: Lenses marked. Tell no one I can read.",
+        "decline": "Dorsey: Then you go in blind.",
+        "caught": "Dorsey: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "halloran-tip-sable-patrol",
+      "npc": "Halloran",
+      "venue": "Helios service road",
+      "district": "helios_heights",
+      "location": [
+        350,
+        68
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 3
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-03-sable",
+        "tip": {
+          "type": "patrol"
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 15
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.1,
+        "wanted_on_bust": 2,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Halloran: I pull nights at the Sable Annex. Dust and I forget my rota.",
+        "accept": "Halloran: Guard posts on your map. Hit it on my night off.",
+        "decline": "Halloran: Then you go in blind.",
+        "caught": "Halloran: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "halloran-tip-sable-safe",
+      "npc": "Halloran",
+      "venue": "Helios service road",
+      "district": "helios_heights",
+      "location": [
+        350,
+        68
+      ],
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-03-sable",
+        "tip": {
+          "type": "safe",
+          "ease": 0.3
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 30
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.12,
+        "wanted_on_bust": 2,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Halloran: Annex safe has a maintenance override. Pricey secret.",
+        "accept": "Halloran: Override code's yours. Safe will roll over.",
+        "decline": "Halloran: Then you go in blind.",
+        "caught": "Halloran: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "porter-tip-voss-safe",
+      "npc": "Porter",
+      "venue": "Helios Gate",
+      "district": "helios_heights",
+      "location": [
+        324,
+        118
+      ],
+      "wants": [
+        {
+          "item": "ledger_chip",
+          "qty": 1
+        },
+        {
+          "item": "lungful",
+          "qty": 6
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-04-voss",
+        "tip": {
+          "type": "safe",
+          "ease": 0.3
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 35
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Porter: Voss had her safe serviced. I signed the tech in. I kept the slip.",
+        "accept": "Porter: Service slip's yours. Safe's a pushover now.",
+        "decline": "Porter: Then you go in blind.",
+        "caught": "Porter: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "porter-tip-quinn-cameras",
+      "npc": "Porter",
+      "venue": "Helios Gate",
+      "district": "helios_heights",
+      "location": [
+        324,
+        118
+      ],
+      "wants": [
+        {
+          "item": "lungful",
+          "qty": 4
+        }
+      ],
+      "gives": {
+        "type": "heist_tip",
+        "heistId": "lita-01-quinn",
+        "tip": {
+          "type": "cameras"
+        }
+      },
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "helios_staff",
+            "min": 0
+          }
+        ],
+        "missions_done": [
+          "porter-01-list"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "repeatable": false,
+      "lines": {
+        "offer": "Porter: Quinn Villa cameras? She told me to tell you. Still want a can.",
+        "accept": "Porter: Lenses marked. She said \"be nice\".",
+        "decline": "Porter: Then you go in blind.",
+        "caught": "Porter: Rhee's watching me. We never spoke."
+      }
+    },
+    {
+      "id": "marrow-saltblood-backup",
+      "npc": "Marrow",
+      "venue": "Red Tape Flats",
+      "district": "red_tape_flats",
+      "location": [
+        -274,
+        -56
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 3
+        },
+        {
+          "item": "cold_cell",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "gang_backup",
+        "faction": "saltblood",
+        "count": 3,
+        "durationSec": 180,
+        "armed": "pistols"
+      },
+      "cooldownSec": 1500,
+      "rep": {
+        "factions": [
+          {
+            "faction": "saltblood",
+            "min": 20
+          }
+        ],
+        "missions_done": [
+          "marrow-01-tax"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.04,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 1,
+        "note": "Armed crew in tow: +1 wanted while they ride with you."
+      },
+      "lines": {
+        "offer": "Marrow: You want red tape at your back? Pay the Quiet's cut.",
+        "accept": "Marrow: Three of mine. Three minutes. Don't waste them.",
+        "decline": "Marrow: Then bleed alone.",
+        "caught": "Marrow: ColSec's watching. Not today."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "marrow-saltblood-crew",
+      "npc": "Marrow",
+      "venue": "Red Tape Flats",
+      "district": "red_tape_flats",
+      "location": [
+        -274,
+        -56
+      ],
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "gang_backup",
+        "faction": "saltblood",
+        "count": 5,
+        "durationSec": 300,
+        "armed": "smgs",
+        "vehicle": "buggy"
+      },
+      "cooldownSec": 3600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "saltblood",
+            "min": 45
+          }
+        ],
+        "missions_done": [
+          "marrow-02-message"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.06,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 1
+      },
+      "lines": {
+        "offer": "Marrow: Whole crew and a buggy. That's a brick.",
+        "accept": "Marrow: Five guns, five minutes. Point them.",
+        "decline": "Marrow: Then don't start what you can't finish.",
+        "caught": "Marrow: Too hot. Walk."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "wrench-free-chop",
+      "npc": "Wrench",
+      "venue": "WRENCH'S Chop Shop",
+      "district": "red_tape_flats",
+      "location": [
+        -298,
+        -18
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "chop",
+        "target": "current_hot_vehicle",
+        "payoutCredits": 0,
+        "clearsVehicleHeat": true,
+        "bonusItems": [
+          {
+            "item": "salvage",
+            "qty": 3
+          }
+        ]
+      },
+      "requires": {
+        "driving_stolen": true
+      },
+      "cooldownSec": 600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "saltblood",
+            "min": 0
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.05,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Wrench: Hot ride? Roll it in. One baggie and it was never here.",
+        "accept": "Wrench: Shutter's down. Take your scrap and go out the back.",
+        "decline": "Wrench: Then drive it round the Flats till ColSec finds you.",
+        "caught": "Wrench: Badges on the corner. Keep driving!"
+      },
+      "repeatable": true
+    },
+    {
+      "id": "nyx-static-door",
+      "npc": "Nyx",
+      "venue": "The Static",
+      "district": "olympus_row",
+      "location": [
+        14,
+        -398
+      ],
+      "wants": [
+        {
+          "item": "red_dust_whiskey",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "venue_access",
+        "venueId": "the_static_door",
+        "durationSec": 1200,
+        "skipsLine": true
+      },
+      "cooldownSec": 600,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 0
+          }
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.0,
+        "wanted_on_bust": 0,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Nyx: Line's an hour. A bottle makes it a minute.",
+        "accept": "Nyx: You're on the list. Behave inside.",
+        "decline": "Nyx: Back of the line, then.",
+        "caught": "Nyx: Door's shut. ColSec walk-through."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "nyx-static-door-dust",
+      "npc": "Nyx",
+      "venue": "The Static",
+      "district": "olympus_row",
+      "location": [
+        14,
+        -398
+      ],
+      "wants": [
+        {
+          "item": "glow_dust",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "venue_access",
+        "venueId": "the_static_door",
+        "durationSec": 2400,
+        "skipsLine": true,
+        "pokerTable": true
+      },
+      "cooldownSec": 1200,
+      "rep": {
+        "factions": [
+          {
+            "faction": "free_operators",
+            "min": 15
+          }
+        ],
+        "missions_done": [
+          "nyx-01-bounce"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.06,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "lines": {
+        "offer": "Nyx: Blue, huh? Fine. You get the door and the card room.",
+        "accept": "Nyx: Static Hold'em's in the back. Don't tip the dealer.",
+        "decline": "Nyx: Suit yourself.",
+        "caught": "Nyx: Brick, take this one out."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "vesna-product-unlock-cook",
+      "npc": "Vesna",
+      "venue": "The Blue Room back door",
+      "district": "red_tape_flats",
+      "location": [
+        -256,
+        -54
+      ],
+      "wants": [
+        {
+          "item": "hive_resin",
+          "qty": 6
+        }
+      ],
+      "gives": {
+        "type": "unlock_job",
+        "missionId": "vesna-04-cook",
+        "chain": "vesna-glow"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "saltblood",
+            "min": 0
+          }
+        ],
+        "missions_done": [
+          "vesna-03-resin"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.05,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "wiredBy": "Jeff",
+      "lines": {
+        "offer": "Vesna: Keep your credits. I need resin. Six jars.",
+        "accept": "Vesna: Good. Now I need a real lab. Talk to me.",
+        "decline": "Vesna: No resin, no lab, no money.",
+        "caught": "Vesna: Patrol. Drop it and walk."
+      }
+    },
+    {
+      "id": "vesna-product-restock",
+      "npc": "Vesna",
+      "venue": "The Blue Room back door",
+      "district": "red_tape_flats",
+      "location": [
+        -256,
+        -54
+      ],
+      "wants": [
+        {
+          "item": "hive_resin",
+          "qty": 4
+        }
+      ],
+      "gives": {
+        "type": "item",
+        "item": "glow_dust",
+        "qty": 3
+      },
+      "cooldownSec": 900,
+      "rep": {
+        "factions": [
+          {
+            "faction": "saltblood",
+            "min": 10
+          }
+        ],
+        "missions_done": [
+          "vesna-04-cook"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "wiredBy": "Jeff",
+      "lines": {
+        "offer": "Vesna: Resin in, dust out. Don't sample.",
+        "accept": "Vesna: Three baggies. Sell, don't smoke.",
+        "decline": "Vesna: Then go burn more nests.",
+        "caught": "Vesna: Cook shack's hot. Not now."
+      },
+      "repeatable": true
+    },
+    {
+      "id": "rook-product-unlock-crew",
+      "npc": "Rook",
+      "venue": "Red Planet Noodle back booth",
+      "district": "olympus_row",
+      "location": [
+        18,
+        -416
+      ],
+      "wants": [
+        {
+          "item": "glow_dust_brick",
+          "qty": 1
+        },
+        {
+          "item": "contraband",
+          "qty": 1
+        }
+      ],
+      "gives": {
+        "type": "unlock_job",
+        "missionId": "rook-04-crew",
+        "chain": "rook-heist"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "quiet",
+            "min": 0
+          }
+        ],
+        "missions_done": [
+          "rook-03-case"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.06,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "wiredBy": "Jeff",
+      "lines": {
+        "offer": "Rook: Credits leave trails. Product doesn't. Bring me a brick and a crate.",
+        "accept": "Rook: That buys a seat at the table. Let's pick a crew.",
+        "decline": "Rook: Then you're still a courier.",
+        "caught": "Rook: Eyes on us. Order the noodles and leave."
+      }
+    },
+    {
+      "id": "rook-product-unlock-withdrawal",
+      "npc": "Rook",
+      "venue": "Red Planet Noodle back booth",
+      "district": "olympus_row",
+      "location": [
+        18,
+        -416
+      ],
+      "wants": [
+        {
+          "item": "ledger_chip",
+          "qty": 2
+        }
+      ],
+      "gives": {
+        "type": "unlock_job",
+        "missionId": "rook-05-withdrawal",
+        "chain": "rook-heist"
+      },
+      "repeatable": false,
+      "cooldownSec": 0,
+      "rep": {
+        "factions": [
+          {
+            "faction": "quiet",
+            "min": 20
+          }
+        ],
+        "missions_done": [
+          "rook-04-crew"
+        ]
+      },
+      "risk": {
+        "bust_chance": 0.08,
+        "wanted_on_bust": 1,
+        "wanted_on_trade": 0
+      },
+      "wiredBy": "Jeff",
+      "lines": {
+        "offer": "Rook: Two Quiet chips and I can read the vault schedule.",
+        "accept": "Rook: Schedule's cracked. The Big Withdrawal is on.",
+        "decline": "Rook: No chips, no vault.",
+        "caught": "Rook: Kline's people. Go."
+      }
+    }
+  ]
+}

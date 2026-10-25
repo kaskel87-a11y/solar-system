@@ -168,7 +168,7 @@ export function fmtTime(ms) {
 }
 export function clampI(v, a, b) { v = Math.round(+v || 0); return Math.max(a, Math.min(b, v)); }
 
-// v7.4.2 race fixes (BUGS-v7.4 M1/M2). Prop frames: a prop's normal is f = (-sin yaw, -cos yaw) (the barrier's thin
+// Race fixes (BUGS-v7.4 M1/M2). Prop frames: a prop's normal is f = (-sin yaw, -cos yaw) (the barrier's thin
 // axis / the ramp's climb direction) and its tangent is l = (cos yaw, -sin yaw) (the barrier's long axis).
 export const BARRIER = { half: 3, thick: 0.42, h: 1.1 };   // matches jersey(6, 1.1) in race.js
 export const RAMP = { halfW: 3, halfL: 4, h: 1.9 };        // matches wedge(6, 8, 1.9) in race.js

@@ -18,12 +18,12 @@ body.tb-on #surfHud, body.tb-on #racePanel, body.tb-on #joy { display: none !imp
 #tbTop { position: absolute; top: calc(6px + var(--sat, 0px)); left: calc(8px + var(--sal, 0px)); right: calc(8px + var(--sar, 0px)); padding: 6px 10px; border-radius: 11px; background: rgba(8,10,20,0.72); border: 1px solid rgba(125,211,252,0.4); font-size: 0.74rem; line-height: 1.35; pointer-events: none; }
 #tbTop b { color: #7dd3fc; } #tbTop .h { opacity: 0.75; font-size: 0.68rem; }
 #tbBar { position: absolute; left: calc(6px + var(--sal, 0px)); right: calc(6px + var(--sar, 0px)); bottom: calc(8px + var(--sab, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-#tbBar button, #tbSheet button { min-height: 42px; border-radius: 10px; font-weight: 800; font-size: 0.76rem; color: #fff; background: rgba(14,20,40,0.82); border: 1px solid rgba(255,255,255,0.22); touch-action: none; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tbBar button, #tbSheet button { min-height: 44px; border-radius: 10px; font-weight: 800; font-size: 0.76rem; color: #fff; background: rgba(14,20,40,0.82); border: 1px solid rgba(255,255,255,0.22); touch-action: none; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tbBar button.on { background: rgba(56,225,255,0.45); border-color: #38e1ff; } #tbBar button.go { background: linear-gradient(135deg, rgba(255,42,122,0.9), rgba(255,154,60,0.9)); border: none; }
 #tbBar button:disabled { opacity: 0.4; }
 #tbSheet { position: absolute; left: calc(8px + var(--sal, 0px)); right: calc(8px + var(--sar, 0px)); bottom: calc(8px + var(--sab, 0px)); max-height: 62vh; overflow-y: auto; padding: 10px; border-radius: 13px; background: rgba(8,6,14,0.96); border: 1px solid rgba(125,211,252,0.4); display: none; font-size: 0.8rem; }
 #tbSheet.on { display: block; } #tbSheet .it { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); } #tbSheet .it div { flex: 1; min-width: 0; }
-#tbSheet input { width: 100%; box-sizing: border-box; min-height: 40px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff; font-size: 16px; padding: 0 10px; margin: 6px 0; }
+#tbSheet input { width: 100%; box-sizing: border-box; min-height: 44px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff; font-size: 16px; padding: 0 10px; margin: 6px 0; }
 #tbSheet .row { display: flex; gap: 6px; margin-top: 6px; } #tbSheet .row button { flex: 1; }
 @media (orientation: landscape) and (max-height: 500px) { #tbBar { grid-template-columns: repeat(12, 1fr); } #tbBar button { min-height: 38px; font-size: 0.7rem; } }
 `;
@@ -152,7 +152,7 @@ body.tb-on #surfHud, body.tb-on #racePanel, body.tb-on #joy { display: none !imp
   function move(e) {
     const p = ptrs.get(e.pointerId); if (!p || !gest) return; p.x = e.clientX; p.y = e.clientY;
     if (gest.kind === 'pinch' && ptrs.size >= 2) {
-      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1; alt = clamp(gest.alt0 * gest.d0 / d, 40, 150);
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1; alt = clamp(gest.alt0 * Math.pow(gest.d0 / d, 0.5), 40, 150); // v7.5.1 (m6): gentler pinch
       const k = alt / innerHeight * 1.4, c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; focus.x = gest.f0.x - (c.x - gest.c0.x) * k; focus.z = gest.f0.z - (c.y - gest.c0.y) * k; return;
     }
     if (Math.hypot(p.x - p.x0, p.y - p.y0) > 8 && !gest.moved) { gest.moved = true; if (gest.kind === 'drag') pushUndo(); }

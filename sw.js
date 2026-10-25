@@ -1,5 +1,5 @@
 // Solar System Explorer service worker (v7.3+).
-// The version comes from the registration URL (sw.js?v=7.4), the same number as the ?v cache bust on the modules,
+// The version comes from the registration URL (sw.js?v=7.5.1), the same number as the ?v cache bust on the modules,
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
 // BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
@@ -9,7 +9,9 @@ const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
   `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
-  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`,
+  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, `storymars.js${q}`, `mars/contraband.js${q}`, 'mars/barter.json', ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks'].map(n => `${n}.js${q}`),
+  ...['mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
+  `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   'vendor/three/build/three.module.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',

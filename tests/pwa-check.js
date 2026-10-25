@@ -1,6 +1,6 @@
 // installability check (Chromium CDP Page.getInstallabilityErrors + manifest/SW) and standalone-mode screenshots
 const { chromium, webkit, devices } = require('playwright');
-const base = process.env.BASE || 'http://localhost:8766/solar-system/', out = process.env.OUT || '/workspace/solar-system/shots/';
+const base = process.env.BASE || 'http://localhost:8766/solar-system/', out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const R = {};

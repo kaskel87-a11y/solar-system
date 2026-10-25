@@ -6,9 +6,9 @@
 // racehooks.js (same shim pattern as planets/hooks.js). Everything else (DOM, ☰ menu entries, the context button, minimap gate) is set up lazily from here. All geometry and materials are
 // flagged userData.shared so surface.exit()'s dispose pass leaves them alone; we re-add our root after scene.clear().
 import * as THREE from 'three';
-import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js?v=7.4';
-import * as RC from './racecore.js?v=7.4';
-import { createBuilder } from './trackbuilder.js?v=7.4';
+import { buildVehicle, VEHICLES, QUESTS, addMenuItem } from './racehooks.js?v=7.5.1';
+import * as RC from './racecore.js?v=7.5.1';
+import { createBuilder } from './trackbuilder.js?v=7.5.1';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 let C = null;                       // latest surface context from the hook
@@ -362,7 +362,7 @@ function propPhysics(props, dt) {
     const ent = car || C.player, r = car ? (car.spec?.r || 2.4) * 0.75 : 0.45;
     const dx = ent.x - p.x, dz = ent.z - p.z; if (dx * dx + dz * dz > 144) continue;
     const along = dx * fx + dz * fz, lat = dx * lx + dz * lz, key = p, cd = (R?.cool || propCool).get(key) || 0;
-    if (p.t === 'barrier') { // v7.4.2 (BUGS-v7.4 M2): slide along the barrier instead of bouncing back into it and pinning
+    if (p.t === 'barrier') { // race fix (BUGS-v7.4 M2): slide along the barrier instead of bouncing back into it and pinning
       const s = RC.barrierSlide(car ? { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed } : { x: ent.x, z: ent.z }, p, r);
       if (s) {
         ent.x = s.x; ent.z = s.z;
@@ -380,7 +380,7 @@ function propPhysics(props, dt) {
   }
 }
 const propCool = new Map();
-// v7.4.2 (BUGS-v7.4 M1): the active race's solid geometry as camera blockers: barriers and ramps (exact shapes, see
+// race fix (BUGS-v7.4 M1): the active race's solid geometry as camera blockers: barriers and ramps (exact shapes, see
 // RC.propCamHit) plus the gate gantries (legs, truss, lamps as padded oriented boxes; the 16 m chase boom used to end up
 // inside the truss of the gate behind the car). surface.js's third-person boom asks camBlocked (via window.__race)
 // alongside world.camBlocked, so the camera pulls in instead of clipping through.
@@ -427,7 +427,7 @@ const CSS = `
 #racePanel.on { display: block; } #racePanel .wrap { max-width: 640px; margin: 0 auto; } #racePanel h2 { margin: 6px 0 2px; } #racePanel .sub { opacity: 0.7; font-size: 0.8rem; margin-bottom: 10px; }
 #racePanel .item { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 8px; font-size: 0.84rem; border: 1px solid rgba(255,255,255,0.08); }
 #racePanel .item.custom { border-color: rgba(125,211,252,0.35); } #racePanel .item small { opacity: 0.72; display: block; margin-top: 2px; }
-#racePanel .item .row { display: flex; gap: 6px; margin-top: 8px; } #racePanel button { min-height: 40px; border-radius: 10px; font-weight: 800; color: #fff; background: rgba(40,56,96,0.95); border: 1px solid rgba(120,160,255,0.35); padding: 0 12px; font-size: 0.82rem; }
+#racePanel .item .row { display: flex; gap: 6px; margin-top: 8px; } #racePanel button { min-height: 44px; border-radius: 10px; font-weight: 800; color: #fff; background: rgba(40,56,96,0.95); border: 1px solid rgba(120,160,255,0.35); padding: 0 12px; font-size: 0.82rem; }
 #racePanel button.go { background: linear-gradient(135deg, rgba(255,42,122,0.95), rgba(255,154,60,0.95)); border: none; flex: 1; }
 #racePanel .close { float: right; } #racePanel .foot { display: flex; gap: 8px; margin-top: 12px; } #racePanel .foot button { flex: 1; }
 `;
@@ -587,7 +587,7 @@ window.__race = {
   place(x, z, yaw) { const c = myCar(); if (c) { c.x = x; c.z = z; if (yaw !== undefined) c.yaw = yaw; c.y = H(x, z); c.prevG = null; c.vy = 0; c.air = false; } else { C.player.x = x; C.player.z = z; } },
   car: () => { const c = myCar(); return c ? { x: c.x, z: c.z, y: c.y, yaw: c.yaw, speed: c.speed, air: !!c.air, vy: c.vy, lift: c.lift || 0, kind: c.kind } : null; },
   setCarSpeed(v) { const c = myCar(); if (c) c.speed = v; },
-  camBlocked, camBlockers: raceCamBlockers, // v7.4.2 (M1): surface.js's camera boom checks camBlocked each frame
+  camBlocked, camBlockers: raceCamBlockers, // race fix (M1): surface.js's camera boom checks camBlocked each frame
   rivalPace(k) { if (R?.rival) R.rival.pace *= k; },
   counts: () => ({ root: root?.children.length || 0, idle: idleG?.children.length || 0, race: raceG?.children.length || 0, ctx: ui?.ctx.style.display })
 };
