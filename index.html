@@ -175,6 +175,27 @@
       #fact-panel { padding: 12px 16px 14px; }
       #fact-panel p { font-size: 0.88rem; }
     }
+    /* v6 compact surface HUD: small, readable pills stacked in the corners, middle of the screen kept clear */
+    body.surface #surfInfo, body.surface #nextHint, body.surface #poiHint, body.surface #questTrack, body.surface #hpBox, body.surface .pill {
+      background: rgba(8,10,20,0.78); border: 1px solid rgba(255,255,255,0.16); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+    body.surface #surfInfo { top: calc(8px + var(--sat)); left: calc(8px + var(--sal)); padding: 4px 9px; font-size: 0.72rem; border-radius: 9px; max-width: calc(100vw - 150px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    body.surface #surfInfo b { font-size: 0.82rem; }
+    body.surface .pill { min-height: 30px; padding: 4px 10px; font-size: 0.74rem; border-radius: 9px; }
+    body.surface #takeoffBtn { top: calc(8px + var(--sat)); right: calc(8px + var(--sar)); min-height: 32px; box-sizing: border-box; background: linear-gradient(135deg, rgba(255,90,54,0.92), rgba(255,154,60,0.92)); }
+    body.surface #discBtn { top: calc(48px + var(--sat)); left: calc(8px + var(--sal)); }
+    body.surface #viewBtn { top: calc(48px + var(--sat)); right: calc(8px + var(--sar)); }
+    body.surface #nextHint { top: calc(84px + var(--sat)); left: calc(8px + var(--sal)); padding: 2px 9px 2px 4px; font-size: 0.74rem; border-radius: 9px; }
+    body.surface #nextArrow { width: 22px; height: 22px; line-height: 22px; font-size: 15px; }
+    body.surface #poiHint, body.surface #questTrack { top: calc(116px + var(--sat)); left: calc(8px + var(--sal)); padding: 4px 9px; font-size: 0.7rem; border-radius: 9px; max-width: calc(100vw - 160px); }
+    body.surface #hpBox { top: calc(84px + var(--sat)); right: calc(8px + var(--sar)); width: 128px; padding: 5px 8px; font-size: 0.64rem; border-radius: 9px; }
+    body.surface #hpBox .bar { height: 5px; margin: 1px 0 3px; }
+    body.surface #bossBar { top: calc(150px + var(--sat)); }
+    @media (max-height: 440px) {
+      body.surface #discBtn, body.surface #viewBtn { top: calc(40px + var(--sat)); }
+      body.surface #nextHint, body.surface #hpBox { top: calc(72px + var(--sat)); }
+      body.surface #poiHint, body.surface #questTrack { top: calc(100px + var(--sat)); max-width: 260px; }
+      body.surface #bossBar { top: calc(8px + var(--sat)); }
+    }
   </style>
 </head>
 <body>

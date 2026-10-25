@@ -50,8 +50,8 @@ const BODIES = {
   },
   Venus: {
     g: 0.90, seed: 37, amp: 6, freq: 1 / 120, ridged: 0.6, craters: null,
-    low: C(0x5a3a1c), high: C(0x9c6a35), slope: C(0x4a2e18), crater: C(0x5a3a1c), rock: C(0x6b4524), rocksPerChunk: 26,
-    sky: 'gradient', top: 0x8a4a14, horizon: 0xd88a3a, fog: { type: 'exp2', color: 0xc47d36, density: 0.028 }, sunSize: 0, sunElev: 0.6, light: 1.1, ambient: 0.7, hemi: [0xe0a060, 0x402010], lightColor: 0xffb070,
+    low: C(0x3e2610), high: C(0xa8743c), slope: C(0x2e1c0c), crater: C(0x5a3a1c), rock: C(0x2a1a0e), rocksPerChunk: 26, patch: 0.26, shade: 1.5,
+    sky: 'gradient', top: 0x8a4a14, horizon: 0xe0a050, fog: { type: 'linear', color: 0xe0a050, near: 22, far: 150 }, sunSize: 0, sunElev: 0.6, light: 1.7, ambient: 0.45, hemi: [0xe0a060, 0x402010], lightColor: 0xffb070,
     poi: { kind: 'venera', name: 'Venera 13 lander', fact: 'The Soviet Venera 13 lander survived 127 minutes on Venus in 1982 and sent back the first color photos of its surface.' },
     flagFact: 'At 465 \u00b0C and 90 times Earth\u2019s air pressure, a flag here would char in minutes.',
     facts: ['The air here is so thick it is like being 900 m under the ocean on Earth.', 'Venus spins backwards, so the Sun would rise in the west, if you could see it through the clouds.', 'The clouds above are made of sulfuric acid.', 'A day on Venus (243 Earth days) is longer than its year (225 days).']
@@ -95,7 +95,7 @@ const BODIES = {
   Titan: {
     g: 0.138, seed: 109, amp: 5, freq: 1 / 140, ridged: 0.2, craters: null, water: -1.2, padH: 2.2, liquid: 0x1a120a,
     low: C(0x6a4a24), high: C(0x9a7440), slope: C(0x4a3418), crater: C(0x6a4a24), rock: C(0xa08a6a), sand: C(0x3a2a16), snow: C(0x9a7440), rocksPerChunk: 18,
-    sky: 'gradient', top: 0x9a5a1a, horizon: 0xd99a4a, fog: { type: 'exp2', color: 0xc8883a, density: 0.022 }, sunSize: 0, sunElev: 0.6, light: 1.0, ambient: 0.75, hemi: [0xe0a050, 0x3a2410], lightColor: 0xffc080,
+    sky: 'gradient', top: 0x9a5a1a, horizon: 0xd99a4a, fog: { type: 'linear', color: 0xd0924a, near: 26, far: 160 }, sunSize: 0, sunElev: 0.6, light: 1.4, ambient: 0.55, patch: 0.22, shade: 1.3, hemi: [0xe0a050, 0x3a2410], lightColor: 0xffc080,
     poi: { kind: 'sign', sign: 'TITAN BASE', name: 'Titan Base Camp', fact: 'NASA\u2019s Dragonfly, a nuclear-powered drone helicopter, is planned to launch in 2028 and fly across Titan\u2019s dunes and craters in the 2030s.' },
     flagFact: 'Titan\u2019s air is thick enough (and gravity low enough) that you could fly by flapping wings strapped to your arms.',
     facts: ['Titan is the only moon with a thick atmosphere, mostly nitrogen, like Earth\u2019s.', 'At about \u2212179 \u00b0C, Titan is cold enough for methane to fall as rain.', 'The orange haze is made of organic molecules formed when sunlight breaks up methane.', 'Titan is bigger than the planet Mercury.']
@@ -254,6 +254,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       surfTint(x, z);
       const steep = smooth(0.92, 0.75, nrm.y);
       tmpC.lerp(cfg.slope, steep * 0.85);
+      // baked sun-facing slope shading + hollow darkening + fine mottling: cheap contrast that survives haze
+      const sh = cfg.shade ?? 1, lit = Math.max(0, nrm.x * sunDir.x + nrm.y * sunDir.y + nrm.z * sunDir.z), flat = Math.max(0.2, sunDir.y);
+      const cav = clamp((hAt(i - 1, j) + hAt(i + 1, j) + hAt(i, j - 1) + hAt(i, j + 1)) * 0.25 - h, -0.5, 0.5);
+      tmpC.multiplyScalar(clamp(patchK(x, z) * (1 + (lit - flat) * 0.55 * sh) * (1 - cav * 0.35 * sh) * (1 + noise2(x / 2.7, z / 2.7) * 0.07), 0.45, 1.6));
       col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
     }
     const idx = [];
@@ -334,6 +338,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     c.pois.forEach(p => { const i = poiObjects.indexOf(p); if (i >= 0) poiObjects.splice(i, 1); p.userData.beacon?.geometry.dispose(); p.userData.beacon?.material.dispose(); });
   }
   // Europa cracks, Io sulfur/lava spots
+  // large light/dark patches (lava plains, dust, ice) so the ground never reads as one flat color
+  function patchK(x, z) { return 1 + noise2(x / 70 + 11, z / 70 - 5) * (cfg.patch ?? 0.16) + noise(x / 23 - 4, z / 23 + 9) * 0.06; }
   function surfTint(x, z) {
     if (cfg.cracks) { const c = 1 - Math.abs(noise(x / 55, z / 55)), c2 = 1 - Math.abs(noise2(x / 23 + 7, z / 23)); tmpC.lerp(cfg.cracks, Math.max(smooth(0.955, 0.988, c), smooth(0.97, 0.992, c2) * 0.8)); }
     if (cfg.spots) { const n2 = noise2(x / 40, z / 40); if (n2 > 0.5) tmpC.lerp(cfg.spots.color, smooth(0.5, 0.7, n2) * 0.85); const n3 = noise(x / 17 + 3, z / 17); if (n3 > 0.7) tmpC.lerp(cfg.spots.hot, smooth(0.7, 0.9, n3) * 0.7); }
@@ -470,11 +476,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const VIEW_KEY = 'ssx.view.v1', CAM_MAX = 320, SHIP = { x: 14, z: -22 };
   const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
   const lerpAngle = (a, b, t) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * Math.min(1, t);
-  let camGoal = (() => { try { const v = parseFloat(localStorage.getItem(VIEW_KEY)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : 9; } catch (e) { return 9; } })();
+  // on-foot and rover views are remembered separately; the rover defaults to the third-person chase cam
+  const ROVER_VIEW_KEY = 'ssx.view.rover.v1', FP_DRIVE_PITCH = -0.07;
+  const loadNum = (k, d) => { try { const v = parseFloat(localStorage.getItem(k)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : d; } catch (e) { return d; } };
+  let camGoal = loadNum(VIEW_KEY, 9), driveGoal = loadNum(ROVER_VIEW_KEY, 16);
   let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
   let astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
   let found = loadFound(), discItems = [];
-  const saveView = () => { try { localStorage.setItem(VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
+  const saveView = () => { if (driving) driveGoal = camGoal; try { localStorage.setItem(driving ? ROVER_VIEW_KEY : VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
 
   // discoveries
   const beamGeo = new THREE.CylinderGeometry(0.45, 0.45, 90, 8, 1, true); beamGeo.translate(0, 45, 0);
@@ -538,7 +547,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const n = noise(x / 31, z / 31) * 0.5;
       tmpC.copy(cfg.low).lerp(cfg.high, clamp(0.5 + h / (cfg.amp * 3.2) + n * 0.25, 0, 1));
       if (cfg.water !== undefined) { if (h < cfg.water + 0.7) tmpC.copy(cfg.sand); else if (h > cfg.amp * 2.1) tmpC.copy(cfg.snow); }
-      surfTint(x, z);
+      surfTint(x, z); tmpC.multiplyScalar(patchK(x, z));
       col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
     }
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * n1 + i, b = a + 1, c = a + n1, d = c + 1; idx.push(a, c, b, b, c, d); }
@@ -629,7 +638,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dg = buildDog({ helmet: bodyName !== 'Earth' }); dg.group.rotation.order = 'YXZ';
     dog = { ...dg, x: 1.6, z: 7.5, y: height(1.6, 7.5), vy: 0, yaw: 0, mode: 'follow', idle: 0, wag: 0, phase: 0, nextSniff: 14, sniff: null, sniffT: 0, air: false, sit: 0 };
     scene.add(dg.group);
-    driving = false; camYawOff = 0; driven = 0;
+    driving = false; camYawOff = 0; driven = 0; camGoal = loadNum(VIEW_KEY, 9); driveGoal = loadNum(ROVER_VIEW_KEY, 16);
+    scene.add(camera); buildCockpit();
     player.x = 0; player.z = 6; player.yaw = 0; player.pitch = -0.08; player.vy = 0; player.walked = 0; player.faceYaw = 0;
     player.y = height(0, 6) + EYE;
     state = { intro: 1.8, outro: 0 };
@@ -816,6 +826,55 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; }
   }
 
+  // ----- first-person rover cockpit: hood, dashboard, pillars and a live gauge, drawn on top of the world -----
+  let cockpit = null;
+  function buildCockpit() {
+    if (!cockpit) {
+      const mk = (geo, color, ro) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, fog: false, depthTest: false, depthWrite: false })); m.renderOrder = ro; m.userData.shared = true; m.material.userData.shared = true; m.geometry.userData.shared = true; return m; };
+      const g = new THREE.Group(); g.userData.shared = true;
+      // unit-sized parts (width 1, height 1), scaled to the screen each frame
+      const hoodShape = new THREE.Shape(); hoodShape.moveTo(-0.55, 0); hoodShape.lineTo(0.55, 0); hoodShape.lineTo(0.3, 0.92); hoodShape.quadraticCurveTo(0, 1.04, -0.3, 0.92); hoodShape.closePath();
+      const hoodGeo = new THREE.ShapeGeometry(hoodShape, 6), hc = [], pa = hoodGeo.attributes.position;
+      for (let v = 0; v < pa.count; v++) { const t = pa.getY(v), e = 1 - Math.abs(pa.getX(v)) * 0.5; hc.push(0.07 * e + 0.05 * t, 0.075 * e + 0.05 * t, 0.09 * e + 0.055 * t); }
+      hoodGeo.setAttribute('color', new THREE.Float32BufferAttribute(hc, 3));
+      const hood = mk(hoodGeo, 0xffffff, 990); hood.material.vertexColors = true; hood.material.needsUpdate = true;
+      const hoodLine = mk(new THREE.PlaneGeometry(1, 1), 0x2a2e35, 991);
+      const dash = mk(new THREE.PlaneGeometry(1, 1), 0x14161c, 992);
+      const trim = mk(new THREE.PlaneGeometry(1, 1), 0x38bdf8, 993);
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      const gauge = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ map: tex, fog: false, depthTest: false, depthWrite: false, transparent: true }));
+      gauge.renderOrder = 994; gauge.userData.shared = true; gauge.material.userData.shared = true; gauge.geometry.userData.shared = true;
+      const pL = mk(new THREE.PlaneGeometry(1, 1), 0x15171d, 995), pR = pL.clone(); pR.renderOrder = 995;
+      g.add(hood, hoodLine, dash, trim, gauge, pL, pR);
+      cockpit = { g, hood, hoodLine, dash, trim, gauge, pL, pR, c, tex, t: 0, last: '' };
+    }
+    cockpit.g.visible = false; camera.add(cockpit.g);
+  }
+  function updateCockpit(dt, on) {
+    if (!cockpit) return;
+    // in the rover's first-person seat the rover's own deck would fill the lower screen: hide it, the cockpit frame replaces it
+    if (rover) rover.group.visible = !on;
+    if (dog && driving) dog.group.visible = !on; else if (dog) dog.group.visible = true;
+    cockpit.g.visible = on; if (!on) return;
+    // sized as fractions of the screen so portrait phones get a slim frame: dash ~6%, hood ~10% of the height
+    const D = 0.5, hh = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * D, hw = hh * camera.aspect, H = 2 * hh, W = 2 * hw;
+    const dashH = H * 0.06, hoodH = H * (camera.aspect < 1 ? 0.09 : 0.12), hoodW = Math.min(W * 1.02, H * 1.5);
+    cockpit.dash.position.set(0, -hh + dashH / 2, -D); cockpit.dash.scale.set(W * 1.1, dashH, 1);
+    cockpit.trim.position.set(0, -hh + dashH, -D); cockpit.trim.scale.set(W * 1.1, H * 0.004, 1);
+    cockpit.hood.position.set(0, -hh + dashH * 0.9, -D); cockpit.hood.scale.set(hoodW, hoodH, 1);
+    cockpit.hoodLine.position.set(0, -hh + dashH + hoodH * 0.45, -D); cockpit.hoodLine.scale.set(hoodW * 0.012, hoodH * 0.85, 1);
+    const gh = dashH * 0.7; cockpit.gauge.position.set(0, -hh + dashH * 0.48, -D); cockpit.gauge.scale.set(gh, gh, 1);
+    const pw = W * 0.018; for (const [p, sgn] of [[cockpit.pL, -1], [cockpit.pR, 1]]) { p.position.set(sgn * (hw - pw * 0.3), 0, -D); p.scale.set(pw, H * 1.2, 1); p.rotation.z = sgn * 0.06; }
+    cockpit.t -= dt; if (cockpit.t > 0) return; cockpit.t = 0.2;
+    const gi = game.info, txt = `${Math.round(Math.abs(rover.speed) * 3.6)}|${gi.turret ? gi.heat : -1}|${gi.overheat}`;
+    if (txt === cockpit.last) return; cockpit.last = txt;
+    const x = cockpit.c.getContext('2d'); x.clearRect(0, 0, 256, 64);
+    x.fillStyle = 'rgba(5,10,20,0.9)'; x.beginPath(); x.roundRect ? x.roundRect(2, 2, 252, 60, 12) : x.rect(2, 2, 252, 60); x.fill();
+    x.fillStyle = '#7dd3fc'; x.font = 'bold 30px system-ui, sans-serif'; x.textBaseline = 'middle'; x.fillText(`${Math.round(Math.abs(rover.speed) * 3.6)} km/h`, 14, 33);
+    if (gi.turret) { x.fillStyle = 'rgba(255,255,255,0.18)'; x.fillRect(150, 26, 92, 14); x.fillStyle = gi.overheat ? '#ff2d55' : '#f59e0b'; x.fillRect(150, 26, 92 * gi.heat / 100, 14); x.fillStyle = '#fff'; x.font = 'bold 13px system-ui, sans-serif'; x.fillText(gi.overheat ? 'OVERHEAT' : 'PLASMA', 152, 15); }
+    cockpit.tex.needsUpdate = true;
+  }
   const camT = new THREE.Vector3(), camDir = new THREE.Vector3();
   function updateCamera(dt) {
     camDist += (camGoal - camDist) * (1 - Math.exp(-dt * 6));
@@ -827,8 +886,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       if (time - lastLook > 1.2) camYawOff *= Math.exp(-dt * 2);
       viewYaw = rover.yaw + camYawOff;
       if (first) {
-        rover.group.updateMatrixWorld(true); rover.body.localToWorld(camT.set(-0.55, 1.95, -0.9));
-        camera.position.copy(camT); camera.rotation.set(player.pitch + rover.pitch, viewYaw, rover.roll);
+        rover.group.updateMatrixWorld(true); rover.body.localToWorld(camT.set(-0.45, 2.15, -0.55));
+        camera.position.copy(camT); camera.rotation.set(player.pitch + rover.pitch, viewYaw, rover.roll, 'YXZ');
       } else camT.set(rover.x, rover.y + 2.0, rover.z);
     } else {
       viewYaw = player.yaw;
@@ -866,6 +925,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     updateAstro(dt);
     updateCamera(dt);
     game.update(dt, input);
+    updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
     updateChunks(px, pz, false, driving ? 2 : 1);
     // far terrain for high views
@@ -926,9 +986,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       if (cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) { ex = rover.x + rx * 2.9; ez = rover.z + rz * 2.9; }
       player.x = ex; player.z = ez; player.y = height(ex, ez) + EYE; player.vy = 0; player.grounded = true;
       player.yaw = rover.yaw + camYawOff; player.faceYaw = player.yaw;
-      rover.speed = 0; driving = false; camGoal = walkGoal; return 'exit';
+      rover.speed = 0; driveGoal = camGoal; saveView(); driving = false; camGoal = walkGoal; return 'exit';
     }
-    if (nearRover()) { driving = true; walkGoal = camGoal; if (camGoal > 0.8) camGoal = Math.max(camGoal, 16); camYawOff = 0; player.pitch = Math.min(player.pitch, 0); return 'drive'; }
+    if (nearRover()) { walkGoal = camGoal; saveView(); driving = true; camGoal = driveGoal; camYawOff = 0; player.pitch = camGoal < 0.8 ? FP_DRIVE_PITCH : Math.min(player.pitch, 0); return 'drive'; }
     return null;
   }
   function pet() {
@@ -941,7 +1001,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     onEvent('bark', {}); return true;
   }
   const viewName = (d = camGoal) => d < 0.8 ? 'first' : d < 60 ? 'third' : 'aerial';
-  function setView(v) { camGoal = v === 'first' ? 0 : v === 'aerial' ? 220 : (driving ? 16 : 9); saveView(); return viewName(); }
+  function setView(v) { camGoal = v === 'first' ? 0 : v === 'aerial' ? 220 : (driving ? 16 : 9); if (driving && v === 'first') player.pitch = FP_DRIVE_PITCH; saveView(); return viewName(); }
   function cycleView() { const v = viewName(); return setView(v === 'first' ? 'third' : v === 'third' ? 'aerial' : 'first'); }
   function zoom(f) {
     if (camGoal < 0.8) { if (f > 1) camGoal = 3.5; }

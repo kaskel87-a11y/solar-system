@@ -253,7 +253,7 @@ export function createGame(ctx) {
 
   // ----- agents: a small reusable AI (idle wander -> aggro -> chase/orbit -> attack) -----
   function spawnAgent(type, x, z, opts = {}) {
-    if (agents.length >= CAP) return null;
+    if (agents.length >= CAP || !aliensOn()) return null;
     const T = AGENT_TYPES[type];
     const m = type === 'drone' ? buildDrone() : buildCrawler(type === 'boss');
     if (T.boss) m.group.scale.setScalar(2.6);
@@ -634,6 +634,7 @@ export function createGame(ctx) {
       if (!aliensOn()) { if (d < 16 + reach) { onEvent('toast', { text: '📡 Zone scanned. (Peaceful mode: no aliens today.)' }); advance(); } return; }
       if (!quest.wave && d < 75 && H.down <= 0) {
         quest.wave = { total: s.wave.length }; quest.killed = 0;
+        for (const o of agents.filter(o => o.src !== 'quest').slice(0, Math.max(0, agents.length + s.wave.length - CAP))) { const c = center(o); burst(c.x, c.y, c.z, 10); removeAgent(o); } // make room for the quest wave
         s.wave.forEach((t, k) => { const a = (k / s.wave.length) * Math.PI * 2; spawnAgent(t, tg.x + Math.cos(a) * 9, tg.z + Math.sin(a) * 9, { aggro: true, src: 'quest' }); });
         if (s.wave.includes('boss')) onEvent('radio', { text: 'Mission Control: that\u2019s the Hive Queen! Keep moving and keep zapping. (Fiction!)' });
         onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() });
@@ -814,7 +815,9 @@ export function createGame(ctx) {
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
     onDiscover() { gain(20, 10); },
-    setAliens(on) { P.settings.aliens = !!on; save(); if (quest) onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); },
+    setAliens(on) {
+      P.settings.aliens = !!on; save();
+      if (!on) { for (const a of [...agents]) removeAgent(a); for (const o of orbs) scene.remove(o.mesh); orbs.length = 0; for (const b of bolts) scene.remove(b.mesh); bolts.length = 0; W.heat = 0; W.over = false; } if (quest) onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); },
     setVoice(on) { P.settings.voice = !!on; save(); },
     reload() { P = loadProgress(); applyCosmetics(); },
     get progress() { return P; },
@@ -839,7 +842,7 @@ export function createGame(ctx) {
       spawn(type, dist = 18, ang = 0, aggro = true) { const st = ctx.st(); const yaw = (st.driving ? st.rover.yaw : player.yaw) + ang; return !!spawnAgent(type, player.x - Math.sin(yaw) * dist, player.z - Math.cos(yaw) * dist, { aggro, src: 'debug' }); },
       hurt(n) { hurt(n, null); },
       clear() { for (const a of [...agents]) removeAgent(a); },
-      agents: () => agents.map(a => ({ type: a.type, hp: a.hp, x: a.x, z: a.z, src: a.src, d: Math.hypot(a.x - player.x, a.z - player.z) })),
+      agents: () => agents.map(a => { const p = center(a).clone().project(camera); return { type: a.type, hp: a.hp, x: a.x, y: a.y, z: a.z, src: a.src, d: Math.hypot(a.x - player.x, a.z - player.z), sx: p.x, sy: p.y, onScreen: inView(a) }; }),
       target: () => quest?.target || null, step: () => stepDef() || null,
       items: () => quest ? quest.items.map(i => ({ x: i.x, z: i.z, collect: !!i.collect, pick: !!i.pick })) : [],
       rares: () => rares.map(r => ({ x: r.x, z: r.z, id: r.id, type: r.def.type })),
