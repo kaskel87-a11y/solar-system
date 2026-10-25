@@ -1,0 +1,121 @@
+// Multi-planet expansion (steve/multi-planet). Everything is data pushed into the core registries:
+//   world.js COLONIES / VEHICLES / VEHICLE_BUILDERS, game.js QUESTS / COSMETICS, audio7.js STATIONS (DJ lines only).
+// The only core touch points are one import + initPlanets(window.__app) in index.html and the VEHICLE_BUILDERS hook in world.js.
+// Import URLs must match the core's ?v= exactly so we share the same module instances.
+import { COLONIES, VEHICLES, VEHICLE_BUILDERS } from '../world.js?v=7.2';
+import { QUESTS, COSMETICS } from '../game.js?v=7.2';
+import { STATIONS } from '../audio7.js?v=7.2';
+import { EXT_VEHICLES, EXT_BUILDERS } from './vehicles.js?v=7.2';
+import venus from './venus.js?v=7.2';
+import mercury from './mercury.js?v=7.2';
+import titan from './titan.js?v=7.2';
+import europa from './europa.js?v=7.2';
+import io from './io.js?v=7.2';
+import referrals from './referrals.js?v=7.2';
+
+export const PLANETS = [venus, mercury, titan, europa, io];
+const KEY = 'ssx.planets.v1', FEE = 40;
+
+// ---------- registration (runs at import, before any landing builds a colony) ----------
+Object.assign(VEHICLES, EXT_VEHICLES);
+Object.assign(VEHICLE_BUILDERS, EXT_BUILDERS);
+const haveQ = new Set(QUESTS.map(q => q.id));
+const addQ = q => { if (!haveQ.has(q.id)) { QUESTS.push(q); haveQ.add(q.id); } };
+referrals.forEach(addQ);
+for (const p of PLANETS) {
+  if (!COLONIES[p.world]) COLONIES[p.world] = p.colony;
+  for (const [kind, items] of Object.entries(p.cosmetics || {})) Object.assign(COSMETICS[kind] ||= {}, items);
+  p.quests.forEach(addQ);
+}
+
+// ---------- persistent travel state ----------
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+let S = Object.assign({ visited: [] }, load());
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode */ } };
+const HOME = [{ world: 'Mars', colony: COLONIES.Mars }, { world: 'Moon', colony: COLONIES.Moon }].filter(h => h.colony);
+
+export function initPlanets(app) {
+  if (!app || app.__planets) return; app.__planets = true;
+  const doneQ = id => !!app.game?.progress?.quests?.[id]?.everDone;
+  const unlocked = p => !p.permit || S.visited.includes(p.world) || doneQ(p.permit.quest);
+
+  // ---- ☰ menu entry (no new permanent HUD button) ----
+  const css = document.createElement('style');
+  css.textContent = `#colPanel{position:fixed;inset:0;z-index:14;display:none;background:rgba(4,6,16,.94);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(16px + var(--sat,0px)) calc(16px + var(--sar,0px)) calc(24px + var(--sab,0px)) calc(16px + var(--sal,0px));box-sizing:border-box;color:#fff}
+#colPanel .wrap{max-width:640px;margin:0 auto}#colPanel h2{margin:6px 0 4px}#colPanel p.sub{margin:0 0 12px;opacity:.7;font-size:.82rem}
+#colPanel .item{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);margin-bottom:8px;font-size:.88rem;line-height:1.4}
+#colPanel .item b{color:#ffd25a}#colPanel .item.here{border-left:3px solid #38bdf8}#colPanel .item.locked{opacity:.55}
+#colPanel .item small{display:block;opacity:.75}#colPanel .row{display:flex;gap:8px;margin-top:8px}
+#colPanel .row button{min-height:40px;padding:6px 14px;border-radius:10px;font-weight:700;touch-action:manipulation}
+#colClose{position:sticky;top:0;float:right}`;
+  document.head.appendChild(css);
+  const panel = document.createElement('div'); panel.id = 'colPanel';
+  panel.innerHTML = '<div class="wrap"><button id="colClose" class="btn">✕ Close</button><h2>🌍 Colonies</h2><p class="sub">Fast travel: auto-flies you there and lands. Manual flight always works too.</p><div id="colList"></div></div>';
+  document.body.appendChild(panel);
+  const menu = document.getElementById('roverMenu'), before = document.getElementById('settingsBtn');
+  const btn = document.createElement('button'); btn.id = 'colBtn'; btn.className = 'btn'; btn.textContent = '🌍 Colonies';
+  if (menu) menu.insertBefore(btn, before && before.parentNode === menu ? before : null);
+
+  // pointer-based tap: fires on pointerup of the same pointer, so a thumb resting on the joystick doesn't block it
+  const tap = (el, fn) => {
+    let id = null;
+    el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; e.preventDefault(); id = e.pointerId; });
+    el.addEventListener('pointerup', e => { if (e.pointerType === 'mouse' || e.pointerId !== id) return; e.preventDefault(); id = null; fn(e); });
+    el.addEventListener('pointercancel', () => { id = null; });
+    el.addEventListener('click', e => { if (e.pointerType && e.pointerType !== 'mouse') return; fn(e); });
+  };
+  const close = () => { panel.style.display = 'none'; };
+  tap(document.getElementById('colClose'), close);
+  tap(btn, () => { app.toggleMenu?.(false); open(); });
+
+  function entries() {
+    return [...HOME.map(h => ({ world: h.world, colony: h.colony, home: true })), ...PLANETS.map(p => ({ world: p.world, colony: p.colony, p }))];
+  }
+  function render() {
+    const st = app.state, here = st.onSurface ? st.info?.name : null, cr = app.game?.progress?.credits ?? 0;
+    const list = panel.querySelector('#colList'); list.innerHTML = '';
+    for (const e of entries()) {
+      const open_ = e.home || unlocked(e.p), visited = e.home || S.visited.includes(e.world), fee = visited ? 0 : FEE;
+      const it = document.createElement('div'); it.className = 'item' + (here === e.world ? ' here' : '') + (open_ ? '' : ' locked'); it.dataset.world = e.world;
+      const jobs = QUESTS.filter(q => q.world === e.world && q.contact).length;
+      it.innerHTML = `<b>${e.colony.name}</b> · ${e.world}<small>${e.p ? (e.p.colony.contacts || []).map(c => c.name).join(', ') + ' · ' : ''}${jobs} jobs${e.p ? ' · ride: ' + EXT_VEHICLES[e.p.vehicles[0]].name : ''}</small>`;
+      const row = document.createElement('div'); row.className = 'row';
+      const go = document.createElement('button'); go.className = 'btn'; go.dataset.go = e.world;
+      if (here === e.world) { go.textContent = '📍 You are here'; go.disabled = true; }
+      else if (!open_) { go.textContent = `🔒 Permit: job from ${e.p.permit.from}`; go.disabled = true; }
+      else { go.textContent = fee ? `🚀 Travel · ${fee} cr` : '🚀 Travel · free'; if (fee > cr) { go.disabled = true; go.textContent = `🚀 Need ${fee} cr`; } else tap(go, () => travelTo(e.world, fee)); }
+      row.appendChild(go); it.appendChild(row); list.appendChild(it);
+    }
+  }
+  function open() { render(); panel.style.display = 'block'; }
+
+  function travelTo(world, fee = 0) {
+    const body = app.bodies.find(b => b.name === world); if (!body) return false;
+    const st = app.state; if (st.transitioning || (st.onSurface && st.info?.name === world)) return false;
+    if (fee) { const P = app.game?.progress; if (!P || P.credits < fee) return false; P.credits -= fee; app.game.save?.(); }
+    close(); app.toast?.(`🚀 Course set: ${COLONIES[world]?.name || world}`);
+    if (!st.onSurface) { app.landOn(body.mesh); return true; }
+    app.takeOff();
+    const t0 = performance.now(), wait = () => {
+      const s = app.state;
+      if (!s.onSurface && !s.transitioning && s.flying) return app.landOn(body.mesh);
+      if (performance.now() - t0 < 15000) setTimeout(wait, 150);
+    };
+    setTimeout(wait, 150);
+    return true;
+  }
+
+  // ---- visit tracking + local DJ lines merged into the stock stations while on a colony world ----
+  const ORIG = STATIONS.map(s => s.dj ? [...s.dj] : null);
+  let lastWorld = null;
+  setInterval(() => {
+    const st = app.state, w = st.onSurface ? st.info?.name : null;
+    if (w === lastWorld) return; lastWorld = w;
+    const p = PLANETS.find(x => x.world === w);
+    if (p && !S.visited.includes(w)) { S.visited.push(w); persist(); }
+    STATIONS.forEach((s, i) => { if (ORIG[i]) s.dj = p?.radio && s.id !== 'void' ? [...p.radio, ...ORIG[i]] : [...ORIG[i]]; });
+  }, 1000);
+
+  const quests = {}; for (const q of [...referrals, ...PLANETS.flatMap(p => p.quests)]) (quests[q.world] ||= []).push(q.id);
+  app.planets = { list: PLANETS.map(p => p.world), quests, open, close, render, travelTo, unlocked: w => { const p = PLANETS.find(x => x.world === w); return !p || unlocked(p); }, state: () => S };
+}

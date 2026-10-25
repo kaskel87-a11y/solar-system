@@ -383,6 +383,7 @@
     import { buildStarship } from './models.js?v=7.2';
     import { COSMETICS } from './game.js?v=7.2';
     import { createAudio7 } from './audio7.js?v=7.2';
+    import { initPlanets } from './planets/index.js?v=7.2'; // multi-planet expansion (data-driven, planets/*.js)
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -1657,6 +1658,7 @@
       landOn, landAction, renderer, version: 'v7.2', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
+    initPlanets(window.__app);
   </script>
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
