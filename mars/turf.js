@@ -141,8 +141,8 @@ function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry
 function syncBeacons() { for (const bc of beacons) if (bc.kind === 'block') { const b = byId(bc.ref); restyle(bc.g, flagText(b), GANGS[S.owners[b.id]].col); } }
 
 // ---------- spawning engines (feature-detected) ----------
-function engine() {
-  if (typeof window.SSX?.raids?.start === 'function') return 'raids';
+function engine(noRaids) {
+  if (!noRaids && typeof window.SSX?.raids?.start === 'function') return 'raids';
   const g = window.SSX?.gang; if (g && (typeof g.spawn === 'function' || typeof g.spawnCrew === 'function')) return 'gang';
   if (typeof window.SSX?.city?.hostiles === 'function' || typeof game()?.hostiles === 'function') return 'core';
   return 'debug';
@@ -181,7 +181,9 @@ let fight = null; // { kind, block, gang, waves, wave, plan, phase, t, out, engi
 let counterT = COUNTER_MIN + Math.random() * (COUNTER_MAX - COUNTER_MIN);
 function plan(b, kind) { const base = 2 + b.tier; return kind === 'take' ? (b.tier >= 2 ? [base, base + 1, base + 2] : [base, base + 1]) : [base, base + 1]; }
 function startFight(kind, b, gang) {
-  const P = plan(b, kind), eng = engine();
+  // v7.5.3: SSX.raids only runs takeovers; defends (alert phase, own waves) use the next engine down
+  let eng = engine(); if (eng === 'raids' && kind !== 'take') eng = engine(true);
+  const P = plan(b, kind);
   fight = { kind, block: b.id, gang, waves: P.length, wave: 0, plan: P, phase: kind === 'defend' ? 'alert' : 'gap', t: kind === 'defend' ? ALERT_T : 2.5, out: 0, engine: eng, handles: [], pending: 0, kills: 0 };
   try { window.SSX?.city?.npcReserve?.('turf', Math.min(8, P[P.length - 1])); } catch (e) { /* optional */ }
   if (eng === 'raids' && kind === 'take') startRaid();
@@ -191,7 +193,7 @@ function startRaid() { // Steve's engine runs the waves, we keep score
   let r = null; try { r = window.SSX.raids.start({ id: 'turf-' + b.id, pos: [at[0], at[1]], radius: R_ZONE, attackers: 'gang', waves: f.plan.map(count => ({ count })), label: `${GANGS[f.gang].name} hold ${b.name}`,
     onWin: () => { if (fight === f) win(); }, onLose: info => { if (fight === f) lose(info?.why === 'down' ? 'down' : 'raid'); } }); } catch (e) { console.warn('turf raids', e); }
   if (r?.ok) { f.raidId = r.id; f.phase = 'raid'; try { f.unsub = window.SSX.raids.on?.('raid:wave', i => { if (fight === f && (!i?.id || i.id === r.id)) { f.wave = i.wave || f.wave + 1; emit('wave', { block: f.block, gang: f.gang, wave: f.wave, waves: f.waves }); } }); } catch (e) { /* optional */ } }
-  else f.engine = engine() === 'raids' ? (window.SSX?.gang ? 'gang' : 'core') : engine(); // raid refused (one at a time): run our own waves
+  else f.engine = engine(true); // raid refused (one at a time): run our own waves
 }
 function endFight() {
   const f = fight; if (!f) return; fight = null;

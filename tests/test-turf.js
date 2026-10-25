@@ -26,13 +26,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     let waves = 0, maxAlive = 0;
     for (let k = 0; k < 6; k++) {
       const f = await F(); if (!f) break;
-      const up = await wait(() => { const f = window.SSX.turf.fight(); return !f || (f.phase === 'fight' && window.__app.game.debug.agents().some(a => a.src === 'turf')); }, 60000);
+      // v7.5.3: with Steve's SSX.raids installed (PR #13) takeovers run on the raid engine; count its attackers too
+      const up = await wait(() => { const f = window.SSX.turf.fight(); return !f || (f.phase === 'fight' && window.__app.game.debug.agents().some(a => a.src === 'turf')) || (f.engine === 'raids' && (window.__raids?.npcs || 0) > 0); }, 60000);
       if (!(await F())) break; await calm();
-      const n = await G(() => window.__app.game.debug.agents().filter(a => a.src === 'turf').length); maxAlive = Math.max(maxAlive, n); if (n) waves++;
+      const n = await G(() => window.SSX.turf.fight()?.engine === 'raids' ? (window.__raids?.npcs || 0) : window.__app.game.debug.agents().filter(a => a.src === 'turf').length); maxAlive = Math.max(maxAlive, n); if (n) waves++;
       if (k === 0) { await sleep(600); await shot(`${out}turf-${tag}-${label}-wave.png`); R[label + 'Hud'] = await G(() => document.getElementById('turfHud').innerText.replace(/\n/g, ' | ')); }
       if (!up) { R[label + 'Stuck'] = JSON.stringify(await F()); break; }
-      await G(() => window.SSX.turf.debug.clearWave());
-      await wait(() => { const f = window.SSX.turf.fight(); return !f || f.phase !== 'fight'; }, 30000);
+      const w0 = (await F())?.wave;
+      await G(() => window.SSX.turf.fight()?.engine === 'raids' ? (window.__raids.killAll(), window.__raids.flushQueue()) : window.SSX.turf.debug.clearWave());
+      await wait(w => { const f = window.SSX.turf.fight(); return !f || (f.engine === 'raids' ? f.wave !== w || (window.__raids?.npcs || 0) === 0 && !window.__raids?.state : f.phase !== 'fight'); }, 30000, w0);
+      if ((await F())?.engine === 'raids') await wait(w => { const f = window.SSX.turf.fight(); return !f || f.wave !== w; }, 15000, w0);
     }
     return { waves, maxAlive };
   };
