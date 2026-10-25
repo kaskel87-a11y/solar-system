@@ -38,3 +38,21 @@ Offsets are colony-relative (Ares Junction) when `anchor` is `'colony'`. Default
 
 `ssx.progress.v1` → `progress.garage` (`{ v, rides[], active, rep, clock, meet, wins, races, nextId }`). Old saves have no
 `garage` key; `migrateGarage()` builds a fresh one (stock rover only) and repairs partial or corrupt data.
+
+## Free grants for other modules (`SSX.garage`)
+
+For mission rewards, a mechanic's favour (e.g. a contraband barter) and so on. These cost no credits and need no rep. They save immediately and apply to the driven ride straight away.
+
+```js
+SSX.garage.grantUpgrade('current', 'engine');          // +1 level (max 3). rideId: a garage ride id or 'current'
+SSX.garage.grantUpgrade('current', 'boost', 2);        // +2 levels
+SSX.garage.grantPart('current', 'glow', 'magenta');    // unlock + fit (pass fit=false to just unlock)
+SSX.garage.grant('current', 'wheels:gold');            // one call for either: 'slot:value' = part, 'slot' = upgrade
+SSX.garage.grant('current', { slot: 'paint', value: 'gold' });
+```
+
+- Upgrade ids: `engine`, `handling`, `brakes`, `boost` (also in `SSX.garage.upgrades`).
+- Part slots and values: `paint` (factory, candy, midnight, lime, pearl, matte, gold, chrome), `kit` (stock, street, widebody, rally), `wheels` (stock, chrome, gold, black, offroad) and `glow` (none, cyan, magenta, green, orange, purple). They are also in `SSX.garage.parts`.
+- Each call returns `{ ok, msg, ride, ... }`. `ok:false` (with `maxed:true` for a maxed upgrade) means nothing changed, so you can refund or offer something else. `msg` is a ready-made toast line.
+- On the stock rover, paint and kit are refused (those stay with Meridian Depot). Use an upgrade, wheels or glow instead.
+- Read-only: `SSX.garage.rides`, `SSX.garage.active`, `SSX.garage.rep`.
