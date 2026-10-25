@@ -42,9 +42,13 @@ const here = () => C.car ? { x: C.car.x, z: C.car.z } : { x: C.player.x, z: C.pl
 const distAJ = aj => { const w = toW(aj), p = here(); return w ? Math.hypot(w.x - p.x, w.z - p.z) : 1e9; };
 const raidsApi = () => window.SSX?.raids || null;
 // street prices for hot goods move the chop shop's take (SSX.contraband when the city pack provides it; neutral otherwise)
-const contraband = () => { try { const X = window.SSX?.contraband; let m = X?.priceMult?.('Mars') ?? X?.mult;
-  if (!Number.isFinite(m) && typeof (X?.price || window.SSX?.contrabandPrice) === 'function') { const f = X?.price || window.SSX.contrabandPrice, b = X?.basePrice?.('hot_parts'); const v = f('hot_parts'); if (Number.isFinite(v) && Number.isFinite(b) && b > 0) m = v / b; }
-  return Number.isFinite(m) ? R.clamp(m, 0.6, 1.6) : 1; } catch { return 1; } };
+// street prices for hot goods move the chop shop's take: SSX.contraband.buyerPrice('hot_plates', Flats) over the item's
+// base value (mars/contraband.js v7.5.1). Neutral (1) when the module or item is missing. Cached for 5 s (price lookups walk the stash).
+let cbCache = { t: -1e9, m: 1 };
+const contraband = () => { const now = performance.now(); if (now - cbCache.t < 5000) return cbCache.m; let m = 1;
+  try { const X = window.SSX?.contraband; if (typeof X?.buyerPrice === 'function') { const it = ['hot_plates', 'salvage'].map(id => [id, X.items?.().find(i => i.id === id)]).find(([, i]) => i);
+      const v = it && X.buyerPrice(it[0], 'red-tape-flats'), b = it && (it[1].vals?.['red-tape-flats'] || it[1].base); if (Number.isFinite(v) && b > 0) m = R.clamp(v / b, 0.6, 1.6); } } catch {}
+  cbCache = { t: now, m }; return m; };
 const bark = (who, cat) => { try { window.SSX?.bark?.({ name: who, kind: 'contact' }, cat); } catch {} };
 
 // ---------- mode switching ----------
@@ -407,6 +411,7 @@ export function ragsTick(dt, ctx) {
 // test/debug surface
 if (typeof window !== 'undefined') window.__r2r = {
   get state() { return S; }, get data() { return data; }, get netWorth() { return S && data ? R.netWorth(S, data) : 0; }, get near() { return nearProp?.id || null; },
+  get contrabandMult() { cbCache.t = -1e9; return contraband(); },
   ready: () => loadData(), open: () => openMain(), startNew: () => startNew(), quit: () => quit(), resume: () => resume(),
   warp: id => { const def = R.propDef(data, id); const w = def && toW(def.door); if (w) { const s = app()?.surface; if (s?.info?.driving) s.interact?.(); s?.debugMove?.(w.x, w.z, 0); } return !!w; },
   advance: sec => { for (const def of data.properties) { const st = S.props[def.id]; if (st.owned) R.accrue(def, st, sec); } return S.props; },

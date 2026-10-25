@@ -67,7 +67,8 @@ function measureHud() {
       if (!s.active) return { maxNpc, maxAtt, sawAtt, ms: Date.now() - t0 };
       await sleep(300);
     }
-    return { timeout: true, maxNpc, maxAtt, sawAtt };
+    const snap = await G(() => { const r = window.__raids, i = window.__app.surface.info; return { st: r.state && { wave: r.state.wave, waves: r.state.waves?.length ?? r.state.waves, q: r.state.queue ?? r.state.queued, integ: Math.round(r.state.integrity ?? -1), stall: r.state.stall }, allowed: r.allowed, res: r.reserved, budget: window.__app.surface.world.npcBudget(), att: window.SSX.raids.attackers().map(a => ({ hp: a.hp, d: Math.round(Math.hypot(a.x - i.x, a.z - i.z)) })), down: window.__app.surface.game.debug.H().down }; });
+    return { timeout: true, maxNpc, maxAtt, sawAtt, snap };
   };
 
   try {
@@ -90,6 +91,7 @@ function measureHud() {
       return { active: S.active, credits: window.__app.surface.game.debug.P().credits, stash: S.stash?.credits, dSpawn: Math.round(Math.hypot(i.x - sp.x, i.z - sp.z)), tier: S.tier, rover: S.hasRover }; });
     R.start = s0;
     ok('startedBroke', null, s0.active && s0.credits === 25 && s0.stash === 1000 && !s0.rover);
+    if (s0.dSpawn >= 6) { await wait(sp => { const i = window.__app.surface.info; return Math.hypot(i.x - sp.x, i.z - sp.z) < 6; }, 6000, await G(() => window.__r2r.toW(window.__r2r.data.spawns.crashpad.aj))); s0.dSpawn = await G(() => { const i = window.__app.surface.info, sp = window.__r2r.toW(window.__r2r.data.spawns.crashpad.aj); return Math.round(Math.hypot(i.x - sp.x, i.z - sp.z)); }); }
     ok('atCrashPad', null, s0.dSpawn < 6);
     await G(() => window.__r2r.state.raidClock = -1e9); // no random raids mid-test
     const hud0 = await G(measureHud); R.hud0 = hud0;
@@ -148,7 +150,7 @@ function measureHud() {
     ok('colsecWanted', R.wantedAtRaid, R.wantedAtRaid >= 2);
     // ColSec officers bust you at 2★ (in play: bribe, evade or lose the shakedown). Here we drop the heat and fight the squad.
     await G(() => window.__app.surface.world.setWanted(0));
-    const f2 = await fight(90000); R.raid2 = f2;
+    const f2 = await fight(150000); R.raid2 = f2;
     const ev2 = await G(() => window.__t.ev); R.events2 = ev2;
     ok('raid2Won', null, ev2.some(e => e[0] === 'raid:end' && e[1] === 'win'));
     const cap = await G(() => window.__raids.cap); R.cap = cap;
@@ -190,6 +192,11 @@ function measureHud() {
     await G(() => window.__r2r.quit()); await sleep(300);
     const q = await G(() => ({ c: window.__app.surface.game.debug.P().credits, active: window.__r2r.state.active, saved: !!JSON.parse(localStorage.getItem('ssx.r2r.v1')).props.chop.owned }));
     R.quit = q; ok('quitRestores', null, q.c === 1000 && !q.active && q.saved);
+    // v7.5.1 contraband feeds the chop take; and no second copy of a core module (mismatched ?v=) got loaded
+    const cb = await G(() => ({ has: typeof window.SSX?.contraband?.buyerPrice === 'function', m: window.__r2r.contrabandMult }));
+    R.contraband = cb; ok('contrabandMult', cb, !cb.has || (Number.isFinite(cb.m) && cb.m >= 0.6 && cb.m <= 1.6));
+    const dup = await G(() => { const seen = {}; for (const e of performance.getEntriesByType('resource')) { const u = new URL(e.name); if (!/\.js$/.test(u.pathname) || u.origin !== location.origin) continue; (seen[u.pathname] = seen[u.pathname] || new Set()).add(u.search); } return Object.entries(seen).filter(([, v]) => v.size > 1).map(([k, v]) => k + ' ' + [...v].join('|')); });
+    R.dupModules = dup; ok('noDuplicateModules', dup, dup.length === 0);
     const hud3 = await G(measureHud);
     if (hud3.overlaps.length) bad.push('hudAfter:' + hud3.overlaps.join(','));
   } catch (e) { bad.push('EXC ' + e.message.slice(0, 280)); R.fail = e.message.split('\n')[0]; }

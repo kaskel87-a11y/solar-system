@@ -76,7 +76,7 @@ Rules:
 | Helios Crest Mansion | Helios Heights (Porter), new dome clear of the heist mansions | 8500 | 340/min | gang or ColSec |
 
 - **Income** builds up to a cap whether or not you're there, but you collect it in person at the door.
-- **The chop shop's take** follows hot-parts street prices when `SSX.contraband` is present.
+- **The chop shop's take** follows the Flats street price of hot rover plates, `SSX.contraband.buyerPrice('hot_plates', 'red-tape-flats')`, divided by that item's Flats base value and clamped to ×0.6–1.6. It falls back to `salvage`, and to ×1 when the contraband module is missing.
 - **Upgrades:** 3 security levels (lower raid odds, smaller waves, tougher core) and 3 income levels (higher rate and cap).
 
 **Raids.** Each owned property rolls for a raid once a minute.
@@ -102,3 +102,7 @@ Built-in hustles are registered with `game.registerMission` and pay in full ever
 **Tests:**
 - `node tests/test-r2r-unit.mjs`
 - `BR=webkit|chromium DEV="iPhone 14"|"iPhone SE" node tests/test-r2r.js`
+
+**Versioning.** Every import in `modes/` uses the same `?v=` as origin/main's core imports, currently `7.5.1`. A mismatch loads a second copy of the module, and registrations then land on the copy the game isn't using. `tests/test-r2r.js` fails if any `.js` file loads with two different query strings.
+
+**`SSX.danger.spawnBackup` (PR #3)** is not used for raiders. It spawns *friendly* Saltblood escorts who follow you and only fight `danger.js`'s own hostiles, so it can't supply raid attackers. Raiders always come from the engine's own spawner.
