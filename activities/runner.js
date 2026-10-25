@@ -4,6 +4,7 @@
 // Districts resolved by distance to AJ-relative centres until registerDistrict lands.
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
 import { addMenuItem, tap } from '../racehooks.js?v=7.4';
+import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js?v=7.4';
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -13,7 +14,7 @@ const DISTRICTS = {
   'mars-highway': { id: 'mars-highway', name: 'Ares Beltway', centre: [0, -200] },
 };
 // Core gaps that block a honest loop — skip (no broken UI). Taxi/leaderboard degrade instead.
-const DEFERRED = new Set(['act-static-poker']); // needs poker resolver
+const DEFERRED = new Set(); // Static Hold'em now playable via activities/poker.js
 const DEGRADE = {
   'act-beltway-taxi': 'simple_taxi',       // no smooth-drive meter → flat delivery fare
   'act-beltway-trial': 'local_best_only',  // no online leaderboard → localStorage best
@@ -48,6 +49,34 @@ function save() { try { localStorage.setItem(LS, JSON.stringify(data)); } catch 
 function toast(msg, ms = 2800) {
   const a = app(); if (a?.toast) a.toast(msg, ms);
   else if (C?.game) {/* no-op */}
+}
+
+/** Feature-detect Marsmania contraband/price API — fallback to fixed payouts. */
+function contrabandPayout(kind, fallback) {
+  const S = typeof window !== 'undefined' ? window.SSX : null;
+  if (!S) return fallback;
+  try {
+    if (typeof S.contrabandPrice === 'function') {
+      const v = S.contrabandPrice(kind);
+      if (typeof v === 'number' && v >= 0) return v;
+    }
+    if (typeof S.contraband === 'function') {
+      const v = S.contraband(kind);
+      if (typeof v === 'number' && v >= 0) return v;
+      if (v && typeof v.price === 'number') return v.price;
+    }
+    if (S.prices && typeof S.prices[kind] === 'number') return S.prices[kind];
+    if (typeof S.price === 'function') {
+      const v = S.price(kind);
+      if (typeof v === 'number' && v >= 0) return v;
+    }
+  } catch (e) {}
+  return fallback;
+}
+
+function sayNpc(npc, category, fallbackText) {
+  if (tryBark({ name: npc, kind: 'contact' }, category)) return;
+  if (fallbackText) toast(fallbackText);
 }
 function app() { return typeof window !== 'undefined' ? window.__app : null; }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -217,7 +246,7 @@ function resetMissionProgress(id) {
 
 function startActivity(def, opts = {}) {
   if (!C?.game || C.name !== 'Mars') return { ok: false, why: 'Land on Mars first.' };
-  if (DEFERRED.has(def.id)) return { ok: false, why: `${def.name} is deferred (needs a poker resolver).` };
+  if (DEFERRED.has(def.id)) return { ok: false, why: `${def.name} is deferred.` };
   if (active) return { ok: false, why: 'Already on a side job. Finish or abandon it.' };
   const cd = onCooldown(def.id);
   if (cd && !opts.ignoreCooldown) return { ok: false, why: `Cooldown ${Math.ceil((cd - Date.now()) / 1000)}s.` };
@@ -229,10 +258,37 @@ function startActivity(def, opts = {}) {
   if (needsAliens) C.game.setAliens?.(true);
 
   const mode = def.loop?.type || 'generic';
+  if (mode === 'poker') {
+    sayNpc(def.contact || 'Nyx', 'poker_offer', def.bark?.offer);
+    active = { def, missionId: mid, startedAt: performance.now(), mode: 'poker' };
+    updateMenu();
+    openPokerTable({
+      ctx: C,
+      onClose: (res) => {
+        if (!active || active.def.id !== def.id) return;
+        if (res?.banned) {
+          failActivity("Nyx: Broke. Bar's still open. Table isn't.");
+          return;
+        }
+        if (res && res.delta != null && res.delta >= 0) {
+          (data.clears ||= {})[def.id] = clears(def.id) + 1;
+          (data.streak ||= {})[def.id] = streak(def.id) + 1;
+          setCooldown(def); save();
+          sayNpc('Nyx', 'poker_success', def.bark?.success);
+        } else {
+          (data.streak ||= {})[def.id] = 0; save();
+          sayNpc('Nyx', 'poker_fail', def.bark?.fail);
+        }
+        active = null; updateMenu(); setChip(null);
+      },
+    });
+    return { ok: true };
+  }
   if (mode === 'duel_ladder') {
     active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, roundsLeft: def.loop.rounds || 1, wager: def.loop.wager_default || 100 };
     armDuel(def);
-    toast(`🥊 ${def.name}: wager ${active.wager} cr. Fists only.`);
+    sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: wager ${active.wager} cr. Fists only.`);
+    tryBark({ name: 'crowd', kind: 'colonist' }, 'pit_cheer');
     updateMenu();
     return { ok: true };
   }
@@ -259,6 +315,13 @@ function armDuel(def) {
 function abandonActivity(why) {
   if (!active) return;
   const id = active.missionId;
+  if (active.mode === 'poker') {
+    closePoker(why || 'Left the table.');
+    active = null;
+    updateMenu();
+    setChip(null);
+    return;
+  }
   try { C.game.abandon?.(); } catch (e) {}
   resetMissionProgress(id);
   if (C.world?.inDuel) C.world.yieldDuel?.();
@@ -281,14 +344,22 @@ function completeActivity(extra = {}) {
       toast(`⭐ New local best: ${extra.time.toFixed(1)}s`);
     }
   }
-  const bonus = scaleReward(def);
-  // Mission accept already paid base via engine; top up scaling delta
+  let bonus = scaleReward(def);
+  // Blue Drop / Scrap Run: prefer Marsmania contraband price when SSX exposes it
+  if (def.id === 'act-blue-courier') {
+    const px = contrabandPayout('glow_dust', contrabandPayout('contraband', bonus.credits));
+    bonus = { ...bonus, credits: px };
+  } else if (def.id === 'act-wrench-scrap') {
+    const px = contrabandPayout('salvage', contrabandPayout('scrap', bonus.credits));
+    bonus = { ...bonus, credits: px };
+  }
+  // Mission accept already paid base via engine; top up scaling / market delta
   const baseCr = def.rewards?.base?.credits || 50;
   const top = Math.max(0, bonus.credits - baseCr);
   if (top > 0) C.game.debug?.credits?.(top);
   setCooldown(def);
   const bark = def.bark?.complete || def.bark?.win;
-  toast(bark || `✅ ${def.name} +${bonus.credits} cr`);
+  sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
   active = null;
   updateMenu();
   setChip(null);
@@ -354,7 +425,8 @@ function openPanel() {
     const cdTxt = cd ? ` · cooldown ${Math.ceil((cd - Date.now()) / 1000)}s` : '';
     const best = bestTime(def.id);
     const bestTxt = best != null ? ` · best ${best.toFixed(1)}s` : '';
-    const note = deferred ? 'Deferred — needs poker resolver'
+    const note = deferred ? 'Deferred'
+      : def.loop?.type === 'poker' ? 'Hold\'em modal · tip dealer at your own risk'
       : deg === 'simple_taxi' ? 'Simple taxi (no smooth-drive meter)'
       : deg === 'local_best_only' ? `Local best only${bestTxt}`
       : `${clears(def.id)} clears · streak ${streak(def.id)}`;
@@ -371,7 +443,7 @@ function openPanel() {
   ui.panel.innerHTML = `<div class="wrap"><button class="close" data-close="1">✕</button>
     <h2>📋 Mars side jobs</h2>
     <div class="sub">${esc(here?.name || 'Mars')} · Olympus Row / Red Tape Flats / Helios Heights / Beltway<br>
-    Poker deferred. Taxi & time trials run degraded. No ambient events (CoS).</div>
+    Hold'em live. Taxi & time trials run degraded. No ambient events (CoS).</div>
     ${items}
     <div class="foot"><button data-close="1">Close</button></div></div>`;
   ui.panel.classList.add('on');
@@ -402,6 +474,8 @@ function onPanelClick(e) {
 
 function updateChip() {
   if (!active || !ui) { setChip(null); return; }
+  // Poker modal owns the screen — hide activity HUD chrome so it cannot overlap itself / pad
+  if (active.mode === 'poker' || pokerIsOpen()) { setChip(null); return; }
   chipT -= 1; if (chipT > 0) return; chipT = 4;
   const def = active.def;
   const info = C.game?.info;
@@ -423,6 +497,7 @@ function updateChip() {
 function watchActive() {
   if (!active || !C?.game) return;
   const def = active.def;
+  if (active.mode === 'poker') return; // modal owns the loop
 
   // Duel ladder: watch world.lastDuel
   if (active.mode === 'duel_ladder') {
@@ -492,9 +567,14 @@ export function activityTick(dt, ctx) {
   updateChip();
 
   // Idle: context button near an activity start (not during active job / race)
+  if (pokerIsOpen() || (active && active.mode === 'poker')) {
+    ui.ctx.style.display = 'none';
+    setChip(null);
+    return;
+  }
   if (active) {
     ui.ctx.style.display = 'block';
-    ui.ctx.textContent = '🏳️ Quit job';
+    ui.ctx.textContent = active.mode === 'poker' ? '🃏 Leave table' : '🏳️ Quit job';
     return;
   }
   if (window.__race?.state) { ui.ctx.style.display = 'none'; return; }
@@ -518,6 +598,7 @@ export function activityTick(dt, ctx) {
 setInterval(() => {
   if (!lastTick || performance.now() - lastTick < 700 || app()?.state?.onSurface) return;
   if (active) { active = null; }
+  if (pokerIsOpen()) closePoker(null);
   if (ui) { ui.ctx.style.display = 'none'; closePanel(); setChip(null); }
 }, 500);
 
@@ -538,6 +619,7 @@ window.__activities = {
   })),
   playable: () => (pack?.activities || []).filter(a => !DEFERRED.has(a.id)).map(a => a.id),
   deferred: () => [...DEFERRED],
+  poker: () => window.__poker,
   start: (id) => { const d = pack?.activities?.find(a => a.id === id); return d ? startActivity(d, { ignoreCooldown: true }) : { ok: false, why: 'unknown' }; },
   abandon: () => abandonActivity('debug abandon'),
   complete: () => completeActivity(),
