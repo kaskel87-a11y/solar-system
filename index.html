@@ -40,7 +40,24 @@
     /* Flight HUD */
     #hud { display: none; }
     body.flying #hud { display: block; }
-    body.flying #planetBar, body.flying #fact-panel, body.flying #speedbox, body.flying #info, body.flying #credits { display: none !important; }
+    body.flying #planetBar, body.flying:not(.surface) #fact-panel, body.flying #speedbox, body.flying #info, body.flying #credits { display: none !important; }
+    body.surface #hudSpeed, body.surface #hudHint, body.surface #flyBtns, body.surface #flyBtn, body.surface #landBtn, body.surface #landMsg { display: none !important; }
+    body.surface #fact-panel { top: calc(108px + var(--sat)); bottom: auto; }
+    #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.85s ease; z-index: 15; }
+    #landBtn { position: fixed; top: calc(118px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; font-size: 1.05rem; padding: 12px 20px;
+      background: linear-gradient(135deg, #2f80ff, #36c2ff); border: none; box-shadow: 0 4px 22px rgba(50,150,255,0.5); white-space: nowrap; }
+    #landMsg { position: fixed; top: calc(118px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 8; padding: 9px 14px; border-radius: 12px; font-size: 0.85rem; text-align: center; width: max-content; max-width: calc(100vw - 40px); }
+    #surfHud { display: none; }
+    body.surface #surfHud { display: block; }
+    #surfInfo { position: fixed; top: calc(14px + var(--sat)); left: calc(14px + var(--sal)); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; z-index: 7; max-width: calc(100vw - 180px); }
+    #surfInfo b { font-size: 1rem; }
+    #poiHint { position: fixed; top: calc(62px + var(--sat)); left: calc(14px + var(--sal)); padding: 6px 10px; border-radius: 10px; font-size: 0.78rem; z-index: 7; display: none; }
+    #takeoffBtn { position: fixed; top: calc(14px + var(--sat)); right: calc(14px + var(--sar)); z-index: 8; background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
+    #surfBtns { position: fixed; right: calc(20px + var(--sar)); bottom: calc(28px + var(--sab)); display: grid; grid-template-columns: 72px; gap: 12px; z-index: 7; }
+    #surfBtns button { height: 64px; border-radius: 16px; font-size: 0.9rem; font-weight: 700; touch-action: none; }
+    #surfBtns button.on { background: rgba(80,160,255,0.6); }
+    #surfHelp { position: fixed; bottom: calc(14px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 7px 12px; border-radius: 10px; font-size: 0.75rem; z-index: 7; white-space: nowrap; opacity: 0.85; }
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.8); box-shadow: 0 0 4px #000; pointer-events: none; z-index: 7; }
     #joy { position: fixed; left: calc(24px + var(--sal)); bottom: calc(28px + var(--sab)); width: 130px; height: 130px; border-radius: 50%; z-index: 7; touch-action: none; }
     #joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.6); pointer-events: none; }
     #flyBtns { position: fixed; right: calc(20px + var(--sar)); bottom: calc(28px + var(--sab)); display: grid; grid-template-columns: 64px 64px; gap: 10px; z-index: 7; }
@@ -78,8 +95,8 @@
     <h1>🌌 Cinematic Universe</h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
-    <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit)</small>
-    <small class="touch-only">Tap 🚀 Fly: left stick moves, drag anywhere to steer</small>
+    <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Fly close to a rocky world and press <b>L</b> to land.</small>
+    <small class="touch-only">Pick a planet, tap 🚀 Fly, then Land to walk on it. Left stick moves, drag to steer.</small>
   </div>
 
   <div id="topright">
@@ -101,6 +118,8 @@
   <div id="hud">
     <div id="hudHint"></div>
     <div id="hudSpeed" class="glass">🚀 Flight mode</div>
+    <button id="landBtn" class="btn">🛬 Land</button>
+    <div id="landMsg" class="glass"></div>
     <div id="joy" class="glass"><div id="joyKnob"></div></div>
     <div id="flyBtns">
       <button id="upBtn" class="glass touch-only">▲ Up</button>
@@ -109,6 +128,19 @@
       <button id="exitBtn" class="glass">Exit</button>
     </div>
   </div>
+
+  <div id="surfHud">
+    <div id="surfInfo" class="glass"></div>
+    <div id="poiHint" class="glass"></div>
+    <button id="takeoffBtn" class="btn">🚀 Take off</button>
+    <div id="surfBtns">
+      <button id="jumpBtn" class="glass touch-only">Jump</button>
+      <button id="runBtn" class="glass touch-only">Run</button>
+    </div>
+    <div id="surfHelp" class="glass desk-only">WASD move · mouse look (click to lock) · Space jump · Shift run · click things for facts · T take off</div>
+    <div id="crosshair" class="desk-only"></div>
+  </div>
+  <div id="fade"></div>
 
   <script type="importmap">
   {
@@ -130,6 +162,7 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { createSurface, LANDABLE } from './surface.js';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -341,7 +374,7 @@
         const moonPivot = new THREE.Group();
         g.add(moonPivot);
         const moon = new THREE.Mesh(new THREE.SphereGeometry(1.35, 32, 32), new THREE.MeshStandardMaterial({ map: textures.moon, roughness: 1 }));
-        moon.position.set(10, 0, 0);
+        moon.position.set(13, 0, 0);
         moon.userData = { name: 'Moon', fact: 'The Moon is slowly drifting away from Earth, about 3.8 cm every year.', stats: 'Distance 384,400 km · Orbit 27.3 days', r: 1.35 };
         moonPivot.add(moon);
         moonPivot.userData.moonPivot = true;
@@ -491,13 +524,17 @@
     const keys = {};
     let yaw = 0, pitch = 0;
     const joy = { x: 0, y: 0, id: null };
-    const touchBtns = { up: false, down: false, boost: false };
+    const touchBtns = { up: false, down: false, boost: false, jump: false, run: false };
     const flyBtn = document.getElementById('flyBtn');
 
     function lockPointer() {
       try { const r = renderer.domElement.requestPointerLock?.(); r?.catch?.(() => {}); } catch (e) { /* drag-to-look still works */ }
     }
+    let onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null;
+    const prevNearPos = new THREE.Vector3();
     function setFlying(on) {
+      if (onSurface || transitioning) return;
+      const startNear = follow;
       flying = on;
       controls.enabled = !on;
       document.body.classList.toggle('flying', on);
@@ -507,21 +544,106 @@
         // start the rocket just in front of the camera, facing where the camera looks
         camera.getWorldDirection(tmpV);
         rocket.position.copy(camera.position).addScaledVector(tmpV, 18);
+        flyTarget = startNear && startNear !== sun ? startNear : null;
+        if (startNear) {
+          // start parked just outside the selected body, between it and the camera
+          startNear.getWorldPosition(tmpV2);
+          const r = startNear.userData.r || 3;
+          rocket.position.copy(camera.position).sub(tmpV2).setLength(r * 2.2 + 6).add(tmpV2);
+          tmpV.copy(tmpV2).sub(rocket.position).normalize();
+        }
         yaw = Math.atan2(-tmpV.x, -tmpV.z); pitch = Math.asin(THREE.MathUtils.clamp(tmpV.y, -1, 1));
+        nearBody = null;
         rocket.rotation.set(pitch, yaw, 0, 'YXZ');
         if (!isTouch) lockPointer();
       } else {
         if (document.pointerLockElement) document.exitPointerLock?.();
+        landBtn.style.display = landMsg.style.display = 'none';
         controls.target.copy(rocket.position);
         controls.minDistance = 6;
         controls.update();
       }
     }
     flyBtn.onclick = () => setFlying(!flying);
+
+    // ===== Landing / surface =====
+    const surface = createSurface({ renderer, textures, isMobile });
+    const landBtn = document.getElementById('landBtn'), landMsg = document.getElementById('landMsg'), fadeEl = document.getElementById('fade');
+    const surfInfo = document.getElementById('surfInfo'), poiHint = document.getElementById('poiHint');
+    const NO_SURFACE = {
+      Sun: 'The Sun is a ball of plasma at 5,500 °C. No landing here!',
+      Jupiter: 'Jupiter has no solid surface. It\'s gas all the way down.',
+      Saturn: 'Saturn has no solid surface. You\'d sink into its clouds.',
+      Uranus: 'Uranus is an ice giant with no solid surface to land on.',
+      Neptune: 'Neptune is an ice giant with no solid surface to land on.'
+    };
+    function land() {
+      if (!flying || onSurface || transitioning || !nearBody || !LANDABLE.includes(nearBody.userData.name)) return;
+      transitioning = true; landedBody = nearBody;
+      landBtn.style.display = 'none';
+      landAnim = { body: nearBody };
+      fadeEl.style.opacity = 1;
+      setTimeout(() => {
+        try {
+          surface.resize(innerWidth, innerHeight);
+          surface.enter(landedBody.userData.name);
+          onSurface = true; landAnim = null;
+          document.body.classList.add('surface');
+          factPanel.style.display = 'none';
+        } catch (err) { console.error(err); landAnim = null; }
+        fadeEl.style.opacity = 0;
+        setTimeout(() => { transitioning = false; }, 400);
+      }, 950);
+    }
+    function takeOff() {
+      if (!onSurface || transitioning) return;
+      transitioning = true;
+      surface.takeOff();
+      fadeEl.style.opacity = 1;
+      factPanel.style.display = 'none';
+      setTimeout(() => {
+        surface.exit();
+        onSurface = false;
+        document.body.classList.remove('surface');
+        // put the rocket back in space on the sunlit side of the body, pointing away from it
+        landedBody.getWorldPosition(tmpV2);
+        const r = landedBody.userData.r || 3;
+        const out = tmpV.copy(tmpV2).negate().setY(0).normalize(); out.y = 0.35; out.normalize();
+        rocket.position.copy(tmpV2).addScaledVector(out, r * 2.2 + 6);
+        yaw = Math.atan2(-out.x, -out.z); pitch = Math.asin(THREE.MathUtils.clamp(out.y, -1, 1)) * 0.5;
+        rocket.rotation.set(pitch, yaw, 0, 'YXZ');
+        camera.position.copy(rocket.position).add(new THREE.Vector3(0, 3.5, 11).applyQuaternion(rocket.quaternion));
+        camera.lookAt(rocket.position);
+        flyTarget = landedBody; nearBody = null;
+        fadeEl.style.opacity = 0;
+        setTimeout(() => { transitioning = false; }, 400);
+      }, 950);
+    }
+    landBtn.onclick = land;
+    document.getElementById('takeoffBtn').onclick = takeOff;
+
+    // tap / click things on the surface for facts
+    let sDown = null;
+    renderer.domElement.addEventListener('pointerdown', e => { if (onSurface) sDown = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+    renderer.domElement.addEventListener('pointerup', e => {
+      if (!onSurface || !sDown) return;
+      const moved = Math.hypot(e.clientX - sDown.x, e.clientY - sDown.y), dtp = performance.now() - sDown.t; sDown = null;
+      if (moved > 8 || dtp > 600) return;
+      const locked = !!document.pointerLockElement;
+      const hit = locked ? surface.tap(0, 0) : surface.tap((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+      if (hit) showFact({ userData: hit });
+      else { factPanel.style.display = 'none'; if (!isTouch && !locked) lockPointer(); }
+    });
     document.getElementById('exitBtn').onclick = () => setFlying(false);
 
     window.addEventListener('keydown', e => {
       keys[e.code] = true;
+      if (onSurface) {
+        if (e.code === 'KeyT') takeOff();
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+        return;
+      }
+      if (e.code === 'KeyL') land();
       if (e.code === 'KeyF') setFlying(!flying);
       if (e.code === 'Escape' && flying) setFlying(false);
       if (flying && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -530,6 +652,8 @@
     window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
     function look(dx, dy, k) {
+      if (onSurface) return surface.look(dx, dy, k * 0.9);
+      if (landAnim) return;
       yaw -= dx * k; pitch -= dy * k;
       pitch = Math.max(-1.3, Math.min(1.3, pitch));
       rocket.rotation.set(pitch, yaw, 0, 'YXZ');
@@ -540,7 +664,7 @@
       if (document.pointerLockElement) look(e.movementX, e.movementY, 0.002);
       else if (e.buttons & 1) look(e.movementX, e.movementY, 0.004);
     });
-    renderer.domElement.addEventListener('click', () => { if (flying && !isTouch && !document.pointerLockElement) lockPointer(); });
+    renderer.domElement.addEventListener('click', () => { if (flying && !onSurface && !isTouch && !document.pointerLockElement) lockPointer(); });
 
     // Touch: drag anywhere on the canvas to steer
     const lookTouches = new Map();
@@ -569,7 +693,7 @@
     joyEl.addEventListener('pointerup', joyEnd); joyEl.addEventListener('pointercancel', joyEnd);
 
     // Hold buttons
-    [['upBtn', 'up'], ['downBtn', 'down'], ['boostBtn', 'boost']].forEach(([id, k]) => {
+    [['upBtn', 'up'], ['downBtn', 'down'], ['boostBtn', 'boost'], ['jumpBtn', 'jump'], ['runBtn', 'run']].forEach(([id, k]) => {
       const el = document.getElementById(id);
       const on = e => { e.preventDefault(); touchBtns[k] = true; el.classList.add('on'); el.setPointerCapture?.(e.pointerId); };
       const off = () => { touchBtns[k] = false; el.classList.remove('on'); };
@@ -589,6 +713,19 @@
       const rawDt = Math.min(clock.getDelta(), 0.5);
       const realDt = Math.min(rawDt, 0.1);
       const dt = realDt * timeSpeed;
+
+      if (onSurface) {
+        surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run });
+        renderer.render(surface.scene, surface.camera);
+        if ((frame++ & 7) === 0 && surface.info) {
+          const i = surface.info;
+          surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g · ${Math.round(i.walked)} m walked`;
+          const p = surface.nearestPoi();
+          if (p) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
+        }
+        window.__frames = (window.__frames || 0) + 1;
+        return;
+      }
 
       groups.forEach(g => {
         g.userData.orbitAngle += g.userData.orbitSpeed * dt * 0.18;
@@ -619,6 +756,7 @@
         if (keys['KeyQ'] || touchBtns.down) move.y -= 1;
         if (keys['KeyE'] || touchBtns.up) move.y += 1;
         move.x += joy.x; move.z += joy.y;
+        if (landAnim) move.set(0, 0, 0);
         const thrust = Math.min(1, move.length());
         if (thrust > 0.02) {
           move.normalize().multiplyScalar(speed * thrust * realDt).applyQuaternion(rocket.quaternion);
@@ -629,6 +767,31 @@
         for (let i = 1; i < pos.length; i += 3) { pos[i] -= flow * (0.6 + (i % 7) / 7); if (pos[i] < -4) pos[i] = 0; }
         exhaust.geometry.attributes.position.needsUpdate = true;
         exhaust.material.size = boost ? 0.75 : 0.5;
+
+        // nearby body: ride along with it, offer landing
+        let best = null, bestScore = Infinity, bestPos = new THREE.Vector3();
+        for (const b of bodies) {
+          b.mesh.getWorldPosition(tmpV);
+          const r = b.mesh.userData.r || 3, d = tmpV.distanceTo(rocket.position) - r;
+          if (d < Math.max(12, r * 3)) {
+            const score = d - (b.mesh === flyTarget ? 1000 : 0);
+            if (score < bestScore) { bestScore = score; best = b.mesh; bestPos.copy(tmpV); }
+          }
+        }
+        if (best) {
+          if (best === nearBody) { const dlt = tmpV.copy(bestPos).sub(prevNearPos); rocket.position.add(dlt); camera.position.add(dlt); }
+          prevNearPos.copy(bestPos);
+          const r = best.userData.r || 3, minD = r + 1.2;
+          if (rocket.position.distanceTo(bestPos) < minD) rocket.position.sub(bestPos).setLength(minD).add(bestPos);
+          if (landAnim && landAnim.body === best) rocket.position.lerp(bestPos, 1 - Math.pow(0.3, realDt));
+        }
+        if (best !== nearBody || (frame & 15) === 0) {
+          nearBody = best;
+          const nm = best?.userData.name;
+          if (best && LANDABLE.includes(nm)) { landBtn.textContent = `🛬 Land on ${nm}${isTouch ? '' : ' (L)'}`; if (!transitioning) landBtn.style.display = 'block'; landMsg.style.display = 'none'; }
+          else if (best && NO_SURFACE[nm]) { landMsg.textContent = NO_SURFACE[nm]; landMsg.style.display = 'block'; landBtn.style.display = 'none'; }
+          else { landBtn.style.display = landMsg.style.display = 'none'; }
+        }
 
         const ideal = tmpV.set(0, 3.5, 11).applyQuaternion(rocket.quaternion).add(rocket.position);
         camera.position.lerp(ideal, 1 - Math.pow(0.0005, realDt));
@@ -682,6 +845,7 @@
       renderer.setSize(w, h);
       composer.setSize(w, h);
       bloom.setSize(w, h);
+      surface.resize(w, h);
     }
     window.addEventListener('resize', onResize);
     window.visualViewport?.addEventListener('resize', onResize);
@@ -689,7 +853,8 @@
     setTimeout(onResize, 100);
 
     // test hooks
-    window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns };
+    window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
+      get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, info: surface.info }; } };
   </script>
 </body>
 </html>
