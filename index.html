@@ -26,7 +26,8 @@
     #speedbox input { width: 110px; }
     .btn { border-radius: 12px; padding: 9px 14px; font-size: 0.9rem; font-weight: 600; }
     #flyBtn { background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
-    #planetBar { position: fixed; left: 0; right: 0; bottom: calc(10px + var(--sab)); display: flex; gap: 6px; overflow-x: auto; padding: 0 calc(12px + var(--sar)) 0 calc(12px + var(--sal)); z-index: 4; scrollbar-width: none; justify-content: center; }
+    #planetBar { position: fixed; left: 0; right: 0; bottom: calc(10px + var(--sab)); display: flex; gap: 6px; overflow-x: auto; padding: 0 calc(12px + var(--sar)) 0 calc(12px + var(--sal)); z-index: 4; scrollbar-width: none; justify-content: flex-start; }
+    #planetBar > :first-child { margin-left: auto; } #planetBar > :last-child { margin-right: auto; }
     #planetBar::-webkit-scrollbar { display: none; }
     #planetBar button { flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: 0.8rem; }
     #planetBar button.active { background: rgba(80,140,255,0.55); border-color: rgba(150,200,255,0.7); }
