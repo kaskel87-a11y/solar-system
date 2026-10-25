@@ -2069,6 +2069,7 @@
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
+  <script type="module" src="./mars/contraband.js?v=7.4"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
   if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.1').catch(() => {}));
