@@ -40,6 +40,7 @@ export const DISTRICTS = {};
 export function registerDistrict(world, id, def) {
   if (!world || !id || !def || !(def.origin || def.centre)) throw new Error('registerDistrict(worldName, id, { name, origin: [x, z], domes, blocks, ... })');
   (DISTRICTS[world] = DISTRICTS[world] || {})[id] = { id, r1: 56, r2: 84, tint: 0xffa060, domes: [], blocks: [], crates: [], contacts: [], inside: {}, vehicles: [], guards: [], colonists: 3, lamps: 8, lots: [], ...def, origin: def.origin || def.centre };
+  { const D = DISTRICTS[world][id]; D.centre = D.centre || D.origin; D.r = D.r || D.r2; } // v7.5.1: centre/r for add-ons (contraband districtAt)
   return id;
 }
 export const districtsOf = world => Object.values(DISTRICTS[world] || {});
@@ -990,7 +991,7 @@ export function createWorld(ctx) {
     districts: () => sites.map(s => ({ id: s.id, name: s.name, kind: s.kind, x: s.x, z: s.z, r: s.r, fast: s.fast })), districtAt, get zone() { return actZone; },
     lots: (id) => sites.flatMap(s => s.lots || []).filter(l => !id || l.district === id || l.id === id).map(l => ({ ...l })),
     cameras: () => cams.map(c => ({ id: c.id, x: c.x, z: c.z, site: c.site, cased: c.cased > time })), caseCamera, nearCamera: () => { const c = nearCamera(); return c ? { id: c.id, x: c.x, z: c.z, cased: c.cased > time } : null; }, alarm,
-    npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z),
+    npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
     coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },

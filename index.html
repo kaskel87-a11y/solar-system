@@ -1695,20 +1695,25 @@
         get zone() { return surface.world.zone; }, get wanted() { return surface.world.wanted; }, setWanted: (n, why) => surface.world.setWanted(n, why),
         get quest() { return surface.game.info?.quest || null; },
         // v7.5.1 asks from Ben's heist PR
+        colony: () => { const c = surface.info?.colony; return c ? { x: c.x, z: c.z } : null; },
         player: () => { const i = surface.info; return i ? { x: i.x, z: i.z, y: i.y, driving: !!i.driving, inside: !!i.inside, world: i.name } : null; },
         height: (x, z) => surface.world.groundAt?.(x, z) ?? null,
         lineOfSight: (x1, z1, x2, z2, y = 1.6) => surface.world.lineOfSight?.(x1, z1, x2, z2, y) ?? true,
         safeSpots: id => (surface.world.spawnPoints?.(id) || []).filter(p => /safe|vault/.test(p.kind || '')),
         securityResponse: (x, z, level = 2, o = {}) => surface.game.hostiles(level >= 4 ? ['guard', 'guard', 'enforcer', 'sdrone'] : level >= 3 ? ['guard', 'guard', 'sdrone'] : ['guard', 'sdrone'], x, z, { r: 14, src: 'heist', faction: 'private', ...o })
       },
+      get radar() { return this.minimap; },
       minimap: { addMarks(id, marks) { mapMarks.set(id, (marks || []).map(m => ({ ...m }))); }, clear(id) { id ? mapMarks.delete(id) : mapMarks.clear(); }, list: () => [...mapMarks.keys()] },
-      registerSurfaceTick: fn => surface.registerTick?.(fn)
+      registerSurfaceTick: fn => surface.registerTick?.(fn),
+      height: (x, z) => surface.world.groundAt?.(x, z) ?? null, // world coords; colony-relative callers add SSX.city.colony()
+      despawnVehicle: () => surface.chopVehicle?.() || false,
     });
     // Ben's heist: private security answers alarms; informant camera/patrol tips draw on the minimap
     window.SSX.on('heist:alarm:response', d => { if (d && d.x != null && !surface.world.inside) window.SSX.city.securityResponse(d.x, d.z, d.wanted || 2); });
     addEventListener('heist:alarm:response', e => window.SSX.emit('heist:alarm:response', e.detail));
     addEventListener('heist:escape', e => window.SSX.emit('heist:escape', e.detail));
     addEventListener('heist:tip', e => { const d = e.detail || {}; const pts = [...(d.cameras || []).map(c => ({ x: c.x, z: c.z, color: '#f43f5e', r: 2.4 })), ...(d.guards || []).map(g => ({ x: g.x, z: g.z, color: '#60a5fa', r: 2.4 }))]; if (pts.length) window.SSX.minimap.addMarks('tip:' + (d.id || 'heist'), pts); });
+    addEventListener('ssx:chop', () => window.SSX.despawnVehicle()); // Marsmania's chop shop scraps the stolen ride
     addEventListener('heist:done', e => window.SSX.minimap.clear('tip:' + (e.detail?.id || 'heist')));
     window.SSX.on('heist:escape', d => { toast(`🏃 Clean getaway${d?.name ? ' from ' + d.name : ''}. Now lose the heat.`, 2600); updateSurfHud(true); });
     // v7.2 install as an app: one small item in the ☰ menu (a dot until you've opened it once); hidden when already installed
@@ -2069,7 +2074,7 @@
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js?v=7.5.1').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
-  <script type="module" src="./mars/contraband.js?v=7.4"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
+  <script type="module" src="./mars/contraband.js?v=7.5.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
   if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.1').catch(() => {}));

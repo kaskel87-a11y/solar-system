@@ -25,6 +25,8 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - Safes in the First Junction Trust bank and the Helios Heights mansions now use a cracking dial: drag anywhere to turn it, and stop on each notch while keeping the noise down. Too much noise trips the alarm.
 - Security cameras sweep view cones and raise your wanted level when they spot you. Private security responds to alarms.
 - Informant tips mark cameras and guard posts on your minimap.
+- The street economy: buy low in one district and sell high in another, barter with fixers for guns, tips and backup, and watch out for undercover busts. Chop shops scrap hot rides.
+- Fixes: the duel camera finds a clear side, rocks and crate stacks no longer swallow the camera, and the Security pay-off spot is easier to hit.
 
 ## v7.5: the Mars city
 Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Districts** to hop between them (lose your wanted stars first).

@@ -1351,6 +1351,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
+    chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
+      let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
+      return v ? world.despawnVehicle(v) : false; },
     summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective

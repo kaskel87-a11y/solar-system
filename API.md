@@ -55,3 +55,7 @@ All add-ons import core modules with the **same `?v=` string as the core** (curr
 - `SSX.city.securityResponse(x, z, level)` spawns a private guard and drone wave. It is wired automatically to `heist:alarm:response`.
 - `SSX.minimap.addMarks(id, [{ x, z, color, r, clamp }])`, `clear(id?)` and `list()`. Informant `heist:tip` cameras and guards are drawn automatically and cleared on `heist:done`.
 - `SSX.registerSurfaceTick(fn)` calls `fn(dt, ctx)` every surface frame and returns an unregister function.
+- `SSX.radar` is an alias of `SSX.minimap`. `SSX.height(x, z)` returns the terrain height in world coordinates. `SSX.city.colony()` gives the colony origin, for callers that use colony-relative coordinates.
+- `registerDistrict` defs now carry `centre` (= origin, colony-relative) and `r`, and they are read back by `SSX.districtsOf('Mars')`.
+- `SSX.despawnVehicle()` scraps the stolen vehicle you are driving or standing next to (never your own rover). It is wired to Marsmania's `ssx:chop` event.
+- `SSX.contraband`: Marsmania's contraband economy and barter (mars/contraband.js, mars/barter.json).
