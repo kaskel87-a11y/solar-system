@@ -959,9 +959,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     P.tail.rotation.y = Math.sin(time * (d.wag > 0 ? 32 : 9)) * (d.wag > 0 ? 0.8 : 0.25);
   }
 
+  let lastCd = 9;
   function updateAstro(dt) {
     const a = astro, P = a.parts;
-    a.group.visible = !driving && camDist > 0.8;
+    a.group.visible = !driving && camDist > 0.8 && lastCd > 1.0; // v7.4: hide yourself when the boom is squeezed (no head filling the screen)
     if (!a.group.visible) return;
     a.group.position.set(player.x, player.y - EYE, player.z);
     if (player.moving > 0.05) player.faceYaw = lerpAngle(player.faceYaw, player.moveYaw, dt * 10);
@@ -1079,6 +1080,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         const b = world.inside, m = 0.35; cd = Math.min(cd, 3.4);
         const lim = (o, d, lo, hi) => d > 1e-4 ? (hi - o) / d : d < -1e-4 ? (lo - o) / d : 1e9;
         cd = Math.max(0.3, Math.min(cd, lim(camT.x, -camDir.x, b.x0 + m, b.x1 - m), lim(camT.z, -camDir.z, b.z0 + m, b.z1 - m), lim(camT.y, -camDir.y, b.floor + 0.4, b.y1 - m)));
+        // v7.4: march the boom against tall interior colliders too (VIP partition, depot shelving) so the lens never ends up inside a wall
+        const N = 12, c0 = cd; for (let i = 1; i <= N; i++) { const t = c0 * i / N; if (world.camBlockedIn(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { cd = Math.max(0.3, c0 * (i - 1) / N - 0.2); break; } }
       }
       else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
         const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
@@ -1089,7 +1092,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         cd = Math.min(cd, camPull);
       }
       if (indoor || cd >= 60) camPull = cd;
-      camOcc = cd < camDist - 0.3;
+      camOcc = cd < camDist - 0.3; lastCd = cd;
       camera.position.copy(camT).addScaledVector(camDir, -cd); camera.position.y += introY;
       const gy = (indoor ? world.inside.floor + 0.4 : height(camera.position.x, camera.position.z) + 1.0);
       if (camera.position.y < gy) camera.position.y = gy;
@@ -1187,7 +1190,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     indoor = { kind: r.kind, name: r.name, out: { x: player.x, z: player.z } };
     hiddenOut = [];
     for (const o of scene.children) { if (o.isLight || o.isCamera || o.userData.keep || o === astro?.group || !o.visible) continue; o.visible = false; hiddenOut.push(o); }
-    player.x = r.spawn.x; player.z = r.spawn.z; player.y = r.spawn.y + EYE; player.vy = 0; player.grounded = true; player.yaw = r.spawn.yaw; player.faceYaw = r.spawn.yaw; player.pitch = -0.08;
+    player.x = r.spawn.x - Math.sin(r.spawn.yaw) * 1.0; player.z = r.spawn.z - Math.cos(r.spawn.yaw) * 1.0; player.y = r.spawn.y + EYE; player.vy = 0; player.grounded = true; player.yaw = r.spawn.yaw; // v7.4: a step inside, so the first look shows the room player.faceYaw = r.spawn.yaw; player.pitch = -0.08;
     lastLook = -9; camYawS = null;
     onEvent('indoor', { on: true, kind: r.kind, name: r.name, paid: r.paid || 0 });
     return r;
@@ -1308,7 +1311,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dx = rover.x - player.x, dz = rover.z - player.z, a = Math.atan2(-dx, -dz) - viewYaw;
     return { dist: Math.round(Math.hypot(dx, dz)), ang: Math.atan2(Math.sin(a), Math.cos(a)), ship: Math.round(Math.hypot(SHIP.x - player.x, SHIP.z - player.z)) };
   }
-  function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
+  function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; player.faceYaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
@@ -1333,7 +1336,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
         view: viewName(camDist), camDist, camGoal, camPulled: camOcc, camPos: [camera.position.x, camera.position.y, camera.position.z], driving, nearRover: !!nearRover(), driven, speed: driving ? car.speed : 0, air: driving ? !!car.air : false, rolling: driving ? !!car.barrel : false, stunts: { ...stuntLog }, boosting: driving ? !!car.boosting : false, vcap: driving ? car.vcap || 0 : 0, vehicle: driving ? car.kind : null, vehicleName: driving ? car.spec.name : null, stolen: driving && car !== rover,
         nearVehicle: (() => { if (driving || indoor || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
-        nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, nearShop: !driving && !indoor ? world.nearShop() : null,
+        nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, duelist: !driving && !indoor ? world.nearDuelist() : null, duel: world.duel, nearShop: !driving && !indoor ? world.nearShop() : null,
         door: !driving && !indoor ? (() => { const d = world.nearDoor(); return d ? { name: d.name, kind: d.kind } : null; })() : null,
         inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
         carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,

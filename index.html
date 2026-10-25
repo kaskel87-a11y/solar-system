@@ -176,15 +176,19 @@
     /* v6.1 minimal surface HUD: one slim top bar, a minimap, a right-hand stack for cards, thumb-zone buttons.
        Nothing overlaps and the middle of the screen stays clear (checked by tests/test-hud.js). */
     .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
-    #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 44px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
+    #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 50px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
       background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
-    #tbBars { flex: 0 0 64px; } #tbBars .bar { height: 5px; margin: 2px 0; }
+    #tbBars { flex: 0 0 74px; display: flex; flex-direction: column; justify-content: center; gap: 1px; } #tbBars .bar { height: 5px; margin: 0; flex: 1 1 auto; min-width: 0; }
+    /* v7.4: labelled meters. Icons only on phones, short words + numbers on wider screens. Thrust shows only when you can thrust */
+    .tbRow { display: flex; align-items: center; gap: 4px; height: 12px; } .tbL { flex: 0 0 auto; width: 13px; text-align: center; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 800; letter-spacing: 0.02em; } .tbL b { display: none; } .tbV { display: none; }
+    #thRow { display: none; } body.canthrust #thRow { display: flex; } #thBar i { background: linear-gradient(90deg, #38bdf8, #a5f3fc); } #thBar.low i { background: #f97316; }
+    @media (min-width: 700px) { #tbBars { flex-basis: 170px; } .tbL { width: 62px; } .tbL b { display: inline; } .tbV { display: block; flex: 0 0 24px; text-align: right; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 700; font-variant-numeric: tabular-nums; } }
     #rankLine { flex: 0 0 auto; white-space: nowrap; opacity: 0.9; } body.wanted #rankLine .xp, body.driving #rankLine .xp, body.turret #rankLine .xp { display: none; } body.wanted #surfInfo .gv, body.driving #surfInfo .gv { display: none; }
     @media (max-width: 380px) { #rankLine .xp { display: none; } }
-    #menuBtn { flex: 0 0 auto; width: 44px; height: 38px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
-    #miniMap { position: fixed; z-index: 7; top: calc(56px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
-    #stackR { position: fixed; z-index: 9; top: calc(54px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
+    #menuBtn { flex: 0 0 auto; width: 46px; height: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
+    #miniMap { position: fixed; z-index: 7; top: calc(60px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
+    #stackR { position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
     #heatRow { display: none; flex: 0 0 74px; align-items: center; gap: 4px; } body.turret #heatRow { display: flex; } #heatRow .bar { flex: 1; height: 6px; margin: 0; }
     #questTrack, #bossBar, #toast, #radio, #discPop { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
@@ -208,7 +212,7 @@
     #radio.open #radioText { -webkit-line-clamp: 12; }
     #radio .btns { display: flex; gap: 6px; margin-top: 5px; } #radio .btns button { flex: 1; min-height: 44px; font-weight: 800; border-radius: 9px; font-size: 0.74rem; padding: 2px 8px; }
     #radioAccept { background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; }
-    #roverMenu { position: fixed; z-index: 12; top: calc(56px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
+    #roverMenu { position: fixed; z-index: 12; top: calc(60px + var(--sat)); right: calc(8px + var(--sar)); display: none; flex-direction: column; gap: 5px; padding: 7px; border-radius: 12px; width: 200px; box-sizing: border-box; background: rgba(8,10,20,0.92); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; }
     #roverMenu.show { display: flex; }
     #roverMenu button { min-height: 44px; border-radius: 10px; font-weight: 700; font-size: 0.8rem; text-align: left; background: rgba(40,56,96,0.95); color: #fff; border: 1px solid rgba(120,160,255,0.35); padding: 5px 10px; white-space: nowrap; }
     @media (max-height: 1150px) and (min-height: 441px) { #roverMenu { width: min(380px, calc(100vw - 16px)); } #roverMenu.show { display: grid; grid-template-columns: 1fr 1fr; } #roverMenu button { white-space: normal; line-height: 1.15; } } /* v7.3: 13 items fit on an SE/iPhone 14 without scrolling */
@@ -218,9 +222,9 @@
     /* v7: wanted stars + gear chip live inside the top bar, so they can never overlap anything */
     #wantedStars { display: none; flex: 0 0 auto; color: #fbbf24; font-weight: 900; letter-spacing: -1px; font-size: 0.8rem; text-shadow: 0 0 6px rgba(255,60,60,0.8); }
     body.wanted #wantedStars { display: block; } #wantedStars.evade { animation: wblink 0.6s steps(2) infinite; } @keyframes wblink { 50% { opacity: 0.25; } }
-    #gearChip { flex: 0 0 auto; height: 36px; min-width: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0 6px; white-space: nowrap; touch-action: manipulation; }
+    #gearChip { flex: 0 0 auto; height: 44px; min-width: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0 6px; white-space: nowrap; touch-action: manipulation; }
     #tbBars { cursor: pointer; }
-    #radioBtn { display: none; height: 42px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(120,40,160,0.55) !important; }
+    #radioBtn { display: none; height: 44px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(120,40,160,0.55) !important; }
     body.driving #radioBtn { display: block; }
     #shopPanel { position: fixed; inset: 0; z-index: 14; display: none; background: rgba(6,4,10,0.95); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(24px + var(--sab)) calc(16px + var(--sal)); color: #fff; }
     #shopPanel .wrap { max-width: 640px; margin: 0 auto; } #shopPanel h2 { margin: 6px 0 4px; } #shopPanel h3 { margin: 14px 0 6px; color: #fca5a5; font-size: 0.95rem; }
@@ -231,7 +235,7 @@
     #surfBtns { position: fixed; z-index: 7; right: calc(8px + var(--sar)); bottom: calc(22px + var(--sab)); display: grid; grid-template-columns: 64px; gap: 8px; }
     #surfBtns button { height: 54px; border-radius: 14px; font-size: 0.82rem; font-weight: 700; touch-action: none; color: #fff; background: rgba(10,14,30,0.42); border: 1px solid rgba(255,255,255,0.22); padding: 0 4px; }
     #surfBtns button.on { background: rgba(80,160,255,0.55); }
-    #petBtn, #driveBtn { display: none; height: 42px !important; font-size: 0.72rem !important; touch-action: manipulation !important; }
+    #petBtn, #driveBtn { display: none; height: 44px !important; font-size: 0.72rem !important; touch-action: manipulation !important; }
     #driveBtn { background: rgba(22,163,74,0.6) !important; border-color: rgba(120,255,170,0.5) !important; } #petBtn { background: rgba(183,121,31,0.55) !important; }
     body:not(.touch) #surfBtns { grid-template-columns: 110px; } body:not(.touch) #petBtn, body:not(.touch) #driveBtn { font-size: 0.8rem !important; }
     #fireBtn { position: fixed; right: calc(82px + var(--sar)); bottom: calc(24px + var(--sab)); width: 78px; height: 78px; border-radius: 50%; z-index: 8; display: none; font-size: 0.92rem; font-weight: 900; color: #fff; border: 2px solid rgba(255,255,255,0.45); background: radial-gradient(circle at 40% 35%, rgba(255,107,139,0.85), rgba(209,18,74,0.85)); box-shadow: 0 0 16px rgba(255,60,110,0.45); touch-action: none; }
@@ -250,6 +254,19 @@
     #surfHelp { position: fixed; bottom: calc(10px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 9px; font-size: 0.7rem; z-index: 7; white-space: nowrap; opacity: 0.7; }
     body.surface #fact-panel { display: none !important; }
     /* cinematic: everything off except a faint restore button (the stick still works, just faded) */
+    /* v7.4 duels: a small sheet to pick weapons and a wager, and one compact banner during the fight */
+    #duelPanel { position: fixed; inset: 0; z-index: 60; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
+    #duelPanel .wrap { width: min(420px, calc(100vw - 16px)); margin: 0 8px calc(10px + var(--sab)); padding: 14px; border-radius: 16px; background: #0b0f1c; color: #fff; border: 1px solid #ffb020; }
+    #duelPanel h2 { margin: 0 0 4px; font-size: 1.05rem; } #duelPanel p { margin: 0 0 8px; font-size: 0.8rem; color: #d6dcef; } #duelPanel .lbl { font-size: 0.72rem; color: #d6dcef; margin: 6px 0 2px; }
+    #duelPanel .row { display: flex; gap: 6px; margin-bottom: 4px; } #duelPanel .btn { flex: 1; min-height: 44px; font-size: 0.82rem; }
+    #duelPanel .chipb.on { outline: 2px solid #ffb020; background: rgba(255,176,32,0.25); } #duelPanel .chipb:disabled { opacity: 0.4; }
+    #duelBanner { display: none; position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); max-width: 340px; margin-left: auto; padding: 4px 6px 4px 10px; border-radius: 10px; background: rgba(8,10,20,0.78); border: 1px solid rgba(255,176,32,0.6); color: #fff; font-size: 0.72rem; }
+    body.duel #duelBanner { display: block; } body.duel #stackR { display: none; }
+    #duelBanner .dt { display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; overflow: hidden; } #duelCount { color: #ffd27a; font-weight: 800; }
+    #duelBanner .dbars { display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 800; } #duelBanner .bar { flex: 1; height: 5px; margin: 0; }
+    #duelMe i { background: #22c55e; } #duelThem i { background: #f97316; }
+    #duelYield { flex: 0 0 auto; width: 44px; height: 44px; margin-left: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; padding: 0; }
+    @media (max-height: 440px) { #duelBanner { top: calc(52px + var(--sat)); } }
     #adultGate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.72); }
     #adultGate .wrap { max-width: 360px; margin: 16px; padding: 18px; border-radius: 16px; background: #000; color: #fff; border: 1px solid #ff3cc8; }
     #adultGate .row { display: flex; gap: 10px; margin-top: 12px; } #adultGate .btn { flex: 1; min-height: 44px; }
@@ -259,13 +276,15 @@
     body.cinebars::before { top: 0; } body.cinebars::after { bottom: 0; }
     body.cinematic #surfHud > *:not(#hudShow) { display: none !important; }
     body.cinematic #hudShow { display: block; }
+    #lockChip { display: none; position: fixed; z-index: 9; bottom: calc(40px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 3px 9px; border-radius: 8px; background: rgba(0,0,0,0.55); color: #e8eefc; font-size: 0.72rem; pointer-events: none; white-space: nowrap; }
+    body.mlocked.surface:not(.touch) #lockChip { display: block; }
     body.cinematic.surface #joy { opacity: 0.18; }
     @media (max-height: 440px) {
-      #topBar { height: 40px; top: calc(4px + var(--sat)); } #menuBtn { height: 36px; } #gearChip { height: 34px; }
+      #topBar { height: 46px; top: calc(3px + var(--sat)); } #menuBtn { height: 44px; } #gearChip { height: 44px; }
       #miniMap { top: calc(50px + var(--sat)); width: 80px; height: 80px; }
       #stackR { top: calc(50px + var(--sat)); left: auto; width: calc(24vw - 8px); max-height: calc(100vh - 190px - var(--sat) - var(--sab)); }
       #bossBar { width: 100%; }
-      #roverMenu { top: calc(50px + var(--sat)); width: min(480px, 70vw); max-height: calc(100vh - 60px - var(--sat)); overflow-y: auto; display: none; flex-direction: row; flex-wrap: wrap; } #roverMenu.show { display: flex; }
+      #roverMenu { top: calc(50px + var(--sat)); width: min(480px, 70vw); max-height: calc(100vh - 186px - var(--sat) - var(--sab)); overflow-y: auto; display: none; flex-direction: row; flex-wrap: wrap; } #roverMenu.show { display: flex; }
       #roverMenu button { flex: 1 1 140px; min-height: 44px; }
       #surfBtns { grid-template-columns: 60px 60px; bottom: calc(14px + var(--sab)); gap: 6px; }
       #surfBtns button { height: 48px; }
@@ -337,9 +356,10 @@
   </div>
 
   <div id="surfHud">
-    <div id="topBar">
+    <div id="lockChip">🖱 Esc frees mouse · M menu</div>
+  <div id="topBar">
       <div id="surfInfo"></div>
-      <div id="tbBars"><div class="bar" id="shBar"><i></i></div><div class="bar" id="hpBar"><i></i></div></div>
+      <div id="tbBars" title="Shield · health · thrust fuel. Tap to use a medkit."><div class="tbRow"><span class="tbL" aria-label="Shield">🛡<b> SHIELD</b></span><div class="bar" id="shBar"><i></i></div><span class="tbV" id="shVal"></span></div><div class="tbRow"><span class="tbL" aria-label="Health">❤<b> HEALTH</b></span><div class="bar" id="hpBar"><i></i></div><span class="tbV" id="hpVal"></span></div><div class="tbRow" id="thRow"><span class="tbL" aria-label="Thrust fuel">🚀<b> THRUST</b></span><div class="bar" id="thBar"><i></i></div><span class="tbV" id="thVal"></span></div></div>
       <div id="wantedStars" title="Wanted level"></div>
       <div id="rankLine"></div>
       <button id="gearChip" aria-label="Weapon and medkits: tap to switch weapon" title="Weapon · ammo (∞ = blaster, never runs dry) · ✚ medkits. Tap to switch.">🔫</button>
@@ -388,8 +408,13 @@
   <div id="shopPanel"><div class="wrap"><button id="shopClose" class="btn">✕ Close</button><h2 id="shopTitle">🛒 Supply</h2><div id="shopMsg"></div><div id="shopList"></div></div></div>
   <div id="ctlPanel"><div class="wrap"><button id="ctlClose" class="btn">✕ Close</button><h2>❔ Controls</h2>
     <p style="opacity:.8">Phone: left stick moves, drag anywhere to look, and the big buttons do the rest. Keyboard and mouse:</p>
-    <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td>Double-tap <kbd>A</kbd> / <kbd>D</kbd></td><td>Barrel roll the Starship</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd> in the air (or double-tap <kbd>A</kbd>/<kbd>D</kbd>)</td><td>🌀 Barrel roll when airborne. Land on your wheels for a stunt bonus; land on the roof and it hurts. Touch: flick the stick sideways twice</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
+    <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td>Double-tap <kbd>A</kbd> / <kbd>D</kbd></td><td>Barrel roll the Starship</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>E</kbd> near a colonist</td><td>⚔️ Challenge to a legal duel (fists, blades or quick-draw; 🏳 yields)</td></tr><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd> in the air (or double-tap <kbd>A</kbd>/<kbd>D</kbd>)</td><td>🌀 Barrel roll when airborne. Land on your wheels for a stunt bonus; land on the roof and it hurts. Touch: flick the stick sideways twice</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
     <p style="opacity:.7">Shop panels: click to buy, <kbd>E</kbd> or <kbd>Esc</kbd> closes. The mouse is freed whenever a menu or shop opens.</p></div></div>
+  <div id="duelPanel" role="dialog" aria-modal="true"><div class="wrap"><h2 id="duelHead">⚔️ Challenge</h2><p id="duelBlurb"></p>
+    <div class="lbl">Weapons</div><div class="row" id="duelTypes"><button class="btn chipb" data-t="fists">👊 Fists</button><button class="btn chipb" data-t="blades">🔪 Blades</button><button class="btn chipb" data-t="pistol">🔫 Quick-draw</button></div>
+    <div class="lbl">Wager (they match it)</div><div class="row" id="duelWagers"><button class="btn chipb" data-w="0">None</button><button class="btn chipb" data-w="25">25</button><button class="btn chipb" data-w="50">50</button><button class="btn chipb" data-w="100">100</button></div>
+    <div class="row"><button id="duelGo" class="btn">⚔️ Fight</button><button id="duelCancel" class="btn">Walk away</button></div></div></div>
+  <div id="duelBanner" aria-live="polite"><div class="dt"><b id="duelTitle"></b><span id="duelCount"></span></div><div class="dbars"><span>YOU</span><div class="bar" id="duelMe"><i></i></div><span>THEM</span><div class="bar" id="duelThem"><i></i></div><button id="duelYield" aria-label="Yield">🏳</button></div></div>
   <div id="adultGate" role="dialog" aria-modal="true"><div class="wrap"><h2>🔞 Adults only</h2><p>The Velvet Airlock's stage shows, private dances and upstairs rooms are for players 18 and over. Costumes stay on, nothing explicit is shown, and the upstairs fades to black.</p><div class="row"><button id="adultYes" class="btn">I'm 18+</button><button id="adultNo" class="btn">Not now</button></div></div></div>
   <div id="fadeBlack"></div>
   <div id="logPanel"><div class="wrap">
@@ -429,7 +454,7 @@
     import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=7.4';
     import { buildStarship } from './models.js?v=7.4';
     import { COSMETICS, registerMission } from './game.js?v=7.4';
-    import { registerColony, registerVehicle, VEHICLES } from './world.js?v=7.4';
+    import { registerColony, registerVehicle, registerDistrict, districtsOf, VEHICLES } from './world.js?v=7.4';
     import { registerInterior } from './interiors.js?v=7.4';
     import { createAudio7 } from './audio7.js?v=7.4';
     import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
@@ -1025,6 +1050,10 @@
       else if (type === 'take') { au7.fx.door(); sfxLog.push('take'); toast(ev.seen ? `🚗 ${ev.name} taken. Somebody saw that.` : `🚗 ${ev.name} taken. Nobody saw a thing.`, 2600); }
       else if (type === 'vehicle') onVehicle(ev);
       else if (type === 'wanted') { au7.fx.wanted(); sfxLog.push('wanted'); toast(`🚨 ${'★'.repeat(ev.stars)} ${ev.why || 'Security wants a word.'}`, 2600); updateSurfHud(true); }
+      else if (type === 'duel') onDuelEvent(ev);
+      else if (type === 'duelHit') { ev.who === 'me' ? au7.fx.thud() : au7.fx.punch(); sfxLog.push('duelHit'); }
+      else if (type === 'duelShot') { au7.fx.enemyShot(); sfxLog.push('duelShot'); }
+      else if (type === 'duelSwing') { ev.hit ? au7.fx.punch() : au7.fx.whoosh?.(); }
       else if (type === 'wantedLost') { au7.fx.lost(); sfxLog.push('lost'); toast('😮‍💨 Security lost you. Act natural.', 2600); updateSurfHud(true); }
       else if (type === 'siren') { au7.fx.siren(); sfxLog.push('siren'); }
       else if (type === 'crash') { au7.fx.crash(); sfxLog.push('crash'); }
@@ -1061,16 +1090,17 @@
     let ambTick = 0;
     // v7.2 Thrust: Jump turns into Thrust in your rover / a stolen hover bike, fuel bar inside the button
     const jumpBtnEl = document.getElementById('jumpBtn'), jumpLbl = jumpBtnEl.querySelector('.lbl'), fuelBar = jumpBtnEl.querySelector('.fuel b');
+    const thBarEl = document.getElementById('thBar'), thBarI = thBarEl.querySelector('i');
     let thrWas = false, thrKey = '';
     function updateThrustHud() {
       const i = surface.info; if (!i) return;
       const T = i.thrust || {}, can = !!(i.driving && T.can), pct = can ? Math.round(100 * T.fuel / T.max) : 100;
       const k = `${can}|${pct}`;
-      if (k !== thrKey) { thrKey = k; document.body.classList.toggle('canthrust', can); jumpLbl.textContent = can ? '🚀 Thrust' : 'Jump'; fuelBar.style.width = pct + '%'; jumpBtnEl.classList.toggle('low', pct < 25); }
+      if (k !== thrKey) { thrKey = k; document.body.classList.toggle('canthrust', can); jumpLbl.textContent = can ? '🚀 Thrust' : 'Jump'; fuelBar.style.width = pct + '%'; jumpBtnEl.classList.toggle('low', pct < 25); thBarI.style.width = pct + '%'; thBarEl.classList.toggle('low', pct < 25); document.getElementById('thVal').textContent = can ? pct + '%' : ''; }
       if (T.on && !thrWas) { au7.fx.ignite(); sfxLog.push('thrust'); }
       thrWas = !!T.on; au7.thruster(i.driving ? T.jet || 0 : 0);
     }
-    window.__thrustHud = () => ({ can: document.body.classList.contains('canthrust'), label: jumpLbl.textContent, bar: fuelBar.style.width });
+    window.__thrustHud = () => ({ can: document.body.classList.contains('canthrust'), label: jumpLbl.textContent, bar: fuelBar.style.width, top: getComputedStyle(document.getElementById('thRow')).display !== 'none', topBar: thBarI.style.width, low: thBarEl.classList.contains('low') });
     function tickAudio7(dt) {
       const i = surface.info, g = surface.game.info; if (!i) return;
       const ping = au7.tick(dt, { trackerDist: g.tracker ?? 1e9, hostiles: surface.game.progress.settings.aliens, driving: i.driving });
@@ -1149,7 +1179,7 @@
     }
     function landAction() {
       if (!flying || onSurface || transitioning) return;
-      if (nearBody && LANDABLE.includes(nearBody.userData.name)) { autopilot = null; return land(); }
+      if (nearBody && LANDABLE.includes(nearBody.userData.name) && (!autopilot || autopilot === nearBody)) { autopilot = null; return land(); } // v7.4: passing another world on autopilot doesn't hijack the button
       if (autopilot) { autopilot = null; updateLandUI(true); return; }
       autopilot = landTarget || nearestLandable(); flyTarget = autopilot; updateLandUI(true);
     }
@@ -1164,7 +1194,7 @@
       if (!flying || onSurface) return;
       if (transitioning || landAnim) { landBtn.style.display = 'none'; return; }
       const nm = nearBody?.userData.name;
-      if (nearBody && LANDABLE.includes(nm)) {
+      if (nearBody && LANDABLE.includes(nm) && (!autopilot || autopilot === nearBody)) {
         landTarget = nearBody; landBtn.classList.remove('auto');
         landBtn.innerHTML = `🛬 Land on ${nm}${isTouch ? '' : ' (L)'}`;
         landMsg.style.display = 'none';
@@ -1217,6 +1247,7 @@
       if (i.nearShop) return { kind: 'shop', label: '🛒 Shop', door: i.nearShop.door, name: i.nearShop.name }; // beats Pet: walk in
       if (i.door) return { kind: 'door', label: `🚪 Enter ${i.door.name}` };
       if (i.nearContact) return { kind: 'talk', label: `💬 ${i.nearContact}`, who: i.nearContact };
+      if (i.duelist && !i.duel) return { kind: 'duel', label: `⚔️ ${i.duelist.rematch ? 'Rematch' : 'Challenge'}`, who: i.duelist };
       return { kind: null, label: '' };
     }
     function buyWare(id) {
@@ -1270,6 +1301,7 @@
       if (act.kind === 'talk') { talkedAt = performance.now(); surface.game.talk(act.who); return; }
       if (act.kind === 'shop' || act.kind === 'door') { surface.enterBuilding(act.kind === 'shop' ? act.door : undefined); updateSurfHud(true); return; }
       if (act.kind === 'buy') { buyWare(act.ware); return; }
+      if (act.kind === 'duel') { openDuel(act.who); return; }
       if (act.kind === 'spot') { doSpot(act.spot); return; }
       const r = surface.interact();
       updateSurfHud(true);
@@ -1401,6 +1433,7 @@
       document.body.classList.toggle('quest', !!g.quest);
       shBar.style.width = `${(100 * g.shield / g.shieldMax).toFixed(0)}%`;
       hpBar.style.width = `${(100 * g.hp / g.hpMax).toFixed(0)}%`; hpBarEl.classList.toggle('low', g.hp < 35);
+      document.getElementById('shVal').textContent = Math.round(g.shield); document.getElementById('hpVal').textContent = Math.round(g.hp);
       heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
       document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
       rankLine.innerHTML = `💰 ${g.credits}<span class="xp"> · ⭐ ${g.xp}</span>`; rankLine.title = `${g.rank} · ${g.xp} XP`;
@@ -1501,6 +1534,7 @@
     function openControls(on = true) { ctlPanel.style.display = on ? 'block' : 'none'; if (on) { roverMenu.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } }
     document.getElementById('ctlBtn').onclick = () => openControls(true); document.getElementById('ctlClose').onclick = () => openControls(false);
     let lockTipShown = false;
+    document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('mlocked', !!document.pointerLockElement); });
     document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && onSurface && !lockTipShown) { lockTipShown = true; toast('🖱 Mouse aim on. Esc frees the mouse for ☰ and buttons (or press M for the menu).', 3200); } });
     function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
     miniMap.onclick = () => toggleMenu(); document.getElementById('menuBtn').onclick = () => toggleMenu();
@@ -1519,6 +1553,40 @@
     { const g = document.getElementById('adultGate'), hit = (el, fn) => { el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { e.preventDefault(); fn(); } }); el.addEventListener('click', fn); };
       let lastG = 0; const once = fn => () => { const n = performance.now(); if (n - lastG < 500) return; lastG = n; fn(); };
       hit(document.getElementById('adultYes'), once(() => g._yes?.())); hit(document.getElementById('adultNo'), once(() => { g.style.display = 'none'; toast('Tiny shrugs. "Bar’s that way."', 2200); })); }
+    // ===== v7.4 legal duels =====
+    const duelPanel = document.getElementById('duelPanel'); let duelPick = { t: 'fists', w: 0, who: null };
+    function openDuel(who) {
+      duelPick = { t: duelPick.t, w: who.champion ? Math.max(who.minWager, duelPick.w) : duelPick.w, who };
+      document.getElementById('duelHead').textContent = `⚔️ ${who.rematch ? 'Rematch' : 'Challenge'} ${who.name}`;
+      document.getElementById('duelBlurb').textContent = who.champion ? `Cantina pit champion. Hits hard, never backs down. Minimum wager ${who.minWager} cr, and the house adds a purse.` : 'A sanctioned fight to KO or yield, not death. Security watches but stays out of it.';
+      duelPanel.querySelectorAll('[data-w]').forEach(b => { b.disabled = who.champion && +b.dataset.w < who.minWager; });
+      paintDuel(); duelPanel.style.display = 'flex'; if (document.pointerLockElement) document.exitPointerLock();
+    }
+    function paintDuel() { duelPanel.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === duelPick.t)); duelPanel.querySelectorAll('[data-w]').forEach(b => b.classList.toggle('on', +b.dataset.w === duelPick.w)); }
+    { const hit = (el, fn) => { el.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { e.preventDefault(); fn(); } }); el.addEventListener('click', fn); };
+      let lastD = 0; const once = fn => () => { const n = performance.now(); if (n - lastD < 350) return; lastD = n; fn(); };
+      duelPanel.querySelectorAll('[data-t]').forEach(b => hit(b, () => { duelPick.t = b.dataset.t; paintDuel(); }));
+      duelPanel.querySelectorAll('[data-w]').forEach(b => hit(b, () => { if (b.disabled) return; duelPick.w = +b.dataset.w; paintDuel(); }));
+      hit(document.getElementById('duelCancel'), once(() => { duelPanel.style.display = 'none'; }));
+      hit(document.getElementById('duelGo'), once(() => { duelPanel.style.display = 'none'; const r = surface.world.challenge(duelPick.t, duelPick.w, duelPick.who?.name); toast((r.ok ? '⚔️ ' : '') + r.msg, 2600); if (!r.ok) au7.fx.dry(); updateSurfHud(true); }));
+      hit(document.getElementById('duelYield'), once(() => { surface.world.yieldDuel(); })); }
+    let duelKey = '';
+    function updateDuelHud() {
+      const d = surface.info?.duel || null; document.body.classList.toggle('duel', !!d); if (!d) { duelKey = ''; return; }
+      const k = `${d.phase}|${d.count}|${d.me}|${d.them}`; if (k === duelKey) return; duelKey = k;
+      document.getElementById('duelTitle').textContent = `${d.icon} vs ${d.name} · 💰 ${d.pot}`;
+      document.getElementById('duelCount').textContent = d.phase === 'count' ? (d.type === 'pistol' ? `Hold… ${d.count}` : `${d.count}…`) : (d.type === 'pistol' ? 'DRAW!' : 'FIGHT!');
+      document.querySelector('#duelMe i').style.width = d.me + '%'; document.querySelector('#duelThem i').style.width = d.them + '%';
+    }
+    function onDuelEvent(ev) {
+      if (ev.start) { au7.fx.wanted?.(); sfxLog.push('duel'); return; }
+      if (ev.go) { au7.fx.punch?.(); sfxLog.push('duelGo'); toast(surface.info?.duel?.type === 'pistol' ? '🔫 DRAW!' : '👊 FIGHT! The crowd roars.', 1400); return; }
+      if (!ev.end) return;
+      const msg = { 'ko-win': `🏆 ${ev.name} hits the dirt. The crowd goes wild. +${ev.credits} cr, +${ev.xp} XP.`, 'yield-win': `🏳 ${ev.name} taps out. +${ev.credits} cr, +${ev.xp} XP.`,
+        'ko-lose': `💫 Lights out. You wake up with sand in your helmet and ${ev.wager ? ev.wager + ' cr lighter' : 'your pride bruised'}.`, 'yield-lose': `🏳 You yield. ${ev.wager ? 'The ' + ev.wager + ' cr wager is gone.' : 'No shame. Some shame.'}`,
+        forfeit: `🏃 You left the ring. That’s a forfeit${ev.wager ? ', and the wager’s gone' : ''}.`, chicken: `🐔 ${ev.name} loses their nerve and bolts before the draw.${ev.refund ? ' Wager refunded.' : ''}` }[ev.why] || '';
+      if (msg) toast(msg, 3400); if (ev.win) au7.fx.cash(); updateSurfHud(true);
+    }
     function eatGhostClick(src) {
       const t0 = performance.now(), eat = e => { if (performance.now() - t0 > 500) return document.removeEventListener('click', eat, true); if (src.contains(e.target)) return; e.stopPropagation(); e.preventDefault(); document.removeEventListener('click', eat, true); };
       document.addEventListener('click', eat, true); setTimeout(() => document.removeEventListener('click', eat, true), 600);
@@ -1535,7 +1603,7 @@
       roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b;
     }
     window.SSX = {
-      registerColony, registerMission, registerInterior,
+      registerColony, registerDistrict, districtsOf, registerMission, registerInterior,
       registerVehicle, registerMenuItem,
       // v7.4 stub: extra bodies (Ceres, a cloud station) land in v7.5+. Recorded now so mods can declare them early.
       registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
@@ -1605,7 +1673,7 @@
       if (hit && hit.pet) return updateSurfHud(true);
       if (hit && hit.discovered) return;
       if (hit) showFact({ userData: hit });
-      else { factPanel.style.display = 'none'; if (!isTouch && !locked) lockPointer(); }
+      else { factPanel.style.display = 'none'; const tb = document.getElementById('topBar').getBoundingClientRect(); if (!isTouch && !locked && !roverMenu.classList.contains('show') && e.clientY > tb.bottom + 8) lockPointer(); } // v7.4: clicks near the top bar never grab the mouse
     });
     document.getElementById('exitBtn').onclick = () => setFlying(false);
 
@@ -1744,7 +1812,7 @@
         surface.update(realDt, { keys, joy, roll, jump: keys['Space'] || touchBtns.jump, run: runHeld,
           fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
-        tickAudio7(realDt); updateThrustHud();
+        tickAudio7(realDt); updateThrustHud(); updateDuelHud();
         if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
         window.__frames = (window.__frames || 0) + 1;
         return;

@@ -31,6 +31,21 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **The Velvet Airlock goes full strip club (non-explicit):** pole dancers in sequinned bodysuits that stay on. Stand at the stage and **💸 Tip · 20 cr** to make it rain credit chits. In the VIP room, **💃 Dance · 50 cr** buys Nova's one-song private dance, costumed and letterboxed, with Tiny watching. **🚪 Upstairs · 150** with Sable (an adult host) fades to black with one line and brings you back with full health and shield. Nothing sexual is shown or described. A one-time **🔞 18+** prompt guards all three.
 - **Laptop fix:** you land with a free mouse, so a click on ☰ always opens it. Click the ground to lock mouse aim. Esc frees the mouse again, and **M** opens the menu at any time.
 - **Phone fix:** a ☰ entry that opens a panel can no longer press the button that appears under your finger.
+- **Legal duels:** walk up to a colonist and press **⚔️ Challenge**. Pick 👊 fists, 🔪 blades or a 🔫 quick-draw at 10 paces, and put up a wager they match.
+  - A ring forms, a crowd gathers and cheers, and you fight to KO or yield, never to the death. Tap 🏳 to yield.
+  - Duels are sanctioned: no stars, and security watches but stays out of it.
+  - Win the pot plus XP, and come back for rematches. Some colonists refuse, and some lose their nerve before the draw.
+  - **Grinder Vos**, the cantina pit champion, wants at least 50 cr and the house adds a purse.
+  - Hitting people outside a duel is still a crime.
+- **Labelled meters:** the top bar now reads **🛡 SHIELD**, **❤ HEALTH** and, whenever your ride can thrust, **🚀 THRUST** fuel (turns orange under 25%). Laptops show the words and numbers; phones show icons.
+- **Playtest fixes (BUGS-v7.3):**
+  - While the mouse is captured, a small chip says **Esc frees mouse · M menu**, and clicks near the top bar never grab the mouse.
+  - Indoor cameras respect interior walls: the VIP room no longer goes black when you face Ines, and Depot shelving no longer hides you.
+  - You walk in a step past the door, and your character fades out if the camera gets squeezed against you.
+  - Autopilot keeps its own label when you pass another world.
+  - ☰, the weapon chip and Drive/Pet/Radio are all at least 44 px tall.
+  - The landscape ☰ menu stops above Pet and Jump.
+  - Fixed a three.js 'basic' material warning.
 
 ## v7.3: walk in, go shopping, and the Velvet Airlock
 
@@ -92,6 +107,11 @@ const btn = SSX.registerMenuItem({ id: 'warpBtn', label: '🎲 Random warp', onT
 // spec.amphibious rides on liquid (cfg.water) instead of bouncing off it; spec.icon is used on the Take button.
 SSX.registerVehicle('ice_cart', { name: 'Ice cart', icon: '🛷', vmax: 18, hover: 0.6, amphibious: true });
 
+// v7.4: stub. Additive districts on a world (registerColony('Mars', …) would replace Ares Junction).
+// Stored for the v7.5 Mars city build; districtsOf('Mars') lists them.
+SSX.registerDistrict('Mars', 'olympus-row', { name: 'Olympus Row', centre: [0, -430] });
+// v7.4: add-on modules can read world.wanted / world.evading / world.inDuel, call world.setWanted(n, why) and world.crime(min, why),
+// and read world.securityList() (a copy). During a sanctioned duel, crime() ignores colonist hits and gunfire.
 // v7.4: stub. Records a body in SSX.bodies for a later release; it doesn't add a planet yet
 SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 ```

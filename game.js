@@ -1555,6 +1555,7 @@ export function createGame(ctx) {
 
   return {
     enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, shopItem, buy, talk, spend, flag, setFlag, grantPerm, bribe, bribeCost, idleLine, ammoCap, registerMission,
+    reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
     stash(id, perm, name) { if (flag('stash:' + id)) return false; setFlag('stash:' + id); P.credits += 40; grantPerm(perm, name || 'Stash'); return true; }, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,

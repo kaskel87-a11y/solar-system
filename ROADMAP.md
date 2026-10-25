@@ -45,12 +45,60 @@ House rules for all of it:
 - [x] **Touch ghost-click fix** for ☰ entries that open panels.
 - [x] **Velvet Airlock strip club (non-explicit):** pole routines in costumes that stay on, stage tipping (make it rain), costumed VIP private dances (letterboxed), and an adult upstairs host who fades to black and restores health. All behind an 18+ prompt.
 
-## v7.5 (next)
-1. [ ] **Full security combat:** guards take cover, return fire and call backup; they're killable; heavies at 4-5★. Lose stars by hiding or bribing.
-2. [ ] **Gorier combat:** blood decals, dismemberment-lite on aliens, heavier hit reactions.
-3. [ ] **More missions:** the rest of the Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk), with thug/goon/enforcer waves, hold, choice, pay, tail and nonlethal steps; the cartel storyline's dark choices (betray, spare, execute, take the cut).
-4. [ ] **NPC interactions:** dialogue, bribes, hire muscle, buy rumors that mark finds and jobs, random street events.
-5. [ ] **Legal duels:** a ⚔️ Challenge option on colony NPCs. Pick fists/melee, blades or a pistol quick-draw at 10 paces, plus an optional wager the NPC matches. A ring forms and a crowd gathers and cheers. The fight goes to KO or yield, not death. Sanctioned: no stars, security watches but doesn't step in, and stray hits on bystanders aren't crimes. The winner takes the pot plus rep/XP, with rematches. Named fighters (a cantina pit champion) pay more, and some NPCs refuse or chicken out. Attacks outside a duel still draw stars. HUD: one small duel banner and pointer-based buttons. Live duel screenshot.
+- [x] **Legal duels:** ⚔️ Challenge on colonists. Fists, blades or a pistol quick-draw at 10 paces, an optional matched wager, a ring with a cheering crowd, and KO or yield (no deaths). Sanctioned, so no stars. Winner takes the pot plus XP; rematches; Grinder Vos the cantina pit champion (minimum 50 cr, house purse); refusals and chicken-outs. A small banner with a 🏳 Yield button.
+- [x] **Labelled top-bar meters:** 🛡 SHIELD, ❤ HEALTH and a 🚀 THRUST fuel bar that shows only when you can thrust (orange under 25%). Icons only on phones.
+- [x] **BUGS-v7.3 fixes:** mouse-lock chip and no re-lock from top-bar clicks (major 1), indoor camera vs interior walls (major 2, also m2), entry spawn and player fade (m1), 44 px targets (m4), landscape menu vs Pet/Jump (m5), autopilot label (m6), crates block the camera (m3), 'basic' warning (p1), talk offers (p2).
+- Carried over to v7.5: ☰ in space view (p7), the VIP back room as the mission hub (p6, ships with mission chains), and the clipping polish items p3/p4/p5.
+
+## v7.5 (next): Mars city
+Mars is the main focus now. Steve's other colonies stay as they shipped in v7.4, with no more polish for now.
+
+**Input:** Steve's Mars city pack (solar-system-story/mars-city):
+- Olympus Row downtown at [0,-430]
+- Red Tape Flats at [-280,-40]
+- Helios Heights at [320,80], with 4 mansion burglaries
+- The Ares Beltway: 18 waypoints, checkpoints and 2 chase set-pieces
+- 16 chained missions
+- v8 palette data
+
+**Engine gaps to close:**
+- `registerDistrict` is stubbed in v7.4; v7.5 builds the districts.
+- Bank and mansion interiors.
+- Thug, goon, enforcer and guard wave types.
+- Security cameras tied to wanted level.
+- A safe-crack minigame.
+- Highway traffic.
+- A choice step type.
+
+Chief of Staff's street-danger add-on (danger.js / pursuit.js) hooks in through `world.setWanted`, `world.crime`, `world.securityList()` and the `wanted` / `evading` getters.
+1. [ ] **Grow Ares Junction into a real city** with three districts:
+   - **Downtown:** towers, the bank (the heist target), clubs and cops.
+   - **The rough side:** gangs, corner dealers and a cheap chop shop.
+   - **A rich gated community:** mansion burglaries. Case the place, break in, crack safes and avoid private security.
+2. [ ] **A highway with traffic** linking the districts, with on/off ramps.
+3. [ ] **More enterable, working buildings** across the districts.
+4. [ ] **Mars missions:** the story-pack chains (Rook, Vesna, Kestrel, Ines, Rusk), with thug/goon/enforcer waves, hold, choice, pay, tail and nonlethal steps, plus the cartel storyline's dark choices (betray, spare, execute, take the cut).
+   - The VIP back room (Ines) becomes the mission hub (playtest p6).
+5. [ ] **Full security combat in the districts:** guards take cover, return fire and call backup; they're killable; heavies at 4-5★. Lose stars by hiding or bribing. Downtown cops, gated-community private security.
+6. [ ] **Gorier combat:** blood decals, dismemberment-lite on aliens, heavier hit reactions.
+7. [ ] **NPC interactions:** dialogue, bribes, hire muscle, buy rumors that mark finds and jobs, random street events.
+8. [ ] **Ready for v8 visuals:** the realistic look-dev ran at 60 fps on medium on Collin's iPhone, and it gets integrated next. The new districts keep geometry and materials swappable: shared material slots by role (concrete, glass, metal, neon, asphalt), with no baked colours in the geometry builders, so the v8 PBR set drops straight in.
+
+## v8: realistic visuals
+- [ ] Integrate the look-dev materials, lighting and post-processing, with quality tiers (low / med / high). Medium is the iPhone default at 60 fps.
+
+## Future: Collin's ideas (Oct 25)
+Not scheduled yet.
+1. [ ] **Mars city districts** joined by a highway with traffic and on/off ramps:
+   - **The rough side:** gangs, corner dealers and a cheap chop shop.
+   - **Downtown:** towers, the bank (the heist target), clubs and cops.
+   - **A rich gated community:** mansion burglary missions. Case the place, break in, crack safes and avoid private security.
+2. [ ] **Raccoon-themed rover:** masked paint, a striped-tail antenna and a trash-can bumper. Sold at the dealership as the "raccoon mobile".
+3. [ ] **Original mad-scientist duo**, written in the spirit of irreverent cartoon pairs but fully original. No names, likenesses, catchphrases or designs from any existing show.
+   - A burned-out, drunk genius scientist with a junkyard lab and a portal gun.
+   - His anxious teenage sidekick.
+   - Each gets its own design and names.
+   - They give weird interdimensional missions that portal you to bizarre mini-worlds.
 
 ## Later (rough order)
 - [ ] Rocks/boulders as obstacles for the rover and player (playtest p1).

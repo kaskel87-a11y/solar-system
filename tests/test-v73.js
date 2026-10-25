@@ -37,7 +37,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   const faceSpot = (lx, lz, yaw = 0) => G(([x, z, y]) => window.__app.surface.debugInside(x, z, y), [lx, lz, yaw]);
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7.3');
+    ok('version', await G(() => window.__app.version), /^v7\.[3-9]/.test(await G(() => window.__app.version)));
     ok('ssxApi', null, await G(() => ['registerColony', 'registerMission', 'registerInterior', 'registerMenuItem'].every(k => typeof window.SSX?.[k] === 'function')));
     await G(() => { localStorage.removeItem('ssx.progress.v1'); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); }); await land();
     await G(() => window.__app.game.debug.credits(6000));

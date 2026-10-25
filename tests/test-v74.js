@@ -9,7 +9,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
   const ctx = await browser.newContext(desk ? { viewport: { width: 1366, height: 768 } } : { ...pw.devices[DEV] }); const page = await ctx.newPage();
-  const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
+  const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message)); const warns = []; page.on('console', m => { if (/basic/.test(m.text())) warns.push(m.text().slice(0, 160)); });
   const tag = `${DEV}-${BR}`.replace(/\W+/g, '-').toLowerCase();
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
@@ -44,6 +44,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await page.mouse.click(m.x, m.y); await wait(() => !document.getElementById('roverMenu').classList.contains('show'), 2000);
       await page.keyboard.press('KeyM'); ok('menuKeyM', await wait(() => document.getElementById('roverMenu').classList.contains('show'), 2000)); await page.keyboard.press('KeyM');
     }
+    // ---- BUGS-v7.3: 44 px tap targets in the top bar, the lock chip only shows while the mouse is captured
+    const sz = await G(() => ['#menuBtn', '#gearChip'].map(q => { const e = document.querySelector(q); return e && getComputedStyle(e).display !== 'none' ? Math.round(e.getBoundingClientRect().height) : 44; }));
+    ok('tapTargets44', sz.join('/'), sz.every(h => h >= 44));
+    ok('meterLabels', await G(() => [...document.querySelectorAll('#tbBars .tbL')].map(e => e.getAttribute('aria-label')).join()), await G(() => document.querySelectorAll('#tbBars .tbL').length === 3));
+    ok('thrustHiddenOnFoot', await G(() => !window.__thrustHud().top));
+    if (desk) ok('meterWords', await G(() => document.getElementById('tbBars').innerText.replace(/\s+/g, ' ')), await G(() => /SHIELD/.test(document.getElementById('tbBars').innerText) && /\d/.test(document.getElementById('hpVal').textContent)));
+    ok('lockChipHidden', await G(() => !!document.getElementById('lockChip') && getComputedStyle(document.getElementById('lockChip')).display === 'none'));
     // ---- modding API
     const api = await G(() => {
       const S = window.SSX, r = {};
@@ -51,11 +58,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       r.menuEl = el instanceof HTMLElement && el.id === 'v74test' && !!el.closest('#roverMenu');
       r.vehKind = S.registerVehicle('v74cart', { name: 'Test cart', icon: '🛺', vmax: 12 }) === 'v74cart';
       r.body = typeof S.registerBody === 'function' && (S.registerBody({ name: 'Testworld' }), (S.bodies || []).some(b => b.name === 'Testworld'));
+      r.district = S.registerDistrict('Mars', 'v74test', { name: 'Test Row', centre: [0, -430] }) === 'v74test' && S.districtsOf('Mars').some(d => d.name === 'Test Row') && typeof window.__app.surface.world.securityList === 'function' && typeof window.__app.surface.world.crime === 'function';
       r.skiff = !!window.__app.surface.world && true; return r;
     });
-    ok('apiMenuItem', api.menuEl); ok('apiVehicle', api.vehKind); ok('apiBody', api.body);
+    ok('apiMenuItem', api.menuEl); ok('apiVehicle', api.vehKind); ok('apiBody', api.body); ok('apiDistrict', api.district);
     await G(() => window.__app.toggleMenu(true)); await sleep(250);
-    const t = await center('#v74test');
+    await G(() => document.getElementById('v74test').scrollIntoView({ block: 'center' })); await sleep(200); // short landscape screens: the menu scrolls, like a player would
+    const t = await center('#v74test'); R.menuTapTop = t.top;
     if (desk) await page.mouse.click(t.x, t.y); else await page.touchscreen.tap(t.x, t.y);
     ok('apiMenuTap', await wait(() => window.__v74tap === 1, 3000)); await G(() => window.__app.toggleMenu(false));
     // ---- rover barrel roll: pop it into the air, roll, land clean → bonus
@@ -63,6 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await wait(() => /Drive/.test(document.getElementById('driveBtn').textContent), 8000);
     await G(() => window.__app.surface.interact());
     ok('roverIn', await wait(() => window.__app.surface.info.driving, 6000));
+    ok('thrustBarInRover', await wait(() => window.__thrustHud().top && /%/.test(window.__thrustHud().topBar), 3000)); await page.screenshot({ path: `${out}v74-${tag}-meters.png`, clip: { x: 0, y: 0, width: desk ? 1366 : 393, height: 70 } });
     const cr0 = await G(() => window.__app.game.progress.credits);
     await G(() => window.__app.surface.debugLaunch(10)); ok('air', await wait(() => window.__app.surface.info.air, 3000));
     await roll(); ok('rolling', await wait(() => window.__app.surface.info.rolling || window.__app.surface.info.stunts.rolls > 0, 3000));
@@ -79,6 +89,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(([x, z]) => window.__app.surface.debugPlace(x, z + 0.4, Math.PI), [cd.x, cd.z]); await sleep(300);
     await wait(() => /Enter/.test(document.getElementById('driveBtn').textContent), 5000);
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 6000)); await sleep(500);
+    ok('entryStepInside', await G(() => { const i = window.__app.surface.world.inside, p = window.__app.surface.info; return +(i.z1 - p.z).toFixed(2); }), await G(() => { const i = window.__app.surface.world.inside, p = window.__app.surface.info; return i.z1 - p.z > 2.0; }));
+    ok('leaveAtEntry', await wait(() => /Leave/.test(document.getElementById('driveBtn').textContent), 3000));
     const act = async () => { const b = await center('#driveBtn'); if (desk) await page.keyboard.press('KeyE'); else await page.touchscreen.tap(b.x, b.y); };
     const tapSel = async sel => { const b = await center(sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); };
     await G(() => window.__app.surface.debugInside(0, -3.4, 0)); ok('tipLabel', await wait(() => /Tip · 20 cr/.test(document.getElementById('driveBtn').textContent), 4000));
@@ -92,6 +104,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const c1 = await G(() => window.__app.game.progress.credits);
     await act(); ok('privateDance', await wait(c => window.__app.game.progress.credits === c - 50 && document.body.classList.contains('cinebars'), 4000, c1));
     await sleep(1500); await page.screenshot({ path: `${out}v74-${tag}-club-vip.png` });
+    // BUGS-v7.3 #2: facing Ines across the VIP room with the partition behind you, the camera stays in the room
+    await G(() => window.__app.surface.debugInside(6.7, -3.4, -Math.PI / 2)); await sleep(1200);
+    ok('vipCamClear', await G(() => { const c = window.__app.camera.position; return !window.__app.surface.world.camBlockedIn(c.x, c.y, c.z); }));
+    await page.screenshot({ path: `${out}v74-${tag}-vip-ines.png` });
     const hp0 = await G(() => window.__app.game.info.hp); // (you can't be hurt indoors; restore() is unit-checked below)
     await G(() => window.__app.surface.debugInside(8.8, -5.7, 0)); ok('upstairsLabel', await wait(() => /Upstairs · 150/.test(document.getElementById('driveBtn').textContent), 4000));
     const c2 = await G(() => window.__app.game.progress.credits);
@@ -108,6 +124,6 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('controlsListRolls', await G(() => /Barrel roll/i.test(document.getElementById('ctlPanel').textContent)));
     ok('swRace', await G(async () => { const t = await (await fetch('sw.js?x=' + Date.now())).text(); return /race\.js/.test(t) && /'titan'/.test(t) && /planets\//.test(t) && /BUILD = 1/.test(t); }));
   } catch (e) { bad.push('EXC ' + e.message.slice(0, 300)); }
-  R.errors = errors.slice(0, 5); if (errors.length) bad.push('errors');
+  R.errors = errors.slice(0, 5); if (errors.length) bad.push('errors'); R.basicWarn = warns.slice(0, 2); if (warns.length) bad.push('basicWarning');
   R.bad = bad; console.log(JSON.stringify(R, null, 1)); await browser.close(); process.exit(bad.length ? 1 : 0);
 })();

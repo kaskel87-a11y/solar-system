@@ -21,8 +21,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR, DESK = DE
   const waitBtn = (re, ms = 4000) => wait(src => new RegExp(src).test(document.getElementById('driveBtn').textContent), ms, re.source);
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7.3');
-    ok('branding', await G(() => document.querySelector('h1').textContent), /Solar System Explorer/.test(await G(() => document.querySelector('h1').textContent)) && /v7\.3/.test(await G(() => document.getElementById('credits').textContent)));
+    ok('version', await G(() => window.__app.version), /^v7\.[3-9]/.test(await G(() => window.__app.version)));
+    ok('branding', await G(() => document.querySelector('h1').textContent), /Solar System Explorer/.test(await G(() => document.querySelector('h1').textContent)) && /v7\.[3-9]/.test(await G(() => document.getElementById('credits').textContent)));
     ok('flyBtn44', (await rect('#flyBtn')).h, (await rect('#flyBtn')).h >= 44);
     // ---------- M2: fresh load, Fly, the big CTA autopilots to Mars and lands there ----------
     await G(() => { localStorage.removeItem('ssx.progress.v1'); document.getElementById('flyBtn').click(); });

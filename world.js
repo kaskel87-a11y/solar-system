@@ -31,6 +31,14 @@ export const COLONIES = {
   }
 };
 // v7.3 modding: add or replace a colony. def = { name, a, d, tint, domes, blocks:[[x,z,w,d,h,sign,colour,interiorKind?,title?]], pad, crates, shop, contacts, inside, vehicles, guards, colonists, lamps }
+// v7.4 stub for the Mars city pack: additive districts on a world (registerColony replaces the world's colony).
+// Stored now and returned by districtsOf(); v7.5 builds them (own hub, flatten radius, doors, traffic).
+export const DISTRICTS = {};
+export function registerDistrict(world, id, def) {
+  if (!world || !id || !def) throw new Error('registerDistrict(worldName, id, { name, centre: [x, z], ... })');
+  (DISTRICTS[world] = DISTRICTS[world] || {})[id] = { id, ...def }; return id;
+}
+export const districtsOf = world => Object.values(DISTRICTS[world] || {});
 export function registerColony(world, def) {
   if (!world || !def?.name) throw new Error('registerColony(worldName, { name, a, d, ... })');
   COLONIES[world] = { a: 0, d: 200, tint: 0xffa060, domes: [], blocks: [], pad: [-30, 10, 9], crates: [], shop: [0, 20], contacts: [], inside: {}, vehicles: [], guards: [], colonists: 3, lamps: 8, ...def };
@@ -154,7 +162,7 @@ export function createWorld(ctx) {
   const { scene, player, onEvent, isMobile } = ctx;
   const height = (x, z) => ctx.height(x, z);
   let C = null, col = null, cx = 0, cz = 0, time = 0;
-  let solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
+  let wname = '', duel = null, ringM = null, camBoxes = [], solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
   let wanted = 0, evade = 0, bustT = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
   let doors = [], rooms = new Map(), inside = null, coverPaid = false, interiorsRoot = null, roomIdx = 0;
   const caps = { drones: isMobile ? 2 : 3, buggies: isMobile ? 1 : 2 };
@@ -162,7 +170,7 @@ export function createWorld(ctx) {
 
   // called before terrain chunks are built: where the colony sits and how much ground to flatten
   function layout(name, safePoint) {
-    C = COLONIES[name] || null; if (!C) return [];
+    C = COLONIES[name] || null; wname = name; if (!C) return [];
     const p = safePoint(C.a, C.d); cx = p.x; cz = p.z;
     return [{ x: cx, z: cz, r1: 62, r2: 92, y: height(cx, cz) }];
   }
@@ -199,7 +207,7 @@ export function createWorld(ctx) {
     // landing pad with blinking edge lights
     { const [x, z, r] = C.pad, X = cx + x, Z = cz + z; add(mesh(R.cyl, R.pad, X, y0 + 0.08, Z, r, 0.16, r)); add(mesh(R.ring, R.glowO, X, y0 + 0.2, Z, r * 0.7, r * 0.7, 1)).rotation.x = Math.PI / 2;
       for (let k = 0; k < 8; k++) { const l = add(mesh(R.sph, R.padLight, X + Math.cos(k * 0.785) * r, y0 + 0.25, Z + Math.sin(k * 0.785) * r, 0.18)); flick.push({ m: l, blink: k * 0.12 }); } }
-    for (const [x, z] of C.crates) for (let k = 0; k < 3; k++) { const X = cx + x + (k % 2) * 1.3, Z = cz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; }
+    for (const [x, z] of C.crates) for (let k = 0; k < 3; k++) { const X = cx + x + (k % 2) * 1.3, Z = cz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; camBoxes.push({ x: X, z: Z, y: y0 + 1.25 }); } // v7.4 (m3): crates stop the camera too
     // perimeter lamps; a few flicker like they\u2019re wired by the lowest bidder
     for (let k = 0; k < C.lamps; k++) {
       const a = k / C.lamps * Math.PI * 2, X = cx + Math.cos(a) * 50, Z = cz + Math.sin(a) * 50;
@@ -213,6 +221,12 @@ export function createWorld(ctx) {
     const walkPts = [[-10, -22], [14, -22], [34, -4], [12, 20], [-16, 18], [-34, 0], [-30, -24]].map(toW);
     for (let i = 0; i < C.colonists; i++) spawnPerson('colonist', walkPts[(i * 2) % walkPts.length], i, walkPts);
     C.guards.forEach((g, i) => spawnPerson('guard', toW(g), i, walkPts));
+    { // v7.4 duels: the cantina pit champion hangs around outside the cantina, looking for a fight
+      const cd = doors.find(d => d.kind === 'cantina');
+      if (cd) { const dx = cx - cd.x, dz = cz - cd.z, dl = Math.hypot(dx, dz) || 1, ch = spawnPerson('colonist', { x: cd.x + dx / dl * 3.2, z: cd.z + dz / dl * 3.2 }, 7, null);
+        ch.name = wname === 'Mars' ? 'Grinder Vos' : 'Pit boss Hale'; ch.temper = 1; ch.fighter = { purse: 150, minWager: 50, tough: 1.6 }; ch.hp = 8;
+        ch.group.scale.setScalar(1.12); const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex('⚔️ CHAMPION'), transparent: true, depthWrite: false })); lab.position.y = 2.6; lab.scale.set(2.8, 0.7, 1); ch.group.add(lab); }
+    }
     for (const c of C.contacts) { const p = spawnPerson('contact', toW(c.at), 0, null); p.name = c.name; p.blurb = c.blurb;
       const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex('💬 ' + c.name.toUpperCase()), transparent: true, depthWrite: false })); lab.position.y = 2.7; lab.scale.set(2.6, 0.65, 1); p.group.add(lab); }
     // parked vehicles
@@ -227,12 +241,15 @@ export function createWorld(ctx) {
     m.position.set(x, y, z); m.rotation.y = yaw; add(m); signs.push(m);
     if (Math.random() < 0.5) flick.push({ m, sign: true });
   }
+  const DUEL_NAMES = ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Juno Reyes', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan'];
   function spawnPerson(kind, p, i, pts) {
     const b = buildPerson(kind, i); b.group.position.set(p.x, height(p.x, p.z), p.z); scene.add(b.group);
     const o = { ...b, kind, x: p.x, z: p.z, home: { x: p.x, z: p.z }, yaw: Math.random() * 6, pts, ti: i, phase: Math.random() * 6, hp: kind === 'guard' ? 6 : 3, stun: 0, cd: 1, flee: 0, wait: Math.random() * 3 };
+    if (kind === 'colonist') { o.name = DUEL_NAMES[(i + wname.length) % DUEL_NAMES.length]; o.temper = ((i * 37 + wname.length * 11) % 100) / 100; }
     people.push(o); return o;
   }
   function exit() {
+    if (duel) endDuel('abandon', true); if (ringM) { scene.remove(ringM); ringM.geometry.dispose(); ringM = null; }
     for (const o of [...vehicles, ...people, ...security]) scene.remove(o.group);
     for (const s of shots) scene.remove(s.m);
     for (const s of signs) { s.material.map.dispose(); s.material.dispose(); s.geometry.dispose(); }
@@ -242,7 +259,7 @@ export function createWorld(ctx) {
     for (const r of rooms.values()) { r.dispose(); }
     if (interiorsRoot) { scene.remove(interiorsRoot); interiorsRoot = null; }
     rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0;
-    col = null; solids = []; vehicles = []; people = []; flick = []; lights = []; security = []; shots = []; signs = []; C = null; wanted = 0;
+    col = null; camBoxes = []; solids = []; vehicles = []; people = []; flick = []; lights = []; security = []; shots = []; signs = []; C = null; wanted = 0;
   }
 
   // ----- collisions: circles for domes/vehicles, boxes for blocks -----
@@ -266,6 +283,7 @@ export function createWorld(ctx) {
   // v7.3: camera occlusion test (solid building boxes + full dome volumes), used to pull the chase camera in
   function camBlocked(x, y, z) {
     if (!C) return false;
+    for (const b of camBoxes) if (y < b.y && Math.abs(x - b.x) < 0.75 && Math.abs(z - b.z) < 0.75) return true;
     for (const s of solids) {
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
@@ -284,7 +302,7 @@ export function createWorld(ctx) {
     else if (n === 0) { onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
   }
   let crimeCd = 0;
-  function crime(min, why) { if (!C || crimeCd > 0) return; crimeCd = 2.5; setWanted(wanted > 0 ? Math.min(5, Math.max(wanted + 1, min)) : min, why); }
+  function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; setWanted(wanted > 0 ? Math.min(5, Math.max(wanted + 1, min)) : min, why); }
   function witnessed(x, z) {
     if (!C) return false;
     if (Math.hypot(x - cx, z - cz) < 70) return true; // colony cameras
@@ -379,8 +397,15 @@ export function createWorld(ctx) {
     for (const p of people) {
       p.phase += dt;
       if (p.stun > 0) { p.stun -= dt; p.group.rotation.x = -Math.PI / 2 * Math.min(1, p.stun * 2); p.group.position.y = height(p.x, p.z) + 0.3; if (p.stun <= 0) { p.group.rotation.x = 0; p.hp = p.kind === 'guard' ? 6 : 3; } continue; }
+      if (duel && p === duel.p) { duelStep(p, dt); continue; }
       let gx = p.x, gz = p.z, sp = 0;
       const dx = player.x - p.x, dz = player.z - p.z, d = Math.hypot(dx, dz) || 0.01;
+      if (duel && p.watch !== undefined) { // the crowd rings the fight and cheers
+        const R0 = p.kind === 'guard' ? 9.5 : 7.4, tx = duel.cx + Math.cos(p.watch) * R0, tz = duel.cz + Math.sin(p.watch) * R0, ml = Math.hypot(tx - p.x, tz - p.z);
+        if (ml > 0.4) { const st2 = Math.min(ml, 4.5 * dt); p.x += (tx - p.x) / ml * st2; p.z += (tz - p.z) / ml * st2; }
+        p.yaw = Math.atan2(-(duel.cx - p.x), -(duel.cz - p.z)); const w2 = ml > 0.4 ? Math.sin(p.phase * 9) * 0.6 : 0; p.legs[0].rotation.x = w2; p.legs[1].rotation.x = -w2;
+        p.group.position.set(p.x, height(p.x, p.z) + (ml <= 0.4 ? Math.abs(Math.sin(p.phase * (p.kind === 'guard' ? 2 : 7) + p.watch * 3)) * (p.kind === 'guard' ? 0.02 : 0.16) : 0), p.z); p.group.rotation.y = p.yaw; continue;
+      }
       if (car && d < 9 && pv > 5) { p.flee = 1.2; p.fx = -dx / d; p.fz = -dz / d; if (d < 2.8 && pv > 9) { p.stun = 8; onEvent('thud', {}); if (witnessed(p.x, p.z)) crime(1, 'hit-and-run'); continue; } }
       if (p.flee > 0) { p.flee -= dt; gx = p.x + p.fx * 5; gz = p.z + p.fz * 5; sp = 6; }
       else if (p.kind === 'guard' && wanted > 0 && !ctx.game().isDown() && d < 60) { gx = player.x; gz = player.z; sp = d > 3 ? 5.5 : 0;
@@ -437,13 +462,14 @@ export function createWorld(ctx) {
   function hitWorld(p0, p1, b) {
     if (!C) return false;
     for (const s of [...security]) { tv.set(s.x, s.y + (s.kind === 'drone' ? 0 : 1), s.z); const c = tv.clone(); if (segHit(p0, p1, c, s.kind === 'drone' ? 1 : 2)) { s.hp -= b.dmg; if (s.hp <= 0) { recall(s); onEvent('secDown', { kind: s.kind }); crime(Math.min(5, wanted + 1), 'destroyed security'); } else crime(2, 'shot at security'); return true; } }
-    for (const p of people) { if (p.stun > 0) continue; const c = new THREE.Vector3(p.x, height(p.x, p.z) + 1.2, p.z); if (segHit(p0, p1, c, 0.6)) { p.hp -= b.dmg; p.flee = 2; p.fx = Math.sign(p.x - p0.x) || 1; p.fz = Math.sign(p.z - p0.z) || 1; if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); } crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'shot a guard' : 'shot a colonist'); return true; } }
+    for (const p of people) { if (p.stun > 0) continue; const c = new THREE.Vector3(p.x, height(p.x, p.z) + 1.2, p.z); if (segHit(p0, p1, c, 0.6)) { if (duel && p === duel.p) { if (duel.phase === 'fight' && duel.type === 'pistol') duelHit(); return true; } p.hp -= b.dmg; p.flee = 2; p.fx = Math.sign(p.x - p0.x) || 1; p.fz = Math.sign(p.z - p0.z) || 1; if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); } crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'shot a guard' : 'shot a colonist'); return true; } }
     return false;
   }
   // auto-aim candidates: security always (they only show up once you're wanted), guards while wanted
   function targets() {
     if (!C) return [];
     const out = security.map(s => ({ x: s.x, y: s.y + (s.kind === 'drone' ? 0 : 1), z: s.z, kind: s.kind }));
+    if (duel && duel.type === 'pistol' && duel.phase === 'fight') out.push({ x: duel.p.x, y: height(duel.p.x, duel.p.z) + 1.2, z: duel.p.z, kind: 'duelist' });
     if (wanted > 0) for (const p of people) if (p.kind === 'guard' && !p.stun) out.push({ x: p.x, y: height(p.x, p.z) + 1.2, z: p.z, kind: 'guard' });
     return out;
   }
@@ -462,6 +488,7 @@ export function createWorld(ctx) {
     const inFront = o => { const dx = o.x - x, dz = o.z - z, d = Math.hypot(dx, dz); return d < range + 0.4 && (dx * fx + dz * fz) > -0.3 ? d || 1 : 0; };
     for (const p of people) {
       if (p.stun > 0 || p.kind === 'contact') continue; const d = inFront(p); if (!d) continue;
+      if (duel && p === duel.p) { if (duel.phase === 'fight' && duel.type !== 'pistol') duelHit(); onEvent('meleeHit', { kind: 'duelist' }); return true; }
       p.hp -= dmg; p.flee = 3; p.x += (p.x - x) / d * knock; p.z += (p.z - z) / d * knock; p.fx = Math.sign(p.x - x) || 1; p.fz = Math.sign(p.z - z) || 1;
       if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); }
       crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'assaulted a guard' : p.kind === 'contact' ? 'assaulted a fixer' : 'assaulted a colonist');
@@ -485,7 +512,80 @@ export function createWorld(ctx) {
       crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'attacked a guard' : 'attacked a colonist'); }
     return n;
   }
-  function shotFired() { if (C && distC() < 80 && !ctx.game().combat) crime(1, 'discharging a weapon in the colony'); }
+  // ----- v7.4 legal duels: challenge a colonist to fists, blades or a quick-draw at 10 paces. Sanctioned, to KO or yield -----
+  const DUEL_TYPES = {
+    fists: { name: 'Fists', icon: '👊', hit: 20, dmg: 9, reach: 1.7, cd: 1.1 },
+    blades: { name: 'Blades', icon: '🔪', hit: 30, dmg: 14, reach: 1.9, cd: 1.3 },
+    pistol: { name: 'Quick-draw', icon: '🔫', hit: 50, dmg: 35, reach: 0, cd: 1.2 },
+  };
+  function nearDuelist(r = 3.4) {
+    if (!C || inside || duel) return null; let best = null, bd = r;
+    for (const p of people) if (p.kind === 'colonist' && !p.stun && !(p.flee > 0)) { const d = Math.hypot(p.x - player.x, p.z - player.z); if (d < bd) { bd = d; best = p; } }
+    return best;
+  }
+  const duelPub = p => p && { name: p.name, champion: !!p.fighter, minWager: p.fighter?.minWager || 0, record: p.duels || 0, rematch: !!p.duels };
+  function challenge(type = 'fists', wager = 0, who = null) {
+    const p = who ? people.find(q => q.name === who && q.kind === 'colonist') : nearDuelist(4.5), T = DUEL_TYPES[type], g = ctx.game();
+    if (!C || !p || !T) return { ok: false, msg: 'Nobody close enough to call out.' };
+    if (duel) return { ok: false, msg: 'One fight at a time.' };
+    if (wanted > 0) return { ok: false, msg: `${p.name}: With the law on you? No chance.` };
+    wager = Math.max(0, Math.round(wager)); const F = p.fighter;
+    if (F && wager < F.minWager) return { ok: false, msg: `${p.name}: I don’t get out of bed for less than ${F.minWager}.` };
+    if (!F && p.temper < 0.2) return { ok: false, refused: true, msg: `${p.name}: ` + ['Not today, spacer. I just got this suit cleaned.', 'Fight you? I’ve seen you drive. Pass.', 'Nope. Go bother somebody tougher.'][(p.duels || 0) % 3] };
+    if (wager && !g.spend(wager)) return { ok: false, msg: `You don’t have ${wager} cr to put up.` };
+    const dx = p.x - player.x, dz = p.z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
+    const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
+    p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
+    duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,
+      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0 };
+    // the ring, and a crowd (guards too, but they only watch)
+    if (!ringM) { ringM = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.0, 48), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ringM.rotation.x = -Math.PI / 2; }
+    ringM.position.set(duel.cx, height(duel.cx, duel.cz) + 0.06, duel.cz); scene.add(ringM);
+    let k = 0; for (const q of people) { if (q === p || q.stun || q.kind === 'contact') continue; if (Math.hypot(q.x - duel.cx, q.z - duel.cz) > 70) continue; if (k >= 7) break; q.watch = (k++ / 7) * Math.PI * 2 + 0.3; }
+    onEvent('duel', { start: true, name: p.name, type, wager, pot: duel.pot, champion: !!F });
+    return { ok: true, msg: `${T.icon} ${T.name} with ${p.name}. Pot ${duel.pot} cr.` };
+  }
+  function duelHit() {
+    const D = duel; D.them = Math.max(0, D.them - D.T.hit / D.tough); D.hits++; onEvent('duelHit', { who: 'them', them: D.them });
+    D.p.flee = 0; D.p.x += (D.p.x - player.x) * 0.08; D.p.z += (D.p.z - player.z) * 0.08;
+    if (D.them <= 0) endDuel('ko-win'); else if (D.yieldAt && D.them <= D.yieldAt) endDuel('yield-win');
+  }
+  function duelStep(p, dt) {
+    const D = duel; D.t += dt;
+    const dx = player.x - p.x, dz = player.z - p.z, d = Math.hypot(dx, dz) || 0.01; p.yaw = Math.atan2(-dx, -dz);
+    let moving = false;
+    if (D.phase === 'count') {
+      if (D.chicken && D.t > 1.7) return endDuel('chicken');
+      if (D.t >= 3) { D.phase = 'fight'; D.ocd = D.type === 'pistol' ? (p.fighter ? 0.55 : 0.85) + (p.temper % 0.3) : 0.8; onEvent('duel', { go: true }); }
+    } else if (D.phase === 'fight') {
+      if (Math.hypot(player.x - D.cx, player.z - D.cz) > 11) return endDuel('forfeit');
+      D.ocd -= dt;
+      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.2 : 1)); } }
+      else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
+      else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.4 : 1)); }
+    }
+    if (!duel) return;
+    const w = moving ? Math.sin(p.phase * 12) * 0.6 : 0; p.legs[0].rotation.x = w; p.legs[1].rotation.x = -w;
+    p.group.position.set(p.x, height(p.x, p.z), p.z); p.group.rotation.y = p.yaw;
+  }
+  function duelHurt(n) { const D = duel; D.me = Math.max(0, D.me - n); D.taken++; onEvent('duelHit', { who: 'me', me: D.me }); if (D.me <= 0) endDuel('ko-lose'); }
+  function endDuel(why, quiet) {
+    const D = duel; if (!D) return null; duel = null; const p = D.p, g = ctx.game();
+    if (ringM) scene.remove(ringM);
+    for (const q of people) delete q.watch;
+    const win = why === 'ko-win' || why === 'yield-win', F = p.fighter;
+    let cr = 0, xp = 0;
+    if (win) { cr = D.pot; xp = F ? 80 : 30; g.reward?.(xp, cr); p.duels = (p.duels || 0) + 1; if (F) F.purse += 50; }
+    else if (why === 'chicken' || why === 'abandon') { cr = D.wager; if (cr) g.reward?.(0, cr); }
+    if (why === 'ko-win') { p.stun = 5; p.hp = 0; } else if (why === 'chicken') { p.flee = 4; p.fx = (p.x - player.x) || 1; p.fz = (p.z - player.z) || 1; const l = Math.hypot(p.fx, p.fz); p.fx /= l; p.fz /= l; }
+    if (why !== 'ko-win') p.hp = 3;
+    const res = { end: true, why, win, name: p.name, type: D.type, pot: D.pot, wager: D.wager, credits: win ? cr : 0, xp, refund: !win && cr ? cr : 0, champion: !!F };
+    if (!quiet) onEvent('duel', res);
+    lastDuel = res; return res;
+  }
+  let lastDuel = null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
   const isStore = d => !!INTERIORS[d.kind]?.store;
@@ -541,6 +641,7 @@ export function createWorld(ctx) {
     if (!inside) return collide(x, z, r);
     const c = inside.room.collide(x - inside.ax, z - inside.az, r); return c ? { x: c.x + inside.ax, z: c.z + inside.az } : null;
   }
+  function camBlockedIn(x, y, z) { return !!inside && inside.room.camBlocked(x - inside.ax, y - inside.ay, z - inside.az); } // v7.4 indoor camera vs partitions/shelving
   function nearSpot() { if (!inside) return null; return inside.room.nearSpot(player.x - inside.ax, player.z - inside.az); }
   function openVip() { for (const r of rooms.values()) r.openRope(); }
   function clubFx(kind, n) { const r = inside?.room; return r ? (kind === 'rain' ? r.rain(n) : r.privateDance(n)) : 0; } // v7.4
@@ -549,11 +650,12 @@ export function createWorld(ctx) {
   function wareList() { return inside ? inside.room.wares.map(w => ({ id: w.id, x: w.spot.x + inside.ax, z: w.spot.z + inside.az })) : []; }
 
   return {
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, openVip, clubFx, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
-    get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; },
+    get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; }, get inDuel() { return !!duel; },
+    securityList: () => security.map(s => ({ kind: s.kind, x: s.x, y: s.y, z: s.z, hp: s.hp })), // v7.4: stable read-only view for add-on modules (street danger)
     get colony() { return C ? { name: C.name, x: cx, z: cz, dist: distC() } : null; },
     allowFire: () => !!C && (distC() < 300 || wanted > 0),
     onRespawn() { setWanted(0); bustT = 0; for (const s of [...security]) recall(s); for (const s of shots) scene.remove(s.m); shots = []; },

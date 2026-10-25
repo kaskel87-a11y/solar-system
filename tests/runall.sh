@@ -19,6 +19,7 @@ run test-v7.js BR=chromium DEV="iPhone 14" OUT=/tmp/m/ &
 run test-return.js & run test-drive.js & run test-landbtn.js OUT=/tmp/m/ & run test-v6.js OUT=/tmp/m/ &
 wait
 run test-v74.js BR=chromium DEV=desktop OUT=/tmp/m/ & run test-v74.js BR=webkit DEV="iPhone 14" OUT=/tmp/m/ & run test-v74.js BR=webkit DEV="iPhone SE (3rd gen) landscape" OUT=/tmp/m/ & wait
+run test-duel.js BR=chromium DEV=desktop OUT=/tmp/m/ & run test-duel.js BR=webkit DEV="iPhone 14" OUT=/tmp/m/ & run test-duel.js BR=webkit DEV="iPhone SE (3rd gen) landscape" OUT=/tmp/m/ & wait
 run test-planets.js BR=webkit DEV="iPhone 14" OUT=/tmp/m/ & run test-planet-missions.js BR=webkit DEV="iPhone 14" OUT=/tmp/m/ & run test-race.js BR=webkit DEV="iPhone 14" OUT=/tmp/m/ & run test-builder.js BR=chromium DEV=desktop OUT=/tmp/m/ & wait
 run test-hud.js OUT=/tmp/m/; echo DONE
 run test-boost.js BR=chromium DEV=desktop OUT=/tmp/m/

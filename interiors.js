@@ -18,7 +18,7 @@ function geos() {
   return G;
 }
 const mats = new Map();
-function mat(c, o) { const k = c + JSON.stringify(o || {}); if (!mats.has(k)) { const m = (o && o.basic) ? B(c, { ...o, basic: undefined }) : M(c, o); m.userData.shared = true; mats.set(k, m); } return mats.get(k); }
+function mat(c, o) { const k = c + JSON.stringify(o || {}); if (!mats.has(k)) { const m = (o && o.basic) ? (({ basic, ...rest }) => B(c, rest))(o) : M(c, o); m.userData.shared = true; mats.set(k, m); } return mats.get(k); }
 const mk = (g, m, x, y, z, sx = 1, sy = sx, sz = sx) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); return o; };
 
 // neon-style text panel; the font shrinks to fit long names
@@ -119,7 +119,7 @@ function roomKit(def) {
   box(0, h - 0.08, -d / 2 + 0.02, w, 0.05, 0.04, trimM);
   const api = {
     g, cols, spots, ticks, w, d, h, box, wares: [],
-    col(x, z, hw, hd, tag) { const c = { x, z, hw, hd, tag, on: true }; cols.push(c); return c; },
+    col(x, z, hw, hd, tag) { const c = { x, z, hw, hd, tag, on: true, h: tag === 'wall' ? 99 : tag === 'tall' ? 3.2 : 1.15 }; cols.push(c); return c; }, // h: camera occlusion height (v7.4)
     spot(s) { spots.push({ r: 1.7, ...s }); return s; },
     sign(text, color, x, y, z, yaw = 0, sw = 4, opts) { const t = textTex(text, color, opts); disposables.push(t); const m = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: t, transparent: true })); disposables.push(m.material); m.position.set(x, y, z); m.rotation.y = yaw; m.scale.set(sw, sw / 4, 1); g.add(m); return m; },
     person(opts, x, z, yaw, anim, k = 0) { const p = buildHuman(opts); p.group.position.set(x, 0, z); p.group.rotation.y = yaw; g.add(p.group); ticks.push((t, dt) => anim(p, t, k, yaw, dt)); return p; },
@@ -303,7 +303,7 @@ export const INTERIORS = {
         for (const z of [-1.4, 3.8]) box(rx, 2.5, z, 0.12, 5, 0.12, rack);
         for (const y of [0.15, 1.8, 3.4]) box(rx, y, 1.2, 1.2, 0.08, 5.4, rack);
         for (let k = 0; k < 9; k++) { const y = [0.6, 2.25, 3.85][k % 3], z = -0.8 + Math.floor(k / 3) * 1.9 + (k % 2) * 0.2; box(rx, y, z, 1.0, 0.8, 1.0 + (k % 2) * 0.3, k % 2 ? crate : crate2); }
-        api.col(rx, 1.2, 0.7, 2.9);
+        api.col(rx, 1.2, 0.7, 2.9, 'tall');
       }
       // rover parts wall (north) and the paint wall (east): everything has a tag
       wallRack(api, 0, 2.1, -d / 2 + 0.06, 13.5, 's');
@@ -404,9 +404,9 @@ export const INTERIORS = {
       pl.forEach(([x, z, i]) => { const seat = i === 5; const yaw = i === 4 ? Math.PI / 2 : seat ? Math.PI / 2 : Math.PI + (i - 2) * 0.2; api.person({ top: pc[i], bottom: 0x1a1a22, hair: ph[i], hairStyle: ['short', 'long', 'cap', 'mohawk', 'bun', 'short'][i], skin: [0xc68a64, 0xe8c0a0, 0x6a4028, 0xb07a54, 0xe0b090, 0x8a5a3a][i] }, x, z, yaw, seat ? (p) => sitPose(p) : i === 4 ? (p, t, k) => drink(p, t, k) : (p, t, k) => bob(p, t, k), i * 0.9); });
       // VIP back room (north-east): partition walls, a velvet rope, the bouncer, the owner on a couch
       const vipW = mat(0x1a0c22), X0 = 6, X1 = w / 2, Z0 = -d / 2, Z1 = -1.2, ropeX = 8.3;
-      box(X0, api.h / 2, (Z0 + Z1) / 2, 0.2, api.h, Z1 - Z0, vipW); api.col(X0, (Z0 + Z1) / 2, 0.15, (Z1 - Z0) / 2);
-      box((X0 + ropeX - 0.8) / 2, api.h / 2, Z1, ropeX - 0.8 - X0, api.h, 0.2, vipW); api.col((X0 + ropeX - 0.8) / 2, Z1, (ropeX - 0.8 - X0) / 2, 0.15);
-      box((ropeX + 0.8 + X1) / 2, api.h / 2, Z1, X1 - ropeX - 0.8, api.h, 0.2, vipW); api.col((ropeX + 0.8 + X1) / 2, Z1, (X1 - ropeX - 0.8) / 2, 0.15);
+      box(X0, api.h / 2, (Z0 + Z1) / 2, 0.2, api.h, Z1 - Z0, vipW); api.col(X0, (Z0 + Z1) / 2, 0.15, (Z1 - Z0) / 2, 'wall');
+      box((X0 + ropeX - 0.8) / 2, api.h / 2, Z1, ropeX - 0.8 - X0, api.h, 0.2, vipW); api.col((X0 + ropeX - 0.8) / 2, Z1, (ropeX - 0.8 - X0) / 2, 0.15, 'wall');
+      box((ropeX + 0.8 + X1) / 2, api.h / 2, Z1, X1 - ropeX - 0.8, api.h, 0.2, vipW); api.col((ropeX + 0.8 + X1) / 2, Z1, (X1 - ropeX - 0.8) / 2, 0.15, 'wall');
       box(ropeX, (api.h + 2.6) / 2, Z1, 1.6, api.h - 2.6, 0.2, vipW);
       const rope = new THREE.Group(); rope.add(api.mk(G.cyl, chrome, ropeX - 0.75, 0.5, Z1, 0.05, 1.0, 0.05), api.mk(G.cyl, chrome, ropeX + 0.75, 0.5, Z1, 0.05, 1.0, 0.05), api.mk(G.box, velvet, ropeX, 0.85, Z1, 1.5, 0.07, 0.07)); api.g.add(rope);
       const ropeCol = api.col(ropeX, Z1, 0.8, 0.2, 'rope');
@@ -465,6 +465,7 @@ export function buildRoom(kind, opts = {}) {
     kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
     wares: api.wares, targets, refresh() { wareTick(api, opts); },
     tick(dt) { t += dt; for (const f of api.ticks) f(t, dt); if ((wt += dt) > 0.4) { wt = 0; wareTick(api, opts); } },
+    camBlocked(x, y, z) { for (const c of api.cols) if (c.on && y < c.h && Math.abs(x - c.x) < c.hw && Math.abs(z - c.z) < c.hd) return true; return false; }, // room-local, y above the floor
     collide(x, z, r) {
       let hit = false;
       const ex = def.w / 2 - r, ez = def.d / 2 - r;
