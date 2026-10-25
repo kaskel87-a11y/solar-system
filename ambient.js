@@ -29,7 +29,7 @@ export function ambientStart(s, now, force) {
   const plan = AC.npcPlan(e, api.budget(), api.mobile());
   if ((e.spawn?.npcs || []).length && !plan.length) { stats.skipped++; return null; }
   cooldowns[e.id] = now;
-  const P = api.player(), yaw = P.yaw ?? 0, r = Math.min(22, e.spawn?.near_player_m ?? e.spawn?.ahead_m ?? 16), ahead = e.spawn?.ahead_m !== undefined || !!api.driving();
+  const P = api.player(), yaw = api.driving() ? (P.yaw ?? 0) : (P.faceYaw ?? P.yaw ?? 0), r = Math.min(22, e.spawn?.near_player_m ?? e.spawn?.ahead_m ?? 16), ahead = e.spawn?.ahead_m !== undefined || !!api.driving();
   const a = ahead ? yaw : yaw + (Math.random() < 0.5 ? 0.35 : -0.35); // in view: vignettes are meant to be seen
   const cx = P.x - Math.sin(a) * r, cz = P.z - Math.cos(a) * r;
   const npcs = plan.map((p, i) => { const t = (i / Math.max(1, plan.length)) * Math.PI * 2, n = api.spawn(p.kind, cx + Math.cos(t) * 1.6, cz + Math.sin(t) * 1.6, { role: p.role || 'ambient', token: p.token, hp: 3 });

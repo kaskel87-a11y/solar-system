@@ -367,7 +367,7 @@ function spawnBackup(g = {}) {
     if (backup && !backup.leaving) { const ext = DC.backupPlan(g, 99, isTouch()); if (ext.ok) { backup.dur = Math.max(backup.dur - backup.t, ext.dur); backup.t = 0; } return { ok: true, extended: true, n: backup.escorts.filter(e => e.alive).length, durationSec: backup.dur }; }
     if (backup) endBackup(true);
     const plan = DC.backupPlan(g, budget(), isTouch()); if (!plan.ok) return refuseBackup(plan.why);
-    const P = C.player, yaw = P.yaw ?? 0, escorts = [];
+    const P = C.player, yaw = P.faceYaw ?? P.yaw ?? 0, escorts = [];
     for (let i = 0; i < plan.n; i++) {
       const sl = DC.escortSlot(i, plan.n, P.x, P.z, yaw, 6 + i);
       const e = spawnNpc(plan.kind, sl.x, sl.z, { hp: plan.hp, escort: true, role: 'escort', faction: plan.faction, slot: i });
@@ -399,7 +399,7 @@ function updateBackup(dt) {
   if (!alive.length) { endBackup(true); return; }
   if (!B.leaving && (B.t >= B.dur || C.world?.inDuel)) endBackup(false);
   if (B.leaving) { B.leaving += dt; for (const e of alive) { const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; moveTo(e, e.x + dx / d * 4, e.z + dz / d * 4, 3, dt); } if (B.leaving > 5) endBackup(true); return; }
-  const targets = backupTargets(), yaw = P.yaw ?? 0;
+  const targets = backupTargets(), yaw = P.faceYaw ?? P.yaw ?? 0;
   for (const e of alive) {
     const dp = Math.hypot(e.x - P.x, e.z - P.z);
     if (dp > DC.BACKUP.leash) { const sl = DC.escortSlot(e.slot, B.n, P.x, P.z, yaw, 8); e.x = sl.x; e.z = sl.z; e.y = C.height(e.x, e.z); e.g.position.set(e.x, e.y, e.z); continue; } // you drove off: they catch up off-screen
