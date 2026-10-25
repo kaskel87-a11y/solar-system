@@ -1,5 +1,6 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
+import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js?v=5';
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -73,9 +74,50 @@ const BODIES = {
 };
 export const LANDABLE = Object.keys(BODIES);
 
-export function createSurface({ renderer, textures, isMobile }) {
+// ---------- Discoveries (real facts) ----------
+// a: compass angle in degrees from the landing site (0 = straight ahead), d: distance in metres, reach: discovery radius
+export const DISCOVERIES = {
+  Moon: [
+    { id: 'footprints', kind: 'footprints', a: 20, d: 45, name: 'Apollo bootprints', fact: 'Neil Armstrong and Buzz Aldrin first walked on the Moon on 20 July 1969. With no wind or rain to wipe them away, bootprints like these could last for millions of years.' },
+    { id: 'lrv', kind: 'lrv', a: -35, d: 80, name: 'Lunar Roving Vehicle', fact: 'Apollo 15, 16 and 17 each brought an electric Lunar Roving Vehicle and left it behind. These battery-powered buggies let astronauts explore kilometres from their lander, at up to about 18 km/h.' },
+    { id: 'retro', kind: 'retro', a: 70, d: 120, name: 'Laser retroreflector', fact: 'Apollo 11, 14 and 15 left mirror arrays on the Moon. Observatories still bounce lasers off them, measuring the Moon\u2019s distance to within millimetres and showing it drifts about 3.8 cm farther from Earth every year.' },
+    { id: 'golf', kind: 'golf', a: 150, d: 60, name: 'Alan Shepard\u2019s golf ball', fact: 'In February 1971, Apollo 14 commander Alan Shepard hit two golf balls on the Moon, using a six-iron club head attached to a tool for collecting samples.' },
+    { id: 'ice', kind: 'ice', a: -110, d: 170, reach: 12, name: 'Ice in a shadowed crater', fact: 'Some craters near the Moon\u2019s poles never see sunlight and can be colder than \u2212230 \u00b0C. In 2018, data from NASA\u2019s Moon Mineralogy Mapper on India\u2019s Chandrayaan-1 confirmed water ice inside them.' },
+    { id: 'meteorite', kind: 'meteorite', a: 110, d: 240, name: 'Fresh impact', fact: 'With no air to slow them down, even tiny meteoroids hit the Moon at tens of kilometres per second. Hundreds of rocks blasted off the Moon by impacts have been found on Earth as lunar meteorites.' }
+  ],
+  Mars: [
+    { id: 'ingenuity', kind: 'ingenuity', a: 30, d: 70, name: 'Ingenuity helicopter', fact: 'Ingenuity rode to Mars under NASA\u2019s Perseverance rover. On 19 April 2021 it made the first powered, controlled flight on another planet, and it went on to fly 72 times.' },
+    { id: 'riverbed', kind: 'riverbed', a: -60, d: 110, reach: 16, name: 'Ancient riverbed', fact: 'In 2012, NASA\u2019s Curiosity rover found rounded pebbles in Gale Crater that could only have been tumbled smooth by flowing water. Rivers and lakes existed on Mars billions of years ago.' },
+    { id: 'icepatch', kind: 'icepatch', a: 140, d: 150, name: 'Buried ice', fact: 'Mars has water ice at its poles and just under the surface in many places. In 2008, NASA\u2019s Phoenix lander dug up bright chunks of ice that vanished (sublimated) within a few days.' },
+    { id: 'dustdevil', kind: 'dustdevil', a: -150, d: 200, reach: 14, name: 'Dust devil', fact: 'Martian dust devils can be far bigger than Earth\u2019s. Their winds cleaned the dusty solar panels of the rovers Spirit and Opportunity, helping them keep working for years longer than planned.' },
+    { id: 'face', kind: 'face', a: 80, d: 280, reach: 30, name: '\u2018Face on Mars\u2019 mesa', fact: 'In 1976, NASA\u2019s Viking 1 orbiter photographed a mesa in the Cydonia region that looked like a face. Sharper images from Mars Global Surveyor in 1998 and 2001 showed it is just an eroded hill.' }
+  ],
+  Venus: [
+    { id: 'lava', kind: 'lava', a: -50, d: 90, reach: 14, name: 'Lava flow', fact: 'Most of Venus is covered in volcanic plains. Its surface is surprisingly young, only about 300 to 600 million years old, probably because floods of lava repaved the planet.' },
+    { id: 'balloon', kind: 'balloon', a: -140, d: 120, reach: 12, name: 'Vega balloon', fact: 'In June 1985, the Soviet Vega 1 and Vega 2 missions released balloons into Venus\u2019s clouds. They floated about 54 km up for around two days, the first balloons ever flown on another planet.' },
+    { id: 'pancake', kind: 'pancake', a: 120, d: 160, reach: 20, name: 'Pancake dome', fact: 'Venus has flat-topped \u2018pancake domes\u2019 up to about 65 km wide but less than 1 km tall, made by thick, sticky lava that oozed out and spread slowly.' },
+    { id: 'volcano', kind: 'volcano', a: 20, d: 260, reach: 46, name: 'Volcano', fact: 'Venus has more volcanoes than any other planet, including over 1,600 major ones. In 2023, scientists found a vent near Maat Mons that changed shape between 1991 radar images, evidence of a recent eruption.' }
+  ],
+  Mercury: [
+    { id: 'hollows', kind: 'hollows', a: 60, d: 70, reach: 12, name: 'Hollows', fact: 'NASA\u2019s MESSENGER found \u2018hollows\u2019 on Mercury: bright, shallow pits not seen on other rocky worlds. They seem to form as volatile material escapes from the rock.' },
+    { id: 'polarice', kind: 'polarice', a: -30, d: 90, reach: 12, name: 'Ice in a polar crater', fact: 'Mercury is the closest planet to the Sun, yet it has water ice in polar craters that are always in shadow. NASA\u2019s MESSENGER spacecraft confirmed it in 2012.' },
+    { id: 'scarp', kind: 'scarp', a: 170, d: 160, reach: 26, name: 'Lobate scarp', fact: 'As Mercury\u2019s iron core cooled, the whole planet shrank by up to about 7 km in radius, wrinkling the crust into giant cliffs called lobate scarps, some hundreds of kilometres long.' },
+    { id: 'caloris', kind: 'caloris', a: -120, d: 220, reach: 18, name: 'Caloris boulders', fact: 'The Caloris Basin is one of the largest impact craters in the solar system, about 1,550 km across. The impact was so violent it may have jumbled the ground on the opposite side of Mercury.' }
+  ],
+  Earth: [
+    { id: 'fox', kind: 'fox', a: -30, d: 50, name: 'Red fox', fact: 'Red foxes have the widest range of any wild carnivore. Studies suggest they may even use Earth\u2019s magnetic field to aim their pounces on prey hidden under snow.' },
+    { id: 'redwood', kind: 'redwood', a: 40, d: 90, reach: 14, name: 'Giant redwood', fact: 'Coast redwoods are the tallest trees on Earth. The tallest known, Hyperion in California, is about 116 m tall.' },
+    { id: 'stones', kind: 'stones', a: 150, d: 140, reach: 16, name: 'Stone circle', fact: 'Stonehenge in England was built in stages starting about 5,000 years ago. Some of its smaller \u2018bluestones\u2019 were hauled from Wales, about 225 km away.' },
+    { id: 'hoba', kind: 'hoba', a: -120, d: 190, name: 'Hoba meteorite', fact: 'The Hoba meteorite in Namibia is the largest known meteorite on Earth. It weighs about 60 tonnes, is made mostly of iron and nickel, and has never been moved from where it fell.' }
+  ]
+};
+const DISC_KEY = 'ssx.discoveries.v1';
+export function loadFound() { try { return JSON.parse(localStorage.getItem(DISC_KEY)) || {}; } catch (e) { return {}; } }
+function saveFound(f) { try { localStorage.setItem(DISC_KEY, JSON.stringify(f)); } catch (e) { /* private mode */ } }
+
+export function createSurface({ renderer, textures, isMobile, onEvent = () => {} }) {
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 700);
+  const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 2400);
   camera.rotation.order = 'YXZ';
 
   const CHUNK = 48, SEG = isMobile ? 20 : 24, RADIUS = isMobile ? 2 : 3;
@@ -127,7 +169,7 @@ export function createSurface({ renderer, textures, isMobile }) {
   }
   function height(x, z) {
     const r = Math.hypot(x, z);
-    const s = smooth(12, 45, r);
+    const s = smooth(30, 70, r);
     const pad = cfg.padH ?? 0;
     const b = baseHeight(x, z);
     return THREE.MathUtils.lerp(pad + b * 0.15, b, s);
@@ -180,7 +222,7 @@ export function createSurface({ renderer, textures, isMobile }) {
       const hx = hash2(ix * 131 + r, iz * 71 - r, cfg.seed + 5), hz = hash2(ix * 17 - r, iz * 191 + r, cfg.seed + 6), hs = hash2(ix + r * 7, iz - r * 3, cfg.seed + 7);
       const x = ox + hx * CHUNK, z = oz + hz * CHUNK; const y = height(x, z);
       if (cfg.water !== undefined && y < cfg.water + 0.3) continue;
-      if (Math.hypot(x, z) < 14) continue;
+      if (Math.hypot(x, z) < 14 || Math.hypot(x - 14, z + 22) < 10) continue;
       const sc = 0.2 + Math.pow(hs, 3) * (name === 'Mars' ? 2.2 : 1.8);
       tmpS.set(sc * (0.8 + hx * 0.6), sc * (0.6 + hz * 0.6), sc * (0.8 + hs * 0.5));
       tmpE.set(hx * 3, hz * 6.28, hs * 2); tmpQ.setFromEuler(tmpE); tmpP.set(x, y + sc * 0.2, z);
@@ -199,7 +241,7 @@ export function createSurface({ renderer, textures, isMobile }) {
       for (let r = 0; r < cfg.trees; r++) {
         const hx = hash2(ix * 37 + r, iz * 53 + r * 3, 99), hz = hash2(ix * 61 - r, iz * 29 + r, 98), hs = hash2(ix + r, iz + r * 5, 97);
         const x = ox + hx * CHUNK, z = oz + hz * CHUNK, y = height(x, z);
-        if (y < cfg.water + 1.2 || y > cfg.amp * 1.9 || Math.hypot(x, z) < 16) continue;
+        if (y < cfg.water + 1.2 || y > cfg.amp * 1.9 || Math.hypot(x, z) < 16 || Math.hypot(x - 14, z + 22) < 12) continue;
         if (noise(x / 70, z / 70) < -0.15) continue; // clearings
         const sc = 0.8 + hs * 0.9;
         tmpQ.setFromEuler(tmpE.set(0, hs * 6.28, 0)); tmpS.set(sc, sc, sc); tmpP.set(x, y - 0.1, z);
@@ -234,7 +276,7 @@ export function createSurface({ renderer, textures, isMobile }) {
     c.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); });
     c.pois.forEach(p => { const i = poiObjects.indexOf(p); if (i >= 0) poiObjects.splice(i, 1); p.userData.beacon?.geometry.dispose(); p.userData.beacon?.material.dispose(); });
   }
-  function updateChunks(px, pz, force) {
+  function updateChunks(px, pz, force, perFrame = 1) {
     const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK);
     const want = new Set();
     for (let j = -RADIUS; j <= RADIUS; j++) for (let i = -RADIUS; i <= RADIUS; i++) want.add(`${cx + i},${cz + j}`);
@@ -242,7 +284,7 @@ export function createSurface({ renderer, textures, isMobile }) {
     // build nearest missing first; limit per frame to avoid hitches
     const missing = [...want].filter(k => !chunks.has(k)).map(k => k.split(',').map(Number))
       .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cz) - Math.hypot(b[0] - cx, b[1] - cz));
-    let budget = force ? Infinity : 1;
+    let budget = force ? Infinity : perFrame;
     for (const [i, j] of missing) { if (budget-- <= 0) break; chunks.set(`${i},${j}`, buildChunk(i, j)); }
   }
 
@@ -254,7 +296,7 @@ export function createSurface({ renderer, textures, isMobile }) {
     g.fillStyle = r; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   }
   function buildSky() {
-    skyGroup = new THREE.Group(); scene.add(skyGroup);
+    skyGroup = new THREE.Group(); skyGroup.scale.setScalar(3); scene.add(skyGroup);
     sunDir.set(0.6, cfg.sunElev, -0.8).normalize();
     if (cfg.sky === 'space') {
       scene.background = new THREE.Color(0x000000);
@@ -286,7 +328,7 @@ export function createSurface({ renderer, textures, isMobile }) {
     const dl = new THREE.DirectionalLight(cfg.lightColor ?? 0xffffff, cfg.light); dl.position.copy(sunDir).multiplyScalar(100); scene.add(dl); scene.add(dl.target);
     scene.add(new THREE.HemisphereLight(cfg.hemi[0], cfg.hemi[1], cfg.ambient * 2));
     if (cfg.water !== undefined) {
-      waterMesh = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK * (RADIUS * 2 + 2), CHUNK * (RADIUS * 2 + 2)), new THREE.MeshStandardMaterial({ color: 0x2a6aa8, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 }));
+      waterMesh = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600), new THREE.MeshStandardMaterial({ color: 0x2a6aa8, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 }));
       waterMesh.rotation.x = -Math.PI / 2; waterMesh.position.y = cfg.water; scene.add(waterMesh);
     }
   }
@@ -298,11 +340,8 @@ export function createSurface({ renderer, textures, isMobile }) {
     obj.position.set(x, height(x, z) + yOff, z); obj.userData = { poi: true, ...info }; scene.add(obj); poiObjects.push(obj); return obj;
   }
   function buildRocket() {
-    const g = new THREE.Group(), body = metal(0xdddddd, 0.6, 0.3), acc = metal(0xff3333, 0.4, 0.4);
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 4.2, 16), body); b.position.y = 2.1 + 1.2; g.add(b);
-    const n = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.8, 16), acc); n.position.y = 5.1 + 1.2; g.add(n);
-    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const f = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.8, 1.3), acc); f.position.set(Math.cos(a) * 0.95, 0.9 + 0.3, Math.sin(a) * 0.95); f.rotation.y = -a; g.add(f); }
-    g.scale.setScalar(1.6); return g;
+    const { group, flames } = buildStarship({ legs: true, seg: isMobile ? 22 : 30 });
+    group.userData.flames = flames; return group;
   }
   function buildFlag() {
     const g = new THREE.Group();
@@ -360,8 +399,118 @@ export function createSurface({ renderer, textures, isMobile }) {
   }
   const builders = { lander: buildLander, rover: buildRover, venera: buildVenera, probe: buildProbe, sign: buildSign };
 
-  // ---------- Player ----------
-  const player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: -0.05, grounded: false, walked: 0, bob: 0 };
+  // ---------- Player, camera, companions ----------
+  const player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: -0.05, grounded: false, walked: 0, bob: 0, moving: 0, moveYaw: 0, faceYaw: 0 };
+  const VIEW_KEY = 'ssx.view.v1', CAM_MAX = 320, SHIP = { x: 14, z: -22 };
+  const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+  const lerpAngle = (a, b, t) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * Math.min(1, t);
+  let camGoal = (() => { try { const v = parseFloat(localStorage.getItem(VIEW_KEY)); return isFinite(v) ? clamp(v, 0, CAM_MAX) : 9; } catch (e) { return 9; } })();
+  let camDist = camGoal, walkGoal = camGoal, viewYaw = 0, camYawOff = 0, lastLook = -9, time = 0, driven = 0;
+  let astro = null, dog = null, rover = null, dust = null, farMesh = null, farCenter = null, baseFog = null, driving = false;
+  let found = loadFound(), discItems = [];
+  const saveView = () => { try { localStorage.setItem(VIEW_KEY, String(camGoal)); } catch (e) { /* ignore */ } };
+
+  // discoveries
+  const beamGeo = new THREE.CylinderGeometry(0.45, 0.45, 90, 8, 1, true); beamGeo.translate(0, 45, 0);
+  const beamOn = new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const beamOff = new THREE.MeshBasicMaterial({ color: 0x5dff9a, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const glintMat = new THREE.SpriteMaterial({ map: makeGlow('rgba(255,240,190,1)', 'rgba(255,190,60,0.45)'), fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending });
+  const isFound = id => !!found[name]?.includes(id);
+  function discCount() { const l = DISCOVERIES[name] || []; return { found: l.filter(d => isFound(d.id)).length, total: l.length }; }
+  function placeDiscoveries() {
+    found = loadFound(); discItems = [];
+    for (const d of DISCOVERIES[name] || []) {
+      let a = d.a * Math.PI / 180, dist = d.d, x = 0, z = 0;
+      for (let k = 0; k < 30; k++) {
+        x = Math.sin(a) * dist; z = -Math.cos(a) * dist;
+        if (cfg.water === undefined || height(x, z) > cfg.water + 1.2) break;
+        dist += 15; if (k % 6 === 5) { a += 0.45; dist = d.d; }
+      }
+      const y0 = height(x, z);
+      const obj = DISCOVERY_BUILDERS[d.kind]((dx, dz) => height(x + dx, z + dz) - y0);
+      obj.position.set(x, y0, z);
+      Object.assign(obj.userData, { poi: true, disc: d.id, name: d.name, fact: d.fact });
+      scene.add(obj); poiObjects.push(obj);
+      const beacon = new THREE.Group(); beacon.position.set(x, y0, z);
+      const beam = new THREE.Mesh(beamGeo, beamOn); beam.frustumCulled = false; beacon.add(beam);
+      const glint = new THREE.Sprite(glintMat); glint.position.y = (obj.userData.beaconY ?? 4) + 2; glint.scale.setScalar(4); beacon.add(glint);
+      scene.add(beacon);
+      const it = { d, obj, beacon, beam, glint, x, z, reach: d.reach ?? 10 };
+      setBeacon(it, isFound(d.id)); discItems.push(it);
+    }
+  }
+  function setBeacon(it, f) { it.beam.material = f ? beamOff : beamOn; it.glint.visible = !f; }
+  function discover(it, how) {
+    if (isFound(it.d.id)) return false;
+    (found[name] ||= []).push(it.d.id); saveFound(found); setBeacon(it, true);
+    const c = discCount();
+    onEvent('discover', { id: it.d.id, name: it.d.name, fact: it.d.fact, world: name, found: c.found, total: c.total, how });
+    return true;
+  }
+  function nearestUndiscovered(px, pz) {
+    let best = null, bd = 1e9;
+    for (const it of discItems) { if (isFound(it.d.id)) continue; const d = Math.hypot(it.x - px, it.z - pz); if (d < bd) { bd = d; best = it; } }
+    return best ? { it: best, dist: bd } : null;
+  }
+  const relDir = a => { a = Math.atan2(Math.sin(a), Math.cos(a)); return Math.abs(a) < 0.4 ? 'ahead' : Math.abs(a) > 2.5 ? 'behind you' : a > 0 ? 'to your left' : 'to your right'; };
+
+  // far, low-detail terrain for high camera views; the shader cuts a hole where detailed chunks exist
+  const nearHole = { value: new THREE.Vector3(0, 0, 0) };
+  function buildFar(cx, cz) {
+    if (farMesh) { scene.remove(farMesh); farMesh.geometry.dispose(); }
+    const N = isMobile ? 64 : 88, SIZE = 1500, step = SIZE / N, n1 = N + 1;
+    const pos = new Float32Array(n1 * n1 * 3), col = new Float32Array(n1 * n1 * 3), idx = [];
+    for (let j = 0; j < n1; j++) for (let i = 0; i < n1; i++) {
+      const k = j * n1 + i, x = cx - SIZE / 2 + i * step, z = cz - SIZE / 2 + j * step, h = height(x, z);
+      pos[k * 3] = x; pos[k * 3 + 1] = h - 0.4; pos[k * 3 + 2] = z;
+      const n = noise(x / 31, z / 31) * 0.5;
+      tmpC.copy(cfg.low).lerp(cfg.high, clamp(0.5 + h / (cfg.amp * 3.2) + n * 0.25, 0, 1));
+      if (cfg.water !== undefined) { if (h < cfg.water + 0.7) tmpC.copy(cfg.sand); else if (h > cfg.amp * 2.1) tmpC.copy(cfg.snow); }
+      col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
+    }
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = j * n1 + i, b = a + 1, c = a + n1, d = c + 1; idx.push(a, c, b, b, c, d); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    if (!farMesh) {
+      const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+      m.onBeforeCompile = sh => {
+        sh.uniforms.uHole = nearHole;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vWXZ;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vWXZ;\nuniform vec3 uHole;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vWXZ.x - uHole.x) < uHole.z && abs(vWXZ.y - uHole.y) < uHole.z) discard;');
+      };
+      farMesh = new THREE.Mesh(geo, m);
+    } else farMesh.geometry = geo;
+    scene.add(farMesh); farCenter = { x: cx, z: cz };
+  }
+
+  // rover dust
+  function makeDust() {
+    const N = 160, pos = new Float32Array(N * 3), col = new Float32Array(N * 4), geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
+    const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const rg = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+    rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = rg; x.fillRect(0, 0, 32, 32);
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.6, map: new THREE.CanvasTexture(c), vertexColors: true, transparent: true, depthWrite: false }));
+    pts.frustumCulled = false; scene.add(pts);
+    const tint = cfg.high.clone().lerp(new THREE.Color(0xffffff), 0.25);
+    return { pts, N, life: new Float32Array(N), max: new Float32Array(N), vel: new Float32Array(N * 3), next: 0, acc: 0, tint, airless: cfg.sky === 'space' };
+  }
+  function spawnDust(x, y, z, vx, vy, vz) {
+    const d = dust, i = d.next; d.next = (i + 1) % d.N;
+    const p = d.pts.geometry.attributes.position.array; p[i * 3] = x; p[i * 3 + 1] = y; p[i * 3 + 2] = z;
+    d.vel[i * 3] = vx; d.vel[i * 3 + 1] = vy; d.vel[i * 3 + 2] = vz; d.life[i] = d.max[i] = d.airless ? 2.2 : 1.6;
+  }
+  function updateDust(dt, g) {
+    const d = dust, p = d.pts.geometry.attributes.position.array, c = d.pts.geometry.attributes.color.array;
+    for (let i = 0; i < d.N; i++) {
+      if (d.life[i] <= 0) { c[i * 4 + 3] = 0; continue; }
+      d.life[i] -= dt;
+      if (d.airless) d.vel[i * 3 + 1] -= g * dt; // vacuum: dust flies in clean ballistic arcs
+      else { const k = Math.exp(-dt * 2.2); d.vel[i * 3] *= k; d.vel[i * 3 + 1] = d.vel[i * 3 + 1] * k - 0.4 * dt; d.vel[i * 3 + 2] *= k; }
+      p[i * 3] += d.vel[i * 3] * dt; p[i * 3 + 1] += d.vel[i * 3 + 1] * dt; p[i * 3 + 2] += d.vel[i * 3 + 2] * dt;
+      const gh = height(p[i * 3], p[i * 3 + 2]); if (p[i * 3 + 1] < gh) { p[i * 3 + 1] = gh; d.vel[i * 3] *= 0.3; d.vel[i * 3 + 1] = 0; d.vel[i * 3 + 2] *= 0.3; }
+      c[i * 4] = d.tint.r; c[i * 4 + 1] = d.tint.g; c[i * 4 + 2] = d.tint.b; c[i * 4 + 3] = Math.max(0, d.life[i] / d.max[i]) * 0.55;
+    }
+    d.pts.geometry.attributes.position.needsUpdate = true; d.pts.geometry.attributes.color.needsUpdate = true;
+  }
 
   function enter(bodyName) {
     cfg = BODIES[bodyName]; name = bodyName;
@@ -372,53 +521,67 @@ export function createSurface({ renderer, textures, isMobile }) {
     leafMat = new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true });
     meteorMat = new THREE.MeshStandardMaterial({ color: 0x2b2522, metalness: 0.7, roughness: 0.4, flatShading: true, emissive: 0x112233 });
     buildSky();
+    const f = cfg.fog; baseFog = f.type === 'exp2' ? { density: f.density } : { near: f.near, far: scene.fog.far };
     // landing site
-    place(buildRocket(), 11, -6, { name: 'Your rocket', fact: 'Your ride home. Tap Take off (or press T) to return to orbit.' });
-    const flag = place(buildFlag(), -5, -9, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
-    const special = place(builders[cfg.poi.kind](), 4, -24, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
-    player.x = 0; player.z = 4; player.yaw = 0; player.pitch = -0.08; player.vy = 0; player.walked = 0;
-    player.y = height(0, 4) + EYE;
+    const ship = place(buildRocket(), SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit.' }); ship.rotation.y = 0.5;
+    const flag = place(buildFlag(), -6, -10, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
+    const special = place(builders[cfg.poi.kind](), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
+    placeDiscoveries();
+    // rover
+    const rv = buildBuggy(); rv.group.rotation.order = 'YXZ';
+    rover = { ...rv, x: -9, z: 0, yaw: 0.5, y: height(-9, 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0 };
+    Object.assign(rv.group.userData, { poi: true, rover: true, name: 'Your rover', fact: 'A six-wheeled pressurized rover with independent suspension and a full light bar. Walk up and tap Drive (or press E). Boost goes faster; low gravity means big hops.' });
+    scene.add(rv.group); poiObjects.push(rv.group);
+    dust = makeDust();
+    // astronaut + dog
+    astro = buildAstronaut(); scene.add(astro.group);
+    const dg = buildDog({ helmet: bodyName !== 'Earth' }); dg.group.rotation.order = 'YXZ';
+    dog = { ...dg, x: 1.6, z: 7.5, y: height(1.6, 7.5), vy: 0, yaw: 0, mode: 'follow', idle: 0, wag: 0, phase: 0, nextSniff: 14, sniff: null, sniffT: 0, air: false, sit: 0 };
+    scene.add(dg.group);
+    driving = false; camYawOff = 0; driven = 0;
+    player.x = 0; player.z = 6; player.yaw = 0; player.pitch = -0.08; player.vy = 0; player.walked = 0; player.faceYaw = 0;
+    player.y = height(0, 6) + EYE;
     updateChunks(player.x, player.z, true);
     state = { intro: 1.8, outro: 0 };
-    apply();
+    camDist = camGoal;
+    updateRover(0.016, { keys: {}, joy: { x: 0, y: 0 } }, cfg.g * 9.81); updateDog(0.016, cfg.g * 9.81); updateAstro(0.016); updateCamera(0.016);
   }
   function exit() {
     for (const c of chunks.values()) disposeChunk(c);
     chunks.clear();
-    scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && ![rockGeo, trunkGeo, leafGeo, meteorGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
+    scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && ![rockGeo, trunkGeo, leafGeo, meteorGeo, beamGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if ([beamOn, beamOff, glintMat].includes(m)) return; if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
     [terrainMat, rockMat, trunkMat, leafMat, meteorMat].forEach(m => m?.dispose());
     scene.clear(); poiObjects.length = 0; waterMesh = null; skyGroup = null; scene.fog = null;
+    farMesh = null; farCenter = null; rover = null; dog = null; astro = null; dust = null; discItems = []; driving = false;
     cfg = null; state = null;
   }
 
   function look(dx, dy, k) {
-    player.yaw -= dx * k; player.pitch -= dy * k;
+    if (driving) { camYawOff -= dx * k; lastLook = time; } else player.yaw -= dx * k;
+    player.pitch -= dy * k;
     player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
   }
 
   const fwd = new THREE.Vector3(), right = new THREE.Vector3();
-  function update(dt, input) {
-    if (!cfg) return;
-    const g = cfg.g * 9.81;
-    if (state.intro > 0) state.intro = Math.max(0, state.intro - dt);
-    let mvx = 0, mvz = 0;
-    if (state.intro <= 0 && state.outro <= 0) {
-      const k = input.keys;
-      mvz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - input.joy.y;
-      mvx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + input.joy.x;
-    }
+  function readMove(input) {
+    if (state.intro > 0 || state.outro > 0) return [0, 0];
+    const k = input.keys;
+    return [(k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + input.joy.x, (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - input.joy.y];
+  }
+  function walk(dt, input, g) {
+    let [mvx, mvz] = readMove(input);
     const len = Math.hypot(mvx, mvz);
     if (len > 1) { mvx /= len; mvz /= len; }
     const running = input.run;
-    // low gravity: slower, bouncier walk
     const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1);
     fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const dx = (fwd.x * mvz + right.x * mvx) * speed * dt, dz = (fwd.z * mvz + right.z * mvx) * speed * dt;
+    player.moving = Math.min(1, len);
     if (dx || dz) {
       let nx = player.x + dx, nz = player.z + dz;
       const gh = height(nx, nz);
-      if (cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; } // shoreline
-      else player.walked += Math.hypot(dx, dz);
+      if (cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
+      else { player.walked += Math.hypot(dx, dz); player.moveYaw = Math.atan2(-dx, -dz); }
       player.x = nx; player.z = nz;
     }
     const ground = height(player.x, player.z) + EYE;
@@ -428,43 +591,288 @@ export function createSurface({ renderer, textures, isMobile }) {
       if (player.grounded && input.jump) { player.vy = 4.2; player.grounded = false; }
       player.vy -= g * dt; player.y += player.vy * dt;
       if (player.y <= ground) { player.y = ground; player.vy = 0; player.grounded = true; }
-      else if (player.grounded && player.y - ground < 0.35 && player.vy <= 0) { player.y = ground; } // stick to slopes
+      else if (player.grounded && player.y - ground < 0.35 && player.vy <= 0) { player.y = ground; }
       else player.grounded = false;
     }
     if (player.grounded && len > 0.05) player.bob += dt * (running ? 13 : 8) * (cfg.g < 0.3 ? 0.6 : 1); else player.bob *= 0.9;
-    apply();
-    updateChunks(player.x, player.z, false);
-    if (skyGroup) { skyGroup.position.copy(camera.position); skyGroup.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * 0.05; }); }
-    if (waterMesh) { waterMesh.position.x = Math.round(player.x / 8) * 8; waterMesh.position.z = Math.round(player.z / 8) * 8; }
-    poiObjects.forEach(p => { if (p.userData.beacon) { p.userData.beacon.rotation.y += dt * 2; p.userData.beacon.position.y = 1.6 + Math.sin(performance.now() / 400) * 0.15; } });
-  }
-  function apply() {
-    const introY = state && state.intro > 0 ? Math.pow(state.intro / 1.8, 2) * 40 : 0;
-    camera.position.set(player.x, player.y + introY + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
-    camera.rotation.set(player.pitch - (state && state.intro > 0 ? state.intro * 0.35 : 0), player.yaw, 0);
   }
 
-  const ray = new THREE.Raycaster(); ray.far = 70;
+  function updateRover(dt, input, g) {
+    const r = rover;
+    let thr = 0, st = 0;
+    if (driving) { [st, thr] = readMove(input); thr = clamp(thr, -1, 1); st = clamp(st, -1, 1); }
+    const boost = driving && input.run, vmax = boost ? 30 : 17, grip = r.air ? 0.15 : 1;
+    if (thr * r.speed < -0.1) r.speed += thr * 26 * dt * grip;
+    else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? 15 : 9) * dt * grip;
+    else r.speed -= Math.sign(r.speed) * Math.min(Math.abs(r.speed), 5 * dt * grip);
+    if (r.speed > vmax) r.speed = Math.max(vmax, r.speed - 10 * dt);
+    r.speed = Math.max(r.speed, -7);
+    r.steer += (st - r.steer) * Math.min(1, dt * 8);
+    const as = Math.abs(r.speed);
+    if (!r.air) r.yaw -= r.steer * 1.5 * Math.min(1, as / 4) * (1 - 0.45 * Math.min(1, as / 30)) * Math.sign(r.speed || 1) * dt;
+    const nx = r.x - Math.sin(r.yaw) * r.speed * dt, nz = r.z - Math.cos(r.yaw) * r.speed * dt;
+    if (cfg.water !== undefined && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2;
+    else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
+    const gH = height(r.x, r.z);
+    if (r.prevG === null) r.prevG = gH;
+    const gv = (gH - r.prevG) / Math.max(dt, 1e-3); r.prevG = gH;
+    r.vy -= g * dt; r.y += r.vy * dt;
+    if (r.y <= gH) { if (r.vy < -2.5) r.susp = Math.min(0.45, -r.vy * 0.04); r.y = gH; r.vy = Math.min(Math.max(r.vy, gv), 14); r.air = false; }
+    else r.air = r.y - gH > 0.25;
+    const fx = -Math.sin(r.yaw), fz = -Math.cos(r.yaw), rx = Math.cos(r.yaw), rz = -Math.sin(r.yaw);
+    if (!r.air) {
+      const tp = Math.atan2(height(r.x + fx * 2.1, r.z + fz * 2.1) - height(r.x - fx * 2.1, r.z - fz * 2.1), 4.2);
+      const tr = Math.atan2(height(r.x + rx * 1.55, r.z + rz * 1.55) - height(r.x - rx * 1.55, r.z - rz * 1.55), 3.1);
+      r.pitch += (tp - r.pitch) * Math.min(1, dt * 10); r.roll += (tr - r.roll) * Math.min(1, dt * 10);
+    } else { r.pitch += (clamp(r.vy * 0.03, -0.35, 0.35) - r.pitch) * Math.min(1, dt * 1.5); r.roll *= 1 - Math.min(1, dt); }
+    r.susp *= Math.exp(-dt * 6);
+    r.group.position.set(r.x, r.y, r.z); r.group.rotation.set(r.pitch, r.yaw, r.roll);
+    r.body.position.y = -r.susp + (r.air ? 0.06 : Math.sin(time * 31) * 0.012 * Math.min(1, as / 17));
+    for (const w of r.wheels) {
+      const wx = r.x + rx * w.x - fx * w.z, wz = r.z + rz * w.x - fz * w.z;
+      const expected = r.y + (-w.z) * Math.sin(r.pitch) + w.x * Math.sin(r.roll);
+      const off = r.air ? -0.22 : clamp(height(wx, wz) - expected, -0.3, 0.3);
+      w.pivot.position.y += (0.62 + off - w.pivot.position.y) * Math.min(1, dt * 18);
+      w.spin.rotation.x -= r.speed * dt / 0.62;
+      if (w.front) w.pivot.rotation.y = -r.steer * 0.38; else if (w.z > 1) w.pivot.rotation.y = r.steer * 0.12;
+    }
+    // dust from the rear wheels
+    if (!r.air && as > 2.5 && dust) {
+      r.dustAcc = (r.dustAcc || 0) + as * dt * (cfg.trees ? 1.2 : 2.6);
+      while (r.dustAcc >= 1) {
+        r.dustAcc -= 1;
+        const side = Math.random() < 0.5 ? -1 : 1, bx = r.x + rx * side * 1.55 - fx * 2.3, bz = r.z + rz * side * 1.55 - fz * 2.3;
+        const back = -Math.sign(r.speed) * (0.2 + Math.random() * 0.25) * as;
+        spawnDust(bx + (Math.random() - 0.5) * 0.6, height(bx, bz) + 0.25, bz + (Math.random() - 0.5) * 0.6,
+          fx * back + (Math.random() - 0.5) * 2 + rx * side * 0.8, 1.2 + Math.random() * 2.2 * (dust.airless ? 1.6 : 1), fz * back + (Math.random() - 0.5) * 2 + rz * side * 0.8);
+      }
+    }
+    if (dust) updateDust(dt, g);
+  }
+
+  const seatW = new THREE.Vector3();
+  function updateDog(dt, g) {
+    const d = dog, P = d.parts; d.wag = Math.max(0, d.wag - dt);
+    let v = 0;
+    if (driving) {
+      d.mode = 'ride'; rover.group.updateMatrixWorld(true); rover.seat.getWorldPosition(seatW);
+      d.x = seatW.x; d.z = seatW.z; d.y = seatW.y; d.vy = 0; d.air = false;
+      d.group.position.copy(seatW); d.group.rotation.set(rover.pitch, rover.yaw, rover.roll); d.yaw = rover.yaw; d.sit = 1;
+    } else {
+      if (d.mode === 'ride') { d.mode = 'follow'; d.x = player.x + Math.cos(player.yaw) * 1.4; d.z = player.z - Math.sin(player.yaw) * 1.4; d.y = height(d.x, d.z) + 0.8; d.vy = 0; d.idle = 0; }
+      const fxp = -Math.sin(player.yaw), fzp = -Math.cos(player.yaw), rxp = Math.cos(player.yaw), rzp = -Math.sin(player.yaw);
+      let tx = player.x + rxp * 1.3 - fxp * 1.0, tz = player.z + rzp * 1.3 - fzp * 1.0, stopAt = 0.7;
+      if (d.mode === 'sniff' && d.sniff) {
+        tx = d.sniff.x; tz = d.sniff.z; stopAt = 0.8;
+        if (Math.hypot(player.x - d.x, player.z - d.z) > 35 || isFound(d.sniff.id)) d.mode = 'follow';
+      }
+      const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
+      if (dist > 60 && d.mode === 'follow') { d.x = tx; d.z = tz; d.y = height(tx, tz); }
+      else if (dist > stopAt) {
+        v = Math.min(d.mode === 'sniff' ? 7 : 10, dist * 2.2);
+        const ox = d.x, oz = d.z; d.x += dx / dist * v * dt; d.z += dz / dist * v * dt;
+        if (cfg.water !== undefined && height(d.x, d.z) < cfg.water - 0.1) { d.x = ox; d.z = oz; v = 0; }
+        d.yaw = lerpAngle(d.yaw, Math.atan2(-dx, -dz), dt * 8);
+      } else if (d.mode === 'sniff') {
+        d.sniffT -= dt; if (d.sniffT <= 0) { d.mode = 'follow'; d.nextSniff = 22 + Math.random() * 18; }
+      } else d.yaw = lerpAngle(d.yaw, Math.atan2(-(player.x - d.x), -(player.z - d.z)), dt * 3);
+      d.idle = (v < 0.3 && d.mode === 'follow') ? d.idle + dt : 0;
+      d.nextSniff -= dt;
+      if (d.mode === 'follow' && d.nextSniff <= 0 && state.intro <= 0) {
+        d.nextSniff = 22 + Math.random() * 18;
+        const n = nearestUndiscovered(player.x, player.z);
+        if (n && n.dist < 130) {
+          const k = n.dist < 17 ? (n.dist - 3) / n.dist : 14 / n.dist;
+          d.sniff = { x: player.x + (n.it.x - player.x) * k, z: player.z + (n.it.z - player.z) * k, id: n.it.d.id }; d.mode = 'sniff'; d.sniffT = 2.5;
+          onEvent('dogHint', { dist: Math.round(n.dist), dir: relDir(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw) });
+        }
+      }
+      const gh = height(d.x, d.z);
+      d.vy -= g * dt; d.y += d.vy * dt;
+      if (d.y <= gh) { d.y = gh; d.vy = 0; d.air = false; }
+      else if (!d.air && d.y - gh < 0.3 && d.vy <= 0) d.y = gh;
+      else d.air = true;
+      d.sit += ((d.idle > 1.5 && !d.air ? 1 : 0) - d.sit) * Math.min(1, dt * 6);
+      d.group.position.set(d.x, d.y, d.z); d.group.rotation.set(0, d.yaw, 0);
+    }
+    // animation: trot with diagonal leg pairs, sit, sniff, wag
+    d.phase += v * dt * 2.6;
+    const sw = v > 0.3 ? Math.sin(d.phase) * Math.min(0.75, 0.25 + v * 0.06) : 0;
+    const s = d.sit;
+    P.legs[0].rotation.x = sw * (1 - s) - 0.4 * s; P.legs[3].rotation.x = sw * (1 - s) + 1.25 * s;
+    P.legs[1].rotation.x = -sw * (1 - s) - 0.4 * s; P.legs[2].rotation.x = -sw * (1 - s) + 1.25 * s;
+    if (d.air && !driving) P.legs.forEach((l, i) => l.rotation.x = i < 2 ? -0.6 : 0.6);
+    P.body.rotation.x = 0.42 * s; P.body.position.y = -0.1 * s + (v > 0.3 ? Math.abs(Math.sin(d.phase)) * 0.03 : 0);
+    const sniffing = d.mode === 'sniff' && d.sniffT < 2.5;
+    P.head.rotation.x = sniffing ? -0.55 + Math.sin(time * 16) * 0.08 : -0.3 * s + (d.wag > 0 ? Math.sin(time * 9) * 0.1 : 0);
+    P.tail.rotation.y = Math.sin(time * (d.wag > 0 ? 32 : 9)) * (d.wag > 0 ? 0.8 : 0.25);
+  }
+
+  function updateAstro(dt) {
+    const a = astro, P = a.parts;
+    a.group.visible = !driving && camDist > 0.8;
+    if (!a.group.visible) return;
+    a.group.position.set(player.x, player.y - EYE, player.z);
+    if (player.moving > 0.05) player.faceYaw = lerpAngle(player.faceYaw, player.moveYaw, dt * 10);
+    a.group.rotation.y = player.faceYaw;
+    const sw = Math.sin(player.bob) * 0.6 * player.moving;
+    if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; }
+    else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; }
+  }
+
+  const camT = new THREE.Vector3(), camDir = new THREE.Vector3();
+  function updateCamera(dt) {
+    camDist += (camGoal - camDist) * (1 - Math.exp(-dt * 6));
+    if (Math.abs(camGoal - camDist) < 0.02) camDist = camGoal;
+    const zt = clamp((camDist - 10) / (CAM_MAX - 10), 0, 1);
+    const introY = state.intro > 0 ? Math.pow(state.intro / 1.8, 2) * 40 : 0, introP = state.intro > 0 ? state.intro * 0.35 : 0;
+    const first = camDist < 0.8;
+    if (driving) {
+      if (time - lastLook > 1.2) camYawOff *= Math.exp(-dt * 2);
+      viewYaw = rover.yaw + camYawOff;
+      if (first) {
+        rover.group.updateMatrixWorld(true); rover.body.localToWorld(camT.set(-0.55, 1.95, -0.9));
+        camera.position.copy(camT); camera.rotation.set(player.pitch + rover.pitch, viewYaw, rover.roll);
+      } else camT.set(rover.x, rover.y + 2.0, rover.z);
+    } else {
+      viewYaw = player.yaw;
+      if (first) {
+        camera.position.set(player.x, player.y + introY + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
+        camera.rotation.set(player.pitch - introP, player.yaw, 0);
+      } else camT.set(player.x, player.y - EYE + 1.5, player.z);
+    }
+    if (!first) {
+      const ep = clamp(player.pitch - lerp(0.28, 1.0, zt) - introP, -1.52, 0.5);
+      camDir.set(-Math.sin(viewYaw) * Math.cos(ep), Math.sin(ep), -Math.cos(viewYaw) * Math.cos(ep));
+      camera.position.copy(camT).addScaledVector(camDir, -camDist); camera.position.y += introY;
+      const gy = height(camera.position.x, camera.position.z) + 1.0;
+      if (camera.position.y < gy) camera.position.y = gy;
+      if (cfg.water !== undefined && camera.position.y < cfg.water + 0.6) camera.position.y = cfg.water + 0.6;
+      camera.lookAt(camT.x, camT.y + introY * 0.8, camT.z);
+    }
+    if (scene.fog && baseFog) {
+      if (scene.fog.isFogExp2) scene.fog.density = baseFog.density * lerp(1, 0.12, zt);
+      else { scene.fog.near = lerp(baseFog.near, Math.max(baseFog.near, 260), zt); scene.fog.far = lerp(baseFog.far, 720, zt); }
+    }
+    return zt;
+  }
+
+  function update(dt, input) {
+    if (!cfg) return;
+    time += dt;
+    const g = cfg.g * 9.81;
+    if (state.intro > 0) state.intro = Math.max(0, state.intro - dt);
+    if (!driving) walk(dt, input, g);
+    updateRover(dt, input, g);
+    if (driving) { player.x = rover.x; player.z = rover.z; player.y = rover.y + EYE; player.grounded = !rover.air; if (state.outro > 0) state.outro -= dt; }
+    updateDog(dt, g);
+    updateAstro(dt);
+    updateCamera(dt);
+    const px = player.x, pz = player.z;
+    updateChunks(px, pz, false, driving ? 2 : 1);
+    // far terrain for high views
+    const farOn = camDist > 18;
+    if (farOn && (!farCenter || Math.hypot(px - farCenter.x, pz - farCenter.z) > 150)) buildFar(Math.round(px / 50) * 50, Math.round(pz / 50) * 50);
+    if (farMesh) { farMesh.visible = farOn; const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK); nearHole.value.set((cx + 0.5) * CHUNK, (cz + 0.5) * CHUNK, (RADIUS + 0.5) * CHUNK - 1); }
+    if (skyGroup) { skyGroup.position.copy(camera.position); skyGroup.children.forEach(c => { if (c.userData.spin) c.rotation.y += dt * 0.05; }); }
+    if (waterMesh) { waterMesh.position.x = Math.round(camera.position.x / 8) * 8; waterMesh.position.z = Math.round(camera.position.z / 8) * 8; }
+    poiObjects.forEach(p => { if (p.userData.beacon) { p.userData.beacon.rotation.y += dt * 2; p.userData.beacon.position.y = 1.6 + Math.sin(time * 2.5) * 0.15; } });
+    // discoveries: beacons stay visible from afar; walk or drive close to discover
+    for (const it of discItems) {
+      const dc = Math.hypot(it.x - camera.position.x, it.z - camera.position.z), k = Math.max(1, dc / 70);
+      it.beam.scale.set(k, 1, k); it.glint.scale.setScalar(Math.max(4, dc / 14));
+      it.obj.userData.anim?.(it.obj, time);
+      if (state.intro <= 0 && !isFound(it.d.id) && Math.hypot(it.x - px, it.z - pz) < it.reach + (driving ? 4 : 0)) discover(it, driving ? 'drive' : 'walk');
+    }
+  }
+
+  const ray = new THREE.Raycaster();
   function tap(nx, ny) {
+    if (!cfg) return null;
+    ray.far = camDist + 90;
     ray.setFromCamera({ x: nx, y: ny }, camera);
-    const hits = ray.intersectObjects(poiObjects, true);
-    for (const h of hits) { let o = h.object; while (o && !o.userData.poi) o = o.parent; if (o) return { name: o.userData.name, fact: o.userData.fact }; }
+    const targets = dog && !driving ? [...poiObjects, dog.group] : poiObjects;
+    const hits = ray.intersectObjects(targets, true);
+    for (const h of hits) {
+      let o = h.object; while (o && !o.userData.poi && o !== dog?.group) o = o.parent;
+      if (!o) continue;
+      if (o === dog?.group) { pet(); return { pet: true }; }
+      if (o.userData.disc) {
+        const it = discItems.find(i => i.d.id === o.userData.disc);
+        if (isFound(it.d.id)) return { name: it.d.name, fact: it.d.fact };
+        const dd = Math.hypot(it.x - player.x, it.z - player.z);
+        if (dd <= 45) { discover(it, 'tap'); return { name: it.d.name, fact: it.d.fact, discovered: true }; }
+        return { name: 'Unknown signal', fact: `Something interesting is about ${Math.round(dd)} m away. Get closer to discover it.` };
+      }
+      return { name: o.userData.name, fact: o.userData.fact, rover: !!o.userData.rover };
+    }
     return null;
   }
   function nearestPoi() {
     let best = null, bd = 1e9;
-    for (const p of poiObjects) { const d = Math.hypot(p.position.x - player.x, p.position.z - player.z); if (d < bd && d > 4) { bd = d; best = p; } }
+    for (const p of poiObjects) { if (p.userData.disc) continue; const d = Math.hypot(p.position.x - player.x, p.position.z - player.z); if (d < bd && d > 6) { bd = d; best = p; } }
     if (!best || bd > 200) return null;
-    const ang = Math.atan2(-(best.position.x - player.x), -(best.position.z - player.z)) - player.yaw;
-    const a = Math.atan2(Math.sin(ang), Math.cos(ang));
-    const dir = Math.abs(a) < 0.4 ? 'ahead' : Math.abs(a) > 2.5 ? 'behind' : a > 0 ? 'to your left' : 'to your right';
-    return { name: best.userData.name, dist: Math.round(bd), dir };
+    return { name: best.userData.name, dist: Math.round(bd), dir: relDir(Math.atan2(-(best.position.x - player.x), -(best.position.z - player.z)) - viewYaw) };
+  }
+  const nearRover = () => rover && !driving && Math.hypot(rover.x - player.x, rover.z - player.z) < 6.5;
+  function interact() {
+    if (!cfg || state.intro > 0 || state.outro > 0) return null;
+    if (driving) {
+      const rx = Math.cos(rover.yaw), rz = -Math.sin(rover.yaw);
+      let ex = rover.x - rx * 2.9, ez = rover.z - rz * 2.9;
+      if (cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) { ex = rover.x + rx * 2.9; ez = rover.z + rz * 2.9; }
+      player.x = ex; player.z = ez; player.y = height(ex, ez) + EYE; player.vy = 0; player.grounded = true;
+      player.yaw = rover.yaw + camYawOff; player.faceYaw = player.yaw;
+      rover.speed = 0; driving = false; camGoal = walkGoal; return 'exit';
+    }
+    if (nearRover()) { driving = true; walkGoal = camGoal; if (camGoal > 0.8) camGoal = Math.max(camGoal, 12); camYawOff = 0; player.pitch = Math.min(player.pitch, 0); return 'drive'; }
+    return null;
+  }
+  function pet() {
+    if (!dog) return false;
+    const dd = driving ? 0 : Math.hypot(dog.x - player.x, dog.z - player.z);
+    if (dd > 8 && camDist < 0.8) return false;
+    dog.wag = 2.4; dog.idle = 0; if (!dog.air && !driving) dog.vy = 3.2;
+    onEvent('bark', {}); return true;
+  }
+  const viewName = (d = camGoal) => d < 0.8 ? 'first' : d < 60 ? 'third' : 'aerial';
+  function setView(v) { camGoal = v === 'first' ? 0 : v === 'aerial' ? 220 : (driving ? 12 : 9); saveView(); return viewName(); }
+  function cycleView() { const v = viewName(); return setView(v === 'first' ? 'third' : v === 'third' ? 'aerial' : 'first'); }
+  function zoom(f) {
+    if (camGoal < 0.8) { if (f > 1) camGoal = 3.5; }
+    else { camGoal *= f; if (camGoal < 2.6) camGoal = 0; }
+    camGoal = Math.min(CAM_MAX, camGoal); saveView();
   }
   function resize(w, h) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
-  function takeOff() { if (state) { state.outro = 1.0; player.vy = 2; } }
+  function takeOff() { if (state) { if (driving) interact(); state.outro = 1.0; player.vy = 2; } }
+  function discoveryLog() {
+    const f = loadFound();
+    return Object.entries(DISCOVERIES).map(([world, list]) => ({ world, items: list.map(d => ({ id: d.id, name: d.name, fact: d.fact, found: !!f[world]?.includes(d.id) })) }));
+  }
+  // test/debug hook: move next to a discovery (or 25 m short of it)
+  function debugTeleport(id, short = 25) {
+    const it = discItems.find(i => i.d.id === id); if (!it) return false;
+    const L = Math.hypot(it.x, it.z) || 1, k = Math.max(0, (L - short) / L), x = it.x * k, z = it.z * k;
+    const yaw = Math.atan2(-(it.x - x), -(it.z - z));
+    if (driving) { rover.x = x; rover.z = z; rover.yaw = yaw; rover.y = height(x, z); rover.prevG = null; rover.vy = 0; rover.speed = 0; }
+    else { player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; }
+    updateChunks(x, z, true); return true;
+  }
 
+  function debugPlace(x, z, yaw = player.yaw) { if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; updateChunks(x, z, true); }
   return {
-    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi,
-    get info() { return cfg ? { name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro } : null; }
+    scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace,
+    get info() {
+      if (!cfg) return null;
+      const n = nearestUndiscovered(player.x, player.z), c = discCount();
+      return {
+        name, g: cfg.g, walked: player.walked, x: player.x, z: player.z, y: player.y, grounded: player.grounded, chunks: chunks.size, intro: state.intro,
+        view: viewName(camDist), camDist, camGoal, driving, nearRover: !!nearRover(), driven, speed: rover ? rover.speed : 0, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z,
+        dog: dog ? { mode: dog.mode, dist: Math.hypot(dog.x - player.x, dog.z - player.z), sit: dog.sit, air: dog.air, wag: dog.wag > 0, y: dog.y } : null,
+        nearDog: !!dog && !driving && Math.hypot(dog.x - player.x, dog.z - player.z) < 8,
+        disc: c, next: n ? { dist: Math.round(n.dist), ang: Math.atan2(Math.sin(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw), Math.cos(Math.atan2(-(n.it.x - player.x), -(n.it.z - player.z)) - viewYaw)), id: n.it.d.id } : null,
+        far: !!farMesh?.visible
+      };
+    }
   };
 }

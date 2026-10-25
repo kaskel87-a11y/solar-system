@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#000000">
   <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
-  <meta name="app-version" content="v4">
+  <meta name="app-version" content="v5">
   <title>Cinematic Universe Explorer</title>
   <style>
     :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
@@ -44,7 +44,7 @@
     body.flying #hud { display: block; }
     body.flying #planetBar, body.flying:not(.surface) #fact-panel, body.flying #speedbox, body.flying #info, body.flying #credits { display: none !important; }
     body.surface #hudSpeed, body.surface #hudHint, body.surface #flyBtns, body.surface #flyBtn, body.surface #landBtn, body.surface #landMsg { display: none !important; }
-    body.surface #fact-panel { top: calc(108px + var(--sat)); bottom: auto; }
+    body.surface #fact-panel { top: calc(158px + var(--sat)); bottom: auto; }
     #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.85s ease; z-index: 15; }
     #landBtn { position: fixed; top: calc(112px + var(--sat)); left: 50%; transform: translateX(-50%); display: none; z-index: 9; font-size: 1.1rem; font-weight: 700; padding: 12px 22px; min-height: 54px; min-width: 200px;
       max-width: calc(100vw - 32px - var(--sal) - var(--sar)); box-sizing: border-box; border-radius: 16px; line-height: 1.2; text-align: center;
@@ -59,7 +59,30 @@
     body.surface #surfHud { display: block; }
     #surfInfo { position: fixed; top: calc(14px + var(--sat)); left: calc(14px + var(--sal)); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; z-index: 7; max-width: calc(100vw - 180px); }
     #surfInfo b { font-size: 1rem; }
-    #poiHint { position: fixed; top: calc(62px + var(--sat)); left: calc(14px + var(--sal)); padding: 6px 10px; border-radius: 10px; font-size: 0.78rem; z-index: 7; display: none; }
+    #poiHint { position: fixed; top: calc(150px + var(--sat)); left: calc(14px + var(--sal)); padding: 6px 10px; border-radius: 10px; font-size: 0.76rem; z-index: 7; display: none; max-width: calc(100vw - 40px); }
+    .pill { position: fixed; z-index: 8; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: #fff; border: 1px solid rgba(255,255,255,0.18); background: rgba(10,14,30,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); white-space: nowrap; }
+    #discBtn { top: calc(62px + var(--sat)); left: calc(14px + var(--sal)); }
+    #viewBtn { top: calc(62px + var(--sat)); right: calc(14px + var(--sar)); }
+    #nextHint { position: fixed; top: calc(110px + var(--sat)); left: calc(14px + var(--sal)); z-index: 7; padding: 5px 10px 5px 6px; border-radius: 10px; font-size: 0.8rem; display: none; align-items: center; gap: 6px; white-space: nowrap; }
+    #nextArrow { display: inline-block; width: 26px; height: 26px; line-height: 26px; text-align: center; font-size: 18px; color: #ffd25a; transition: transform 0.15s linear; }
+    #ctxBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(176px + var(--sab)); z-index: 8; display: flex; gap: 10px; }
+    #ctxBar button { min-height: 50px; padding: 10px 18px; font-size: 1rem; font-weight: 800; border-radius: 16px; display: none; touch-action: manipulation; }
+    #driveBtn { background: linear-gradient(135deg, #16a34a, #4ade80); border: none; color: #fff; box-shadow: 0 4px 18px rgba(40,200,100,0.4); }
+    #petBtn { background: linear-gradient(135deg, #b7791f, #f6ad55); border: none; color: #fff; }
+    #discPop { position: fixed; top: calc(120px + var(--sat)); left: 50%; transform: translateX(-50%) scale(0.9); width: min(420px, calc(100vw - 32px)); box-sizing: border-box; z-index: 12; padding: 14px 18px; border-radius: 18px; text-align: center; background: rgba(30,22,6,0.92); border: 1px solid rgba(255,210,90,0.6); box-shadow: 0 0 40px rgba(255,200,80,0.35); opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; }
+    #discPop.show { opacity: 1; transform: translateX(-50%) scale(1); pointer-events: auto; }
+    #discPop .t { color: #ffd25a; font-weight: 800; letter-spacing: 0.04em; font-size: 0.8rem; }
+    #discPop h3 { margin: 4px 0 6px; font-size: 1.15rem; } #discPop p { margin: 0; font-size: 0.9rem; line-height: 1.4; } #discPop small { display: block; margin-top: 8px; opacity: 0.7; }
+    #toast { position: fixed; left: 50%; bottom: calc(240px + var(--sab)); transform: translateX(-50%); z-index: 9; padding: 8px 14px; border-radius: 12px; font-size: 0.85rem; display: none; max-width: calc(100vw - 40px); text-align: center; }
+    #logPanel { position: fixed; inset: 0; z-index: 14; display: none; background: rgba(4,6,16,0.94); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(16px + var(--sat)) calc(16px + var(--sar)) calc(24px + var(--sab)) calc(16px + var(--sal)); box-sizing: border-box; }
+    #logPanel .wrap { max-width: 640px; margin: 0 auto; }
+    #logPanel h2 { margin: 6px 0 10px; } #logPanel h3 { margin: 18px 0 6px; color: #93c5fd; font-size: 1rem; }
+    #logPanel .item { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 8px; font-size: 0.88rem; line-height: 1.4; }
+    #logPanel .item b { color: #ffd25a; } #logPanel .item.locked { opacity: 0.45; }
+    #logClose { position: sticky; top: 0; float: right; }
+    #dogRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); }
+    #dogName { flex: 1; min-width: 120px; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); color: #fff; }
+    body.driving #jumpBtn { display: none !important; }
     #takeoffBtn { position: fixed; top: calc(14px + var(--sat)); right: calc(14px + var(--sar)); z-index: 8; background: linear-gradient(135deg, #ff5a36, #ff9a3c); border: none; box-shadow: 0 4px 18px rgba(255,100,40,0.45); }
     #surfBtns { position: fixed; right: calc(20px + var(--sar)); bottom: calc(28px + var(--sab)); display: grid; grid-template-columns: 72px; gap: 12px; z-index: 7; }
     #surfBtns button { height: 64px; border-radius: 16px; font-size: 0.9rem; font-weight: 700; touch-action: none; }
@@ -85,6 +108,16 @@
       #joy { width: 112px; height: 112px; bottom: calc(18px + var(--sab)); }
       #flyBtns { bottom: calc(18px + var(--sab)); }
       #flyBtns button { height: 48px; }
+      .pill { min-height: 36px; padding: 6px 10px; }
+      #discBtn, #viewBtn { top: calc(56px + var(--sat)); }
+      #nextHint { top: calc(100px + var(--sat)); }
+      #poiHint { top: calc(138px + var(--sat)); }
+      #ctxBar { bottom: calc(18px + var(--sab)); }
+      #toast { bottom: calc(80px + var(--sab)); }
+      #discPop { top: calc(56px + var(--sat)); }
+      body.surface #fact-panel { top: calc(56px + var(--sat)); width: min(380px, calc(100vw - 32px)); }
+      #surfBtns { bottom: calc(18px + var(--sab)); gap: 8px; }
+      #surfBtns button { height: 52px; }
     }
     @media (max-width: 640px) {
       #info { max-width: calc(100vw - 150px); padding: 9px 12px; box-sizing: border-box; }
@@ -108,7 +141,7 @@
   <div id="error"><div><h2>Couldn't start 3D</h2><p id="error-text">Your browser needs WebGL for this. Try Safari or Chrome.</p></div></div>
 
   <div id="info" class="glass">
-    <h1>🌌 Cinematic Universe<span class="ver">v4</span></h1>
+    <h1>🌌 Cinematic Universe<span class="ver">v5</span></h1>
     <p class="desk-only">Drag to orbit • Scroll to zoom • Click a planet for facts</p>
     <p class="touch-only">Drag to orbit • Pinch to zoom • Tap a planet</p>
     <small class="desk-only">Press <b>F</b> or 🚀 Fly to pilot the rocket (WASD/arrows move, mouse look, Q/E down/up, Space boost, Esc exit). Pick a rocky world and click 🛬 Land here, or while flying press <b>L</b> (or the 🛬 button) to fly to the nearest one and land.</small>
@@ -130,7 +163,7 @@
     <button id="factLand" class="btn">🛬 Land here</button>
   </div>
 
-  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v4</div>
+  <div id="credits">Textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0, via Wikimedia Commons) · <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> · v5</div>
 
   <div id="hud">
     <div id="hudHint"></div>
@@ -154,9 +187,21 @@
       <button id="jumpBtn" class="glass touch-only">Jump</button>
       <button id="runBtn" class="glass touch-only">Run</button>
     </div>
-    <div id="surfHelp" class="glass desk-only">WASD move · mouse look (click to lock) · Space jump · Shift run · click things for facts · T take off</div>
+    <button id="discBtn" class="pill">🔎 Discoveries 0/0</button>
+    <button id="viewBtn" class="pill">👁 Third person</button>
+    <div id="nextHint" class="glass"><span id="nextArrow">➤</span><span id="nextText"></span></div>
+    <div id="ctxBar"><button id="driveBtn">🚙 Drive</button><button id="petBtn">🐾 Pet</button></div>
+    <div id="toast" class="glass"></div>
+    <div id="surfHelp" class="glass desk-only">WASD move · drag/mouse look · wheel zoom · V view · E drive · P pet · L log · Space jump · Shift run/boost · T take off</div>
     <div id="crosshair" class="desk-only"></div>
   </div>
+  <div id="discPop"><div class="t">✨ DISCOVERED!</div><h3 id="discName"></h3><p id="discFact"></p><small id="discCount"></small></div>
+  <div id="logPanel"><div class="wrap">
+    <button id="logClose" class="btn">✕ Close</button>
+    <h2>🔎 Discoveries <span id="logTotal"></span></h2>
+    <div id="dogRow">🐶 Your dog's name: <input id="dogName" maxlength="20" autocomplete="off" aria-label="Dog name"><button id="dogSave" class="btn">Save</button></div>
+    <div id="logList"></div>
+  </div></div>
   <div id="fade"></div>
 
   <script type="importmap">
@@ -179,7 +224,8 @@
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
     import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { createSurface, LANDABLE } from './surface.js?v=4';
+    import { createSurface, LANDABLE, DISCOVERIES } from './surface.js?v=5';
+    import { buildStarship } from './models.js?v=5';
 
     const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (isTouch && Math.min(screen.width, screen.height) < 900) || window.innerWidth < 800;
@@ -444,19 +490,16 @@
     const rocketModel = new THREE.Group();
     rocketModel.rotation.x = -Math.PI / 2;
     rocket.add(rocketModel);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.6, roughness: 0.3 });
-    const accentMat = new THREE.MeshStandardMaterial({ color: 0xff3333, metalness: 0.4, roughness: 0.4 });
-    rocketModel.add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 4.2, 16), bodyMat));
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.8, 16), accentMat); nose.position.y = 3.0; rocketModel.add(nose);
-    const finGeo = new THREE.BoxGeometry(0.15, 1.2, 1.1);
-    for (let i = 0; i < 3; i++) { const fin = new THREE.Mesh(finGeo, accentMat); const a = (i / 3) * Math.PI * 2; fin.position.set(Math.cos(a) * 0.85, -1.6, Math.sin(a) * 0.85); fin.rotation.y = -a; rocketModel.add(fin); }
-    const engine = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.8, 12), new THREE.MeshBasicMaterial({ color: 0xffaa00 })); engine.position.y = -2.4; rocketModel.add(engine);
+    // Starship-style ship (stainless body, flaps, heat tiles, six engines); 50 m model scaled to about 6.5 units
+    const ship = buildStarship({ legs: false, seg: isMobile ? 22 : 32 });
+    ship.group.scale.setScalar(0.13); ship.group.position.y = -2.9; rocketModel.add(ship.group);
+    const shipFlames = ship.flames;
     const exhaustCount = 120;
     const exPos = new Float32Array(exhaustCount * 3);
     for (let i = 0; i < exhaustCount * 3; i += 3) { exPos[i] = (Math.random() - 0.5) * 0.5; exPos[i + 1] = -Math.random() * 4; exPos[i + 2] = (Math.random() - 0.5) * 0.5; }
     const exhaustGeo = new THREE.BufferGeometry(); exhaustGeo.setAttribute('position', new THREE.BufferAttribute(exPos, 3));
     const exhaust = new THREE.Points(exhaustGeo, new THREE.PointsMaterial({ map: dotTex, color: 0xff7a1a, size: 0.5, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
-    exhaust.position.y = -2.6; rocketModel.add(exhaust);
+    exhaust.position.y = -3.3; rocketModel.add(exhaust);
     const rocketLight = new THREE.PointLight(0xffffff, 1.5, 40, 1); rocketLight.position.set(0, 3, 4); rocket.add(rocketLight);
     rocket.position.set(30, 15, 140);
     rocket.scale.setScalar(1.4);
@@ -590,7 +633,47 @@
     flyBtn.onclick = () => setFlying(!flying);
 
     // ===== Landing / surface =====
-    const surface = createSurface({ renderer, textures, isMobile });
+    // ===== Sound (WebAudio, unlocked on first gesture for iOS) =====
+    let actx = null; const sfxLog = [];
+    function audio() {
+      if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+      if (actx.state === 'suspended') actx.resume();
+      return actx;
+    }
+    ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, () => audio(), { passive: true }));
+    function tone(a, type, f0, f1, t0, dur, vol) {
+      const o = a.createOscillator(), g = a.createGain(); o.type = type;
+      o.frequency.setValueAtTime(f0, a.currentTime + t0); o.frequency.exponentialRampToValueAtTime(f1, a.currentTime + t0 + dur);
+      g.gain.setValueAtTime(0.0001, a.currentTime + t0); g.gain.exponentialRampToValueAtTime(vol, a.currentTime + t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + t0 + dur);
+      o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + dur + 0.05);
+    }
+    function chime() { sfxLog.push('chime'); const a = audio(); if (!a) return; [[880, 0], [1175, 0.12], [1568, 0.24]].forEach(([f, t]) => tone(a, 'sine', f, f * 1.01, t, 0.9, 0.18)); }
+    function bark() {
+      sfxLog.push('bark'); const a = audio(); if (!a) return;
+      [0, 0.2].forEach(t => { tone(a, 'square', 520, 210, t, 0.13, 0.12); tone(a, 'sawtooth', 300, 140, t, 0.12, 0.08); });
+    }
+
+    // ===== Dog name, discoveries popup, toasts =====
+    const DOG_KEY = 'ssx.dogName';
+    let dogName = (() => { try { return (localStorage.getItem(DOG_KEY) || '').trim() || 'Frankie'; } catch (e) { return 'Frankie'; } })();
+    const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const discPop = document.getElementById('discPop'), toastEl = document.getElementById('toast');
+    let popTimer = 0, toastTimer = 0;
+    function showPop(ev) {
+      document.getElementById('discName').textContent = ev.name;
+      document.getElementById('discFact').textContent = ev.fact;
+      document.getElementById('discCount').textContent = ev.found === ev.total ? `🏆 All ${ev.total} discoveries on ${ev.world} found!` : `${ev.world} · ${ev.found}/${ev.total} discovered · saved in your log`;
+      factPanel.style.display = 'none';
+      discPop.classList.add('show'); clearTimeout(popTimer); popTimer = setTimeout(() => discPop.classList.remove('show'), 7000);
+    }
+    discPop.addEventListener('click', () => discPop.classList.remove('show'));
+    function toast(msg, ms = 4000) { toastEl.textContent = msg; toastEl.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.style.display = 'none', ms); }
+    function onSurfaceEvent(type, ev) {
+      if (type === 'discover') { chime(); showPop(ev); updateSurfHud(true); }
+      else if (type === 'bark') bark();
+      else if (type === 'dogHint') toast(`🐶 ${dogName} is sniffing at something ${ev.dir}, ${ev.dist} m away!`);
+    }
+    const surface = createSurface({ renderer, textures, isMobile, onEvent: onSurfaceEvent });
     const landBtn = document.getElementById('landBtn'), landMsg = document.getElementById('landMsg'), fadeEl = document.getElementById('fade');
     const surfInfo = document.getElementById('surfInfo'), poiHint = document.getElementById('poiHint');
     const NO_SURFACE = {
@@ -613,6 +696,7 @@
           onSurface = true; landAnim = null;
           document.body.classList.add('surface');
           factPanel.style.display = 'none';
+          updateSurfHud(true);
         } catch (err) { console.error(err); landAnim = null; }
         fadeEl.style.opacity = 0;
         setTimeout(() => { transitioning = false; }, 400);
@@ -627,7 +711,7 @@
       setTimeout(() => {
         surface.exit();
         onSurface = false;
-        document.body.classList.remove('surface');
+        document.body.classList.remove('surface', 'driving'); logPanel.style.display = 'none'; discPop.classList.remove('show'); toastEl.style.display = 'none';
         // put the rocket back in space on the sunlit side of the body, pointing away from it
         landedBody.getWorldPosition(tmpV2);
         const r = landedBody.userData.r || 3;
@@ -688,8 +772,63 @@
     landBtn.onclick = landAction;
     document.getElementById('takeoffBtn').onclick = takeOff;
 
+    // ===== Surface: view, rover, dog, discoveries log =====
+    const viewBtn = document.getElementById('viewBtn'), discBtn = document.getElementById('discBtn'), driveBtn = document.getElementById('driveBtn'), petBtn = document.getElementById('petBtn');
+    const nextHint = document.getElementById('nextHint'), nextArrow = document.getElementById('nextArrow'), nextText = document.getElementById('nextText');
+    const runBtnEl = document.getElementById('runBtn'), logPanel = document.getElementById('logPanel');
+    const VIEW_LABEL = { first: '👁 First person', third: '👁 Third person', aerial: '🛰 Aerial view' };
+    viewBtn.onclick = () => { surface.cycleView(); updateSurfHud(true); };
+    function doInteract() { const r = surface.interact(); if (r === 'drive') toast(`🚙 Driving! ${isTouch ? 'Stick to steer and throttle, hold Boost to go fast.' : 'WASD to drive, Shift to boost, E to get out.'}`, 3500); updateSurfHud(true); }
+    driveBtn.onclick = doInteract;
+    petBtn.onclick = () => { surface.pet(); };
+    function openLog() {
+      const log = surface.discoveryLog(); let f = 0, t = 0, html = '';
+      for (const w of log) {
+        const wf = w.items.filter(i => i.found).length; f += wf; t += w.items.length;
+        html += `<h3>${esc(w.world)} · ${wf}/${w.items.length}</h3>` + w.items.map(i => i.found ? `<div class="item"><b>${esc(i.name)}</b><br>${esc(i.fact)}</div>` : `<div class="item locked">❔ Undiscovered. Land on ${esc(w.world)} and follow the gold beacons.</div>`).join('');
+      }
+      document.getElementById('logList').innerHTML = html; document.getElementById('logTotal').textContent = `${f}/${t}`;
+      document.getElementById('dogName').value = dogName;
+      logPanel.style.display = 'block'; if (document.pointerLockElement) document.exitPointerLock();
+    }
+    discBtn.onclick = openLog;
+    document.getElementById('logClose').onclick = () => logPanel.style.display = 'none';
+    document.getElementById('dogSave').onclick = () => {
+      const v = document.getElementById('dogName').value.trim().slice(0, 20) || 'Frankie'; dogName = v;
+      try { localStorage.setItem(DOG_KEY, v); } catch (e) { /* ignore */ }
+      toast(`🐶 Say hi to ${v}!`, 2500); updateSurfHud(true);
+    };
+    document.getElementById('dogName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') document.getElementById('dogSave').click(); });
+    let hudKey = '';
+    function updateSurfHud(force) {
+      const i = surface.info; if (!i) return;
+      document.body.classList.toggle('driving', i.driving);
+      const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : ` · ${Math.round(i.walked)} m walked`;
+      surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g${extra}`;
+      const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName].join('|');
+      if (force || key !== hudKey) {
+        hudKey = key;
+        viewBtn.textContent = VIEW_LABEL[surface.info.camGoal < 0.8 ? 'first' : surface.info.camGoal < 60 ? 'third' : 'aerial'];
+        discBtn.textContent = `🔎 Discoveries ${i.disc.found}/${i.disc.total}`;
+        driveBtn.style.display = i.driving || i.nearRover ? 'block' : 'none';
+        driveBtn.textContent = i.driving ? '🚪 Exit rover' : `🚙 Drive${isTouch ? '' : ' (E)'}`;
+        petBtn.style.display = i.driving || i.nearDog ? 'block' : 'none';
+        petBtn.textContent = `🐾 Pet ${dogName}${isTouch ? '' : ' (P)'}`;
+        runBtnEl.textContent = i.driving ? 'Boost' : 'Run';
+      }
+      if (i.next) {
+        nextHint.style.display = 'flex';
+        nextArrow.style.transform = `rotate(${(-i.next.ang * 180 / Math.PI - 90).toFixed(0)}deg)`;
+        nextText.textContent = `Signal · ${i.next.dist} m`;
+      } else if (i.disc.total) { nextHint.style.display = 'flex'; nextArrow.style.transform = ''; nextText.textContent = '🏆 All found here'; }
+      const p = surface.nearestPoi();
+      if (p && p.dist < 120) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
+    }
+    // desktop scroll-wheel zoom
+    renderer.domElement.addEventListener('wheel', e => { if (!onSurface) return; e.preventDefault(); surface.zoom(Math.exp(THREE.MathUtils.clamp(e.deltaY, -200, 200) * 0.0025)); updateSurfHud(true); }, { passive: false });
+
     // tap / click things on the surface for facts
-    let sDown = null;
+    let sDown = null, lastPinch = 0;
     renderer.domElement.addEventListener('pointerdown', e => { if (onSurface) sDown = { x: e.clientX, y: e.clientY, t: performance.now() }; });
     renderer.domElement.addEventListener('pointerup', e => {
       if (!onSurface || !sDown) return;
@@ -697,6 +836,9 @@
       if (moved > 8 || dtp > 600) return;
       const locked = !!document.pointerLockElement;
       const hit = locked ? surface.tap(0, 0) : surface.tap((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+      if (performance.now() - lastPinch < 400) return;
+      if (hit && hit.pet) return updateSurfHud(true);
+      if (hit && hit.discovered) return;
       if (hit) showFact({ userData: hit });
       else { factPanel.style.display = 'none'; if (!isTouch && !locked) lockPointer(); }
     });
@@ -705,7 +847,14 @@
     window.addEventListener('keydown', e => {
       keys[e.code] = true;
       if (onSurface) {
+        if (logPanel.style.display === 'block') { if (e.code === 'Escape') logPanel.style.display = 'none'; return; }
         if (e.code === 'KeyT') takeOff();
+        if (e.code === 'KeyE' && !e.repeat) doInteract();
+        if (e.code === 'KeyP' && !e.repeat) surface.pet();
+        if (e.code === 'KeyV' && !e.repeat) { surface.cycleView(); updateSurfHud(true); }
+        if (e.code === 'KeyL' && !e.repeat) openLog();
+        if (e.code === 'Equal' || e.code === 'NumpadAdd') surface.zoom(0.8);
+        if (e.code === 'Minus' || e.code === 'NumpadSubtract') surface.zoom(1.25);
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
         return;
       }
@@ -735,11 +884,19 @@
     // Touch: drag anywhere on the canvas to steer
     const lookTouches = new Map();
     renderer.domElement.addEventListener('pointerdown', e => { if (flying && e.pointerType !== 'mouse') lookTouches.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
+    let pinchD = 0;
+    const pinchDist = () => { const [a, b] = [...lookTouches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     renderer.domElement.addEventListener('pointermove', e => {
       const p = lookTouches.get(e.pointerId); if (!p || !flying) return;
+      if (onSurface && lookTouches.size >= 2) {
+        p.x = e.clientX; p.y = e.clientY; const d = pinchDist();
+        if (pinchD > 0 && d > 0) surface.zoom(pinchD / d);
+        pinchD = d; lastPinch = performance.now(); sDown = null; return;
+      }
+      pinchD = 0;
       look(e.clientX - p.x, e.clientY - p.y, 0.005); p.x = e.clientX; p.y = e.clientY;
     });
-    const endLook = e => lookTouches.delete(e.pointerId);
+    const endLook = e => { lookTouches.delete(e.pointerId); if (lookTouches.size < 2) pinchD = 0; };
     renderer.domElement.addEventListener('pointerup', endLook);
     renderer.domElement.addEventListener('pointercancel', endLook);
 
@@ -784,12 +941,7 @@
       if (onSurface) {
         surface.update(realDt, { keys, joy, jump: keys['Space'] || touchBtns.jump, run: keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run });
         renderer.render(surface.scene, surface.camera);
-        if ((frame++ & 7) === 0 && surface.info) {
-          const i = surface.info;
-          surfInfo.innerHTML = `<b>${i.name}</b> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g · ${Math.round(i.walked)} m walked`;
-          const p = surface.nearestPoi();
-          if (p) { poiHint.style.display = 'block'; poiHint.textContent = `📍 ${p.name}: ${p.dist} m ${p.dir}`; } else poiHint.style.display = 'none';
-        }
+        if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
         window.__frames = (window.__frames || 0) + 1;
         return;
       }
@@ -854,6 +1006,7 @@
         for (let i = 1; i < pos.length; i += 3) { pos[i] -= flow * (0.6 + (i % 7) / 7); if (pos[i] < -4) pos[i] = 0; }
         exhaust.geometry.attributes.position.needsUpdate = true;
         exhaust.material.size = boost ? 0.75 : 0.5;
+        shipFlames.visible = thrust > 0.02; shipFlames.scale.set(1, (boost ? 1.6 : 1) * (0.9 + Math.random() * 0.2), 1);
 
         // nearby body: ride along with it, offer landing
         let best = null, bestScore = Infinity, bestPos = new THREE.Vector3();
@@ -939,7 +1092,7 @@
 
     // test hooks
     window.__app = { setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
-      landOn, landAction, version: 'v4',
+      landOn, landAction, renderer, version: 'v5', sfx: () => sfxLog, dogNameGet: () => dogName,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
   </script>
 </body>
