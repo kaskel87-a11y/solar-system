@@ -12,7 +12,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   let opts = desk ? { viewport: { width: 1440, height: 900 } } : { ...pw.devices[DEV] };
   if (VP) { const [w, h] = VP.split('x').map(Number); opts = { ...opts, viewport: { width: w, height: h }, screen: { width: w, height: h } }; }
   delete opts.defaultBrowserType;
-  const ctx = await browser.newContext(opts); const page = await ctx.newPage();
+  const ctx = await browser.newContext(opts); const page = await ctx.newPage(); page.setDefaultTimeout(120000); // the shared box is heavily loaded
   const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
   const vp = page.viewportSize(), tag = `base-${vp.width}x${vp.height}-${BR}`;
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
@@ -116,6 +116,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('deposited', await wait(id => window.SSX.base.state(id).stash.credits === 100, 4000, PID)); await sleep(300);
     await shot('stash');
     await ourTap('#baseStashClose'); await wait(() => !document.getElementById('basePanel').classList.contains('on'), 3000);
+    // ---- garage: 🚙 Rover home parks the rover in the bay; with SSX.garage present (stubbed here if absent) the action becomes 🔧 Customize
+    const gp = await G(id => { const B = window.SSX.base, g = B.state(id).pieces.find(p => p.type === 'garage'), w = B.plots().find(p => p.id === id).world; return { x: w.x + (g.i + 1) * 2 - 10, z: w.z + (g.j + 1.5) * 2 - 10 }; }, PID);
+    await move(gp.x + 2.6, gp.z + 3.2, 0);
+        ok('roverHomeBtn', await wait(() => window.SSX.base.action === '🚙 Rover home' || window.SSX.base.action === '🔧 Customize', 8000));
+    if ((await G(() => window.SSX.base.action)) === '🚙 Rover home') { await act(); await sleep(800); }
+    R.stubGarage = await G(() => { if (window.SSX.garage) return false; window.__gOpen = 0; window.SSX.garage = { openGarage() { window.__gOpen++; } }; return true; });
+    ok('customizeBtn', await wait(() => window.SSX.base.action === '🔧 Customize', 8000));
+    await act(); ok('customizeOpens', await wait(() => window.__gOpen >= 1, 4000));
+    if (R.stubGarage) await G(() => { delete window.SSX.garage; });
+    ok('customizeHidden', await wait(() => window.SSX.base.action !== '🔧 Customize', 6000));
     // ---- turret: a raider target (addTargets) inside range, then real security while wanted
     const tp = await G(id => { const B = window.SSX.base, s = B.state(id).pieces.find(p => p.type === 'turret'), w = B.plots().find(p => p.id === id).world; return { x: w.x + (s.i + 0.5) * 2 - 10, z: w.z + (s.j + 0.5) * 2 - 10 }; }, PID);
     await move(c.x - 4, c.z + 16, Math.PI); await sleep(500);
@@ -126,10 +136,28 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await shot('turret');
     await G(() => { window.__off(); }); await G(id => window.SSX.base.endRaid(id, 'test'), PID);
     ok('raidEnd', await wait(() => window.__blog.some(e => e[0] === 'raid:end'), 3000));
+    // ---- SSX.raids integration (PR #13 API) against a stub when the real engine isn't loaded; the base must not depend on it
+    R.raidsEngine = await G(async id => {
+      const real = !!window.SSX.raids, L = new Map(), started = []; let hurt = 0;
+      if (!real) window.SSX.raids = { start(o) { started.push(o); setTimeout(() => (L.get('raid:start') || []).forEach(f => f({ id: o.id, attackers: o.attackers, waves: 2, pos: o.pos, radius: o.radius })), 50); return { ok: true, id: o.id }; },
+        on(e, f) { (L.get(e) || L.set(e, []).get(e)).push(f); return () => {}; }, off() {}, stop() { return true; }, active: () => null,
+        attackers: () => started.length ? [{ x: window.SSX.base.plots().find(p => p.id === id).world.x + 6, z: window.SSX.base.plots().find(p => p.id === id).world.z + 6, alive: true, hp: 3, kind: 'gang', hurt: () => { hurt++; } }] : [] };
+      const ev = []; const off = window.SSX.base.on('raid:end', d => ev.push(d)), off2 = window.SSX.base.on('raid:wave', d => ev.push(d));
+      const r = window.SSX.base.raid(id, { why: 'engine test' }); const sl = ms => new Promise(f => setTimeout(f, ms));
+      if (real) { await sl(3000); window.SSX.base.endRaid(id, 'test'); off(); off2(); return { real, via: r.via }; }
+      const o = started[0]; await sl(300); (L.get('raid:wave') || []).forEach(f => f({ id: o?.id, wave: 1, waves: 2 }));
+      for (let k = 0; k < 100 && !hurt; k++) await sl(150);
+      (L.get('raid:end') || []).forEach(f => f({ id: o?.id, result: 'win', why: 'cleared' })); await sl(200);
+      off(); off2(); delete window.SSX.raids;
+      return { real, via: r.via, startArgs: o && { attackers: o.attackers, radius: o.radius, hasPos: !!o.pos }, hurt, wave: ev.some(e => e.wave === 1), end: ev.find(e => e.result)?.result };
+    }, PID);
+    ok('raidsEngine', JSON.stringify(R.raidsEngine), R.raidsEngine.via === 'SSX.raids' && (R.raidsEngine.real || (R.raidsEngine.hurt > 0 && R.raidsEngine.wave && R.raidsEngine.end === 'win')));
     await G(() => window.__app.surface.world.setWanted(3, 'test: base turret'));
     R.secHit = await wait(() => window.__blog.some(e => e[0] === 'turret:fire' && e[1].target !== 'raider'), 45000); // informational: depends on where security spawns
     await G(() => window.__app.surface.world.setWanted(0, 'test: done'));
-    ok('npcCap', await G(() => window.__app.surface.world.debug.people().length), desk || (await G(() => window.__app.surface.world.debug.people().length)) <= 12);
+    // live NPC budget (v7.5: SSX.city.npcBudget(); older cores: count the visible people)
+    const npc = await G(() => { const W = window.__app.surface.world, b = W.npcBudget?.() || window.SSX?.city?.npcBudget?.(); if (b) return { used: b.used, cap: b.cap }; const p = window.__app.surface.world.debug.people(); return { used: p.filter(q => q.on !== false && q.visible !== false).length, cap: 12 }; });
+    ok('npcCap', `${npc.used}/${npc.cap}`, npc.used <= npc.cap && (desk || npc.cap <= 12));
     await move(c.x + 3, c.z + 26, 0); await sleep(1500); await shot('finished');
     // ---- reload: everything comes back
     const snap = await G(id => JSON.stringify(window.SSX.base.state(id)), PID);

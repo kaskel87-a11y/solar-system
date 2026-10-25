@@ -288,7 +288,7 @@ export function baseTick(dt, ctx) {
   for (const p of BC.PLOTS) { const g = plotState(p.id).owned && plotState(p.id).pieces.find(q => q.type === 'garage'); if (!g || !ctx.rover || !centres[p.id]) continue;
     const l = toLocal(p.id, ctx.rover.x, ctx.rover.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r);
     if (Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d && 'fuel' in ctx.rover && ctx.rover.fuel < 100) ctx.rover.fuel = Math.min(100, ctx.rover.fuel + dt * 25); }
-  updateTurrets(dt, ctx);
+  subscribeRaids(); updateTurrets(dt, ctx);
   if (build && (build.plotId !== plotUnder(P.x, P.z, 12) || car || indoor)) { H.toast('🏗️ Left your lot. Build mode off.', 1800); setBuild(false); }
   let act = null;
   if (build) act = updateBuild();
@@ -299,12 +299,18 @@ export function baseTick(dt, ctx) {
       const s = plotState(near), l = toLocal(near, P.x, P.z), close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (t === 'garage' ? 4 : 2.2); })());
       const st = close('stash'), gr = close('garage');
       if (st) act = { label: '💰 Stash', fn: async () => stashUi(near) };
-      else if (gr && ctx.rover) act = { label: '🚙 Rover home', fn: async () => roverHome(near, gr) };
+      else if (gr) { // the garage stores / respawns your ride; paint & parts live in Pumpkin's SSX.garage (feature-detected at call time)
+        const parked = ctx.rover && roverInBay(near, gr, ctx.rover), cz = customizer();
+        if (cz && (parked || !ctx.rover)) act = { label: '🔧 Customize', fn: async () => { const f = customizer(); if (!f) return H.toast('🔧 No tuner in this build.', 1800); f(); emit('garage:customize', { plotId: near }); } };
+        else if (ctx.rover) act = { label: '🚙 Rover home', fn: async () => roverHome(near, gr) };
+      }
       else if (inPlotId === near) act = { label: '🏗️ Build', fn: async () => setBuild(true, near) };
     }
   }
   setAction(act);
 }
+function customizer() { const G = typeof window !== 'undefined' && window.SSX?.garage; const f = G && (G.openGarage || G.open || G.customize); return typeof f === 'function' ? () => f.call(G) : null; }
+function roverInBay(id, g, rv) { const l = toLocal(id, rv.x, rv.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r); return Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d; }
 function roverHome(id, g) {
   const c = BC.pieceCentre(g), w = toWorldXZ(id, c.x, c.z), [bx, bz] = BC.rotXZ(0, 1, g.r); // nose to the open front
   H.parkVehicle(C.rover, w.x, w.z, Math.atan2(-bx, -bz) + Math.PI, C.height(w.x, w.z) + 0.6); emit('garage', { plotId: id, x: w.x, z: w.z }); H.toast('🚙 Rover\u2019s in the garage. Fuel topped up.', 2200);
@@ -325,7 +331,7 @@ function updateTurrets(dt, ctx) {
       sec ||= H.security(ctx.world).map(s => ({ x: s.x, y: s.y + (s.kind === 'drone' ? 0 : 1), z: s.z, kind: s.kind, sec: true }));
       cands = sec.slice();
       for (const fn of targetSources) { try { for (const t of fn({ plotId: h.pid, x: h.x, z: h.z, range: BC.TURRET.range }) || []) cands.push(t); } catch (e) { /* bad source */ } }
-      const rl = window.SSX?.raids; if (rl && typeof rl.attackers === 'function') { try { for (const t of rl.attackers() || []) cands.push(t); } catch (e) { /* not ready */ } }
+      const rl = window.SSX?.raids; if (rl && typeof rl.attackers === 'function') { try { for (const t of rl.attackers() || []) if (t && t.alive !== false) cands.push(t); } catch (e) { /* not ready */ } }
     }
     const tgt = BC.pickTarget(h.x, h.z, cands, BC.TURRET.range);
     if (!tgt) { st.yaw += dt * 0.4; setHeadYaw(h, st.yaw); continue; }  // idle sweep
@@ -336,6 +342,7 @@ function updateTurrets(dt, ctx) {
     tv0.set(h.x + Math.sin(st.yaw) * 1.6, h.y + 1.68, h.z + Math.cos(st.yaw) * 1.6); tv1.set(tgt.x, (tgt.y ?? ctx.height(tgt.x, tgt.z) + 1), tgt.z);
     let hit = false;
     if (tgt.sec) { tv1.addScaledVector(tv1.clone().sub(tv0).normalize(), 1.5); hit = H.shoot(ctx.world, tv0, tv1, BC.TURRET.dmg); }
+    else if (typeof tgt.hurt === 'function') { try { tgt.hurt(BC.TURRET.dmg, 'turret'); hit = true; } catch (e) { /* ignore */ } } // SSX.raids attacker handle
     else if (typeof tgt.hit === 'function') { try { tgt.hit(BC.TURRET.dmg, { plotId: h.pid }); hit = true; } catch (e) { /* ignore */ } }
     segs.push({ a: tv0.clone(), b: tv1.clone(), t: 0.09, h });
     api.debug.shots++; emit('turret:fire', { plotId: h.pid, pieceId: h.q.id, target: tgt.kind || 'raider', hit });
@@ -400,10 +407,14 @@ const api = {
     raids.set(id, { until: clock + s0, id: rid, src: 'base' });
     const detail = { plotId: id, id: rid, world: WORLD, pos: c ? { x: c.x, z: c.z } : null, aj: [...p.aj], radius: BC.HALF * 1.6, pieces: s.pieces.map(q => ({ ...q })), turrets: s.pieces.filter(q => q.type === 'turret').length, why: opts.why || 'raid', s: s0 };
     const R = window.SSX?.raids; let via = 'base';
-    if (R && typeof R.start === 'function' && c) { try { R.start({ id: rid, pos: { x: c.x, z: c.z }, radius: detail.radius, attackers: opts.attackers, waves: opts.waves, source: 'base', plotId: id }); via = 'SSX.raids'; } catch (e) { console.warn('SSX.raids.start failed', e); } }
+    // Steve's engine (modes/raids.js, PR #13): start({id, pos, radius, attackers: 'gang'|'colsec', waves, label}) -> {ok, id} | {ok:false, why}
+    if (R && typeof R.start === 'function' && c) { subscribeRaids(); try { const r = R.start({ id: rid, pos: { x: c.x, z: c.z }, radius: detail.radius, attackers: opts.attackers === 'colsec' ? 'colsec' : 'gang', waves: opts.waves ?? 2, label: p.name });
+        if (r && r.ok !== false) { via = 'SSX.raids'; raids.get(id).until = clock + 3600; raids.get(id).engine = true; } else detail.engineWhy = r?.why || 'refused'; } catch (e) { console.warn('SSX.raids.start failed', e); } }
     emit('raid', { ...detail, via }); return { ok: true, id: rid, via };
   },
-  endRaid(id, result = 'ended') { const r = raids.get(id); if (!r) return false; r.ended = true; r.until = 0; emit('raid:end', { plotId: id, id: r.id, result }); return true; },
+  endRaid(id, result = 'ended', fromEngine = false) { const r = raids.get(id); if (!r || r.ended) return false; r.ended = true; r.until = 0;
+    if (r.engine && !fromEngine) { try { window.SSX?.raids?.stop?.(r.id, 'base:' + result); } catch (e) { /* engine gone */ } } // its raid:end is ignored: already ended
+    emit('raid:end', { plotId: id, id: r.id, result }); return true; },
   damage(id, pieceId, n = 10) {
     const s = plotState(id), p = s?.pieces.find(q => q.id === pieceId); if (!p) return null;
     p.hp = Math.max(0, p.hp - n);
@@ -418,19 +429,31 @@ const api = {
 };
 export const base = api;
 
-// raid:* from Steve's SSX.raids (window events). Any raid whose pos is inside one of your lots arms that lot's turrets.
-function onRaidEvent(kind, e) {
-  const d = e?.detail || {}, pos = d.pos || d.center || null; if (!pos) return;
-  const id = plotUnder(pos.x, pos.z, (d.radius || 0) + 2); if (!id || !plotState(id).owned) return;
-  if (kind === 'end') { const r = raids.get(id); if (r && (!d.id || r.id === d.id || r.src === 'raids')) api.endRaid(id, d.result || 'ended'); return; }
-  const r = raids.get(id); if (r && r.id === d.id) { r.until = Math.max(r.until, clock + 120); if (kind === 'wave') emit('raid:wave', { plotId: id, id: d.id, wave: d.wave }); return; }
-  raids.set(id, { until: clock + 120, id: d.id || 'raid', src: 'raids' }); emit(kind === 'wave' ? 'raid:wave' : 'raid', { plotId: id, id: d.id, via: 'SSX.raids', pos });
+// raid:* from Steve's SSX.raids (modes/raids.js): its events come through SSX.raids.on() (and the SSX.emit bus), not window.
+// A raid whose pos is inside one of your lots arms that lot's turrets; raid:wave / raid:end carry only the id, so match on it.
+// Window 'raid:*' CustomEvents are also accepted for any other engine. Handlers are idempotent, so double delivery is harmless.
+function onRaidEvent(kind, d) {
+  d = d || {}; const pos = d.pos || d.center || null;
+  let id = pos ? plotUnder(pos.x, pos.z, (d.radius || 0) + 2) : null;
+  if (!id && d.id) for (const [k, r] of raids) if (r.id === d.id && !r.ended) id = k;
+  if (!id || !plotState(id).owned) return;
+  const r = raids.get(id);
+  if (kind === 'end') { if (r && !r.ended && (!d.id || r.id === d.id || r.src === 'raids')) api.endRaid(id, d.result || 'ended', true); return; }
+  if (r && r.id === d.id && !r.ended) { r.until = Math.max(r.until, clock + 120);
+    if (kind === 'wave' && r.wave !== d.wave) { r.wave = d.wave; emit('raid:wave', { plotId: id, id: d.id, wave: d.wave, waves: d.waves }); } return; }
+  if (kind === 'wave' && !pos) return;
+  raids.set(id, { until: clock + 600, id: d.id || 'raid', src: 'raids', engine: true, wave: d.wave }); emit(kind === 'wave' ? 'raid:wave' : 'raid', { plotId: id, id: d.id, via: 'SSX.raids', pos, attackers: d.attackers });
+}
+let raidsSub = null;
+function subscribeRaids() { // the engine installs itself on its first tick, so this runs lazily from baseTick/raid()
+  const R = typeof window !== 'undefined' && window.SSX?.raids; if (!R || raidsSub === R || typeof R.on !== 'function') return; raidsSub = R;
+  for (const k of ['start', 'wave', 'end']) { try { R.on('raid:' + k, d => onRaidEvent(k, d)); } catch (e) { /* old engine */ } }
 }
 
 function init() {
   if (api.ready || typeof window === 'undefined') return; const app = window.__app; if (!app || !window.SSX) return;
   api.ready = true; window.SSX.base = api; app.base = api;
-  for (const k of ['start', 'wave', 'end']) addEventListener('raid:' + k, e => onRaidEvent(k, e));
+  for (const k of ['start', 'wave', 'end']) addEventListener('raid:' + k, e => onRaidEvent(k, e?.detail)); subscribeRaids();
   try { menuBtn = H.addMenuItem(app, { id: 'baseMenu', label: '🏠 Mars base', onTap: () => overview() }); if (menuBtn && C?.name !== WORLD) menuBtn.style.display = 'none'; } catch (e) { console.warn('base menu', e); }
   emit('load', { owned: api.owned() });
 }
