@@ -116,7 +116,27 @@ SSX.registerDistrict('Mars', 'olympus-row', { name: 'Olympus Row', centre: [0, -
 SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 ```
 
-Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js) once per surface frame, and `planets/index.js` runs `initPlanets(window.__app)` at startup. Colony packs live in `planets/<world>.js`, and `planets/hooks.js` is their only bridge to the core API.
+### Heist mechanics (v7.5 add-on: heist.js)
+Generic, data-driven heist pieces for the Mars city builder. `SSX.heist` (also `__app.heist`, or `import { heist } from './heist.js?v=7.4'`):
+
+```js
+// one-thumb safe-crack minigame (pointer drag round the dial; desktop ←/→ or A/D, Shift = fine). Tiers easy/medium/hard/vault.
+const r = await SSX.heist.safeCrack({ tier: 'hard', time: 40, title: 'Voss House safe' }); // { success, reason: 'cracked'|'noise'|'timeout'|'abort', time, noise, tier, tumblers }
+// cameras: world metres (or rel: 'colony' = relative to the world's colony centre, i.e. Ares Junction on Mars). yaw 0 looks toward -z.
+SSX.heist.addCamera({ id: 'voss-cam0', world: 'Mars', rel: 'colony', x: 286, z: 68, yaw: 2.4, fov: 70, range: 12, sweep: 30, level: 2 });
+SSX.heist.disableCamera('voss-cam0', 60); SSX.heist.removeCamera('voss-cam0');
+SSX.heist.alarm(2, 'Voss House alarm'); // wanted -> 2★ (setWanted), or +1★ via crime() if you're already that hot
+// a full job: case -> break in -> crack safe -> escape -> lose the heat. Steve's mansions convert with fromMansion().
+const g = await (await fetch('gated-community.json')).json();
+for (const b of g.buildings.filter(b => b.type === 'mansion')) SSX.heist.registerHeist(SSX.heist.fromMansion(b, g.coords.origin_aj, { tier: 'medium', credits: 300 }));
+const res = await SSX.heist.startHeist('heist-voss'); // { success, loot, fail, stage, t, alarm }
+SSX.heist.applyTip('heist-voss', { type: 'safe', ease: 0.3 }); // informant intel: 'cameras' | 'safe' | 'patrol'; unknown types ignored
+SSX.heist.on('escape', e => { /* pursuit.js: { id, title, world, pos:{x,z}, site:{x,z,r}, heat, evading, security, alarm, loot, t, vehicle } */ });
+```
+Events (also `window` CustomEvents named `heist:<evt>`): `start`, `stage`, `tip`, `camera:alert`, `camera:disabled`, `alarm`, `alarm:response`, `safe:open`, `safe:result`, `loot`, `escape`, `done`, `clean`, `fail`.
+No security AI or chase lives here: alarms only raise the wanted level and the getaway is the `escape` event. `?heisttest=1` adds a throwaway sample villa east of Ares Junction under ☰ → 🕵️ Heists. Context action key: **G**.
+
+Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js) and `heistTick(dt, ctx)` (heist.js) once per surface frame, and `planets/index.js` runs `initPlanets(window.__app)` at startup. Colony packs live in `planets/<world>.js`, and `planets/hooks.js` is their only bridge to the core API.
 
 ```js
 ```

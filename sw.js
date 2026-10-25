@@ -9,7 +9,7 @@ const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
   `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
-  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`,
+  `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks'].map(n => `${n}.js${q}`),
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   'vendor/three/build/three.module.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
