@@ -1013,7 +1013,8 @@
       radioBtns.style.display = radioOffer ? 'flex' : 'none';
       radioEl.style.display = 'block'; radioEl.classList.remove('open', 'mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open');
       // v7.3 (playtest m7): an offer during the landing reveal arrives as a one-line pill; tap it (or Enter) to read and accept
-      const early = radioOffer && performance.now() - landedAt < 12000 && performance.now() - talkedAt > 3000; // v7.4: you asked, so it opens
+      // v7.5.1: anything you didn't ask for arrives as the one-line pill (offers everywhere, chatter on touch) so the centre stays clear; tap to read
+      const early = performance.now() - talkedAt > 3000 && (!!radioOffer || isTouch);
       if (early) radioEl.classList.add('mini'); // v7.5.1 (m1): landing offers arrive as the mini pill, keeping the centre clear
       if (!isTouch) { document.getElementById('radioAccept').textContent = '✅ Accept (Enter)'; document.getElementById('radioLater').textContent = 'Later (⌫)'; }
       clearTimeout(radioTimer); radioTimer = setTimeout(() => { radioEl.style.display = 'none'; radioOffer = null; }, radioOffer ? (early ? 40000 : 25000) : 9000);
