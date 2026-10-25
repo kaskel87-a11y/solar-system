@@ -178,7 +178,7 @@
     .g61 { background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); text-shadow: 0 1px 2px rgba(0,0,0,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; }
     #topBar { position: fixed; z-index: 8; top: calc(6px + var(--sat)); left: calc(8px + var(--sal)); right: calc(8px + var(--sar)); height: 50px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-radius: 11px;
       background: rgba(8,10,20,0.62); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 0.72rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-    #surfInfo { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
+    #surfInfo { flex: 1 1 auto; min-width: 4.6em; /* v7.5.1 (p1): the world name never shrinks to 'M' */ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #surfInfo b { font-size: 0.82rem; }
     #tbBars { flex: 0 0 74px; display: flex; flex-direction: column; justify-content: center; gap: 1px; } #tbBars .bar { height: 5px; margin: 0; flex: 1 1 auto; min-width: 0; }
     /* v7.4: labelled meters. Icons only on phones, short words + numbers on wider screens. Thrust shows only when you can thrust */
     .tbRow { display: flex; align-items: center; gap: 4px; height: 12px; } .tbL { flex: 0 0 auto; width: 13px; text-align: center; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 800; letter-spacing: 0.02em; } .tbL b { display: none; } .tbV { display: none; }
@@ -268,6 +268,7 @@
     #duelPanel { position: fixed; inset: 0; z-index: 60; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.45); }
     #duelPanel .wrap { width: min(420px, calc(100vw - 16px)); margin: 0 8px calc(10px + var(--sab)); padding: 14px; border-radius: 16px; background: #0b0f1c; color: #fff; border: 1px solid #ffb020; }
     #duelPanel h2 { margin: 0 0 4px; font-size: 1.05rem; } #duelPanel p { margin: 0 0 8px; font-size: 0.8rem; color: #d6dcef; } #duelPanel .lbl { font-size: 0.72rem; color: #d6dcef; margin: 6px 0 2px; }
+    body:has(#duelPanel[style*="flex"]) #joy, body:has(#duelPanel[style*="flex"]) #surfBtns { visibility: hidden; } /* v7.5.1 (m4) */
     #duelPanel .row { display: flex; gap: 6px; margin-bottom: 4px; } #duelPanel .btn { flex: 1; min-height: 44px; font-size: 0.82rem; }
     #duelPanel .chipb.on { outline: 2px solid #ffb020; background: rgba(255,176,32,0.25); } #duelPanel .chipb:disabled { opacity: 0.4; }
     #duelBanner { display: none; position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); max-width: 340px; margin-left: auto; padding: 4px 6px 4px 10px; border-radius: 10px; background: rgba(8,10,20,0.78); border: 1px solid rgba(255,176,32,0.6); color: #fff; font-size: 0.72rem; }
@@ -1663,9 +1664,10 @@
     function closeSheet() { sheetEl.classList.remove('show'); }
     function openChoice(ev) { openSheet('🤝 Your call', ev.prompt, ev.options.map(o => ({ label: o.label, fn: () => surface.game.choose(o.id) })), true); }
     function openJobBoard(who) {
-      const jobs = surface.game.jobBoard();
-      openSheet(`📋 ${who}’s job board`, jobs.length ? 'City work. Ines takes 10%, the contact pays the rest.' : 'Nothing on the board right now. Come back after you’ve made a name.',
-        jobs.slice(0, 8).map(j => ({ label: `${j.active ? '▶ ' : ''}${j.title} · ${j.contact} · ${j.credits} cr`, fn: () => { if (surface.game.accept(j.id)) toast(`📜 ${j.title}: ${j.contact} is expecting you.`, 2800); } })));
+      const all = surface.game.jobBoard(true), jobs = all.filter(j => !j.locked), locked = all.filter(j => j.locked).slice(0, Math.max(2, 6 - jobs.length));
+      openSheet(`📋 ${who}’s job board`, jobs.length ? 'City work. Ines takes 10%, the contact pays the rest.' : 'Nothing open for you yet. Make a name with the jobs below and Ines will call.',
+        [...jobs.slice(0, 8).map(j => ({ label: `${j.active ? '▶ ' : ''}${j.title} · ${j.contact} · ${j.credits} cr`, fn: () => { if (surface.game.accept(j.id)) toast(`📜 ${j.title}: ${j.contact} is expecting you.`, 2800); } })),
+         ...locked.map(j => ({ label: `🔒 ${j.title} · after ${j.needs[0] || 'more work'}`, disabled: true, fn: () => {} }))]);
     }
     function openDistricts() {
       const ds = surface.world.districts?.() || [];

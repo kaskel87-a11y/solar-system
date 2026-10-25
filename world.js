@@ -283,7 +283,7 @@ export function createWorld(ctx) {
     // landing pad with blinking edge lights
     if (D.pad) { const [x, z, r] = D.pad, X = ox + x, Z = oz + z; part(add(mesh(R.cyl, R.pad, X, y0 + 0.08, Z, r, 0.16, r)), 'pad'); add(mesh(R.ring, R.glowO, X, y0 + 0.2, Z, r * 0.7, r * 0.7, 1)).rotation.x = Math.PI / 2;
       for (let k = 0; k < 8; k++) { const l = add(mesh(R.sph, R.padLight, X + Math.cos(k * 0.785) * r, y0 + 0.25, Z + Math.sin(k * 0.785) * r, 0.18)); flick.push({ m: l, blink: k * 0.12 }); } }
-    for (const [x, z] of D.crates || []) for (let k = 0; k < 3; k++) { const X = ox + x + (k % 2) * 1.3, Z = oz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; camBoxes.push({ x: X, z: Z, y: y0 + 1.25 }); } // v7.4 (m3): crates stop the camera too
+    for (const [x, z] of D.crates || []) for (let k = 0; k < 3; k++) { const X = ox + x + (k % 2) * 1.3, Z = oz + z + (k > 1 ? 1.3 : 0); const c = add(mesh(R.box, k % 2 ? R.crate2 : R.crate, X, y0 + 0.6, Z, 1.2)); c.rotation.y = k * 0.3; camBoxes.push({ x: X, z: Z, y: y0 + 1.6, h: 0.95 }); } // v7.4 (m3): crates stop the camera too
     // perimeter lamps; a few flicker like they're wired by the lowest bidder
     const lr = isColony ? 50 : (D.lampR || 44);
     for (let k = 0; k < (D.lamps || 0); k++) {
@@ -373,7 +373,7 @@ export function createWorld(ctx) {
   // v7.3: camera occlusion test (solid building boxes + full dome volumes), used to pull the chase camera in
   function camBlocked(x, y, z) {
     if (!C) return false;
-    for (const b of camBoxes) if (y < b.y && Math.abs(x - b.x) < 0.75 && Math.abs(z - b.z) < 0.75) return true;
+    for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }

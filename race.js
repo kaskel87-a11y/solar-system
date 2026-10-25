@@ -395,7 +395,7 @@ const CSS = `
 #racePanel.on { display: block; } #racePanel .wrap { max-width: 640px; margin: 0 auto; } #racePanel h2 { margin: 6px 0 2px; } #racePanel .sub { opacity: 0.7; font-size: 0.8rem; margin-bottom: 10px; }
 #racePanel .item { padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.06); margin-bottom: 8px; font-size: 0.84rem; border: 1px solid rgba(255,255,255,0.08); }
 #racePanel .item.custom { border-color: rgba(125,211,252,0.35); } #racePanel .item small { opacity: 0.72; display: block; margin-top: 2px; }
-#racePanel .item .row { display: flex; gap: 6px; margin-top: 8px; } #racePanel button { min-height: 40px; border-radius: 10px; font-weight: 800; color: #fff; background: rgba(40,56,96,0.95); border: 1px solid rgba(120,160,255,0.35); padding: 0 12px; font-size: 0.82rem; }
+#racePanel .item .row { display: flex; gap: 6px; margin-top: 8px; } #racePanel button { min-height: 44px; border-radius: 10px; font-weight: 800; color: #fff; background: rgba(40,56,96,0.95); border: 1px solid rgba(120,160,255,0.35); padding: 0 12px; font-size: 0.82rem; }
 #racePanel button.go { background: linear-gradient(135deg, rgba(255,42,122,0.95), rgba(255,154,60,0.95)); border: none; flex: 1; }
 #racePanel .close { float: right; } #racePanel .foot { display: flex; gap: 8px; margin-top: 12px; } #racePanel .foot button { flex: 1; }
 `;
