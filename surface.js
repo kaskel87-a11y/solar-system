@@ -6,6 +6,7 @@ import { createWorld, VEHICLES } from './world.js?v=7.5.1';
 import { raceTick } from './race.js?v=7.5.1';
 import { activityTick } from './activities/runner.js?v=7.5.1';
 import { heistTick } from './heist.js?v=7.5.1';
+import { modeTick } from './modes/hook.js?v=7.5.1'; // add-on modes (Rags to Riches) + generic SSX.raids
 
 // ---------- Seeded 2D simplex noise ----------
 function makeNoise(seed) {
@@ -1148,6 +1149,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
+    modeTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);
     const px = player.x, pz = player.z;
