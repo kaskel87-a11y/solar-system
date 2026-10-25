@@ -348,8 +348,10 @@ export const INTERIORS = {
       api.sign('WANTED', 0xff4a4a, w / 2 - 0.08, 2.6, -1.4, -Math.PI / 2, 2.2, { h: 96 });
       for (let k = 0; k < 4; k++) box(w / 2 - 0.06, 1.7, -2.6 + k * 0.8, 0.03, 0.8, 0.6, mat(0xe8e0c8));
       api.person({ top: 0x3a4a6a, bottom: 0x23252b, hairStyle: 'cap', skin: 0x7a5236, accent: 0x4a8aff }, w / 2 - 1.4, 2.6, -Math.PI / 2 - 0.4, (p, t) => guard(p, t));
-      api.spot({ id: 'bribe', x: 0.2, z: -0.7, r: 1.0, label: '💰 Pay off Deputy Rusk', act: 'bribe', who: 'Rusk' });
-      api.spot({ id: 'talk', x: 1.8, z: -0.7, r: 0.9, label: '💬 Rusk', act: 'talk', who: 'Rusk' });
+      // v7.5: who sits at the desk comes from the district (Rusk at Ares Junction, Vale downtown, Porter at the Helios gate)
+      const who = o.talk || o.desk || 'Rusk', short = who.replace(/^(Deputy|Detective|Captain|Mr\.|Ms\.)\s+/, '');
+      if (o.bribe !== false && who === 'Rusk') api.spot({ id: 'bribe', x: 0.2, z: -0.7, r: 1.0, label: '💰 Pay off Deputy Rusk', act: 'bribe', who: 'Rusk' });
+      api.spot({ id: 'talk', x: 1.8, z: -0.7, r: 0.9, label: '💬 ' + short, act: 'talk', who });
     }
   },
   club: {
@@ -436,7 +438,8 @@ export const INTERIORS = {
       const lb = box(X0 + 0.5, 0.25, Z1 - 0.9, 0.4, 0.4, 0.6, mat(0x3a2a10, { metalness: 0.6 })), lg = box(X0 + 0.5, 0.46, Z1 - 0.9, 0.3, 0.03, 0.5, mat(0xffd040, { basic: true }));
       api.ticks.push(t => { const on = !(o.taken?.('club-lockbox')); lb.visible = lg.visible = on; });
       api.spot({ id: 'vip', x: ropeX, z: Z1 + 1.0, r: 1.5, label: '🍾 VIP room', act: 'vip', who: 'Tiny', cond: () => ropeCol.on });
-      api.spot({ id: 'owner', x: X1 - 2.3, z: -3.4, r: 1.3, label: '💬 Ines', act: 'talk', who: o.owner || 'Ines' });
+      api.spot({ id: 'owner', x: X1 - 2.3, z: -3.4, r: 1.3, label: '💬 ' + (o.owner || 'Ines'), act: 'talk', who: o.owner || 'Ines' });
+      if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
@@ -451,6 +454,62 @@ export const INTERIORS = {
         beams.forEach((b, i) => { b.rotation.z = Math.sin(t * 0.7 + i * 1.7) * 0.6; b.rotation.x = Math.cos(t * 0.5 + i) * 0.4; });
       });
     }
+  }
+};
+// v7.5 Mars city interiors
+INTERIORS.bank = {
+  name: 'Bank', w: 18, d: 14, h: 6, wall: 0x2c2a26, floor: 0x3a3630, ceil: 0x1c1a18, trim: 0xffd040, light: { color: 0xfff0d0, int: 95 },
+  build(api, o) {
+    const { box, mat, d, w } = api, marble = mat(0xd8d0c0, { roughness: 0.35 }), brass = mat(0xc8a040, { metalness: 0.8, roughness: 0.3 }), steel = mat(0x5a6270, { metalness: 0.85, roughness: 0.3 }), glassM = mat(0x9fd8ff, { transparent: true, opacity: 0.25 });
+    api.sign((o.title || 'FIRST JUNCTION TRUST').toUpperCase().slice(0, 28), 0xffd040, 0, 4.6, -d / 2 + 0.1, 0, 6, { h: 96 });
+    // marble columns + teller counter with glass partitions
+    for (const x of [-6, 6]) for (const z of [0.5, 3.5]) { box(x, 3, z, 0.7, 6, 0.7, marble); api.col(x, z, 0.4, 0.4, 'tall'); }
+    box(-1, 0.6, -2.2, 10, 1.2, 0.9, marble); box(-1, 1.22, -2.2, 10.2, 0.05, 1.0, brass); api.col(-1, -2.2, 5.1, 0.5);
+    for (let k = 0; k < 4; k++) { box(-5 + k * 2.6, 2, -2.2, 0.04, 1.5, 0.9, glassM); }
+    box(-1, 2.8, -2.2, 10.2, 0.08, 0.9, brass);
+    const teller = o.teller || o.talk || 'Mr. Kline';
+    api.person({ top: 0x2a2a34, bottom: 0x1e1e24, hair: 0x8a8a8a, hairStyle: 'short', skin: 0xd8b090, accent: 0xffd040, shades: false }, -2.4, -3.2, 0, (p, t) => idle(p, t, 0.4));
+    api.person({ top: 0x3a3440, bottom: 0x1e1e24, hair: 0x3a2412, hairStyle: 'long', skin: 0x9a6a4a }, 1.6, -3.2, 0, (p, t) => idle(p, t, 1.9));
+    api.person({ top: 0x2a3a5a, bottom: 0x1e2228, hairStyle: 'cap', skin: 0x7a5236, accent: 0x4a8aff, bulk: 1.2 }, w / 2 - 1.4, 3.6, -Math.PI / 2 - 0.3, (p, t) => guard(p, t)); // lobby guard
+    // waiting benches
+    for (const z of [2, 4]) { box(-w / 2 + 1.6, 0.4, z, 2.4, 0.15, 0.6, mat(0x5a3a24)); api.col(-w / 2 + 1.6, z, 1.2, 0.3); }
+    // the vault: round door in the north-east corner behind the counter
+    const vx = w / 2 - 2.6, vz = -d / 2 + 0.35;
+    box(vx, 2.2, vz, 3.6, 4.4, 0.5, steel);
+    const door = api.mk(api.G.cyl, steel, vx, 2.0, vz + 0.4, 1.5, 0.35, 1.5); door.rotation.x = Math.PI / 2; api.g.add(door);
+    for (let k = 0; k < 6; k++) { const sp = api.mk(api.G.box, brass, vx + Math.cos(k * 1.047) * 1.0, 2.0 + Math.sin(k * 1.047) * 1.0, vz + 0.62, 0.12, 0.12, 0.2); api.g.add(sp); }
+    const wheel = api.mk(api.G.cyl, brass, vx, 2.0, vz + 0.62, 0.45, 0.12, 0.45); wheel.rotation.x = Math.PI / 2; api.g.add(wheel);
+    api.ticks.push((t) => { const open = !!o.cracked?.('bank-vault'); door.rotation.y = open ? -1.3 : 0; door.position.x = vx + (open ? -1.2 : 0); wheel.visible = !open; wheel.rotation.y = t * (o.heist?.() ? 2 : 0); });
+    api.col(vx, vz + 0.3, 1.9, 0.5, 'wall');
+    api.sign('VAULT', 0xff4a4a, vx, 4.7, vz + 0.3, 0, 1.8, { h: 90 });
+    api.spot({ id: 'teller', x: -2.4, z: -1.2, r: 1.1, label: '💬 ' + teller, act: 'talk', who: teller });
+    api.spot({ id: 'vault', x: vx, z: vz + 1.4, r: 1.1, label: '🔐 Crack the vault', act: 'crack', crack: 'bank-vault', difficulty: 3, cond: () => !!o.heist?.() && !o.cracked?.('bank-vault') });
+  }
+};
+INTERIORS.mansion = {
+  name: 'Mansion', w: 20, d: 15, h: 5.5, wall: 0xe8e2d6, floor: 0x5a4a3a, ceil: 0xf0ece4, trim: 0x30e0d0, light: { color: 0xfff4e0, int: 85 },
+  build(api, o) {
+    const { box, mat, d, w } = api, sofa = mat(0xb8b0a0, { roughness: 0.9 }), wood = mat(0x4a3424), gold = mat(0xd0b060, { metalness: 0.8, roughness: 0.3 }), art = mat(0x2a6a8a, { basic: true }), safeM = mat(0x2a2e34, { metalness: 0.8, roughness: 0.3 });
+    api.sign((o.title || 'PRIVATE RESIDENCE').toUpperCase().slice(0, 26), 0x30e0d0, 0, 4.2, -d / 2 + 0.1, 0, 5, { h: 96 });
+    // living room: sofas, low table, a rug, art on the walls, a window to the Mars sky (emissive panel)
+    box(-3, 0.02, 0.5, 7, 0.03, 4.5, mat(0x7a2a2a, { roughness: 1 }));
+    box(-3, 0.45, -1.4, 4.4, 0.9, 1.0, sofa); api.col(-3, -1.4, 2.2, 0.5); box(-3, 0.45, 2.6, 4.4, 0.9, 1.0, sofa); api.col(-3, 2.6, 2.2, 0.5);
+    box(-3, 0.3, 0.6, 2.2, 0.08, 1.2, wood); box(-3, 0.15, 0.6, 0.2, 0.3, 0.2, wood); api.col(-3, 0.6, 1.1, 0.6);
+    box(0, 2.8, -d / 2 + 0.06, 8, 2.6, 0.05, mat(0xd07040, { basic: true }));
+    for (const x of [-w / 2 + 0.06, w / 2 - 0.06]) box(x, 2.4, -1, 0.05, 1.4, 2, art);
+    // bar cart + a statue
+    box(w / 2 - 1.5, 0.5, 3.5, 1.2, 1.0, 0.6, gold); api.col(w / 2 - 1.5, 3.5, 0.6, 0.3);
+    box(5, 0.5, -4, 0.8, 1.0, 0.8, mat(0xe8e8e8)); box(5, 1.6, -4, 0.5, 1.2, 0.5, gold); api.col(5, -4, 0.45, 0.45, 'tall');
+    // the study: a wall safe behind a painting in the north-west corner
+    const sx = -w / 2 + 1.6, sz = -d / 2 + 0.25;
+    const painting = box(sx, 1.9, sz + 0.05, 1.4, 1.1, 0.06, art);
+    const safe = box(sx, 1.9, sz, 0.9, 0.9, 0.3, safeM); const dial = api.mk(api.G.cyl, gold, sx, 1.9, sz + 0.18, 0.18, 0.06, 0.18); dial.rotation.x = Math.PI / 2; api.g.add(dial);
+    api.ticks.push((t) => { const open = !!o.cracked?.(o.safeId || 'mansion-safe'); painting.position.x = sx + (o.heist?.() || open ? 1.4 : 0); dial.rotation.y = open ? 1.6 : t * 0.3; safe.visible = true; });
+    const owner = o.owner || o.talk;
+    if (owner && !o.away) api.person({ top: 0xe8e2d6, bottom: 0x3a3a44, hair: 0xd8c8a0, hairStyle: 'long', skin: 0xd8b090, accent: 0x30e0d0 }, 2, 2, Math.PI, (p, t) => idle(p, t, 2.1));
+    api.person({ top: 0xe8ecef, bottom: 0xd8dce0, hairStyle: 'cap', skin: 0x7a5236, accent: 0x30e0d0, bulk: 1.2 }, w / 2 - 2, -3, -Math.PI / 2, (p, t) => guard(p, t)); // house security
+    if (owner && !o.away) api.spot({ id: 'owner', x: 2, z: 3.2, r: 1.1, label: '💬 ' + owner, act: 'talk', who: owner });
+    api.spot({ id: 'safe', x: sx + 0.6, z: sz + 1.3, r: 1.0, label: '🔐 Crack the safe', act: 'crack', crack: o.safeId || 'mansion-safe', difficulty: o.difficulty || 2, cond: () => !o.cracked?.(o.safeId || 'mansion-safe') });
   }
 };
 export function registerInterior(kind, def) { if (!kind || !def?.build) throw new Error('registerInterior(kind, { name, w, d, h, build(api, opts) })'); INTERIORS[kind] = { w: 12, d: 10, h: 4.5, light: { color: 0xffe0c0, int: 50 }, ...def }; return kind; }

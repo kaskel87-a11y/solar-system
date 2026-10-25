@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { STORY } from './missions-data.js?v=7.4';
 import { mergeGeos } from './models.js?v=7.4';
+import { buildHuman } from './interiors.js?v=7.4';
+import { buildVehicle } from './world.js?v=7.4';
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -169,12 +171,28 @@ export const AGENT_TYPES = {
   crawler: { name: 'Stalker', hp: 5, speed: 9, hover: 0, r: 1.15, cy: 0.95, attack: 'melee', dmg: 16, cd: 1.1, range: 2.7, keep: 0, xp: 15, credits: 10, flank: true },
   hunter: { name: 'Hunter', hp: 9, armor: 0.3, speed: 6, hover: 0, r: 1.35, cy: 1.7, attack: 'shoot', dmg: 11, burst: 3, cd: 2.4, range: 42, keep: 18, xp: 30, credits: 22, flank: true },
   nest: { name: 'Hive nest', hp: 26, speed: 0, hover: 0, r: 2.7, cy: 1.2, attack: 'spawn', cd: 8, range: 60, keep: 0, xp: 50, credits: 40, still: true },
-  boss: { name: 'Hive Queen', hp: 64, armor: 0.2, speed: 6.5, hover: 0, r: 3.2, cy: 2.5, scale: 2.6, attack: 'shoot', dmg: 18, swipe: 30, cd: 1.5, range: 46, keep: 14, xp: 150, credits: 120, boss: true }
+  boss: { name: 'Hive Queen', hp: 64, armor: 0.2, speed: 6.5, hover: 0, r: 3.2, cy: 2.5, scale: 2.6, attack: 'shoot', dmg: 18, swipe: 30, cd: 1.5, range: 46, keep: 14, xp: 150, credits: 120, boss: true },
+  // v7.5 human hostiles (Mars city). human: true = they show up with aliens switched off; cover = they hide and peek.
+  thug: { name: 'Saltblood thug', hp: 6, speed: 6, hover: 0, r: 0.75, cy: 1.15, attack: 'shoot', dmg: 6, cd: 1.6, range: 30, keep: 11, xp: 14, credits: 15, human: true, cover: true, look: 'saltblood', flank: true },
+  goon: { name: 'Goon', hp: 8, speed: 7, hover: 0, r: 0.8, cy: 1.15, attack: 'melee', dmg: 12, cd: 1.0, range: 2.2, keep: 0, xp: 14, credits: 12, human: true, look: 'goon', flank: true },
+  enforcer: { name: 'Enforcer', hp: 16, armor: 0.3, speed: 4.5, hover: 0, r: 0.9, cy: 1.3, scale: 1.15, attack: 'shoot', dmg: 8, burst: 3, cd: 2.2, range: 38, keep: 14, xp: 35, credits: 40, human: true, look: 'enforcer' },
+  guard: { name: 'Private security', hp: 9, speed: 5.5, hover: 0, r: 0.75, cy: 1.15, attack: 'shoot', dmg: 7, cd: 1.3, range: 34, keep: 12, xp: 18, credits: 18, human: true, cover: true, look: 'private' },
+  sdrone: { name: 'Security drone', hp: 4, speed: 10, hover: 4.5, r: 0.9, cy: 0, attack: 'shoot', dmg: 6, cd: 1.8, range: 32, keep: 10, xp: 12, credits: 8, human: true, mech: true },
+  sbuggy: { name: 'Gang buggy', hp: 14, speed: 24, hover: 0, r: 1.9, cy: 0.9, attack: 'ram', dmg: 14, cd: 1.6, range: 3.4, keep: 0, xp: 30, credits: 30, human: true, mech: true, vehicle: true }
 };
+// v7.5: models for the human types. Swappable: registerAgentModel(type, () => ({ group, body, legs })) for v8 assets.
+const HUMAN_LOOKS = {
+  saltblood: { top: 0x5a3a2a, bottom: 0x2a2620, hairStyle: 'short', skin: 0xb07a52, accent: 0xff2a2a },
+  goon: { top: 0x2a2a30, bottom: 0x1a1a1e, hairStyle: 'cap', skin: 0x8a5a3a, accent: 0xff8a20, bulk: 1.25 },
+  enforcer: { top: 0x1e2a3a, bottom: 0x14181e, hairStyle: 'short', skin: 0x6a4a32, accent: 0xff4a20, shades: true, bulk: 1.4 },
+  private: { top: 0xe8ecef, bottom: 0xd8dce0, hairStyle: 'cap', skin: 0xc68a64, accent: 0x30e0d0, glow: 0x30e0d0 }
+};
+export const AGENT_MODELS = {};
+export function registerAgentModel(type, build) { AGENT_MODELS[type] = build; }
 // ---------- v7.3 story pack (data/story/missions.json via missions-data.js) ----------
 // Missions whose steps the engine can run are added to QUESTS; the rest wait for engine support (v7.4+).
-export const STORY_ENTERABLE = /cantina|bar|dry sea|gun|ozzie|velvet|airlock|club|depot|supply|security|marshal/i;
-const STORY_STEPS = new Set(['goto', 'collect', 'defeat', 'return', 'take', 'clean', 'race', 'enter']);
+export const STORY_ENTERABLE = /cantina|bar|dry sea|gun|ozzie|velvet|airlock|club|depot|supply|security|marshal|bank|trust|mansion|villa|house|annex|retreat|static|red shift|precinct|colsec/i;
+const STORY_STEPS = new Set(['goto', 'collect', 'defeat', 'return', 'take', 'clean', 'race', 'enter', 'choice', 'crack', 'case']); // v7.5: choice/crack/case
 const STORY_PATCH = { 'ozzie-01-testfire': { 0: { grant: 'smg' }, 1: { weapon: 'smg' } }, 'dutch-02-taxi': { 2: { r: 13 } } }; // Hab 3 is a dome: stop at the door, not the middle
 export const STORY_DEFERRED = [];
 export function storySupported(m) {
@@ -446,7 +464,8 @@ export function createGame(ctx) {
 
   const qState = id => (P.quests[id] ||= { status: 'new', step: 0, n: 0 });
   const isDone = id => !!P.quests[id]?.everDone;
-  const reqOk = q => !q.requires?.length || q.requires.every(isDone);
+  // v7.5: city missions treat a prerequisite that isn't loaded yet (another team's chain) as met, so the city plays before every chain lands
+  const reqOk = q => !q.requires?.length || q.requires.every(id => isDone(id) || (q.city && !QUESTS.some(x => x.id === id)));
   const aliensOn = () => P.settings.aliens !== false;
   // ----- v7.2 rover mounts -----
   const roverOwned = () => ['cannon', ...['rail', 'rockets', 'torch', 'emp'].filter(k => P.unlocks.includes('rover:' + k))];
@@ -619,8 +638,8 @@ export function createGame(ctx) {
       if (!blade && hits) break; // fists hit one thing, the blade sweeps
       a.hp -= dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; hits++;
       const c = center(a).clone();
-      burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, a.type === 'hunter' ? ICHOR_H : ICHOR);
-      if (blade) splat(a.x + fx, a.z + fz, 0.6);
+      if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, a.type === 'hunter' ? ICHOR_H : ICHOR);
+      if (blade) splat(a.x + fx, a.z + fz, 0.6); }
       if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1; a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, kick ? 1.2 : 0.6); if (!a.T.hover) a.vy = kick ? 5 : 2.5; }
       if (a.hp <= 0) killAgent(a);
     }
@@ -651,8 +670,8 @@ export function createGame(ctx) {
   // ----- hostile AI: stalkers flank and lunge (some wait burrowed), hunters strafe and burst-fire from range,
   //       seekers circle and dive, nests birth stalkers, the queen spits acid, swipes and calls her brood -----
   function spawnAgent(type, x, z, opts = {}) {
-    if (agents.length >= CAP || !aliensOn()) return null;
-    const T = AGENT_TYPES[type], m = BUILDERS[type]();
+    if (agents.length >= CAP || (!aliensOn() && !AGENT_TYPES[type]?.human)) return null;
+    const T = AGENT_TYPES[type], m = AGENT_MODELS[type] ? AGENT_MODELS[type]() : T.human ? buildHumanAgent(type, T) : BUILDERS[type]();
     if (T.scale) m.group.scale.setScalar(T.scale);
     const burrow = !!opts.burrow && !T.hover && !T.still;
     const y = height(x, z) + T.hover - (burrow ? 3 : 0);
@@ -663,8 +682,44 @@ export function createGame(ctx) {
     if (!burrow) burst(x, y + 1, z, 10, 3, DUSTC);
     return a;
   }
+  function buildHumanAgent(type, T) {
+    if (T.vehicle) { const v = buildVehicle('buggy', false); const body = new THREE.Group(); v.group.add(body); return { group: v.group, body, wheels: v.wheels, kind: 'car' }; }
+    if (T.mech) { // security drone: armoured quad with a gun pod
+      const g = new THREE.Group(), body = new THREE.Group(), m = M(0xd8dce0, { metalness: 0.5, roughness: 0.35 }), dk = M(0x22262c, { metalness: 0.6 });
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.9), m); body.add(hull);
+      for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 4, 12), dk); r.rotation.x = Math.PI / 2; r.position.set(x, 0.08, z); body.add(r); }
+      const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.6), dk); gun.position.set(0, -0.22, -0.3); body.add(gun);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 4), B(0x30e0d0)); eye.position.set(0, -0.08, -0.46); body.add(eye);
+      g.add(body); return { group: g, body, kind: 'sdrone' };
+    }
+    const h = buildHuman(HUMAN_LOOKS[T.look] || HUMAN_LOOKS.goon), body = new THREE.Group(); h.group.add(body);
+    if (T.attack === 'shoot') { const gun = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.55), M(0x1a1c20, { metalness: 0.7 })); gun.position.set(0, -0.55, -0.25); h.arms[1].add(gun); h.arms[1].rotation.x = 1.3; }
+    else { const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 6), M(0x6a6e76, { metalness: 0.8 })); pipe.position.set(0, -0.6, -0.2); pipe.rotation.x = 1.2; h.arms[1].add(pipe); }
+    return { group: h.group, body, legs: h.legs, arms: h.arms, human: h, kind: 'human' };
+  }
+  // ----- v7.5 gore (M tone): blood droplets, pools; gibs on explosive/rail kills. Shared with the world layer (ColSec, colonists) -----
+  let mBlood = null, mPool = null, bodies = [];
+  function gore(x, y, z, o = {}) {
+    if (!mBlood) { mBlood = M(0x7a0a0a, { roughness: 0.3, metalness: 0.1 }); mPool = B(0x4a0404, { transparent: true, opacity: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }); }
+    const c = new THREE.Vector3(x, y, z);
+    if (o.mech) { burst(x, y, z, 26, 7, [[1, 0.75, 0.3], [1, 1, 0.8], [0.6, 0.6, 0.6]]); debris(c, 6, A.mArmor || A.mDebris, 1); return; }
+    const n = o.n ?? 1; debris(c, Math.round((o.gib ? 10 : 3) * n), mBlood, o.gib ? 1.4 : 0.5);
+    if (o.gib) { burst(x, y, z, 30, 6, [[0.6, 0.05, 0.05], [0.4, 0.02, 0.02]]); for (let k = 0; k < 4; k++) debris(c, 1, M(0x8a4a3a, { roughness: 0.8 }), 2.2); }
+    if (!o.spray || Math.random() < 0.5) { if (splats.length >= 14) { const s0 = splats.shift(); scene.remove(s0.m); } const r = (o.gib ? 1.8 : 0.7) * Math.min(1.5, n + 0.3), m = new THREE.Mesh(A.splatGeo, mPool); m.position.set(x + (Math.random() - 0.5), height(x, z) + 0.06, z + (Math.random() - 0.5)); m.rotation.y = Math.random() * 6; m.scale.setScalar(r); scene.add(m); splats.push({ m, r, life: 40 }); }
+  }
   function removeAgent(a) { scene.remove(a.group); const i = agents.indexOf(a); if (i >= 0) agents.splice(i, 1); if (a === bossRef) bossRef = null; }
-  function killAgent(a) {
+  function killAgent(a, how = {}) {
+    if (a.T.human) { // v7.5: people bleed and fall; machines burn
+      const c = center(a).clone(), gib = !!how.gib;
+      gore(c.x, c.y, c.z, { n: 1.5, gib, mech: a.T.mech });
+      agents.splice(agents.indexOf(a), 1);
+      if (a.T.mech || gib) scene.remove(a.group); else { a.group.rotation.x = -Math.PI / 2; a.group.position.y = height(a.x, a.z) + 0.25; bodies.push({ g: a.group, t: 20 }); while (bodies.length > (isMobile ? 4 : 8)) scene.remove(bodies.shift().g); }
+      P.stats.kills++; gain(a.T.xp, a.T.credits, true);
+      onEvent('poof', { type: a.type, xp: a.T.xp, name: a.T.name, human: true });
+      if (Math.random() < 0.25) drop('medkit', c.x + 0.8, c.z);
+      if (a.src === 'quest' && quest) { quest.killed++; onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); checkStep(); }
+      return;
+    }
     const c = center(a).clone(), big = a.T.boss ? 3 : a.type === 'nest' ? 2.2 : a.type === 'hunter' ? 1.4 : 1;
     burst(c.x, c.y, c.z, Math.round(38 * big), 7 * Math.sqrt(big), a.type === 'hunter' ? ICHOR_H : ICHOR);
     debris(c, Math.round(6 * big), a.type === 'hunter' ? A.mArmor : a.type === 'nest' ? A.mResin : A.mChitin, big);
@@ -699,7 +754,12 @@ export function createGame(ctx) {
       let vx = 0, vz = 0, hoverGoal = T.hover;
       if (calm) {
         const hx = a.home.x + Math.cos(a.phase * 0.4) * 6 - a.x, hz = a.home.z + Math.sin(a.phase * 0.4) * 6 - a.z, hl = Math.hypot(hx, hz) || 1;
-        vx = hx / hl * 2; vz = hz / hl * 2;
+        vx = hx / hl * 2; vz = hz / hl * 2; if (T.vehicle) a.carSp = 0;
+      } else if (T.attack === 'ram') { // v7.5 gang buggy: run you down, back off, come again
+        a.cd -= dt; const sp = dist < 14 && a.cd > 0.6 ? -T.speed * 0.3 : T.speed;
+        const fy = Math.atan2(-dx, -dz); a.yaw += Math.atan2(Math.sin(fy - a.yaw), Math.cos(fy - a.yaw)) * Math.min(1, dt * 2.2);
+        vx = -Math.sin(a.yaw) * sp; vz = -Math.cos(a.yaw) * sp; a.carSp = sp;
+        if (dist < T.range + tg.r && a.cd <= 0) { a.cd = T.cd; hurt(T.dmg, a); onEvent('crash', {}); }
       } else if (T.attack === 'melee') {
         // approach on an offset arc (flanking), then a fast lunge for the last few metres
         const fa = dist > 8 ? a.flank * Math.min(1, (dist - 8) / 18) : 0, ca = Math.cos(fa), sa = Math.sin(fa);
@@ -722,9 +782,18 @@ export function createGame(ctx) {
           if (a.dive > 0) { a.dive -= dt; vx = dx / dist * T.speed * 2.1; vz = dz / dist * T.speed * 2.1; hoverGoal = Math.max(0.8, tg.y - height(a.x, a.z));
             if (Math.hypot(dist, tg.y - a.y) < tg.r + 1.3) { hurt(T.dive, a); a.dive = 0; a.x -= dx / dist * 3; a.z -= dz / dist * 3; onEvent('slash', {}); } }
         }
-        if (dist < T.range && a.cd <= 0 && a.dive <= 0) {
+        if (T.cover && ctx.coverNear) { // v7.5: take cover between you and them, crouch, pop up to shoot
+          a.ct = (a.ct || 0) - dt;
+          if (a.ct <= 0) { a.cov = dist < 45 ? ctx.coverNear(a.x, a.z, tg.x, tg.z, 22) : null; a.ct = 4 + Math.random() * 3; }
+          if (a.cov) { const cdx = a.cov.x - a.x, cdz = a.cov.z - a.z, cl = Math.hypot(cdx, cdz);
+            if (cl > 0.7) { vx = cdx / cl * T.speed; vz = cdz / cl * T.speed; a.crouch = false; a.peek = true; }
+            else { vx = 0; vz = 0; a.pk = (a.pk ?? 1) - dt; if (a.pk <= 0) { a.peek = !a.peek; a.pk = a.peek ? 1.0 + Math.random() * 0.4 : 1.2 + Math.random() * 0.8; } a.crouch = !a.peek; } }
+          else a.crouch = false;
+        }
+        if (dist < T.range && a.cd <= 0 && a.dive <= 0 && !a.crouch) {
           a.cd = T.cd * (0.8 + Math.random() * 0.4);
           if (T.burst) a.burstLeft = T.burst;
+          else if (T.human) fireShot(a, tg);
           else { const n = T.boss ? 3 : 1; for (let k = 0; k < n; k++) fireOrb(a, tg, (k - (n - 1) / 2) * 0.2); }
         }
         if (a.burstLeft > 0) { a.burstT -= dt; if (a.burstT <= 0) { a.burstT = 0.17; a.burstLeft--; fireShot(a, tg); } }
@@ -736,16 +805,19 @@ export function createGame(ctx) {
       }
       // keep the pack spread out
       for (const b of agents) if (b !== a && !b.T.still && !b.burrow) { const sx = a.x - b.x, sz = a.z - b.z, d2 = sx * sx + sz * sz; if (d2 < 5 && d2 > 1e-4) { const d = Math.sqrt(d2); vx += sx / d * 3; vz += sz / d * 3; } }
+      if (T.vehicle && a.carSp !== undefined) { vx = -Math.sin(a.yaw) * a.carSp; vz = -Math.cos(a.yaw) * a.carSp; } // cars don't get shoved sideways by the pack
       a.x += vx * dt; a.z += vz * dt;
+      if (T.human && !T.hover && ctx.collide) { const cc = ctx.collide(a.x, a.z, T.r * 0.6); if (cc) { a.x = cc.x; a.z = cc.z; } }
       const gh = height(a.x, a.z);
       if (T.hover) a.y += (gh + hoverGoal + Math.sin(a.phase * 2.2) * 0.5 - a.y) * Math.min(1, dt * (a.dive > 0 ? 6 : 3));
       else { a.vy -= 12 * dt; a.y += a.vy * dt; if (a.y < gh) { a.y = gh; a.vy = 0; } }
       a.group.position.set(a.x, a.y, a.z);
-      const fy = Math.atan2(-dx, -dz); a.yaw += Math.atan2(Math.sin(fy - a.yaw), Math.cos(fy - a.yaw)) * Math.min(1, dt * 6);
+      if (!T.vehicle) { const fy = Math.atan2(-dx, -dz); a.yaw += Math.atan2(Math.sin(fy - a.yaw), Math.cos(fy - a.yaw)) * Math.min(1, dt * 6); }
       a.group.rotation.y = a.yaw;
-      a.body.scale.setScalar(1 + a.hit * 0.12);
+      if (T.human) { const sc = T.scale || 1; a.group.scale.set(sc, sc * (a.crouch ? 0.62 : 1), sc); if (a.wheels) a.wheels.forEach(w => { w.spin.rotation.x -= (a.carSp || 0) * dt / 0.48; }); }
+      else a.body.scale.setScalar(1 + a.hit * 0.12);
       const spd = Math.hypot(vx, vz);
-      if (a.legs) { const w = Math.sin(a.phase * (a.kind === 'hunter' ? 9 : 16)) * Math.min(1, spd / 3) * 0.55; a.legs.forEach((l, i) => { l.rotation.x = (i % 2 ? w : -w) * (a.kind === 'stalker' && i > 1 ? -1 : 1); }); }
+      if (a.legs) { const w = Math.sin(a.phase * (a.kind === 'hunter' || a.kind === 'human' ? 9 : 16)) * Math.min(1, spd / 3) * 0.55; a.legs.forEach((l, i) => { l.rotation.x = (i % 2 ? w : -w) * (a.kind === 'stalker' && i > 1 ? -1 : 1); }); }
       if (a.tail) a.tail.forEach((sg, i) => { sg.rotation.y = Math.sin(a.phase * 3 + i * 0.7) * 0.22; sg.rotation.x = -0.12 + Math.sin(a.phase * 2 + i) * 0.06; });
       if (a.wings) a.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * Math.sin(a.phase * 24) * 0.55; });
       if (a.kind === 'stalker') a.body.rotation.x = a.lunge > 0 ? -0.18 : 0;
@@ -833,7 +905,7 @@ export function createGame(ctx) {
 
   // ----- weapons -----
   const tmpV = new THREE.Vector3(), cV = new THREE.Vector3(), ray = new THREE.Raycaster(), ndc = new THREE.Vector3();
-  function center(a) { return cV.set(a.x, a.y + (a.T.cy ?? 0.8), a.z); }
+  function center(a) { return cV.set(a.x, a.y + (a.T.cy ?? 0.8) * (a.crouch ? 0.6 : 1), a.z); }
   function inView(a) { ndc.copy(center(a)).project(camera); return ndc.z < 1 && Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; }
   // nearest alien on screen (phone auto-aim), optionally inside a cone around a direction
   function autoTarget(from, dir, cone = Math.PI, range = 75) {
@@ -941,7 +1013,7 @@ export function createGame(ctx) {
     const R = b.splash, c = p.clone();
     burst(c.x, c.y + 0.3, c.z, 40, 9, [[1, 0.75, 0.3], [1, 0.45, 0.15], [0.5, 0.45, 0.4], [1, 1, 0.8]]);
     const fl = new THREE.Sprite(A.flashMat.clone()); fl.material.color.setRGB(1, 0.6, 0.25); fl.position.copy(c); fl.scale.setScalar(R * 1.6); scene.add(fl); fxs.push({ mesh: fl, life: 0.3, max: 0.3, kind: 'flash' });
-    for (const a of [...agents]) { if (a.burrow) continue; const d = center(a).distanceTo(c); if (d > R + a.T.r) continue; a.hp -= b.splashDmg * (1 - Math.min(1, d / (R + a.T.r))) * (1 - (a.T.armor || 0) * 0.5); a.aggro = true; a.hit = 1; if (a.hp <= 0) killAgent(a); }
+    for (const a of [...agents]) { if (a.burrow) continue; const d = center(a).distanceTo(c); if (d > R + a.T.r) continue; a.hp -= b.splashDmg * (1 - Math.min(1, d / (R + a.T.r))) * (1 - (a.T.armor || 0) * 0.5); a.aggro = true; a.hit = 1; if (a.hp <= 0) killAgent(a, { gib: d < R * 0.6 }); }
     ctx.blastWorld?.(c, R, b.splashDmg);
     onEvent('boom', { x: c.x, z: c.z });
   }
@@ -980,10 +1052,12 @@ export function createGame(ctx) {
         q.copy(p0).addScaledVector(seg, t);
         if (q.distanceTo(c) < r) {
           if (a.burrow) continue;
-          a.hp -= b.dmg * (1 - (a.T.armor || 0)); a.aggro = true;
-          burst(q.x, q.y, q.z, 5, 3, a.type === 'hunter' ? ICHOR_H : ICHOR); a.hit = 1;
-          onEvent('hit', { boss: !!a.T.boss });
-          if (a.hp <= 0) killAgent(a);
+          if (a.crouch && a.cov && Math.hypot(p0.x - a.x, p0.z - a.z) > 4 && ((a.cov.sx - a.x) * (p0.x - a.x) + (a.cov.sz - a.z) * (p0.z - a.z)) > 0) { burst(q.x, q.y, q.z, 4, 3, [[1, 0.8, 0.5]]); dead = true; break; } // v7.5: it hit their cover
+          const head = a.T.human && !a.T.mech && q.y > a.y + 1.7 * (a.T.scale || 1);
+          a.hp -= b.dmg * (head ? 2.5 : 1) * (1 - (a.T.armor || 0)); a.aggro = true;
+          if (a.T.human && !a.T.mech) gore(q.x, q.y, q.z, { n: head ? 1 : 0.4, spray: true }); else burst(q.x, q.y, q.z, 5, 3, a.T.mech ? [[1, 0.8, 0.4]] : a.type === 'hunter' ? ICHOR_H : ICHOR); a.hit = 1;
+          onEvent('hit', { boss: !!a.T.boss, head });
+          if (a.hp <= 0) killAgent(a, { gib: !!(b.rail || b.splash) || (head && b.dmg >= 6) });
           if (b.splash) explode(q, b);
           if (b.pierce) { b.hitSet.add(a); continue; }
           dead = true; break;
@@ -1114,15 +1188,17 @@ export function createGame(ctx) {
     if (gate) { scene.remove(gate); gate = null; }
     if (!quest) return;
     for (const it of quest.items || []) scene.remove(it.obj);
-    for (const a of [...agents]) if (a.src === 'quest' || a.src === 'minion') removeAgent(a);
+    for (const a of [...agents]) if (a.src === 'quest' || a.src === 'minion' || a.src === 'chase') removeAgent(a);
+    crackJob = null;
     if (outpost) { scene.remove(outpost); outpost = null; }
     quest.items = []; quest.wave = null;
   }
   const stepDef = () => quest?.def.steps[quest.step];
   function stepTarget(s) {
     if (s.type === 'return') { const S = ctx.SHIP; return { x: S.x - 8, z: S.z + 8, r: 12 }; }
-    if (s.type === 'enter') { const d = ctx.doorFor?.(s.building); return d ? { x: d.x, z: d.z, r: 2.5, door: d.kind } : { x: player.x, z: player.z, r: 0 }; }
-    if (s.at) { const p = ctx.colonyAt?.(s.at); if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
+    if (s.type === 'enter' || s.type === 'crack') { const d = ctx.doorFor?.(s.building); return d ? { x: d.x, z: d.z, r: 2.5, door: d.kind } : { x: player.x, z: player.z, r: 0 }; }
+    if (s.type === 'choice' && !s.at) return { x: player.x, z: player.z, r: 0 };
+    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2); if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
     if (s.type === 'take') { const v = ctx.nearestVehicle?.(); return v ? { x: v.x, z: v.z, r: 3 } : { x: player.x, z: player.z, r: 3 }; }
     if (s.type === 'clean') return { x: player.x, z: player.z, r: 0 };
     if (s.type === 'race') { const p = ctx.colonyAt?.(s.pts[0]) || ctx.safePoint(0, 60); return { x: p.x, z: p.z, r: 6 }; }
@@ -1146,7 +1222,9 @@ export function createGame(ctx) {
     quest.killed = 0; quest.wave = null; quest.target = stepTarget(s); quest.st0 = time;
     const tg = quest.target;
     if (s.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, s.wanted), 'job');
-    if (s.type === 'race') { quest.gi = 0; placeGate(); }
+    if (s.type === 'race') { quest.gi = 0; placeGate(); if (s.pursuers) quest.chaseT = 3; }
+    quest.civ0 = ctx.civHits?.() || 0;
+    if (s.type === 'choice') onEvent('choice', { id: quest.def.id, prompt: s.prompt || s.text, options: (s.options || []).map(o => ({ id: o.id, label: o.label })) });
     if (s.type === 'goto' && s.item) quest.items.push({ obj: placeItem(s.item, tg.x, tg.z, { name: s.text, quest: true }), x: tg.x, z: tg.z, id: `${quest.def.id}-${quest.step}`, keep: !!s.keep, pick: !s.keep });
     if (s.outpost) addOutpost(tg);
     if (s.type === 'collect') {
@@ -1162,7 +1240,9 @@ export function createGame(ctx) {
   }
   function stepText() {
     const s = stepDef(); if (!s) return '';
-    if (s.type === 'defeat' && !aliensOn()) return 'Scan the alien zone (peaceful mode)';
+    if (s.type === 'defeat' && !aliensOn() && !humanWave(s)) return 'Scan the alien zone (peaceful mode)';
+    if (s.type === 'crack' && crackJob) return `${s.text} (${Math.round(crackJob.p * 100)}%)`;
+    if (s.type === 'crack' && !ctx.st().inside) return `${s.text} (get inside)`;
     if (s.type === 'collect') return `${s.text} (${quest.got || 0}/${s.n})`;
     if (s.type === 'enter' && !ctx.st().inside) return `${s.text} (go inside)`;
     if (s.type === 'defeat' && s.weapon && aliensOn() && P.equip.weapon !== s.weapon) return `${s.text} (equip the ${WEAPONS[s.weapon]?.name || s.weapon})`;
@@ -1230,6 +1310,45 @@ export function createGame(ctx) {
     const fl = def.failLine ? def.failLine.replace(/^[A-Z][\w .\u2019'-]{0,20}:\s*/, '') + ' ' : '';
     onEvent('radio', { text: `${def.contact || 'Control'}: ${fl}${reason} Want another crack at "${def.title}"?`, offer: def.id });
   }
+  // ----- v7.5 choice / crack / case steps -----
+  const humanWave = s => !!s.wave?.length && s.wave.every(t => AGENT_TYPES[t]?.human);
+  let crackJob = null;
+  function choose(optId) {
+    const s = stepDef(); if (s?.type !== 'choice') return false;
+    const o = (s.options || []).find(x => x.id === optId); if (!o) return false;
+    if (o.flag) setFlag(o.flag); if (o.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, o.wanted), 'choice');
+    if (o.credits) gain(0, o.credits, true);
+    onEvent('choiceMade', { id: quest.def.id, option: o.id, flag: o.flag || null });
+    if (o.radio) onEvent('radio', { text: o.radio });
+    if (o.skip) quest.step += o.skip; // e.g. take Rhee's retainer: no fight
+    advance(); return true;
+  }
+  const crackable = id => { const s = stepDef(); return !flag('cracked:' + id) && (!s || s.type !== 'crack' || !s.id || s.id === id); };
+  // crack(id, difficulty): the heist module (ben/heist-mechanics, window.SSX.heist.safeCrack) owns the minigame. Fallback: hold still for a few seconds.
+  function crack(id, difficulty = 2, opts = {}) {
+    if (flag('cracked:' + id)) return Promise.resolve({ ok: false, why: 'empty' });
+    if (crackJob) return Promise.resolve({ ok: false, why: 'busy' });
+    const done = ok => { crackJob = null; if (ok) { setFlag('cracked:' + id); const s = stepDef(); const pay = opts.loot ?? (s?.type === 'crack' ? s.loot ?? 0 : 120 + difficulty * 60); if (pay) gain(10 * difficulty, pay, true); onEvent('crack', { id, done: true, credits: pay }); if (s?.type === 'crack' && (!s.id || s.id === id)) advance(); } else onEvent('crack', { id, failed: true }); return { ok }; };
+    const H2 = globalThis.SSX?.heist;
+    if (H2?.safeCrack) { crackJob = { id, p: 0, ext: true }; return Promise.resolve(H2.safeCrack({ id, difficulty, ...opts })).then(r => done(r === true || !!r?.ok), () => done(false)); }
+    return new Promise(res => { crackJob = { id, p: 0, t: 0, need: 2.5 + difficulty * 1.2, res: ok => res(done(ok)), wanted: opts.wanted ?? Math.min(3, 1 + Math.floor(difficulty / 2)) }; onEvent('crack', { id, start: true, secs: crackJob.need }); });
+  }
+  function updateCrack(dt, st) {
+    const j = crackJob; if (!j || j.ext) return;
+    if (!st.inside) { j.res(false); return; }
+    j.t += dt; j.p = Math.min(1, j.t / j.need);
+    if (!j.raised && j.p > 0.5) { j.raised = true; ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, j.wanted), 'safe alarm'); onEvent('alarm', { level: j.wanted, safe: true }); }
+    if (j.p >= 1) j.res(true);
+  }
+  function heistAt(kind, name) {
+    if (globalThis.SSX?.heist?.active?.(kind, name)) return true;
+    const s = stepDef(); if (s?.type !== 'crack') return false;
+    const d = ctx.doorFor?.(s.building); return !d || d.kind === kind;
+  }
+  function hostiles(types, x, z, o = {}) { // spawn human hostiles around (x,z); returns how many made it under the cap
+    let n = 0; (types || []).forEach((t, k) => { const a = k / types.length * Math.PI * 2 + Math.random(); const ag = AGENT_TYPES[t]?.human && spawnAgent(t, x + Math.cos(a) * (o.r ?? 5), z + Math.sin(a) * (o.r ?? 5), { aggro: o.aggro !== false, src: o.src || 'city' }); if (ag) { ag.faction = o.faction || null; n++; } });
+    return n;
+  }
   function checkStep() {
     const s = stepDef(); if (!s) return;
     if (s.type === 'defeat' && quest.wave && quest.killed >= quest.wave.total) {
@@ -1250,6 +1369,9 @@ export function createGame(ctx) {
       } else if (d) { quest.target.x = d.x; quest.target.z = d.z; }
       return;
     }
+    if (s.type === 'crack') { if (flag('cracked:' + (s.id || ''))) advance(); else if (!st.inside) { const d = ctx.doorFor?.(s.building); if (d) { quest.target.x = d.x; quest.target.z = d.z; } } return; }
+    if (s.type === 'choice') return; // waits for game.choose()
+    if (s.noCivilians && (ctx.civHits?.() || 0) > quest.civ0) return fail('You hit a civilian. Deal\u2019s off.');
     if (st.inside) return; // the rest of the job waits outside
     if (quest.def.limit && H.down <= 0 && quest.def.limit - (time - quest.t0) <= 0)
       return fail(quest.def.id === 'mercury-sunrise' ? 'Sunrise caught you in the open. We hauled your smoking carcass back. Barely.' : 'Your suit cooked past spec, so we yanked you. You\u2019re welcome.');
@@ -1258,8 +1380,13 @@ export function createGame(ctx) {
     const tg = quest.target;
     if (s.type === 'take') { if (ctx.vehicle?.()?.stolen) advance(); else { const v = ctx.nearestVehicle?.(); if (v) { tg.x = v.x; tg.z = v.z; } } return; }
     if (s.type === 'clean') { if (!(ctx.wanted?.() > 0)) advance(); return; }
+    if (s.type === 'case') {
+      if (Math.hypot(tg.x - px, tg.z - pz) < tg.r + reach) { const c = ctx.caseCamera?.(s.camera); onEvent('toast', { text: c ? `\ud83d\udcf7 Camera ${c.id} marked. Its loop is yours for two minutes.` : '\ud83d\udcf7 Angle noted.' }); advance(); }
+      return;
+    }
     if (s.type === 'race') {
-      if (Math.hypot(tg.x - px, tg.z - pz) < tg.r + reach + 1) { quest.gi++; onEvent('chime', {}); if (quest.gi >= s.pts.length) { if (gate) { scene.remove(gate); gate = null; } return advance(); } placeGate(); onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); }
+      if (s.pursuers && quest.chaseT > 0) { quest.chaseT -= dt; if (quest.chaseT <= 0) { const yaw = st.driving ? st.rover.yaw : player.yaw; s.pursuers.forEach((t, k) => { const a = spawnAgent(t, px + Math.sin(yaw) * (28 + k * 6) + (k - 1) * 4, pz + Math.cos(yaw) * (28 + k * 6), { aggro: true, src: 'chase' }); if (a) a.yaw = yaw; }); onEvent('chase', { n: s.pursuers.length }); } }
+      if (Math.hypot(tg.x - px, tg.z - pz) < tg.r + reach + 1) { quest.gi++; onEvent('chime', {}); if (quest.gi >= s.pts.length) { if (gate) { scene.remove(gate); gate = null; } for (const a of agents.filter(a => a.src === 'chase')) removeAgent(a); return advance(); } placeGate(); onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); }
       if (gate) gate.children[0].rotation.z += dt; return;
     }
     if (s.type === 'goto' || s.type === 'return') {
@@ -1274,7 +1401,7 @@ export function createGame(ctx) {
       for (const it of [...quest.items]) if (it.collect && Math.hypot(it.x - px, it.z - pz) < 3 + reach) pickCollect(it);
     } else if (s.type === 'defeat') {
       const d = Math.hypot(tg.x - px, tg.z - pz);
-      if (!aliensOn()) { if (d < 16 + reach) { onEvent('toast', { text: '📡 Zone scanned. (Peaceful mode: no aliens today.)' }); advance(); } return; }
+      if (!aliensOn() && !humanWave(s)) { if (d < 16 + reach) { onEvent('toast', { text: '📡 Zone scanned. (Peaceful mode: no aliens today.)' }); advance(); } return; }
       if (!quest.wave && d < 75 && H.down <= 0) {
         quest.wave = { total: s.wave.length }; quest.killed = 0;
         for (const o of agents.filter(o => o.src !== 'quest').slice(0, Math.max(0, agents.length + s.wave.length - CAP))) { const c = center(o); burst(c.x, c.y, c.z, 10); removeAgent(o); } // make room for the quest wave
@@ -1513,8 +1640,11 @@ export function createGame(ctx) {
     time += dt;
     updateHealth(dt);
     const ins = !!ctx.st().inside;
-    if (aliensOn() && !ins) { updateAgents(dt); updateOrbs(dt); }
+    updateCrack(dt, ctx.st());
+    if (!ins && !aliensOn() && agents.some(a => !a.T.human)) { for (const a of agents.filter(a => !a.T.human)) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
+    if (!ins) { updateAgents(dt); updateOrbs(dt); } // v7.5: human hostiles run even in peaceful mode
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
+    for (const b of [...bodies]) { b.t -= dt; if (b.t <= 0) { scene.remove(b.g); bodies.splice(bodies.indexOf(b), 1); } }
     updateWeapons(dt, input);
     updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver();
     updateQuest(dt); if (!ins) { updateRares(dt); updateZone(dt); updateDogWarn(dt); }
@@ -1535,7 +1665,7 @@ export function createGame(ctx) {
     }
     return undefined;
   }
-  const combat = () => aliensOn() && agents.some(a => !a.burrow && (a.aggro || Math.hypot(a.x - player.x, a.z - player.z) < 60));
+  const combat = () => agents.some(a => (aliensOn() || a.T.human) && !a.burrow && (a.aggro || Math.hypot(a.x - player.x, a.z - player.z) < 60));
   function tapTargets() { const t = rares.map(r => r.obj); if (quest) t.push(...quest.items.map(i => i.obj)); if (outpost) t.push(outpost); return t; }
   function waypoint() {
     if (!quest) return null; const s = stepDef(); if (!s) return null;
@@ -1558,13 +1688,14 @@ export function createGame(ctx) {
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
+    gore, hostiles, heistAt, crack, choose, crackable, jobBoard: () => QUESTS.filter(q => q.city && q.world === world && reqOk(q) && !isDone(q.id)).map(q => ({ id: q.id, title: q.title, contact: q.contact, district: q.district, credits: q.reward.credits || 0, active: quest?.def.id === q.id })), humanCount: () => agents.filter(a => a.T.human).length, get crackJob() { return crackJob ? { id: crackJob.id, p: crackJob.p } : null; },
     stash(id, perm, name) { if (flag('stash:' + id)) return false; setFlag('stash:' + id); P.credits += 40; grantPerm(perm, name || 'Stash'); return true; }, hurtPlayer: (d, from) => hurt(d, from), bust: () => down('busted'), isDown: () => H.down > 0, abandon: () => abandon(false), equip, tapObject, tapTargets, waypoint, sniffTarget, offerNext, rareFor,
     get combat() { return combat(); },
     setAim(nx, ny, has = true) { aim.x = nx; aim.y = ny; aim.has = has; },
     onDiscover() { gain(20, 10); },
     setAliens(on) {
       P.settings.aliens = !!on; save();
-      if (!on) { for (const a of [...agents]) removeAgent(a); for (const o of orbs) scene.remove(o.mesh); orbs.length = 0; for (const b of bolts) scene.remove(b.mesh); bolts.length = 0; W.heat = 0; W.over = false; } if (quest) onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); },
+      if (!on) { for (const a of [...agents]) if (!a.T.human) removeAgent(a); for (const o of orbs) scene.remove(o.mesh); orbs.length = 0; for (const b of bolts) scene.remove(b.mesh); bolts.length = 0; W.heat = 0; W.over = false; } if (quest) onEvent('quest', { kind: 'step', id: quest.def.id, text: stepText() }); },
     setVoice(on) { P.settings.voice = !!on; save(); }, save: () => save(),
     reload() { P = loadProgress(); applyCosmetics(); },
     get progress() { return P; },

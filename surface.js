@@ -229,7 +229,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const pad = cfg.padH ?? 0;
     const b = baseHeight(x, z);
     let h = THREE.MathUtils.lerp(pad + b * 0.15, b, s);
-    for (let i = 0; i < flats.length; i++) { const f = flats[i], d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
+    for (let i = 0; i < flats.length; i++) { const f = flats[i];
+      if (f.seg) { // v7.5 highway corridor: flatten to the road's own height along the segment
+        if (x < f.minx || x > f.maxx || z < f.minz || z > f.maxz) continue;
+        const ex = f.bx - f.ax, ez = f.bz - f.az, L2 = ex * ex + ez * ez, t = L2 ? Math.max(0, Math.min(1, ((x - f.ax) * ex + (z - f.az) * ez) / L2)) : 0, d = Math.hypot(x - f.ax - ex * t, z - f.az - ez * t);
+        if (d < f.r2) h = THREE.MathUtils.lerp(f.ya + (f.yb - f.ya) * t, h, smooth(f.r1, f.r2, d)); continue; }
+      if (f.ramp) { // v7.5 jump ramp: a wedge rising along (ux,uz), sheer drop at the lip
+        const dx = x - f.x, dz = z - f.z, u = dx * f.ux + dz * f.uz + f.len / 2, v = Math.abs(dx * -f.uz + dz * f.ux);
+        if (u > 0 && u < f.len && v < f.w / 2) h += f.h * (u / f.len) * Math.min(1, (f.w / 2 - v) * 3); continue; }
+      const d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
     return h;
   }
 
@@ -614,6 +622,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
     colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
+    coverNear: (x, z, px, pz, r) => world.coverNear?.(x, z, px, pz, r), collide: (x, z, r) => world.collide?.(x, z, r), freeSpot: (x, z, r) => world.freeSpot?.(x, z, r), civHits: () => world.civHits || 0, caseCamera: id => world.caseCamera?.(id), // v7.5 city
     respawn(why) {
       if (indoor) leaveBuilding(true);
       if (driving) interact();
@@ -1311,11 +1320,22 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const dx = rover.x - player.x, dz = rover.z - player.z, a = Math.atan2(-dx, -dz) - viewYaw;
     return { dist: Math.round(Math.hypot(dx, dz)), ang: Math.atan2(Math.sin(a), Math.cos(a)), ship: Math.round(Math.hypot(SHIP.x - player.x, SHIP.z - player.z)) };
   }
+  // v7.5 ☰ Districts: fast travel between the colony and its districts (same world). Your car comes with you.
+  function fastTravel(id) {
+    const b = travelBlocked(); if (b) return { ok: false, why: b };
+    if (world.wanted > 0) return { ok: false, why: 'lose the heat first' };
+    const q = String(id || '').toLowerCase(), d = world.districts().find(s => s.id === id || s.name.toLowerCase().includes(q)); if (!d) return { ok: false, why: 'no such district here' };
+    let { x, z } = d.fast; const c = world.collide(x, z, driving ? 2.5 : 0.6); if (c) { x = c.x; z = c.z; }
+    if (driving) { car.x = x; car.z = z; car.yaw = 0; car.y = height(x, z) + (car.spec.hover || 0); car.prevG = null; car.vy = 0; car.speed = 0; car.group.position.set(car.x, car.y, car.z); car.group.rotation.set(0, 0, 0); player.x = x; player.z = z; }
+    else { player.x = x; player.z = z; player.y = height(x, z) + EYE; player.vy = 0; player.yaw = 0; player.faceYaw = 0; dogTo(x, z); }
+    updateChunks(x, z, true); world.debug.zones(); dustRing(x, z, 40);
+    return { ok: true, id: d.id, name: d.name };
+  }
   function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; player.faceYaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
-    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding,
+    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel,
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
@@ -1338,7 +1358,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         nearVehicle: (() => { if (driving || indoor || nearRover()) return null; const v = world.nearVehicle(player.x, player.z); return v ? { kind: v.kind, name: v.spec.name } : null; })(),
         nearContact: !driving && !indoor ? (world.nearContact()?.name || null) : null, duelist: !driving && !indoor ? world.nearDuelist() : null, duel: world.duel, nearShop: !driving && !indoor ? world.nearShop() : null,
         door: !driving && !indoor ? (() => { const d = world.nearDoor(); return d ? { name: d.name, kind: d.kind } : null; })() : null,
-        inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
+        inside: indoor ? world.inside : null, spot: indoor ? (() => { const s = world.nearSpot(); return s ? { id: s.id, label: s.label, act: s.act, who: s.who || null, stash: s.stash || null, perm: s.perm || null, ware: s.ware || null, venue: s.venue || null, crack: s.crack || null, difficulty: s.difficulty || 0 } : null; })() : null, wanted: world.wanted, evading: world.evading, colony: world.colony, roverAir: rover?.air, roverX: rover?.x, roverZ: rover?.z, roverY: rover?.y, roverYaw: rover?.yaw, roverRoll: rover?.roll, roverAlt: rover ? rover.y - height(rover.x, rover.z) : 0,
         carYaw: driving ? car.yaw : null, carAir: driving ? !!car.air : false, carAlt: driving ? (car.spec.hover ? car.lift || 0 : car.y - height(car.x, car.z)) : 0, kit: !!rover?.kit,
         faceYaw: player.faceYaw, camYawOff, lookIdle: time - lastLook,
         thrust: (() => { const r = driving ? car : rover; const can = driving && canThrust(car); return { can, on: !!(can && r.thrusting), fuel: r ? Math.round(r.fuel ?? 100) : 0, max: r ? FUEL_MAX(r) : 100, jet: r?.jet || 0 }; })(), viewYaw,
