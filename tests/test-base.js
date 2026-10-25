@@ -1,6 +1,6 @@
 // v7.5 Mars base building e2e: ☰ 🏠 Mars base -> buy Junction East Lot via the context button -> 🏗️ Build -> place a wall,
 // gate, garage, stash and turret with the toolbar + context button (taps with a second finger while a thumb holds the
-// joystick on phones; mouse + J key on desktop) -> rotate -> remove/refund -> stash deposit -> turret fires at a raider /
+// joystick on phones; mouse + K key on desktop) -> rotate -> remove/refund -> stash deposit -> turret fires at a raider /
 // security -> SSX.base.raid emits base:raid -> reload the page -> everything is restored.
 // BASE=http://127.0.0.1:8853/ BR=webkit DEV="iPhone 14 Pro" VP=393x852 OUT=/workspace/pw-ben-base/shots/ node test-base.js
 const pw = require('playwright');
@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ev(j, 'pointerdown', 50, jr); await sl(60); ev(b, 'pointerdown', 51, br); await sl(60); ev(b, 'pointerup', 51, br); await sl(60); ev(j, 'pointerup', 50, jr); return 'ok';
   }, sel);
   const ourTap = async sel => { if (desk) await page.click(sel); else { const r = await stickTap(sel); if (r !== 'ok') R['stickTap ' + sel] = r; } };
-  const act = async () => { if (desk) await page.keyboard.press('KeyJ'); else await ourTap('#baseBtn'); };
+  const act = async () => { if (desk) await page.keyboard.press('KeyK'); else await ourTap('#baseBtn'); };
   const shot = async name => { for (let i = 0; i < 2; i++) { try { await page.screenshot({ path: `${out}${tag}-${name}.png`, timeout: 90000 }); return true; } catch (e) { R['shotRetry-' + name] = i + 1; } } return false; };
   const move = (x, z, yaw = 0) => G(([x, z, yaw]) => window.__app.surface.debugMove(x, z, yaw), [x, z, yaw]);
   const PID = 'aj-east';

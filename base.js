@@ -191,7 +191,7 @@ function ensureUi() {
     panel.addEventListener('pointerup', e => { if (e.target === panel && e.pointerId === bp) panel.classList.remove('on'); bp = null; }); panel.addEventListener('pointercancel', () => { bp = null; }); }
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
-    if (e.code === 'KeyJ' && actNow) { e.preventDefault(); doAction(); return; }
+    if (e.code === 'KeyK' && actNow) { e.preventDefault(); doAction(); return; }
     if (!build) return;
     const k = { Digit1: 'wall', Digit2: 'gate', Digit3: 'garage', Digit4: 'stash', Digit5: 'turret', Digit6: 'remove' }[e.code];
     if (k) { build.tool = k === 'remove' ? 'remove' : 'place'; if (k !== 'remove') build.type = k; refreshBar(); e.preventDefault(); }
@@ -205,7 +205,7 @@ async function doAction() { const a = build && C && root?.parent ? updateBuild()
 function refreshBar() { if (!ui || !build) return; for (const b of ui.bar.querySelectorAll('button[data-t]')) b.classList.toggle('on', build.tool === 'remove' ? b.dataset.t === 'remove' : b.dataset.t === build.type && build.tool === 'place'); }
 function setAction(a) {
   actNow = a; if (!ui) return; const touch = document.body.classList.contains('touch');
-  ui.btn.style.display = a ? 'block' : 'none'; if (a) { const t = a.label + (touch ? '' : ' (J)'); if (ui.btn.textContent !== t) ui.btn.textContent = t; }
+  ui.btn.style.display = a ? 'block' : 'none'; if (a) { const t = a.label + (touch ? '' : ' (K)'); if (ui.btn.textContent !== t) ui.btn.textContent = t; }
 }
 function closePanel() { ui?.panel.classList.remove('on'); }
 function panel(html, bind) { ensureUi(); const w = ui.panel.firstChild; w.innerHTML = html; for (const b of w.querySelectorAll('button')) H.tap(b, () => { if (!b.disabled) bind(b.dataset); }); ui.panel.classList.add('on'); }
