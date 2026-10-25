@@ -89,4 +89,6 @@ ok('explicit hook beats dealer:false', st2.some(s => s.kind === 'nodeal' && s.pr
 ok('explicit hidden delists', !st2.some(s => s.kind === 'raccoon'));
 ok('explicit for unknown kind ignored', !st2.some(s => s.kind === 'ghost'));
 ok('inferTier', GC.inferTier(800) === 1 && GC.inferTier(2000) === 2 && GC.inferTier(4000) === 3 && GC.inferTier(7000) === 4);
+{ const m = GC.migrateGarage({ rides: [{ id: 'r9', kind: 'ares_brute', noPlates: true, gift: true, up: { boost: 2 } }], active: 'r9' });
+  ok('migration keeps granted no-plates ride', m.rides.some(r => r.id === 'r9' && r.noPlates === true && r.gift === true && r.up.boost === 2 && r.up.engine === 0)); }
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);

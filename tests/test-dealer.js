@@ -124,6 +124,11 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     const gr = await G(() => { const c = window.__app.surface.game.progress.credits, g = window.SSX.garage;
       const a = g.grantUpgrade('current', 'boost'), b = g.grantPart('current', 'glow', 'magenta'), c2 = g.grant('current', 'wheels:gold'), bad = g.grantUpgrade('current', 'nitro');
       const r = g.rides.find(x => x.id === g.active); return { a: a.ok, b: b.ok, c: c2.ok, bad: bad.ok, cost: c - window.__app.surface.game.progress.credits, boost: r.up.boost, glow: r.glow, wheels: r.wheels, saved: JSON.parse(localStorage.getItem('ssx.progress.v1')).garage.rides.find(x => x.id === g.active).up.boost }; });
+    const gv = await G(() => { const g = window.SSX.garage, c = window.__app.surface.game.progress.credits, act = g.active, n = g.rides.length;
+      const a = g.grantVehicle('ares_brute', { noPlates: true, active: false }), bad = g.grantVehicle('nope'); const r = g.rides.find(x => x.id === a.ride);
+      return { ok: a.ok, bad: bad.ok, n: g.rides.length - n, noPlates: r?.noPlates, act: g.active === act, cost: c - window.__app.surface.game.progress.credits,
+        saved: !!JSON.parse(localStorage.getItem('ssx.progress.v1')).garage.rides.find(x => x.id === a.ride && x.noPlates) }; });
+    R.grantVehicle = JSON.stringify(gv); ok('grantVehicle', null, gv.ok && !gv.bad && gv.n === 1 && gv.noPlates && gv.act && gv.cost === 0 && gv.saved);
     R.grant = JSON.stringify(gr); ok('grantFree', null, gr.a && gr.b && gr.c && !gr.bad && gr.cost === 0 && gr.boost === 1 && gr.glow === 'magenta' && gr.wheels === 'gold' && gr.saved === 1);
     // ---------- 5. car meet ----------
     await G(() => window.__dealer.skipToMeet()); ok('meetOn', null, await G(() => window.__dealer.meet.on));

@@ -56,3 +56,19 @@ SSX.garage.grant('current', { slot: 'paint', value: 'gold' });
 - Each call returns `{ ok, msg, ride, ... }`. `ok:false` (with `maxed:true` for a maxed upgrade) means nothing changed, so you can refund or offer something else. `msg` is a ready-made toast line.
 - On the stock rover, paint and kit are refused (those stay with Meridian Depot). Use an upgrade, wheels or glow instead.
 - Read-only: `SSX.garage.rides`, `SSX.garage.active`, `SSX.garage.rep`.
+
+### Free vehicles: `SSX.garage.grantVehicle(vehicleId, opts)`
+
+```js
+SSX.garage.grantVehicle('ares_brute', { noPlates: true });                  // Dutch's "fresh rover, no plates"
+SSX.garage.grantVehicle('dust_runner', { noPlates: true, active: false, up: { engine: 1 }, glow: 'green' });
+```
+
+- `vehicleId` can be any `SSX.registerVehicle` id. Dealer-listed and hidden ids both work, and so does `'rover'`.
+- `opts`:
+  - `noPlates` is stored as `ride.noPlates = true` for street and wanted modules to read. The dealership does not punish it; it only names the ride "(no plates)".
+  - `active` defaults to true. The new ride becomes the driven ride and is parked at the lock-ups.
+  - `up` pre-fits upgrade levels.
+  - `paint`, `kit`, `wheels` and `glow` pre-fit parts.
+- It costs no credits and needs no rep. The ride is marked `gift: true` with `spent: 0`, so it sells for the base trade-in.
+- Returns `{ ok, ride, msg }`. `ok:false` with `full:true` means the garage is full (max 6 rides). Garage-full and unknown-id cases change nothing.

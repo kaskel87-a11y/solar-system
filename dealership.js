@@ -45,13 +45,25 @@ export function grantPart(rideId = 'current', slot, value, fit = true) {
   if (!r.owned[slot].includes(value)) r.owned[slot].push(value); if (fit) r[slot] = value; save();
   return { ok: true, ride: r.id, slot, value, msg: `${tbl[value].name} ${fit ? 'fitted on' : 'stashed for'} the ${rideName(r)}. On the house.` };
 }
+// a free ride into the garage (barter, mission reward). vehicleId: any SSX.registerVehicle id, dealer-listed or hidden, or 'rover'.
+// opts: { noPlates: true } marks it unregistered (stored as ride.noPlates for street/wanted modules to read), active (default true),
+// up: { engine: 2, ... } pre-fitted levels, paint/kit/wheels/glow pre-fitted parts.
+export function grantVehicle(vehicleId, opts = {}) {
+  const G = garage(); if (vehicleId !== 'rover' && !VEHICLES[vehicleId]) return { ok: false, msg: `Unknown vehicle "${vehicleId}". Register it with SSX.registerVehicle first.` };
+  if (G.rides.length >= GC.MAX_RIDES) return { ok: false, full: true, msg: '🔧 Garage full. Sell something first.' };
+  const r = GC.newRide('r' + G.nextId++, vehicleId); r.spent = 0; r.gift = true; if (opts.noPlates) r.noPlates = true;
+  for (const [k, l] of Object.entries(opts.up || {})) if (GC.UPGRADES[k]) r.up[k] = Math.max(0, Math.min(GC.MAX_LVL, l | 0));
+  for (const k of Object.keys(GC.COSMETIC_SLOTS)) { const v = opts[k]; if (v && GC.COSMETIC_SLOTS[k][v] && !(vehicleId === 'rover' && (k === 'paint' || k === 'kit'))) { r[k] = v; if (!r.owned[k].includes(v)) r.owned[k].push(v); } }
+  G.rides.push(r); if (opts.active !== false) G.active = r.id; save(); if (opts.active !== false) parkActiveAt('garage');
+  return { ok: true, ride: r.id, msg: `🔑 ${rideName(r)} is in your lock-up${r.noPlates ? ', no plates, no questions' : ''}.` };
+}
 // one call for either: grant('current', 'engine') / grant('current', 'glow:cyan') / grant(id, { slot: 'paint', value: 'gold' })
 export function grant(rideId, what, n) {
   if (typeof what === 'object' && what) return what.value != null ? grantPart(rideId, what.slot, what.value, what.fit !== false) : grantUpgrade(rideId, what.slot, what.levels || n);
   if (typeof what === 'string' && what.includes(':')) { const [sl, v] = what.split(':'); return grantPart(rideId, sl, v); }
   return grantUpgrade(rideId, what, n);
 }
-export const GARAGE_API = { grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+export const GARAGE_API = { grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
   upgrades: Object.keys(GC.UPGRADES), parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
@@ -70,7 +82,7 @@ const activeRide = () => rideById(garage().active) || garage().rides[0];
 const listingOf = kind => kind === 'rover' ? { kind: 'rover', name: 'Rover (stock)', icon: '🚙', tier: 1, price: 600, rep: 0 } : dealerStock().find(s => s.kind === kind) || { kind, name: VEHICLES[kind]?.name || kind, icon: '🚗', tier: GC.inferTier(VEHICLES[kind]?.price || 0), price: VEHICLES[kind]?.price || 0, rep: 0 };
 export const tierOf = ride => listingOf(ride.kind).tier;
 export function specOf(ride) { const base = VEHICLES[ride.kind] || VEHICLES.rover; return { ...GC.applyUpgrades(base, ride.up, ride.kind === 'rover' ? 'stock' : ride.kit), name: ride.kind === 'rover' ? base.name : (VEHICLES[ride.kind]?.name || ride.kind) }; }
-const rideName = r => r.kind === 'rover' ? 'Your rover' : (VEHICLES[r.kind]?.name || r.kind);
+const rideName = r => (r.kind === 'rover' ? (r.gift ? 'Rover' : 'Your rover') : (VEHICLES[r.kind]?.name || r.kind)) + (r.noPlates ? ' (no plates)' : '');
 
 // ---------- world state ----------
 let C = null, planet = null, root = null, lot = null, last = 0, nav = null, ui = null, sheet = null, meet = null;
