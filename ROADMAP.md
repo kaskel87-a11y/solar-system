@@ -50,6 +50,7 @@ House rules for all of it:
 2. [ ] **Gorier combat:** blood decals, dismemberment-lite on aliens, heavier hit reactions.
 3. [ ] **More missions:** the rest of the Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk), with thug/goon/enforcer waves, hold, choice, pay, tail and nonlethal steps; the cartel storyline's dark choices (betray, spare, execute, take the cut).
 4. [ ] **NPC interactions:** dialogue, bribes, hire muscle, buy rumors that mark finds and jobs, random street events.
+5. [ ] **Legal duels:** a ⚔️ Challenge option on colony NPCs. Pick fists/melee, blades or a pistol quick-draw at 10 paces, plus an optional wager the NPC matches. A ring forms and a crowd gathers and cheers. The fight goes to KO or yield, not death. Sanctioned: no stars, security watches but doesn't step in, and stray hits on bystanders aren't crimes. The winner takes the pot plus rep/XP, with rematches. Named fighters (a cantina pit champion) pay more, and some NPCs refuse or chicken out. Attacks outside a duel still draw stars. HUD: one small duel banner and pointer-based buttons. Live duel screenshot.
 
 ## Later (rough order)
 - [ ] Rocks/boulders as obstacles for the rover and player (playtest p1).
