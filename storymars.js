@@ -262,7 +262,7 @@ function barterCheck(app) {
     }
     if (typeof C.registerOffer !== 'function') continue;
     try {
-      const r = C.registerOffer({ ...JSON.parse(JSON.stringify(o)), onTrade: ctx => { const s = storyTrade(app, o, ctx); if (s.ok === false) return s; const e = story ? { ok: true } : engineGive(app, o); const res = { ...s, ...e, msg: e.msg || s.msg || o.lines?.accept }; if (res.msg) app.toast?.(`💬 ${res.msg}`, 3200); return res; } });
+      const r = C.registerOffer({ ...JSON.parse(JSON.stringify(o)), onTrade: ctx => { const s = storyTrade(app, o, ctx); if (s.ok === false) return s; const e = { ok: true }; /* v7.5.1: contraband.js applies every built-in give itself (wanted_clear, weapon, ammo, venue_access), so applying engineGive here doubled it (Rusk wiped 2 stars) */ const res = { ...s, ...e, msg: e.msg || s.msg || o.lines?.accept }; if (res.msg) app.toast?.(`💬 ${res.msg}`, 3200); return res; } });
       if (r !== false) B.mine.add(o.id);
     } catch (e) { console.warn('storymars barter', o.id, e); B.mine.add(o.id); }
   }

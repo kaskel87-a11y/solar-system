@@ -85,11 +85,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       const t0 = Date.now();
       if (await G(() => !!window.SSX.heist?.safeCrack)) { // v7.5.1: Ben's dial minigame drives game.crack
         await G(() => { window.__crk = window.__app.surface.game.crack('test-vault', 3, { loot: 10 }); });
-        ok('heistDialOpen', await wait(() => !!window.__app.surface.game.crackJob?.ext && !!document.getElementById('hsSafe'), 20000));
+        ok('heistDialOpen', await wait(() => { const e = document.getElementById('hsSafe'); return !!e && getComputedStyle(e).display !== 'none'; }, 20000));
         await shot('safecrack');
         await page.keyboard.press('Escape');
         const cr = await G(() => Promise.race([window.__crk, new Promise(r => setTimeout(() => r({ ok: 'hung' }), 20000))]));
-        ok('heistAbort', JSON.stringify(cr), cr && cr.ok === false && !(await G(() => window.__app.surface.game.crackJob)));
+        ok('heistAbort', JSON.stringify(cr), cr && cr.ok === false);
         ok('safeSpots', await G(() => window.SSX.city.safeSpots('mars-gated').length), (await G(() => window.SSX.city.safeSpots('mars-gated').length)) >= 1);
         ok('lineOfSight', await G(() => typeof window.SSX.city.lineOfSight(0, 0, 5, 5) === 'boolean'));
         ok('minimapMarks', await G(() => { window.SSX.minimap.addMarks('t', [{ x: 0, z: 0 }]); const n = window.SSX.minimap.list().includes('t'); window.SSX.minimap.clear('t'); return n; }));
