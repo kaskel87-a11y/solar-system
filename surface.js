@@ -1122,6 +1122,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!indoor) updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
+    if (globalThis.SSX_TICKS) for (const f of globalThis.SSX_TICKS) f(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name }); // add-on per-frame hooks (dealership.js)
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     game.update(dt, input);
     updateCockpit(dt, driving && camDist < 0.8);

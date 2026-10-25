@@ -458,6 +458,7 @@
     import { registerInterior } from './interiors.js?v=7.4';
     import { createAudio7 } from './audio7.js?v=7.4';
     import { initPlanets } from './planets/index.js?v=7.4'; // multi-planet expansion (data-driven, planets/*.js)
+    import { DEALER_API } from './dealership.js?v=7.4'; // Mars rover dealership, garages + car meets (adds SSX.registerDealerVehicle)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1605,6 +1606,7 @@
     window.SSX = {
       registerColony, registerDistrict, districtsOf, registerMission, registerInterior,
       registerVehicle, registerMenuItem,
+      ...DEALER_API,
       // v7.4 stub: extra bodies (Ceres, a cloud station) land in v7.5+. Recorded now so mods can declare them early.
       registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
     };
