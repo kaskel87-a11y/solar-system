@@ -158,6 +158,7 @@ function killNpc(n, how) {
   bloodPool(n.x, n.z, 0.9 + Math.random() * 0.6);
   if (n.byPlayer) stats.kills++;
   n.onDeath?.(how); n.despawn = 40;
+  DC.emitNpcDown(n); // muggers, fighters, escorts, ambient NPCs
 }
 
 // ---------- the knife mugging ----------

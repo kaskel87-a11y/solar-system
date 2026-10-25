@@ -187,10 +187,20 @@ ok('los solid blocks', !DC.lineOfSight({ x: 0, y: 1.5, z: 0 }, { x: 100, y: 1, z
   ok('backup: duration clamped', DC.backupPlan({ ...g, durationSec: 99999 }, 9, true).dur === 600 && DC.backupPlan({ ...g, durationSec: 1 }, 9, true).dur === 20);
   ok('backup: stays inside the 12 cap', [0, 4, 8, 11, 12].every(w => { const room = DC.npcBudget(w, 0, true); const q = DC.backupPlan({ ...g, count: 5 }, room, true); return w + (q.ok ? q.n : 0) <= 12; }));
   const sl = [0, 1, 2, 3].map(i => DC.escortSlot(i, 4, 0, 0, 0));
-  ok('backup: slots flank the player on both sides', Math.sign(sl[0].x) !== Math.sign(sl[1].x) && sl.every(q => Math.abs(q.x) > 2) && sl[2].z > sl[0].z);
+  ok('backup: slots flank the player on both sides', Math.sign(sl[0].x) !== Math.sign(sl[1].x) && sl.every(q => Math.abs(q.x) > 1.2 && q.z < 0) && sl[2].z < sl[0].z);
   ok('backup: target nearest hostile in range', DC.escortTarget({ x: 0, z: 0 }, { x: 0, z: 0 }, [{ x: 30, z: 0 }, { x: 5, z: 0 }, { x: 2, z: 0, alive: false }]).x === 5 && DC.escortTarget({ x: 0, z: 0 }, { x: 0, z: 0 }, [{ x: 40, z: 0 }]) === null);
   const B = JSON.parse(readFileSync(new URL('../data/barter.json', import.meta.url)));
   const gb = B.offers.filter(o => o.gives?.type === 'gang_backup');
   ok('backup: every barter gang_backup offer plans on desktop', gb.length >= 2 && gb.every(o => DC.backupPlan(o.gives, 12, false).ok));
+}
+
+{ // ssx:npc-down (PR #12 paramedic job)
+  const T = new EventTarget(), got = []; T.addEventListener('ssx:npc-down', e => got.push(e.detail));
+  ok('npc-down: fires with x, z, name', DC.emitNpcDown({ x: 3, z: -4, kind: 'junkie' }, T) && got.length === 1 && got[0].x === 3 && got[0].z === -4 && got[0].name === 'Junkie');
+  DC.emitNpcDown({ x: 1, z: 1, kind: 'thug', escort: true }, T); DC.emitNpcDown({ x: 0, z: 0, name: 'Saltblood driver' }, T); DC.emitNpcDown({ x: 'a', role: 'victim' }, T);
+  ok('npc-down: escort, driver and fallback names', got[1].name === 'Saltblood escort' && got[2].name === 'Saltblood driver' && got[3].name === 'Colonist' && got[3].x === 0);
+  ok('npc-down: no target is a safe no-op', DC.emitNpcDown({ x: 0, z: 0 }, null) === false && DC.emitNpcDown({ x: 0, z: 0 }, { dispatchEvent() { throw new Error('x'); } }) === false);
+  const src = readFileSync(new URL('../danger.js', import.meta.url), 'utf8'), ps = readFileSync(new URL('../pursuit.js', import.meta.url), 'utf8');
+  ok('npc-down: wired in killNpc and chase wrecks', /function killNpc[\s\S]{0,400}emitNpcDown\(n\)/.test(src) && /u\.alive = false;[^\n]*emitNpcDown/.test(ps));
 }
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

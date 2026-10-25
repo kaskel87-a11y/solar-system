@@ -298,7 +298,7 @@ export function escapeRequest(d, worldName) {
 }
 
 // ---------- gang backup escorts (barter.json gives.type "gang_backup": {faction, count, durationSec, armed, vehicle?}) ----------
-export const BACKUP = { factions: { saltblood: { kind: 'thug', hp: 6 } }, maxPhone: 4, maxDesktop: 6, minDur: 20, maxDur: 600, follow: 3.2, leash: 45, engage: 24 };
+export const BACKUP = { factions: { saltblood: { kind: 'thug', hp: 6 } }, maxPhone: 4, maxDesktop: 6, minDur: 20, maxDur: 600, follow: 4.2, leash: 45, engage: 24 };
 const ARMED = { pistols: 'pipe', smgs: 'pipe', knives: 'knife', fists: 'fists' }; // NPC ranged attacks need an engine export; escorts melee for now
 export function backupPlan(g, room, mobile) {
   if (!g || typeof g !== 'object') return { ok: false, why: 'bad' };
@@ -310,8 +310,16 @@ export function backupPlan(g, room, mobile) {
 }
 // follow slot i of n: flanking you, alternating left/right and fanning back (so the chase camera actually sees them)
 // yaw: player facing, forward = (-sin, -cos)
-export function escortSlot(i, n, x, z, yaw, r = BACKUP.follow) { const side = i % 2 ? 1 : -1, rank = Math.floor(i / 2), a = yaw + side * (1.05 + rank * 0.45), rr = r + rank * 0.8; return { x: x - Math.sin(a) * rr, z: z - Math.cos(a) * rr }; }
+export function escortSlot(i, n, x, z, yaw, r = BACKUP.follow) { const side = i % 2 ? 1 : -1, rank = Math.floor(i / 2), a = yaw + side * (0.42 + rank * 0.3), rr = r + rank * 1.2; /* narrow: a portrait phone has a ~40° horizontal FOV */ return { x: x - Math.sin(a) * rr, z: z - Math.cos(a) * rr }; }
 // nearest live hostile within range of the escort or the player
 export function escortTarget(e, P, targets, range = BACKUP.engage) {
   let best = null, bd = Infinity; for (const t of targets || []) { if (!t || t.alive === false) continue; const dp = Math.hypot(t.x - P.x, t.z - P.z); if (dp > range) continue; const d = Math.hypot(t.x - e.x, t.z - e.z); if (d < bd) { bd = d; best = t; } } return best;
+}
+
+// ---------- ssx:npc-down (Marsmania's paramedic job, PR #12, listens on window) ----------
+const DOWN_NAMES = { junkie: 'Junkie', thug: 'Saltblood', colonist: 'Colonist', victim: 'Colonist', escort: 'Saltblood escort' };
+export function npcDownDetail(n) { const x = +n?.x, z = +n?.z; return { x: Number.isFinite(x) ? x : 0, z: Number.isFinite(z) ? z : 0, name: String(n?.name || (n?.escort ? DOWN_NAMES.escort : DOWN_NAMES[n?.kind] || DOWN_NAMES[n?.role] || n?.kind || 'Someone')) }; }
+// guarded: never throws into the game loop. tgt defaults to window (absent in node unless a test passes one)
+export function emitNpcDown(n, tgt = typeof window !== 'undefined' ? window : null) {
+  try { if (!tgt?.dispatchEvent || typeof CustomEvent !== 'function') return false; tgt.dispatchEvent(new CustomEvent('ssx:npc-down', { detail: npcDownDetail(n) })); return true; } catch (e) { return false; }
 }

@@ -49,11 +49,13 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('budgetCap', JSON.stringify(b0), b0.world + b0.ours + b0.chase <= Math.max(b0.cap, b0.world) && b0.cap <= 12);
     // walk forward: they follow
     await G(() => { const s = window.__app.surface, p = s.info; s.debugMove?.(p.x - Math.sin(p.yaw ?? 0) * 12, p.z - Math.cos(p.yaw ?? 0) * 12); });
-    ok('follow', JSON.stringify(await G(() => window.__danger.backup.escorts)), await wait(() => { const p = window.__app.surface.info; return window.__danger.backup.escorts.filter(e => e.alive).every(e => Math.hypot(e.x - p.x, e.z - p.z) < 8); }, 30000));
+    ok('follow', JSON.stringify(await G(() => window.__danger.backup.escorts)), await wait(() => { const p = window.__app.surface.info; return window.__danger.backup.escorts.filter(e => e.alive).every(e => Math.hypot(e.x - p.x, e.z - p.z) < 9); }, 30000));
     await sleep(300); await shot('backup');
     // a mugger shows up: the crew takes him apart
+    await G(() => { window.__downs = []; addEventListener('ssx:npc-down', e => window.__downs.push(e.detail)); });
     await G(() => { window.__danger.skipGrace(); window.__danger.force('mugging', { dist: 9 }); });
     ok('escortsFight', JSON.stringify(await G(() => ({ s: window.__danger.state.stats, b: window.__danger.backup.stats }))), await wait(() => window.__danger.backup.stats.kills >= 1 || !window.__danger.state.mug, 60000));
+    ok('npcDownEvent', JSON.stringify(await G(() => window.__downs)), await wait(() => window.__downs.length >= 1 || !window.__danger.backup.stats.kills, 5000));
     ok('noCrimeFromCrew', await G(() => window.__app.surface.world.wanted), await G(() => window.__app.surface.world.wanted === 0));
     // the hire runs out: they walk and despawn
     await G(() => window.__danger.endBackup());

@@ -74,7 +74,7 @@ function spawnUnit(kind, role = kind) {
 }
 function hitUnit(u, d) {
   if (!u.alive) return true; u.hp -= d;
-  if (u.hp <= 0) { u.alive = false; u.wreck = 10; u.group.traverse(o => { if (o.isMesh) o.material = assets().mWreck; }); S.kills = (S.kills || 0) + 1; S.log.push('wreck');
+  if (u.hp <= 0) { u.alive = false; u.wreck = 10; DC.emitNpcDown({ x: u.x, z: u.z, name: u.kind === 'junkie' ? 'Junkie driver' : S.kind === 'getaway' ? 'Fence crew driver' : 'Saltblood driver' }); u.group.traverse(o => { if (o.isMesh) o.material = assets().mWreck; }); S.kills = (S.kills || 0) + 1; S.log.push('wreck');
     toast(u.kind === 'junkie' ? '💥 The junkie\u2019s buggy folds into the dirt.' : S.kind === 'getaway' ? '💥 One less car on your tail.' : '💥 Saltblood car wrecked. They\u2019ll remember that.', 2000); if (S.kind !== 'getaway') S.onGangKill?.(u.kind); }
   return true;
 }
