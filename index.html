@@ -1017,8 +1017,7 @@
       speak(ev.text);
     }
     radioEl.addEventListener('click', e => { if (e.target.closest('button')) return; if (radioEl.classList.contains('mini')) { radioEl.classList.remove('mini'); toastEl.classList.remove('on'); discPop.classList.remove('show', 'open'); } else radioEl.classList.toggle('open'); });
-    // pointer-bound (onTap): a plain onclick drops the tap on iOS while a thumb rests on the joystick
-    onTap(document.getElementById('radioAccept'), () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); });
+    document.getElementById('radioAccept').onclick = () => { if (radioOffer) surface.game.accept(radioOffer); radioOffer = null; radioEl.style.display = 'none'; updateSurfHud(true); };
     document.getElementById('radioLater').onclick = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Jobs stay in the Log (L).', 2500); };
     const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
     let hurtTimer = 0;
@@ -1353,7 +1352,7 @@
         const no = (!it.ok && !it.owned) || (!it.owned && !it.afford) || (it.owned && !it.id.includes(':'));
         return `<div class="item${no ? ' no' : ''}">${it.color != null ? `<span style="width:14px;height:14px;border-radius:4px;background:#${it.color.toString(16).padStart(6, '0')}"></span>` : ''}<div><b>${esc(it.name)}</b><br><small>${esc(it.why || it.desc || '')}</small></div><button class="btn" data-buy="${esc(it.id)}">${lbl}</button></div>`;
       }).join('')).join('') + `<p style="opacity:.6;font-size:.75rem">Carrying ${L.medkits}/3 medkits · ${L.shells} shells.</p>`;
-      shopListEl.querySelectorAll('[data-buy]').forEach(b => onTap(b, () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); surface.world.refreshWares?.(); updateSurfHud(true); }));
+      shopListEl.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const r = surface.game.buy(b.dataset.buy); shopMsg.textContent = r.msg; renderShop(); surface.world.refreshWares?.(); updateSurfHud(true); });
     }
     function openShop(venue = null, who = '') { shopVenue = venue; shopWho = who || ''; shopMsg.textContent = venue === 'bar' ? `${who || 'Bartender'}: What\u2019ll it be?` : 'Cash only. No refunds. No questions.'; renderShop(); shopPanel.style.display = 'block'; au7.fx.door(); if (document.pointerLockElement) document.exitPointerLock(); }
     document.getElementById('shopClose').onclick = () => shopPanel.style.display = 'none';
