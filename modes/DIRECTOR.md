@@ -8,7 +8,7 @@ Open it from ☰ → **🎬 Director**. The panel is a full-height dialog with h
 | Time of day | game / dawn / noon / dusk / night, plus a 0–24 h slider. Changes sky, sun, light and stars (blue Mars sunsets) | no |
 | Freeze time / time scale | freeze; 0.5×, 1×, 4× or 16× in-game hours per game minute | no |
 | NPC density | normal / sparse / empty. It only *reserves* NPC slots, so it can't go over the phone cap of 12 | no |
-| No cops | keeps wanted at 0, recalls security and no-ops `SSX.city.securityResponse` | **yes** |
+| No cops | keeps wanted at 0, recalls ColSec security (world.js) and no-ops `SSX.city.securityResponse`. Street danger and gang chases (danger.js/pursuit.js) aren't police and keep their own ☰ toggle | **yes** |
 | Invincibility | keeps HP and shield full | **yes** |
 | Unlimited ammo | refills shells, rounds, slugs and grenades and clears cooldowns | **yes** |
 | Spawn vehicle | lists the registered `VEHICLES`. Uses `SSX.garage.grantVehicle` if that add-on exists; otherwise only the rover (summonRover) | **yes** (until reload) |
@@ -28,7 +28,7 @@ Storms and time of day only apply on the Mars surface, never indoors. Fog near a
 `version, state(), set(key, value), cheats(), rewardsBlocked(), open(), close(), spawnVehicle(id), vehicles(), on(fn)`; emits `director:change`.
 
 ## Hook
-There's one line in `index.html`, right after the contraband script: `<script type="module" src="./modes/director.js?v=…">`. Everything else lives in `modes/director.js` (UI and scene) and `modes/directorcore.js` (pure rules). It reads core APIs only through `SSX.registerSurfaceTick`, `SSX.registerMenuItem`, `SSX.on`, `__app.surface.{game,world}` and feature-detected `SSX.danger`, `SSX.garage` and `SSX.city`.
+There's one line in `index.html`, right after the contraband script: `<script type="module" src="./modes/director.js?v=…">`. Everything else lives in `modes/director.js` (UI and scene) and `modes/directorcore.js` (pure rules). The modules import plain relative paths (`'../world.js'`, `'./directorcore.js'`), following the v7.5.2 import-map rule, and the script src uses main's `?v=`. **At merge:** run `python3 tools/importmap.py` (adds `modes/director*.js` to the import map) and add both files to `sw.js` PRECACHE, as was done for `mars/jobs.js`. Until then they load unversioned and work fine online. It reads core APIs only through `SSX.registerSurfaceTick`, `SSX.registerMenuItem`, `SSX.on`, `__app.surface.{game,world}` and feature-detected `SSX.danger`, `SSX.garage` and `SSX.city`.
 
 ## Tests
 - `node tests/test-director-unit.mjs`
