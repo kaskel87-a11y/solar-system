@@ -63,14 +63,14 @@ const SHOPS = {
       { id: 'shells24', name: 'Bulk buckshot \u00d724', desc: 'A coffee can of shells.', price: 36, kind: 'ammo', ammo: 'shells', n: 24 },
       { id: 'rounds', name: 'Reloads \u00d760', desc: 'Hand-packed SMG rounds.', price: 25, kind: 'ammo', ammo: 'rounds', n: 60 }
     ] },
-    { kind: 'clothes', key: 'ms_clothes_rtf', sign: 'THRIFT LOCK', color: 0xd8b020, at: [10, -26, 7, 4, 4], keeper: 'Pin', items: [
+    { kind: 'clothes', key: 'ms_clothes_rtf', sign: 'THRIFT LOCK', color: 0xd8b020, at: [42, -8, 7, 4, 4], keeper: 'Pin', items: [
       { id: 'rustrag', name: 'Rust Rag bandana', price: 25, kind: 'bandana', c: 'rustrag' },
       { id: 'dustkings', name: 'Dust Kings colours', price: 35, kind: 'bandana', c: 'dustkings' },
       { id: 'scrapper', name: 'Scrapper Grey bandana', price: 30, kind: 'bandana', c: 'scrapper' },
       { id: 'primer', name: 'Rover wrap: Primer Grey', price: 40, kind: 'paint', c: 'primer' },
       { id: 'burnout', name: 'Rover wrap: Burnout Black', price: 50, kind: 'paint', c: 'burnout' }
     ] },
-    { kind: 'pharm', key: 'ms_pharm_rtf', sign: 'DOC GRIM\u2019S', color: 0x6aff6a, at: [-6, 30, 6, 4, 3.5], keeper: 'Doc Grim', items: [
+    { kind: 'pharm', key: 'ms_pharm_rtf', sign: 'DOC GRIM\u2019S', color: 0x6aff6a, at: [-6, -24, 6, 4, 3.5], keeper: 'Doc Grim', items: [
       { id: 'medkit', name: 'Patched medkit', desc: 'Heals 50. Mostly sterile. Carry up to 3.', price: 25, kind: 'medkit' },
       { id: 'stim', name: 'Back-alley stim', desc: '+60 health right now. Leaves you woozy for 25 s.', price: 30, kind: 'heal', hp: 60, woozy: 25 },
       { id: 'pills', name: 'Bootleg painkillers', desc: '+25 health. Mild wooze.', price: 10, kind: 'heal', hp: 25, woozy: 10 },
@@ -84,7 +84,7 @@ const SHOPS = {
     ] }
   ],
   oly: [
-    { kind: 'guns', key: 'ms_guns_oly', sign: 'MERIDIAN ARMS', color: 0x40d0ff, at: [-42, -24, 8, 5, 4], keeper: 'Dana Okafor', items: [
+    { kind: 'guns', key: 'ms_guns_oly', sign: 'MERIDIAN ARMS', color: 0x40d0ff, at: [-38, -36, 8, 5, 4], keeper: 'Dana Okafor', items: [
       { id: 'shotgun', name: 'Breacher shotgun', desc: '8-pellet scattergun. Comes with 12 shells.', price: 150, kind: 'weapon', w: 'shotgun' },
       { id: 'smg', name: 'Viper SMG', desc: 'Compact caseless SMG. Comes with 60 rounds.', price: 260, kind: 'weapon', w: 'smg' },
       { id: 'railrifle', name: 'Scoped rail rifle', desc: 'Punches through a line of anything. Comes with 6 slugs.', price: 420, kind: 'weapon', w: 'railrifle' },
@@ -98,7 +98,7 @@ const SHOPS = {
       { id: 'meridian', name: 'Rover wrap: Meridian Teal', price: 90, kind: 'paint', c: 'meridian' },
       { id: 'chrome', name: 'Rover wrap: Chrome', price: 120, kind: 'paint', c: 'chrome' }
     ] },
-    { kind: 'pharm', key: 'ms_pharm_oly', sign: 'OLYMPUS CARE', color: 0x40ff9a, at: [26, 30, 7, 4, 4], keeper: 'Pharmacist Ruiz', items: [
+    { kind: 'pharm', key: 'ms_pharm_oly', sign: 'OLYMPUS CARE', color: 0x40ff9a, at: [-2, -24, 7, 4, 4], keeper: 'Pharmacist Ruiz', items: [
       { id: 'medkit', name: 'Trauma medkit', desc: 'Heals 50. Carry up to 3.', price: 40, kind: 'medkit' },
       { id: 'stim', name: 'Combat stim', desc: '+35 health and a full shield.', price: 45, kind: 'heal', hp: 35, shield: true },
       { id: 'cell', name: 'Shield cell', desc: 'Refills your shield.', price: 35, kind: 'heal', shield: true },
@@ -400,7 +400,7 @@ function placeBlocks() {
       const def = built.find(x => DIST[d].match.test(`${x.id || ''} ${x.name || ''}`)); if (!def) { mode = 'mixed'; continue; }
       for (const s of SHOPS[d]) {
         const hit = s.steve && def.blocks.find(b => s.steve.test(b[5] || ''));
-        if (hit) { hit[7] = s.key; hit[8] = s.sign; placed.push({ d, key: s.key, local: true, block: hit }); continue; }
+        if (hit) { hit[7] = s.key; hit[8] = hit[8] || s.sign; placed.push({ d, key: s.key, local: true, block: hit }); continue; }
         const [x, z, w, dd, h] = s.at, b = [x, z, w, dd, h, s.sign, s.color, s.key, s.sign]; def.blocks.push(b); placed.push({ d, key: s.key, local: true, block: b });
       }
     }
