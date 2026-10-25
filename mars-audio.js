@@ -105,6 +105,7 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
       if (q) { b.p.x = q.x; b.p.z = q.z; }
       const v = new cam.position.constructor(b.p.x, (info.y || 0) + 2.1, b.p.z).project(cam), pos = placeCaption(v.x, v.y, v.z, W, H, placed);
       if (!pos) { b.el.style.opacity = '0'; continue; }
+      const hw = (b.w ||= b.el.offsetWidth) / 2 + 8; pos.x = Math.max(hw, Math.min(W - hw, pos.x)); // keep the whole caption on screen
       placed.push(pos); b.el.style.opacity = t > b.end - 0.4 ? '0' : '1'; b.el.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -100%)`;
     }
     if (live.length) requestAnimationFrame(follow);
