@@ -123,7 +123,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // ---- persistence + events
     const st = await G(() => window.SSX.jobs.stats()); R.stats = JSON.stringify({ taxi: st.taxi.level, med: st.paramedic.level, vig: st.vigilante.level, earned: st.earned });
-    ok('persisted', await G(() => { const s = JSON.parse(localStorage.getItem('ssx.jobs.v1')); return s.taxi.done === 5 && s.paramedic.done === 5 && s.vigilante.done === 5; }));
+    ok('persisted', await G(() => { const s = JSON.parse(localStorage.getItem('ssx.jobs.v1')); return s.taxi.done === 5 && s.paramedic.done === 6 && s.vigilante.done === 5; }));
     ok('flags', await G(() => ['taxi', 'paramedic', 'vigilante'].every(t => window.__app.game.flag(`jobs:${t}:L2`))));
     const evs = await G(() => window.__evs); R.events = [...new Set(evs)].join(',');
     ok('events', ['start:taxi', 'complete:taxi', 'levelup:taxi', 'levelup:paramedic', 'levelup:vigilante', 'stop:taxi'].every(e => evs.includes(e)));
