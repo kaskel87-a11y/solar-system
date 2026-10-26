@@ -35,6 +35,7 @@ import * as THREE from 'three';
 
 const KEY = 'ssx.fight.v1', HOTKEY = 'BracketRight';
 const CAGE_AT = [-292, -68], R_CAGE = 6.4, R_NEAR = 10;
+const R_PIT = 12; // v7.5.4: the Rust Pit grounds (cage + apron); ColSec holds fire in here (world.js updateSecurity), same radius as mars/pursuit.js
 const CARD_EVERY = 90, CARD_LIVE = 12, DEFENCE_EVERY = 1200, DEFENCE_WINDOW = 600, MARGIN = 0.92;
 const STAKES = [0, 50, 100, 250];
 const GANGS = { saltblood: 'Saltblood', saints: 'Vacuum Saints', dustjaws: 'Dustjaw Boys' };
@@ -418,7 +419,7 @@ function status() {
 }
 window.SSX = window.SSX || {};
 const API = {
-  ladder, status, odds: (a, b) => odds(a, b), challenge, bet, card: pubCard, on, open, close, fighters: FIGHTERS.map(f => ({ id: f.id, name: f.name, blurb: f.blurb, gang: f.gang })), hotkey: HOTKEY,
+  ladder, status, inPit: () => cageDist() < R_PIT || (!!bout && !!world()?.inDuel), odds: (a, b) => odds(a, b), challenge, bet, card: pubCard, on, open, close, fighters: FIGHTERS.map(f => ({ id: f.id, name: f.name, blurb: f.blurb, gang: f.gang })), hotkey: HOTKEY,
   debug: {
     goto() { const h = here(), s = surf(); if (!h) return false; s.debugMove(h.cx + CAGE_AT[0] + 1.5, h.cz + CAGE_AT[1] + 1, 0); return true; },
     card: (a, b, o = {}) => newCard(a, b, { sec: 60, ...o }), runCard() { if (S.card?.phase === 'open') goLive(); return pubCard(); }, resolveCard: id => resolveCard(id),

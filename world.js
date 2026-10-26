@@ -614,7 +614,11 @@ export function createWorld(ctx) {
     return o;
   }
   function recall(s) { scene.remove(s.group); security.splice(security.indexOf(s), 1); }
+  // v7.5.4: ColSec never fires inside the Rust Pit (#34): drones, buggies, officers, heavies, the gunship and guards all hold
+  // fire while SSX.fight.inPit() (cage + 12 m apron, or a live bout); rounds already in the air do no damage there
+  let pitHold = false;
   function secShoot(s, dmg) {
+    if (pitHold) return;
     const from = new THREE.Vector3(s.x, s.y + (s.kind === 'drone' || s.kind === 'gunship' ? 0 : 1.6), s.z), st = ctx.st(), ty = st.driving ? st.car.y + 1.2 : player.y - 0.4;
     const to = new THREE.Vector3(player.x + (Math.random() - 0.5) * 2.5, ty, player.z + (Math.random() - 0.5) * 2.5);
     const m = new THREE.Mesh(R.bolt, R.boltM); m.position.copy(from); m.lookAt(to); scene.add(m);
@@ -640,6 +644,7 @@ export function createWorld(ctx) {
   }
   function updateSecurity(dt) {
     const st = ctx.st(), game = ctx.game(), down = game.isDown();
+    try { pitHold = !!globalThis.SSX?.fight?.inPit?.(); } catch (e) { pitHold = false; }
     // how many units the current heat calls for
     if (wanted > 0 && !down) {
       respawnCd -= dt;
@@ -707,7 +712,7 @@ export function createWorld(ctx) {
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
       const p = s.m.position, ty = st.driving ? st.car.y + 1.2 : player.y - 0.6;
-      if (!inside && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
+      if (!inside && !pitHold && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
       if (p.y < height(p.x, p.z) || s.life <= 0) { scene.remove(s.m); shots.splice(shots.indexOf(s), 1); }
     }
   }
