@@ -102,7 +102,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await sleep(1500); await G(() => window.__app.game.accept('wolde-02-discovery'));
     ok('woldeHeistLive', await wait(() => window.SSX.heist.active?.id === 'wolde-02-impound' && !!window.SSX.heist.active.w, 8000));
     const wg = await G(() => { const w = window.SSX.heist.active.w; return { door: { x: w.door.x, z: w.door.z }, safe: { x: w.safe.x, z: w.safe.z }, site: { x: w.site.x, z: w.site.z } }; });
-    await G(([x, z]) => window.__app.surface.debugMove(x, z, 0), [wg.door.x, wg.door.z]); await sleep(1200);
+    if (await G(() => window.__app.surface.info.driving)) { await G(() => window.__app.surface.interact()); await wait(() => !window.__app.surface.info.driving, 4000); }
+    for (const [ox, oz] of [[0, 0], [0, 0.8], [0.8, 0], [-0.8, 0], [0, -0.8]]) { await G(([x, z]) => window.__app.surface.debugMove(x, z, 0), [wg.door.x + ox, wg.door.z + oz]); await sleep(1200); if (/Break in/.test(await act() || '')) break; }
+    R.woldeDoorAction = await act();
     await G(() => window.SSX.heist.act()); ok('woldeCrackStage', await wait(() => window.SSX.heist.active?.stage === 'crack', 6000));
     await G(([x, z]) => window.__app.surface.debugMove(x, z, 0), [wg.safe.x, wg.safe.z]); await sleep(1200);
     ok('woldeCrackAction', await act(), /Crack safe/.test(await act() || ''));
