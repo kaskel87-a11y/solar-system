@@ -47,7 +47,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { window.SSX.on?.('heist:escape', d => { window.__ssxEsc = d; }); });
     ok('started', await wait(() => window.SSX.heist.active?.w, 8000));
     const w = await G(() => window.SSX.heist.active.w);
-    ok('activeCallable', await G(() => typeof window.SSX.heist.active === 'function' && window.SSX.heist.active('mansion', 'x') === true && window.__app.surface.game.heistAt('mansion', 'x') === true)); // main's game.heistAt calls active?.(kind, name)
+    ok('activeCallable', await G(() => typeof window.SSX.heist.active === 'function' && window.SSX.heist.active() === true)); // main's game.heistAt calls active?.(kind, name)
+    // v7.5.3 (CoS review #3): active(kind, name) is true only for this heist's own target - the door at its site, not every door
+    const scope = await G(() => { const H = window.SSX.heist.active, W = window.__app.surface.world, s = H.w?.site, ds = (W.doorList?.() || []).map(d => ({ ...d, r: s ? Math.hypot(d.x - s.x, d.z - s.z) : 1e9 })).sort((a, b) => a.r - b.r);
+      const near = ds[0], far = ds[ds.length - 1]; return { near: near && near.r < 20 ? H(near.kind, near.name) && window.__app.surface.game.heistAt(near.kind, near.name) : 'none', far: far && far.r > 60 ? H(far.kind, far.name) : false, nearR: near?.r | 0 }; });
+    ok('activeScoped', JSON.stringify(scope), scope.near !== false && scope.far === false);
     ok('camerasPlaced', await G(() => window.SSX.heist.cameras().length), (await G(() => window.SSX.heist.cameras().length)) === 3);
     R.tip = await G(() => { const h = window.SSX.heist; const c = h.applyTip('heist-sample', { type: 'cameras' }); const s = h.applyTip('heist-sample', { type: 'safe', ease: 0.3 });
       return { cams: c && c.cameras.length, ease: s && s.ease, unknown: h.applyTip('heist-sample', { type: 'zzz' }), noHeist: h.applyTip('nope', { type: 'cameras' }), ev: window.__hlog.some(e => e[0] === 'tip') }; });

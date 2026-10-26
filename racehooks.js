@@ -21,11 +21,17 @@ export function addMenuItem(app, { id, label, onTap }) {
 // (iOS WebKit drops the synthetic click while another finger is down). Mouse/keyboard still use click.
 // v7.5.2: delegated version for panels that re-render their buttons (race, side jobs, poker). panelTap(panel, fn) replaces
 // the previous handler like panel.onclick = fn; fn gets { target: button } on a touch tap, or the click event otherwise.
+// v7.5.3: the click WebKit synthesises after a touch lands on whatever is under the finger once the panel closes
+// (race panel ✕ Close sits over ☰, which reopened the menu). Eat one click outside el for 500 ms.
+function eatGhost(el) {
+  const t0 = performance.now(), eat = e => { document.removeEventListener('click', eat, true); if (performance.now() - t0 > 500 || el.contains(e.target)) return; e.stopPropagation(); e.preventDefault(); };
+  document.addEventListener('click', eat, true); setTimeout(() => document.removeEventListener('click', eat, true), 600);
+}
 export function panelTap(el, fn) {
   el.__ptap = fn; if (el.__ptapOn) return; el.__ptapOn = true;
   let id = null, btn = null, x = 0, y = 0, last = 0;
   el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; const b = e.target.closest && e.target.closest('button'); if (!b || !el.contains(b)) return; id = e.pointerId; btn = b; x = e.clientX; y = e.clientY; });
-  el.addEventListener('pointerup', e => { if (e.pointerId !== id) return; const b = btn; id = null; btn = null; if (!b || b.disabled || Math.hypot(e.clientX - x, e.clientY - y) > 14) return; e.preventDefault(); last = performance.now(); el.__ptap?.({ target: b, type: 'tap', pointerType: e.pointerType, preventDefault() {}, stopPropagation() {} }); });
+  el.addEventListener('pointerup', e => { if (e.pointerId !== id) return; const b = btn; id = null; btn = null; if (!b || b.disabled || Math.hypot(e.clientX - x, e.clientY - y) > 14) return; e.preventDefault(); last = performance.now(); eatGhost(el); el.__ptap?.({ target: b, type: 'tap', pointerType: e.pointerType, preventDefault() {}, stopPropagation() {} }); });
   el.addEventListener('pointercancel', e => { if (e.pointerId === id) { id = null; btn = null; } });
   el.addEventListener('click', e => { if (performance.now() - last < 700) return; el.__ptap?.(e); });
 }

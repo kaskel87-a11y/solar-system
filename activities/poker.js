@@ -70,7 +70,8 @@ function spend(n) {
   const P = g.debug?.P?.(); if (!P || P.credits < n) return false;
   P.credits -= n; g.debug?.credits?.(0); return true;
 }
-function grant(n) { app()?.surface?.game?.debug?.credits?.(n) || app()?.game?.debug?.credits?.(n); }
+// v7.5.3: pay exactly once (both paths are the same game, and credits() returns undefined, so `a || b` paid twice)
+export function grant(n, A = app()) { const f = (A?.surface?.game || A?.game)?.debug?.credits; if (typeof f !== 'function' || !(n > 0)) return false; f(n); return true; }
 
 function ensurePanel() {
   if (panel) return panel;

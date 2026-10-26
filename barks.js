@@ -35,13 +35,42 @@ export const BARKS = {
   security4: ['Requesting armed squad, Ares Junction.', 'All units, lethal force.'],
   security5: ['Deploying APC. Clear the dome.', 'This is a lockdown. Nobody leaves.'],
   search: ['Lost visual.', 'Check behind the hauler.', 'They went north. Probably.'],
-  lost: ['Suspect lost. Back to patrol.', 'Forget it. Paperwork\u2019s worse.']
+  lost: ['Suspect lost. Back to patrol.', 'Forget it. Paperwork\u2019s worse.'],
+  // v7.5.3 bark keys: activity/contact categories so callers' keys ('activity_complete', 'idle', 'warn', 'poker_*',
+  // 'barter_*', 'pit_*') read as real lines instead of the raw key. See BARK_ALIASES + resolveBark below.
+  activity_complete: ["Damn. Didn't think you'd crawl back. Pay's on the board.", 'Clean job. Well, clean for the Flats.',
+    "Credits sent. Don't drink it all at the Airlock.", 'Hell yeah. Somebody on this rock can actually work.',
+    "You're still breathing. That's a bonus I didn't budget for.", "Nice. Now get lost before ColSec asks questions."],
+  activity_fail: ['Shit. Well, the dust keeps what it takes.', "That was ugly. Don't put my name on it.",
+    'You blew it. Rent still comes due, friend.', "Hell of a way to lose. Try again when you're sober."],
+  idle: ['Slow shift. Even the dust looks bored.', "Hurry up and wait. That's the whole damn colony.",
+    'Recycler hums, I hum back. We understand each other.', 'Nobody tips on Mars. Nobody.',
+    "Some days the dome feels real small. Today's one."],
+  warn: ["Hey! Don't be an idiot about this.", 'Careful. That shit bites back.', "Back off. I'm not asking twice.",
+    'Whoa. Bad idea, pal. Real bad idea.', "Not there! You'll get us both killed."],
+  offer: ['Got work if you want it. Pays in real credits.', 'Psst. You look like you need money. I got a thing.',
+    "Interested? Say yes before I find somebody dumber.", "Deal's on the table. Don't make me wait."],
+  poker: ["Ante up, dust-rat.", 'Read me all you want. Nothing in here.', "Fold or don't. Clock's ticking.",
+    'Nice tell. Do it again.', "Brick's watching your hands. So am I."],
+  crowd: ['Hit him! HIT HIM!', "Fifty on the ugly one! No, the other ugly one!", 'Blood on the floor, baby!', 'Get up, you bum! I bet on you!']
+};
+// Caller keys that aren't categories themselves: key -> category. Unlisted snake_case keys go through the suffix rules
+// in aliasFor(); anything still unknown is skipped (one console.warn per key), never shown as a raw word.
+export const BARK_ALIASES = {
+  poker_offer: 'offer', poker_start: 'poker', poker_fold: 'poker', poker_ai_fold: 'poker', poker_tip: 'poker',
+  poker_win: 'activity_complete', poker_success: 'activity_complete', poker_cashout_win: 'activity_complete',
+  poker_lose: 'activity_fail', poker_fail: 'activity_fail', poker_cashout_lose: 'activity_fail', poker_cheat_caught: 'warn',
+  pit_crowd: 'crowd', pit_cheer: 'crowd',
+  barter_offer: 'offer', barter_accept: 'activity_complete', barter_decline: 'warn', barter_caught: 'wanted',
+  greet: 'offer', deal: 'activity_complete', deny: 'warn' // modes/rags.js (R2R contacts)
 };
 // Priority (higher interrupts the global gap sooner) and per-category gap in seconds
 export const CATS = {
   gun: { p: 5, gap: 4 }, hit: { p: 5, gap: 2 }, stolen: { p: 4, gap: 4 }, wanted: { p: 3, gap: 6 }, security: { p: 3, gap: 5 },
   search: { p: 2, gap: 8 }, lost: { p: 3, gap: 6 }, speeding: { p: 3, gap: 5 }, bump: { p: 3, gap: 3 }, flashy: { p: 2, gap: 8 },
-  dog: { p: 1, gap: 20 }, street: { p: 1, gap: 9 }, downtown: { p: 1, gap: 9 }, flats: { p: 1, gap: 9 }, heights: { p: 1, gap: 9 }
+  dog: { p: 1, gap: 20 }, street: { p: 1, gap: 9 }, downtown: { p: 1, gap: 9 }, flats: { p: 1, gap: 9 }, heights: { p: 1, gap: 9 },
+  activity_complete: { p: 3, gap: 3 }, activity_fail: { p: 3, gap: 3 }, warn: { p: 3, gap: 4 }, offer: { p: 2, gap: 4 },
+  idle: { p: 1, gap: 9 }, poker: { p: 2, gap: 4 }, crowd: { p: 2, gap: 4 }
 };
 export const BARK_CFG = { globalGap: 3.5, urgentGap: 1.2, npcGap: 12, maxVisible: 2, life: 2.6, perChar: 0.035, recent: 6 };
 export const catKey = c => (/^security\d$/.test(c) ? 'security' : c);
@@ -69,6 +98,33 @@ export function chooseCategory(ctx, rng = Math.random) {
   if (ctx.dist > 7) return null;
   if (ctx.dog && rng() < 0.2) return 'dog';
   return ctx.district && BARKS[ctx.district] && rng() < 0.6 ? ctx.district : 'street';
+}
+// ---------- key resolution (v7.5.3) ----------
+export const BARK_KEY = /^[a-z0-9_]+$/;
+const SUFFIX = [[/_(complete|completed|done|success|win|won|accept|accepted)$/, 'activity_complete'], [/_(fail|failed|lose|lost)$/, 'activity_fail'],
+  [/_(offer|start|pitch)$/, 'offer'], [/_(warn|warning|caught|decline|declined|refuse)$/, 'warn'], [/_(cheer|crowd)$/, 'crowd'], [/_idle$/, 'idle']];
+export function aliasFor(key, pool = BARKS) {
+  const a = BARK_ALIASES[key]; if (a && pool[a]) return a;
+  for (const [re, cat] of SUFFIX) if (re.test(key) && pool[cat]) return cat;
+  return null;
+}
+const warned = new Set();
+export const _resetBarkWarnings = () => warned.clear();
+// what: a category, a caller key, or free text. opts: { line } or a plain fallback string (callers pass (npc, key, line)).
+// Returns { cat, line } (line null = pick from cat; cat 'custom' = free text, rate-limited as 'street') or null = skip.
+// A snake_case key is never displayed as text: registered category > caller line > alias > skip with one console.warn.
+export function resolveBark(what, opts, pool = BARKS, warn = (...a) => console.warn(...a)) {
+  const given = typeof opts === 'string' ? opts : opts && typeof opts === 'object' && typeof opts.line === 'string' ? opts.line : null;
+  const line = given && given.trim() ? given.trim().slice(0, 90) : null;
+  if (what == null || what === '') return line ? { cat: 'custom', line } : null;
+  const w = String(what);
+  if (pool[w]?.length) return { cat: w, line };
+  if (!BARK_KEY.test(w)) return { cat: 'custom', line: w.slice(0, 90) };
+  const cat = aliasFor(w, pool);
+  if (line) return { cat: cat || 'custom', line };
+  if (cat) return { cat, line: null };
+  if (!warned.has(w)) { warned.add(w); try { warn(`[barks] unknown bark key '${w}' skipped (register it with SSX.registerBarks or add an alias)`); } catch (e) { /* */ } }
+  return null;
 }
 // Pick a line from a category, avoiding the last few lines used (recent is a shared array, mutated)
 export function pickLine(cat, recent = [], rng = Math.random, pool = BARKS, maxRecent = BARK_CFG.recent) {

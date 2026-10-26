@@ -11,7 +11,7 @@
 //   heist.fromMansion(building, originAj, extra)       -> def from Steve's gated-community.json
 //   heist.on(evt, fn) / off(evt, fn); every event is also window CustomEvent `heist:<evt>` with the same detail.
 import * as THREE from 'three';
-import { normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts } from './heistcore.js';
+import { normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts, heistCovers } from './heistcore.js';
 import { safeCrack, safeState, safeOpen, cancelSafe } from './safecrack.js';
 import { createCameras } from './cameras.js';
 import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem, tap } from './heisthooks.js';
@@ -228,7 +228,12 @@ export const heist = {
   // because game.heistAt(kind, name) (world.js interiors' heist()) calls SSX.heist.active?.(kind, name); a plain object threw.
   get active() {
     if (!run) return null; const d = run.def;
-    const fn = (kind, name) => !!run && (!kind || !d.kind || d.kind === kind) && (!name || !d.name || d.name === name);
+    const fn = (kind, name) => { // v7.5.3: scoped to this heist's target (heistCovers), not every vault/safe in the city
+      if (!run) return false; if (!kind && !name) return true; if (d.kind || d.name) return heistCovers(d, null, null, kind, name);
+      const W = ctxL?.world || window.__app?.surface?.world, site = run.w?.site || (d.site && toWorld(W, d.site, d.rel));
+      const door = (W?.doorList?.() || []).find(o => o.kind === kind && (!name || o.name === name));
+      return heistCovers(d, site, door, kind, name);
+    };
     return Object.assign(fn, { id: d.id, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, loot: run.loot, w: run.w });
   },
   get action() { return actNow ? actNow.label : null; },
