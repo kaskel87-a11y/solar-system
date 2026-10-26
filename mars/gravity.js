@@ -3,7 +3,7 @@
 // window.__app (keys, joy, touchBtns, toast, state) and window.SSX (registerSurfaceTick, jobs, airRoll); the math lives in
 // mars/gravitycore.js. The spaceship is never touched: we only act on the vehicle you're driving on the Mars surface.
 //
-// Toggle: Z (keyboard) or the black/white 🌍 button on the phone #ssxDock. Cycles MARS -> LOW-G -> ZERO-G.
+// Toggle: Z (on the ground) or 2 (any time, also while floating), or the black/white 🌍 button on the phone #ssxDock. Cycles MARS -> LOW-G -> ZERO-G.
 // With Ben's airroll.js (PR #41, desktop Z = barrel roll) loaded, Z only toggles gravity when no roll is possible (on the ground).
 // Safety: leaving the vehicle, going indoors, leaving Mars, a race / drag race / story race gate, or a job start drops back to
 // MARS. Races force MARS while they run (the toggle refuses). Coming out of ZERO-G high up, the car falls no faster than
@@ -43,10 +43,10 @@ function why(tc) { // null = gravity modes allowed right now
 }
 let lastTc = null;
 function hint(m) {
-  if (m === 'MARS') return 'Normal Mars gravity, 0.38 g.';
-  if (m === 'LOW-G') return isTouch() ? 'Floaty jumps and long airtime.' : 'Floaty jumps, long airtime. Space hops.';
+  if (m === 'MARS') return isTouch() ? 'Normal Mars gravity, 0.38 g.' : 'Normal Mars gravity, 0.38 g. Z or 2 to change.';
+  if (m === 'LOW-G') return isTouch() ? 'Floaty jumps and long airtime.' : 'Floaty jumps, long airtime. Space hops. Z or 2 for next mode.';
   return isTouch() ? 'Stick pitches and turns, ⚡ thrusts, ▲▼ up/down, ⟲⟳ roll. Let go to level out.'
-    : 'W/S thrust · A/D yaw · ↑↓ pitch · ←→ strafe · Space/C up/down · Q/E roll · Shift boost. Let go to level out.';
+    : 'W/S thrust · A/D yaw · ↑↓ pitch · ←→ strafe · Space/C up/down · Q/E roll · Shift boost. Let go to level out. 2 changes mode in the air.';
 }
 function setMode(m, reason, quiet) {
   if (!MODES.includes(m) || m === mode) { render(); return mode; }
@@ -182,10 +182,11 @@ function ui() {
   document.body.appendChild(padEl);
   chip = document.createElement('div'); chip.id = 'gravChip'; document.body.appendChild(chip);
   addEventListener('keydown', e => {
-    if (e.code !== 'KeyZ' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    if ((e.code !== 'KeyZ' && e.code !== 'Digit2') || e.repeat || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (!app()?.state?.onSurface || window.__race?.builder?.open) return;
-    const ar = window.SSX?.airRoll; if (ar && (ar.canRoll?.() || ar.isRolling?.())) return; // airborne: Z is SSX.airRoll's barrel roll (PR #41)
-    e.preventDefault(); cycle();
+    if (e.code === 'Digit2') { if (document.body.classList.contains('danger-standoff')) return; } // 2 = Fight in a danger standoff
+    else { const ar = window.SSX?.airRoll; if (ar && (ar.canRoll?.() || ar.isRolling?.())) return; } // airborne: Z is SSX.airRoll's barrel roll (PR #41); 2 always works
+    e.preventDefault(); cycle(); // cycle() still refuses during races / jobs / indoors / on foot
   });
   addEventListener('blur', () => { for (const k in pad) pad[k] = false; });
   render();
@@ -194,8 +195,8 @@ function syncUi() { const k = `${eligible}|${mode}`; if (k !== uiKey) render(); 
 function render() {
   uiKey = `${eligible}|${mode}`; const B = document.body; if (!B) return;
   B.classList.toggle('gravok', eligible); B.classList.toggle('grav-low', mode === 'LOW-G'); B.classList.toggle('grav-zero', mode === 'ZERO-G');
-  if (dockBtn) { dockBtn.textContent = `${ICON[mode]}\n${mode}`; dockBtn.setAttribute('aria-label', `Gravity: ${mode} (Z)`); dockBtn.setAttribute('aria-pressed', String(mode !== 'MARS')); }
-  if (chip) chip.textContent = `${ICON[mode]} ${mode} · Z`;
+  if (dockBtn) { dockBtn.textContent = `${ICON[mode]}\n${mode}`; dockBtn.setAttribute('aria-label', `Gravity: ${mode} (Z or 2)`); dockBtn.setAttribute('aria-pressed', String(mode !== 'MARS')); }
+  if (chip) chip.textContent = `${ICON[mode]} ${mode} · Z/2`;
   if (mode !== 'ZERO-G') for (const k in pad) pad[k] = false;
 }
 

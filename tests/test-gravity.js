@@ -151,11 +151,17 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
       ok('raceForcesMars', await wait(() => window.SSX.gravity.mode === 'MARS', 30000) && raced);
       await page.keyboard.press('KeyZ'); await sleep(200);
       ok('raceRefusesToggle', `${await mode()} / ${await toastTx()}`, (await mode()) === 'MARS' && /race/i.test(await toastTx()));
+      await page.keyboard.press('Digit2'); await sleep(200); ok('digit2RaceLocked', `${await mode()}`, (await mode()) === 'MARS');
       await G(() => window.__race.quit()); await sleep(400);
     } else R.raceSkipped = 'no track';
     // phones: NPC budget
     const b = await G(() => window.SSX.city.npcBudget()); ok('npcBudget', `${b.used}/${b.cap}`, b.used <= b.cap && (!touch || b.cap <= 12));
     if (touch) { await G(() => window.SSX.gravity.set('MARS')); await sleep(300); await shot('dock'); }
+    { // 2 cycles at any time (keyboard; also on a touch device with a keyboard) (also floating); the race lock above refused it the same way as Z
+      await G(() => window.SSX.gravity.set('ZERO-G')); await page.keyboard.down('Space'); await wait(() => window.__gravity.state()?.alt > 3, 60000); await page.keyboard.up('Space');
+      await page.keyboard.press('Digit2'); ok('digit2WhileFloating', await wait(() => window.SSX.gravity.mode === 'MARS', 5000));
+      await page.keyboard.press('Digit2'); ok('digit2Cycles', await wait(() => window.SSX.gravity.mode === 'LOW-G', 5000)); await G(() => window.SSX.gravity.set('MARS'));
+    }
     ok('modeLog', (await G(() => window.__gravity.log.map(l => `${l.from}>${l.to}:${l.reason}`).join(' '))), true);
     ok('noErrors', errors.join(' | ').slice(0, 300) || 'none', errors.length === 0);
   } catch (e) { bad.push('EXC ' + e.message.slice(0, 300)); }
