@@ -214,7 +214,7 @@ function surfaceFrame(scene, camera) {
       if (!renderer.shadowMap.autoUpdate) renderer.shadowMap.needsUpdate = !dl.shadow.map || (S.frames % tier.shadowEvery) === 0; // med: every 3rd frame
     } else { dl.castShadow = false; if (!indoor && !DBG.noshadow) dl.intensity *= K.RIG.sun; }
   }
-  if (hemi && !indoor) hemi.intensity *= K.RIG.hemi;
+  if (hemi && !indoor) hemi.intensity *= K.RIG.hemi + (1 - K.RIG.hemi) * 0.7 * n; // by day the env carries the fill; at night keep the clock's ambient so it stays readable
   if (n > 0.01) for (const m of S.emissive) { saved.em.push(m, m.emissiveIntensity); m.emissiveIntensity *= 1 + K.RIG.emissiveNight * n; }
   S.frames++;
   try {

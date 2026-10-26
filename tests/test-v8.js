@@ -5,6 +5,7 @@
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8811/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || 'iPhone 14';
 const LOOKS = (process.env.LOOKS || (DEV === 'desktop' ? 'classic,high' : 'classic,med')).split(',');
+const SPOT = (process.env.SPOT || '-6,16,-0.4').split(',').map(Number); // shot spot: dx,dz from the club door, yaw
 const FPS_MS = +(process.env.FPS_MS || 4000);
 const out = (process.env.SHOTS_DIR || require('path').join(__dirname, '..', '.shots', 'v8')) + '/';
 const fs = require('fs'); try { fs.mkdirSync(out, { recursive: true }); } catch (e) {}
@@ -48,7 +49,7 @@ function measureHud() {
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 90000); await sleep(1000);
   };
-  const place = async () => { R.spot = await G(() => { const s = window.__app.surface, ds = s.world.doorList(), d = ds.find(x => x.kind === 'club') || ds.find(x => x.kind === 'cantina') || ds[0]; if (!d) return null; s.debugPlace(d.x + 4, d.z + 13, 0.35); return { kind: d.kind, x: Math.round(d.x), z: Math.round(d.z) }; }); };
+  const place = async () => { R.spot = await G(SP => { const s = window.__app.surface, ds = s.world.doorList(), d = ds.find(x => x.kind === 'club') || ds.find(x => x.kind === 'cantina') || ds[0]; if (!d) return null; const [dx, dz, yaw] = SP; s.debugPlace(d.x + dx, d.z + dz, yaw); return { kind: d.kind, x: Math.round(d.x), z: Math.round(d.z), SP }; }, SPOT); };
   const hasTime = () => G(() => !!window.SSX?.time?.set);
   const setHour = async h => { if (await hasTime()) { await G(h => { window.SSX.time.set(h); window.SSX.time.freeze(true); }, h); return true; } return false; };
 

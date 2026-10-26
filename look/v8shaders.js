@@ -53,7 +53,11 @@ vec3 v8unpack(vec4 t){ return t.xyz * 2.0 - 1.0; }`)
       .replace('#include <map_fragment>', `
 float v8cd = length(vV8P - cameraPosition), v8far = smoothstep(14.0, 80.0, v8cd);
 vec3 v8N = normalize(vV8N);
+#if V8_DETAIL > 1
 float v8mac = v8n3(vV8P * 0.035) * 0.65 + v8n3(vV8P * 0.13) * 0.35;
+#else
+float v8mac = v8n3(vV8P * 0.05); // low/med: one octave
+#endif
 vec2 v8uv = vV8P.xz / 3.2;
 vec4 v8rD = texture2D(tRegD, v8uv), v8rA = texture2D(tRegA, v8uv); vec3 v8rN = v8unpack(texture2D(tRegN, v8uv));
 #if V8_DETAIL > 1
@@ -94,7 +98,7 @@ diffuseColor.rgb *= clamp(mix(vec3(1.0), v8k, uDetail), 0.25, 2.2) * mix(1.0, v8
 // opts: { dust: THREE.Color, amount, set: { diff, nor, arm, avg } | null, scale (m), tri }
 export function patchSurface(mat, opts, tier) {
   const set = opts.set || null, tri = !!(set && tier.triplanar);
-  const key = `surf|${set ? set.name : '-'}|t${tri ? 1 : 0}|w${opts.amount > 0 ? 1 : 0}`; if (isPatched(mat, key)) return mat; if (mat.userData.__v8) unpatch(mat);
+  const key = `surf|${set ? set.name : '-'}|t${tri ? 1 : 0}|w${opts.amount > 0 ? 1 : 0}|d${tier.detail}`; if (isPatched(mat, key)) return mat; if (mat.userData.__v8) unpatch(mat);
   const o = keep(mat);
   const U = { uDust: { value: (opts.dust || new THREE.Color(0xa8583a)).clone() }, uDustAmt: { value: opts.amount ?? 0.5 }, uScale: { value: opts.scale || 2.5 },
     tSD: { value: set?.diff || null }, tSN: { value: set?.nor || null }, tSA: { value: set?.arm || null }, uSAvg: { value: set?.avg || new THREE.Vector3(0.5, 0.5, 0.5) }, uSK: { value: opts.detailK ?? 0.75 } };
@@ -105,6 +109,7 @@ export function patchSurface(mat, opts, tier) {
     let f = sh.fragmentShader.replace('#include <common>', `#include <common>
 ${VERT_DECL}
 #define V8_SET ${set ? 1 : 0}
+#define V8_DETAIL ${tier.detail}
 #define V8_TRI ${tri ? 1 : 0}
 uniform vec3 uDust; uniform float uDustAmt, uScale, uSK; uniform sampler2D tSD, tSN, tSA; uniform vec3 uSAvg;
 ${NOISE}`);
@@ -127,7 +132,11 @@ vec3 v8N = normalize(vV8N); vec3 v8pert = vec3(0.0); vec4 v8A = vec4(1.0, 0.5, 0
   vec3 v8k = mix(vec3(v8lum(v8D.rgb) / max(1e-3, v8lum(uSAvg))), v8D.rgb / max(uSAvg, vec3(1e-3)), 0.25);
   diffuseColor.rgb *= clamp(mix(vec3(1.0), v8k, uSK), 0.3, 2.0) * mix(1.0, v8A.r, 0.6 * uSK); }
 #endif
+#if V8_DETAIL > 1
 float v8wnz = v8n3(vV8P * 1.7) * 0.6 + v8n3(vV8P * 7.0) * 0.4;
+#else
+float v8wnz = v8n3(vV8P * 2.3); // low/med: one octave
+#endif
 float v8dust = smoothstep(0.25, 0.9, v8N.y) * smoothstep(0.35, 0.75, v8wnz + 0.15);
 float v8wAmt = clamp(v8dust * uDustAmt + v8wnz * 0.12 * uDustAmt, 0.0, 1.0);
 diffuseColor.rgb = mix(diffuseColor.rgb, uDust * (0.75 + v8wnz * 0.4), v8wAmt);
