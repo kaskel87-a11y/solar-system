@@ -204,7 +204,7 @@ function surfaceFrame(scene, camera) {
   // cap: the tier's ratio, never above the core's; phones on med top out at 1.5. Dynamic resolution works under the cap.
   const cap = Math.min(S.origPR, tier.pixelRatio, cls() === 'phone' && tier.name === 'med' ? 1.5 : 9);
   if (S.drsCap !== cap) { S.drsCap = cap; S.drs.setCap(cap, Math.max(0.75, Math.min(1, cap * 0.6))); S.prCur = cap; }
-  if (!S.drsOff && rawMs < 250 && !document.hidden) { const r = S.drs.step(rawMs, now, S.prCur); if (r != null) S.prCur = r; }
+  if (!S.drsOff && rawMs < 1000 && !document.hidden) { const r = S.drs.step(rawMs, now, S.prCur); if (r != null) S.prCur = r; }
   const pr = S.drsOff ? cap : S.prCur; if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); S.prSet = pr; }
   vignette(true);
   if (!S.T && !S.Tloading && !DBG.nodetail) loadTextures();
