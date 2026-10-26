@@ -25,15 +25,27 @@ Ammo: calibers `light` (pistol, smg), `shell`, `heavy` (rifle), `rail`; types `s
 (x1.1, ignores heavy armour), `slug`. Reserve keys `cal:type` (std light/shell = the game's inventory).
 
 ## Controls
-- Desktop: hold **Q** = wheel (mouse picks, release selects), tap Q cycles, **B** reload, **Z** scope, **O** ammo type.
-- Phone: long-press the 🔫 HUD chip (tap still cycles), or tap 🎯 on `#ssxDock`. Ammo pill: tap = reload, STD/HP/AP button, 🔭.
+Keys were picked to be free across origin/main and PRs #41 (air roll), #43 (gravity), #44 (street); `tests/test-keys-unit.mjs`
+fails if an arsenal key gets bound anywhere else (run with `REFS="origin/main pr/41 pr/43 pr/44"` to scan branches too).
+
+| input | action |
+|---|---|
+| hold **Q** (on foot) | weapon wheel; mouse picks, release selects. Tap Q cycles. In a vehicle Q is left to the game / zero-G roll |
+| **I** | reload |
+| **.** (Period) | cycle ammo type (std / hollow / AP) |
+| **right mouse** | scope: hold to zoom, quick click toggles (scope mod only) |
+| **,** (Comma) | scope toggle (keyboard fallback; X is the medkit) |
+| phone | long-press the 🔫 HUD chip (tap cycles) or 🎯 on the dock; pill: ⟳ Reload, STD/HP/AP, 🔭 (all 44 px+) |
+
+Ammo readout: the game's own 🔫 HUD chip shows `mag/reserve` (and HP/AP when loaded) for arsenal guns, ⟳ while reloading.
+The pill only carries the buttons.
 - Rust Pit (AJ [-292,-68] r12, `SSX.fight.status().at` if present), duels, `SSX.fight.debug.inCage`: guns blocked, fists only,
   unless `SSX.fight.allowWeapons()` returns true (or `status().weapons === true`).
 
 ## Bore's bench (Red Tape Flats, AJ [-246,-62], next to Blue)
 Walk within 5.5 m → "🔧 Bore's bench". Pay with contraband (registered as `SSX.contraband` offers `bore:<id>`, traded via
 `barter()`), cash at 1.6x markup, or a favour (one front at a time, cleared by any `SSX.jobs` 'complete'; refused if
-`SSX.rep` Flats rep < -40). Mods: suppressor, extended mag (+50%), scope (camera zoom 2.2x / 3x on the lance).
+`SSX.rep` Flats rep < -40). Mods: suppressor, extended mag (+50%), scope (camera zoom 2.2x / 3x on the lance; right mouse, `,` or 🔭).
 
 ## API (`window.SSX.arsenal`)
 `weapons() equip(id) current() ammo(id?) give(id, ammo?, type?) mods(id?) addMod(id, mod) setAmmo(type) reload() scope(on?)
@@ -41,4 +53,4 @@ wheel(open?) inPit() on(event?, fn)` and `gunsmith.{open, close, at, catalog, tr
 Events (also `window` `ssx:arsenal` and bus `arsenal:<type>`): equip shot dry reload reloaded hit head decal give mod ammo
 wheel pit trade quiet. Saved in `localStorage['ssx.arsenal.v1']`.
 
-Test: `NODE_PATH=... OUT=<wt>/shots/arsenal/ BASE=http://127.0.0.1:<port>/ [BR=webkit DEV="iPhone 14"] node tests/test-arsenal.js`
+Tests: `node tests/test-keys-unit.mjs`, and `NODE_PATH=... OUT=<wt>/shots/arsenal/ BASE=http://127.0.0.1:<port>/ [BR=webkit DEV="iPhone 14"] node tests/test-arsenal.js`

@@ -128,11 +128,27 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('tradeGunContraband', R.tradeGun, R.tradeGun.r.ok && R.tradeGun.own && R.tradeGun.lg0 - R.tradeGun.lg1 === 1);
     R.cash = await G(() => { const g = window.__app.game, c0 = g.progress.credits, r = window.SSX.arsenal.gunsmith.trade('ammo:heavy:std', 'cash'); return { r, paid: c0 - g.progress.credits, heavy: window.SSX.arsenal.ammo('rifle').types.std }; });
     ok('cashMarkup', R.cash, R.cash.r.ok && R.cash.paid === 144);
-    R.scope = await G(() => { const A = window.SSX.arsenal; A.equip('rifle'); const t = A.gunsmith.trade('mod:scope', 'stash'); if (!t.ok) return { t }; return { has: A.mods('rifle').owned.includes('scope'), on: A.scope(true) }; });
-    const zoomed = await wait(() => window.__app.surface.camera.zoom > 2, 10000);
+    R.scope = await G(() => { const A = window.SSX.arsenal; A.equip('rifle'); const t = A.gunsmith.trade('mod:scope', 'stash'); return { t: t.ok, has: A.mods('rifle').owned.includes('scope') }; });
+    await G(() => window.SSX.arsenal.gunsmith.close()); await sleep(300);
+    if (desk) { // right mouse: hold zooms, release un-zooms; Comma toggles
+      await page.mouse.move(683, 300); await page.mouse.down({ button: 'right' });
+      R.scope.rmbZoom = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await sleep(500); await page.mouse.up({ button: 'right' });
+      R.scope.rmbRelease = await wait(() => window.__app.surface.camera.zoom === 1, 10000);
+      await page.keyboard.press('Comma'); R.scope.comma = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await page.keyboard.press('Comma');
+      R.scope.commaOff = await wait(() => window.__app.surface.camera.zoom === 1, 10000);
+    } else { await tapSel('#arScope'); R.scope.btn = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await G(() => window.SSX.arsenal.scope(false)); }
     R.scope.zoom = await G(() => window.__app.surface.camera.zoom); await G(() => window.SSX.arsenal.scope(false));
-    ok('scopeZoom', R.scope, R.scope.has && R.scope.on && zoomed);
-    await G(() => document.querySelector('#arShop .x')?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })) || window.SSX.arsenal.gunsmith.close()); await G(() => window.SSX.arsenal.gunsmith.close());
+    ok('scopeZoom', R.scope, R.scope.t && R.scope.has && (desk ? R.scope.rmbZoom && R.scope.rmbRelease && R.scope.comma && R.scope.commaOff : R.scope.btn));
+    if (desk) { // I reloads, . cycles ammo type; B / Z stay with their owners (stash, gravity/roll)
+      await G(() => { const A = window.SSX.arsenal; A.equip('pistol'); A.debug.setMag(4); }); await page.keyboard.press('KeyI');
+      const rl = await G(() => !!window.SSX.arsenal.current().reloading); await G(() => window.SSX.arsenal.debug.reloadNow()); await wait(() => !window.SSX.arsenal.current().reloading, 15000);
+      const t0 = await G(() => window.SSX.arsenal.current().sel); await page.keyboard.press('Period'); await sleep(300); const t1 = await G(() => window.SSX.arsenal.current().sel);
+      await G(() => { window.SSX.arsenal.setAmmo('std'); window.SSX.arsenal.debug.reloadNow(); }); await wait(() => !window.SSX.arsenal.current().reloading, 15000);
+      await G(() => window.SSX.arsenal.debug.setMag(4)); await page.keyboard.press('KeyZ'); await sleep(200); await page.keyboard.press('KeyB'); await sleep(300);
+      const other = await G(() => ({ scoped: window.SSX.arsenal.current().scoped, reloading: window.SSX.arsenal.current().reloading, keys: window.SSX.arsenal.keys(), stashOpen: getComputedStyle(document.getElementById('cbPanel') || document.body).display }));
+      await G(() => { window.SSX.arsenal.debug.reloadNow(); document.getElementById('cbPanel') && (document.getElementById('cbPanel').style.display = 'none'); });
+      ok('keys', { rl, t0, t1, other }, rl && t0 !== t1 && !other.scoped && !other.reloading && other.keys.reload === 'KeyI' && other.keys.ammo === 'Period' && other.keys.scope === 'Comma');
+    }
     // suppressor: the discharge crime check is skipped
     await G(() => { window.SSX.arsenal.equip('pistol'); window.__q0 = window.__aev.filter(e => e.type === 'quiet').length; });
     await fireUntil('pistol', 1); R.quiet = await G(() => window.__aev.filter(e => e.type === 'quiet').length - window.__q0); ok('suppressorQuiet', R.quiet, R.quiet >= 1);
@@ -144,7 +160,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await spot(-200, 40); await sleep(600); const outF = await fireUntil('pistol', 1, 15000); ok('pitLeft', outF.shots, outF.shots >= 1);
     // ---- HUD ----
     R.hud = await G(() => { const h = document.getElementById('arHud'), cs = getComputedStyle(h), b = document.getElementById('arAmmo').getBoundingClientRect(); return { show: cs.display !== 'none', t: h.textContent, bg: cs.backgroundColor, h: b.height }; });
-    ok('hud', R.hud, R.hud.show && R.hud.bg === 'rgb(0, 0, 0)' && R.hud.h >= 44 && /\d+\/\d+/.test(R.hud.t));
+    ok('hud', R.hud, R.hud.show && R.hud.bg === 'rgb(0, 0, 0)' && R.hud.h >= 44 && !/\d+\/\d+/.test(R.hud.t)); // the pill no longer repeats the count
+    await G(() => { window.SSX.arsenal.equip('pistol'); window.SSX.arsenal.debug.reloadNow(); }); await sleep(desk ? 2500 : 800);
+    R.chip = await G(() => { const c = window.SSX.arsenal.current(), gc = document.getElementById('gearChip'); return { t: gc.textContent, want: `${c.mag}/${c.reserve}`, h: gc.getBoundingClientRect().height }; });
+    const chipOk = R.chip.t.includes(R.chip.want) && !R.chip.t.includes('∞');
+    if (!desk) await page.screenshot({ path: out + `arsenal-chip-${tag}.png` });
+    await G(() => window.SSX.arsenal.equip('blaster')); await sleep(desk ? 2500 : 800); R.chip.core = await G(() => document.getElementById('gearChip').textContent);
+    ok('chipAmmo', R.chip, chipOk && R.chip.h >= 44 && /∞/.test(R.chip.core));
+    await G(() => window.SSX.arsenal.equip('pistol')); await sleep(desk ? 2500 : 800);
+    R.btns = await G(() => ['#arAmmo', '#arType'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().height))); ok('pillButtons', R.btns, R.btns.every(h => h >= 44));
     if (!desk) await page.screenshot({ path: out + `arsenal-hud-${tag}.png` });
     R.events = await G(() => [...new Set(window.__aev.map(e => e.type))].join(',')); ok('busEvents', await G(() => window.__wev), await G(() => window.__wev > 10));
     // ---- persistence ----

@@ -25,7 +25,9 @@ import { initGunsmith } from './gunsmith.js';
  *                        Also window 'ssx:arsenal' { detail } and SSX bus 'arsenal:<type>'.
  *  gunsmith           -> { open(), close(), at(), catalog(), trade(id, pay:'stash'|'cash'|'favor') } (mars/gunsmith.js)
  *  debug              -> test helpers (see bottom)
- * Keys: hold Q = wheel (tap Q still cycles), B reload, Z scope, O ammo type. Phone: long-press the 🔫 HUD chip or the 🎯 dock button.
+ * Keys (free across main + PRs #41/#43/#44; tests/test-keys-unit.mjs guards it): hold Q = wheel on foot (tap Q still cycles; in a
+ *   vehicle Q stays the game's/zero-G roll), I reload, . (Period) ammo type, right mouse = scope (hold, or click to toggle), , (Comma)
+ *   scope fallback. Phone: long-press the 🔫 HUD chip or the 🎯 dock button; the chip shows mag/reserve for arsenal guns.
  * Persistence: localStorage 'ssx.arsenal.v1' (owned, mags, ammo boxes, ammo choice, mods). The equipped weapon and the
  * game's own ammo (rounds, shells) stay in the game save.
  */
@@ -43,7 +45,8 @@ export const TYPES = {
   slug: { name: 'Coil slug', short: 'SLUG', dmg: 1 }
 };
 export const CALS = { light: { name: 'Light rounds', types: ['std', 'hollow', 'ap'], core: 'rounds' }, shell: { name: 'Shells', types: ['std', 'ap'], core: 'shells' }, heavy: { name: 'Heavy rounds', types: ['std', 'hollow', 'ap'] }, rail: { name: 'Coil slugs', types: ['slug'] } };
-export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No "discharging a weapon" crime, quieter shots, -8% damage.' }, extmag: { name: 'Extended mag', icon: '➕', blurb: '+50% magazine, slightly slower reload.' }, scope: { name: 'Scope', icon: '🔭', blurb: 'Zoom (Z / 🔭) and half the bloom while scoped.' } };
+export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Period', scope: 'Comma' }; // + right mouse for scope
+export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No "discharging a weapon" crime, quieter shots, -8% damage.' }, extmag: { name: 'Extended mag', icon: '➕', blurb: '+50% magazine, slightly slower reload.' }, scope: { name: 'Scope', icon: '🔭', blurb: 'Zoom (right mouse / , / 🔭) and half the bloom while scoped.' } };
 // core = the game.js WEAPONS id this gun fires through. smg + shotgun are the game's own guns (Ozzie's / colony shop).
 export const ARS = {
   pistol: { core: 'ar_pistol', name: 'Kestrel M3 sidearm', icon: '🔫', kind: 'gun', cal: 'light', mag: 12, reload: 1.1, recoil: 0.035, bloom: 0.012, bloomMax: 0.06, knock: 0.35, mods: ['suppressor', 'extmag', 'scope'],
@@ -314,7 +317,7 @@ body.surface:not(.indoors) #arRet.show{display:block}
 #arWheel .slot{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;background:#000;color:#fff;border:3px solid #fff;font:700 12px system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;text-align:center;line-height:1.05;touch-action:manipulation}
 #arWheel .slot .i{font-size:24px} #arWheel .slot.eq{border-color:#3ee07a} #arWheel .slot.hi{background:#ffd400;color:#000;border-color:#ffd400}
 #arWheel .mid{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;text-align:center;color:#fff;font:700 14px system-ui,sans-serif;pointer-events:none}
-#arWheel .mid b{display:block;font-size:16px;color:#ffd400;margin-bottom:4px}
+#arWheel .mid .hint{display:block;margin-top:6px;font-size:11px;font-weight:600;color:#fff} #arWheel .mid b{display:block;font-size:16px;color:#ffd400;margin-bottom:4px}
 #arWheel #arWheelX{position:absolute;right:calc(14px + env(safe-area-inset-right));top:calc(14px + env(safe-area-inset-top));min-width:56px;min-height:56px;border-radius:50%;background:#000;color:#fff;border:3px solid #fff;font:700 22px system-ui,sans-serif}
 #ssxDock #arDockBtn{font-size:20px}
 @media (max-width:640px){#arHud{left:calc(10px + env(safe-area-inset-left));transform:none;bottom:calc(340px + env(safe-area-inset-bottom));font-size:13px} #arWheel .slot{width:76px;height:76px;margin:-38px 0 0 -38px;font-size:11px}}`;
@@ -322,7 +325,7 @@ let hud = null, hudTx = null, rlBtn = null, scBtn = null, amBtn = null, ret = nu
 const tap = (el, fn) => { if (window.__onTap) window.__onTap(el, fn); else { el.addEventListener('pointerup', e => { e.preventDefault(); fn(e); }); } };
 function ui() {
   if (hud) return; const st = document.createElement('style'); st.id = 'arCss'; st.textContent = css; document.head.appendChild(st);
-  hud = document.createElement('div'); hud.id = 'arHud'; hud.innerHTML = '<button id="arAmmo" type="button" aria-label="Reload"><span class="tx"></span></button><button id="arType" type="button" aria-label="Ammo type">STD</button><button id="arScope" type="button" aria-label="Scope">🔭</button>';
+  hud = document.createElement('div'); hud.id = 'arHud'; hud.innerHTML = '<button id="arAmmo" type="button" aria-label="Reload" title="Reload (I)"><span class="tx"></span></button><button id="arType" type="button" aria-label="Ammo type" title="Ammo type (.)">STD</button><button id="arScope" type="button" aria-label="Scope" title="Scope (right mouse or ,)">🔭</button>';
   document.body.appendChild(hud); rlBtn = hud.querySelector('#arAmmo'); hudTx = rlBtn.querySelector('.tx'); amBtn = hud.querySelector('#arType'); scBtn = hud.querySelector('#arScope');
   tap(rlBtn, () => { const a = curArs(); if (a?.kind === 'gun') startReload(a); else openWheel(); });
   tap(amBtn, () => { const r = setAmmo(); toast(r.msg, 1500); });
@@ -335,7 +338,7 @@ function ui() {
 }
 function renderWheel() {
   const L = wheelItems(), W = innerWidth, H = innerHeight, cx = W / 2, cy = H / 2, r = Math.max(118, Math.min(W, H) * 0.34);
-  wheel.innerHTML = '<div class="mid"><b>ARSENAL</b><span id="arWheelInfo"></span></div><button id="arWheelX" type="button" aria-label="Close weapon wheel">✕</button>';
+  wheel.innerHTML = `<div class="mid"><b>ARSENAL</b><span id="arWheelInfo"></span>${mobile() ? '' : '<small class="hint">Release Q to pick · I reload · . ammo · right mouse or , scope</small>'}</div><button id="arWheelX" type="button" aria-label="Close weapon wheel">✕</button>`;
   L.forEach((it, i) => {
     const an = -Math.PI / 2 + i * 2 * Math.PI / L.length, b = document.createElement('button'); b.type = 'button'; b.className = 'slot' + (it.equipped ? ' eq' : ''); b.dataset.id = it.id;
     const a = ARS[it.id], m = a?.kind === 'gun' ? magOf(a.id) : null;
@@ -375,21 +378,48 @@ function keys() {
   const typing = e => /input|textarea|select/i.test(e.target?.tagName || '') || e.target?.isContentEditable;
   window.addEventListener('keydown', e => {
     if (typing(e) || !document.body.classList.contains('surface')) return;
-    if (e.code === 'KeyQ') { e.stopImmediatePropagation(); e.preventDefault(); if (e.repeat || qT) return; qLong = false; qT = setTimeout(() => { qLong = true; openWheel(); }, 220); return; }
+    if (e.code === KEYS.wheel) { if (!onFoot() || !game()) return; /* vehicles: core Q / zero-G roll */ e.stopImmediatePropagation(); e.preventDefault(); if (e.repeat || qT) return; qLong = false; qT = setTimeout(() => { qLong = true; openWheel(); }, 220); return; }
     if (e.repeat) return;
-    if (e.code === 'KeyB') { const a = curArs(); if (a) startReload(a); }
-    else if (e.code === 'KeyZ' && !document.body.classList.contains('builder')) scope();
-    else if (e.code === 'KeyO') { const r = setAmmo(); toast(r.msg, 1500); }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code === KEYS.reload) { const a = curArs(); if (a && onFoot()) startReload(a); }
+    else if (e.code === KEYS.scope) { if (onFoot()) scope(); }
+    else if (e.code === KEYS.ammo) { if (onFoot() && curArs()?.kind === 'gun') { const r = setAmmo(); toast(r.msg, 1500); } }
     else if (e.code === 'Escape' && wheel?.classList.contains('open')) closeWheel();
   }, true);
-  window.addEventListener('keyup', e => { if (e.code !== 'KeyQ' || !qT && !qLong) return; e.stopImmediatePropagation(); clearTimeout(qT); qT = null; if (qLong) { qLong = false; closeWheel(true); } else cycle(); }, true);
+  window.addEventListener('keyup', e => { if (e.code !== KEYS.wheel || !qT && !qLong) return; e.stopImmediatePropagation(); clearTimeout(qT); qT = null; if (qLong) { qLong = false; closeWheel(true); } else cycle(); }, true);
+}
+// right mouse on the 3D view = scope: hold (>300 ms) zooms while held, a click toggles. Only when a scoped arsenal gun is out.
+function mouseScope() {
+  let t0 = 0, wasOn = false, active = false;
+  const want = e => e.pointerType === 'mouse' && e.button === 2 && e.target?.tagName === 'CANVAS' && document.body.classList.contains('surface') && onFoot() && !!curArs() && hasMod(curArs().id, 'scope');
+  window.addEventListener('pointerdown', e => { if (!want(e)) return; e.stopImmediatePropagation(); e.preventDefault(); active = true; t0 = performance.now(); wasOn = R.scoped; if (!wasOn) scope(true); }, true);
+  window.addEventListener('pointerup', e => { if (!active || e.button !== 2) return; active = false; e.stopImmediatePropagation(); if (wasOn || performance.now() - t0 > 300) scope(false); }, true);
+  window.addEventListener('contextmenu', e => { if (e.target?.tagName === 'CANVAS' && document.body.classList.contains('surface') && curArs()) e.preventDefault(); }, true);
+}
+// one ammo readout: the game's own 🔫 HUD chip shows mag/reserve for arsenal guns (the game writes it only when its own text
+// changes, so we re-apply after each of its writes and whenever our numbers change; its ✚ medkit part is kept)
+let chipObs = null;
+function chipText() {
+  const a = curArs(); if (!a || !onFoot()) return null; if (a.kind === 'melee') return a.icon;
+  const m = magOf(a.id); if (R.reload) return `${a.icon}⟳${m.n}/${resGet(a.cal, m.type)}`;
+  return `${a.icon}${m.n}/${resGet(a.cal, selOf(a))}${m.type !== 'std' ? `<span class="k">${TYPES[m.type].short}</span>` : ''}`;
+}
+function applyChip() {
+  const gc = document.getElementById('gearChip'); if (!gc) return;
+  if (!chipObs && window.MutationObserver) { chipObs = new MutationObserver(() => { if (gc.dataset.ar && gc.innerHTML !== gc.dataset.ar) { gc.dataset.ar = ''; applyChip(); } }); chipObs.observe(gc, { childList: true }); }
+  const t = chipText();
+  if (!t) { if (gc.dataset.ar) { gc.dataset.ar = ''; if (gc.dataset.t) gc.innerHTML = gc.dataset.t; } return; }
+  const k = (gc.dataset.t || '').match(/<span class="k">[^<]*<\/span>$/)?.[0] || '', html = t + k;
+  if (gc.dataset.ar !== html || gc.innerHTML !== html) { gc.dataset.ar = html; gc.innerHTML = html; }
 }
 function renderHud() {
   if (!hud) return; const c = current(), a = curArs(), show = !!c && document.body.classList.contains('surface');
+  if (!show || !a) { try { applyChip(); } catch (e) { /* */ } }
   hud.classList.toggle('show', show && (!!a || false)); ret.classList.toggle('show', show && a?.kind === 'gun' && !mobile());
   if (!show || !a) return;
-  let tx; if (a.kind === 'melee') tx = `${a.icon} ${a.name.split(' ').pop()}`; else if (R.reload) tx = `${a.icon} <span class="rl">RELOAD ${R.reload.t.toFixed(1)}s</span>`;
-  else tx = `${a.icon} <span class="${c.mag === 0 ? 'lo' : ''}">${c.mag}/${c.magSize}</span> · ${c.reserve}${a.charge && R.charge > 0 ? ` <span class="rl">⚡${Math.round(100 * R.charge / a.charge)}%</span>` : ''}`;
+  try { applyChip(); } catch (e) { /* chip is the game's; never break the tick */ }
+  let tx; if (a.kind === 'melee') tx = `${a.icon} ${a.name.split(' ').pop()}`; else if (R.reload) tx = `<span class="rl">⟳ ${R.reload.t.toFixed(1)}s</span>`;
+  else tx = a.charge && R.charge > 0 ? `<span class="rl">⚡${Math.round(100 * R.charge / a.charge)}%</span>` : `<span class="${c.mag === 0 ? 'lo' : ''}">⟳ Reload</span>`;
   if (hudTx.dataset.t !== tx) { hudTx.dataset.t = tx; hudTx.innerHTML = tx; }
   amBtn.style.display = a.kind === 'gun' && CALS[a.cal].types.length > 1 ? '' : 'none'; amBtn.textContent = a.kind === 'gun' ? TYPES[c.sel].short : '';
   scBtn.style.display = hasMod(a.id, 'scope') ? '' : 'none'; scBtn.classList.toggle('on', !!c.scoped);
@@ -436,7 +466,7 @@ function rareDrop() { // ColSec armouries: the odd coil slug, very rarely the la
 const API = {
   weapons, equip, current, ammo, give, mods: id => { const a = ARS[id] || curArs(); return a ? { owned: [...(S.mods[a.id] || [])], fits: [...a.mods] } : null; }, addMod, setAmmo,
   reload: () => { const a = curArs(); return !!a && startReload(a); }, scope, wheel: o => o === false ? closeWheel() : openWheel(), inPit, on, cycle,
-  defs: () => JSON.parse(JSON.stringify(ARS)), types: () => ({ ...TYPES }), cals: () => ({ ...CALS }), modDefs: () => ({ ...MODS }),
+  keys: () => ({ ...KEYS, scopeMouse: 'right button' }), defs: () => JSON.parse(JSON.stringify(ARS)), types: () => ({ ...TYPES }), cals: () => ({ ...CALS }), modDefs: () => ({ ...MODS }),
   pos, state: () => S, saveState: save, emit, toast, owned, resGet, resSet, hasMod,
   debug: {
     fire: aim => fireReq(aim || null, 'debug'), hold: (sec = 1) => { R.chargeReq = R.tNow + sec; return true; }, charge: () => { const a = curArs(); if (a?.charge) { R.charge = a.charge; R.chargeReq = R.tNow; } return R.charge; },
@@ -450,7 +480,7 @@ function boot() {
   const ready = () => window.SSX?.registerSurfaceTick && game() && world();
   if (!ready()) { setTimeout(boot, 250); return; }
   if (!hookGame()) { setTimeout(boot, 250); return; }
-  window.SSX.arsenal = API; ui(); keys();
+  window.SSX.arsenal = API; ui(); keys(); mouseScope();
   try { window.SSX.registerSurfaceTick((dt, tc) => { try { tick(dt, tc); } catch (e) { console.warn('arsenal tick', e); } }); } catch (e) { console.warn('arsenal tick hook', e); }
   try { API.gunsmith = initGunsmith(API); } catch (e) { console.warn('gunsmith', e); }
   emit('ready', {});
