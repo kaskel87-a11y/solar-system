@@ -29,7 +29,7 @@ const S = {
   scene: null, pts: null, mat: null, n: 0, ref: { dl: null, hemi: null, sky: null, sun: null, kids: -1, t: 0 }, saved: null, applied: null,
   timeFilterOff: null, prevHeat: null, carry: 0, trafT: 0, touched: new Set(), bwK: 1, bwMode: null, cap: null, capT: 0, capText: '',
   frameMs: 0, renderMs: 0, rendersThisFrame: 0, stats: { storms: 0, shed: 0, damped: 0, renders: 0 }, wind: { a: Math.random() * 6.28, v: 8 }, off: new THREE.Vector3(),
-  booted: false, armed: Q === '1' || Q === 'peak'
+  gritOn: true, lastPhase: 'clear', booted: false, armed: Q === '1' || Q === 'peak'
 };
 const tierNow = () => K.pickTier({ override: S.tierOverride, app: appTier(), stored: storedTier(), mobile: S.mobile });
 function appTier() { const X = SSX(); try { const L = X?.look; if (typeof L?.tier === 'function') { const t = L.tier(); if (t && t !== 'classic') return t; } const q = X?.quality; const v = typeof q?.tier === 'function' ? q.tier() : q?.tier ?? q?.level; return typeof v === 'string' ? v : null; } catch (e) { return null; } }
@@ -44,8 +44,8 @@ void main() {
   vec3 p = position * uBox + uOff * (0.65 + 0.7 * rnd) + vec3(0.0, sin(uTime * (0.8 + rnd) + rnd * 40.0) * 0.8, 0.0);
   vec3 l = mod(p - uCam, uBox) - uBox * 0.5; vec3 w = uCam + l;
   vec4 mv = viewMatrix * vec4(w, 1.0); float z = max(0.35, -mv.z);
-  gl_PointSize = min(48.0, uSize * (0.55 + rnd) * uPx / z);
-  vA = uOpacity * smoothstep(0.4, 2.5, z) * (1.0 - smoothstep(uBox.x * 0.32, uBox.x * 0.5, length(l.xz)));
+  vA = uOpacity * smoothstep(1.2, 4.0, z) * (1.0 - smoothstep(uBox.x * 0.3, uBox.x * 0.5, length(l.xz)));
+  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uSize * (0.55 + rnd) * uPx / z, 1.0, 22.0); // near / faded grains cost no fill
   gl_Position = projectionMatrix * mv;
 }`;
 const FS = `uniform vec3 uColor; varying float vA;
@@ -65,9 +65,9 @@ function buildGrit() {
   const p = new THREE.Points(g, S.mat); p.frustumCulled = false; p.renderOrder = 5; p.name = 'ssx-storm-grit'; p.userData.keep = false; p.visible = false;
   S.pts = p; S.n = n; return p;
 }
-const gritNight = new THREE.Color(0x4a2a1c), gritDay = new THREE.Color(0xd09060);
+const gritNight = new THREE.Color(0x6a3c28), gritDay = new THREE.Color(0xf2c896);
 function updateGrit(dt, tc) {
-  const on = S.eff > 0.01;
+  const on = S.eff > 0.01 && S.gritOn;
   if (!on) { if (S.pts) S.pts.visible = false; return; }
   const p = buildGrit(); if (p.parent !== tc.scene) tc.scene.add(p);
   const U = S.mat.uniforms, cam = tc.camera, T = K.TIERS[S.tier];
@@ -155,10 +155,12 @@ function syncHeat(on) {
 function syncTraffic(tc) {
   const k = K.trafficScale(S.onMars ? S.I : 0), w = tc?.world;
   if (k < 0.999 && w && typeof w.debug?.traffic === 'function' && typeof w.nearVehicle === 'function') {
+    const seen = new Set();
     for (const c of w.debug.traffic()) {
       const v = w.nearVehicle(c.x, c.z, 0.05); const t = v?.traffic; if (!t || Math.abs(v.x - c.x) > 0.01 || Math.abs(v.z - c.z) > 0.01) continue;
-      if (t.__stormV0 == null) { t.__stormV0 = t.vmax; S.touched.add(v); } t.vmax = t.__stormV0 * k;
+      if (t.__stormV0 == null) { t.__stormV0 = t.vmax; S.touched.add(v); } t.vmax = t.__stormV0 * k; seen.add(v);
     }
+    for (const v of S.touched) if (!seen.has(v)) { const t = v.traffic; if (t && t.__stormV0 != null) { t.vmax = t.__stormV0; delete t.__stormV0; } S.touched.delete(v); } // despawned / carjacked
   }
   if (k >= 0.999 && S.touched.size) restoreTraffic();
   const B = SSX()?.beltway; if (!B || Math.abs(k - S.bwK) < 0.01 && !(k >= 0.999 && S.bwK < 1)) return;
@@ -192,7 +194,7 @@ function tick(dt, tc) {
   if (onMars && S.armed) { S.armed = false; S.cycle.start(Q === 'peak' ? { instant: true, peak: 1e6, manual: true } : { build: 6, manual: true }); }
   if (onMars && S.cycle.phase === 'clear' && directorStorm()) S.cycle.t = Math.min(S.cycle.t, S.cycle.len - 1); // Director's own storm is on: no second one
   const r = S.cycle.step(onMars ? dt * clockScale() : 0);
-  if (r.changed) phaseChanged(r.changed[0], r.changed[1]);
+  if (r.phase !== S.lastPhase) phaseChanged(S.lastPhase, r.phase);
   S.I = onMars ? r.I : 0; S.eff = S.indoor ? 0 : S.I;
   if (onMars) { scanRefs(tc.scene); timeFilter(); }
   updateGrit(dt, tc);
@@ -203,7 +205,7 @@ function tick(dt, tc) {
   S.frameMs += (ms - S.frameMs) * 0.1;
 }
 function phaseChanged(from, to) {
-  const d = { from, to, phase: to, I: +S.cycle.I.toFixed(3), manual: S.cycle.manual };
+  S.lastPhase = to; const d = { from, to, phase: to, I: +S.cycle.I.toFixed(3), manual: S.cycle.manual };
   if (to === 'building' && from === 'clear') { S.stats.storms++; emit('start', d); }
   if (to === 'peak') emit('peak', d); if (to === 'clearing') emit('clearing', d); if (to === 'clear') { emit('end', d); S.carry = 0; }
   emit('phase', d); flashCap(K.caption(to, S.cycle.I, K.heatScale(1)), to === 'clear' ? 0 : 6000);
@@ -212,8 +214,8 @@ function phaseChanged(from, to) {
 // ---------- public API: window.SSX.storm (also __app.storm) ----------
 export const storm = {
   active: () => S.cycle.phase !== 'clear', intensity: () => +S.I.toFixed(3), phase: () => S.cycle.phase,
-  start(o = {}) { const ok = S.cycle.start({ manual: true, ...o }); if (o.instant) phaseChanged('clear', 'peak'); return ok; },
-  stop(o = {}) { const was = S.cycle.phase, ok = S.cycle.stop(o); if (ok && o.instant) { S.I = 0; S.eff = 0; if (S.pts) S.pts.visible = false; phaseChanged(was, 'clear'); syncHeat(false); restoreTraffic(); } return ok; },
+  start(o = {}) { return S.cycle.start({ manual: true, ...o }); }, // phase events fire on the next surface frame
+  stop(o = {}) { const ok = S.cycle.stop(o); if (ok && o.instant) { S.I = 0; S.eff = 0; if (S.pts) S.pts.visible = false; if (S.lastPhase !== 'clear') phaseChanged(S.lastPhase, 'clear'); syncHeat(false); restoreTraffic(); } return ok; },
   on(evt, fn) { if (typeof fn !== 'function') throw new Error('SSX.storm.on(event, fn)'); (listeners[evt] ||= []).push(fn); return () => storm.off(evt, fn); },
   off(evt, fn) { const L = listeners[evt]; if (L) { const i = L.indexOf(fn); if (i >= 0) L.splice(i, 1); } },
   state: () => ({ phase: S.cycle.phase, I: +S.I.toFixed(3), t: +S.cycle.t.toFixed(1), len: +S.cycle.len.toFixed(1), manual: S.cycle.manual, periodic: S.cycle.periodic, onMars: S.onMars, indoor: S.indoor, tier: S.tier, count: S.cycle.count }),
@@ -227,6 +229,7 @@ export const storm = {
     grit: () => ({ n: S.n, visible: !!S.pts?.visible, inScene: !!S.pts?.parent, opacity: +(S.mat?.uniforms.uOpacity.value || 0).toFixed(2) }),
     traffic: () => ({ touched: S.touched.size, k: K.trafficScale(S.onMars ? S.I : 0), beltway: S.bwMode, slowed: [...S.touched].filter(v => v.traffic?.__stormV0 != null).map(v => +(v.traffic.vmax / v.traffic.__stormV0).toFixed(3)) }),
     heatFilter: () => SSX()?.heatFilter === heatFilter, carry: () => +S.carry.toFixed(3), timeFilter: () => !!S.timeFilterOff,
+    setGrit(on) { S.gritOn = !!on; return S.gritOn; },
     skip: sec => { S.cycle.t += sec; return storm.state(); }, cycle: () => S.cycle
   }
 };
