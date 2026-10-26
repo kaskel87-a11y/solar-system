@@ -568,6 +568,14 @@
   "ssx/mars/contraband": "./mars/contraband.js?v=7.5.4",
   "./mars/dress.js": "./mars/dress.js?v=7.5.4",
   "ssx/mars/dress": "./mars/dress.js?v=7.5.4",
+  "./mars/grime-lines.js": "./mars/grime-lines.js?v=7.5.4",
+  "ssx/mars/grime-lines": "./mars/grime-lines.js?v=7.5.4",
+  "./mars/grime-street.js": "./mars/grime-street.js?v=7.5.4",
+  "ssx/mars/grime-street": "./mars/grime-street.js?v=7.5.4",
+  "./mars/grime-tex.js": "./mars/grime-tex.js?v=7.5.4",
+  "ssx/mars/grime-tex": "./mars/grime-tex.js?v=7.5.4",
+  "./mars/grime.js": "./mars/grime.js?v=7.5.4",
+  "ssx/mars/grime": "./mars/grime.js?v=7.5.4",
   "./mars/jobs.js": "./mars/jobs.js?v=7.5.4",
   "ssx/mars/jobs": "./mars/jobs.js?v=7.5.4",
   "./mars/rep.js": "./mars/rep.js?v=7.5.4",
@@ -2267,6 +2275,7 @@
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
+    import('./mars/grime.js').then(m => m.initGrime(window.__app)).catch(e => console.warn('grime', e)); // grime pass: decals, neon, camps, film look, street hassle
   </script>
   <script type="module" src="./mars/contraband.js?v=7.5.4"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
   <script type="module" src="./mars/jobs.js?v=7.5.4"></script> <!-- v7.5.2 Mars side jobs (window.SSX.jobs); ticked by activities/runner.js -->
