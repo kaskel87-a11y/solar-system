@@ -109,3 +109,16 @@ All valid `grantUpgrade` ids: the per-ride ids `engine`, `handling`, `brakes` an
 barter.json shapes map 1:1:
 - `{ type: 'garage_upgrade', upgradeId }` becomes `SSX.garage.grantUpgrade('current', upgradeId)`. `needsUpgrade` is enforced by the shop rule as well.
 - `{ type: 'garage_vehicle', vehicleId, opts }` becomes `SSX.garage.grantVehicle(vehicleId, opts)`. `'rover'` and `'buggy'` are both valid ids.
+
+### Respray + new plate: `SSX.garage.respray({ reason, price })`
+
+```js
+const r = SSX.garage.respray({ reason: 'lost ColSec at Red Tape Flats', price: 400 });
+// → { ok: true, plate: 'KRV·4M7', price: 400, ride: 'r2', heat: { from: 3, to: 0 } }   (heat is null when there's no wanted API)
+// → { ok: false, reason: 'funds', need: 150, price: 400 }   (also 'bad-price', 'no-ride', 'no-game')
+```
+
+- Charges `price` credits (default `GC.RESPRAY_PRICE`, 300; `0` is free). If you can't afford it, a toast says so, nothing changes and it returns `ok:false, reason:'funds'`.
+- Gives the active ride a new plate, stored on the ride in `progress.garage` (`ride.plate`; older plates go to `ride.plates`, last 5, plus `ride.resprays` and `ride.plateReason`). Paint, parts and trade-in value are unchanged. `ride.noPlates` rides keep that flag.
+- Drops wanted heat to 0 through world.js `setWanted` when it exists (feature-detected). Fires a `ssx:respray` window event `{ plate, old, ride, price, reason, heat }`.
+- Works anywhere, with no lock-up range check. Marsmania's pursuit PR #42 calls it. Tests: `tests/test-garage-respray-unit.mjs` (pure core) and the respray steps in `tests/test-garage-open.js`.

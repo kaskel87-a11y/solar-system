@@ -52,6 +52,18 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('openCurrent', null, await G(() => window.SSX.garage.open('current') && window.SSX.garage.selected === window.SSX.garage.active));
     ok('openUnknown', null, await G(() => window.SSX.garage.open('nope') && window.SSX.garage.selected === window.SSX.garage.active));
     await tapSheet('#dlrSheet [data-close]'); ok('closesMars', null, (await sheetKind()) === null);
+    // SSX.garage.respray({ reason, price }): pay, new plate on the active ride, wanted heat dropped through world.setWanted
+    const rs = await G(() => { const w = window.__app.surface.world, P = window.__app.game.progress; w.setWanted(3, 'test'); const c0 = P.credits, before = window.SSX.garage.rides.find(r => r.id === window.SSX.garage.active).plate || null;
+      let ev = null; addEventListener('ssx:respray', e => { ev = e.detail; }, { once: true });
+      const r = window.SSX.garage.respray({ reason: 'pursuit test', price: 450 }); const ride = window.SSX.garage.rides.find(x => x.id === window.SSX.garage.active);
+      const saved = JSON.parse(localStorage.getItem('ssx.progress.v1') || '{}').garage?.rides?.find(x => x.id === ride.id)?.plate;
+      return { r, paid: c0 - P.credits, plate: ride.plate, before, wanted: w.wanted, saved, ev: !!ev && ev.plate === r.plate }; });
+    ok('respray', JSON.stringify(rs), rs.r?.ok && /^[A-Z]{3}·\d[A-Z]\d$/.test(rs.r.plate) && rs.plate === rs.r.plate && rs.plate !== rs.before && rs.paid === 450 && rs.r.heat?.from === 3 && rs.wanted === 0 && rs.ev);
+    ok('resprayPersisted', rs.saved, rs.saved === rs.plate);
+    const poor = await G(() => { const P = window.__app.game.progress, w = window.__app.surface.world; P.credits = 10; w.setWanted(2, 'test'); const pl = window.SSX.garage.rides.find(x => x.id === window.SSX.garage.active).plate;
+      const r = window.SSX.garage.respray({ reason: 'broke', price: 450 }); const t = [...document.querySelectorAll('body *')].some(e => e.children.length === 0 && /respray is 450 cr/i.test(e.textContent || ''));
+      const out = { r, credits: P.credits, wanted: w.wanted, same: window.SSX.garage.rides.find(x => x.id === window.SSX.garage.active).plate === pl, toast: t }; w.setWanted(0); P.credits = 9000; return out; });
+    ok('resprayRefused', JSON.stringify(poor), poor.r?.ok === false && poor.r.reason === 'funds' && poor.credits === 10 && poor.wanted === 2 && poor.same && poor.toast);
   } catch (e) { bad.push('exception'); R.exception = String(e).slice(0, 300); }
   ok('noErrors', errors.slice(0, 5).join(' | ') || null, errors.length === 0);
   R.bad = bad; console.log(JSON.stringify(R, null, 1)); console.log(bad.length ? 'FAIL ' + bad.join(', ') : 'PASS');
