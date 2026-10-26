@@ -77,6 +77,36 @@ let threw = false; try { DC.resolveChoice('dance', m); } catch (e) { threw = tru
 ok('talk odds: armed + dog better', DC.talkChance({ armed: true, dog: true }) > DC.talkChance({}));
 ok('talk odds: retries worse', DC.talkChance({ tries: 1 }) < DC.talkChance({}));
 ok('talk odds clamp', DC.talkChance({ xp: 1e9, armed: true, dog: true, saltbloodRep: 10 }) <= 0.9 && DC.talkChance({ tries: 9 }) >= 0.05);
+// SSX.rep -> talkChance mapping (Marsmania's rep: -100..+100, 0 neutral)
+ok('rep 0 = neutral', DC.repToTalkUnits(0) === 0 && DC.talkChance({ saltbloodRep: DC.repToTalkUnits(0) }) === DC.talkChance({}));
+ok('rep +100 = 3 flags (max bonus)', Math.abs(DC.repToTalkUnits(100) - 3) < 1e-9);
+ok('rep -100 = -3', Math.abs(DC.repToTalkUnits(-100) + 3) < 1e-9);
+ok('rep clamps out of range', DC.repToTalkUnits(500) === DC.repToTalkUnits(100) && DC.repToTalkUnits(-999) === DC.repToTalkUnits(-100));
+ok('rep junk is neutral', [NaN, undefined, null, 'x', {}].every(v => DC.repToTalkUnits(v) === 0));
+ok('rep monotonic', DC.talkChance({ saltbloodRep: DC.repToTalkUnits(-60) }) < DC.talkChance({ saltbloodRep: DC.repToTalkUnits(0) }) && DC.talkChance({ saltbloodRep: DC.repToTalkUnits(0) }) < DC.talkChance({ saltbloodRep: DC.repToTalkUnits(60) }));
+ok('hostile rep costs at most 0.15', Math.abs(DC.talkChance({ saltbloodRep: DC.repToTalkUnits(-100) }) - (DC.talkChance({}) - 0.15)) < 1e-9);
+ok('talkChance survives junk rep', Number.isFinite(DC.talkChance({ saltbloodRep: NaN })) && Number.isFinite(DC.talkChance({ saltbloodRep: 'x' })));
+const FL = ['vesna-01', 'saltblood-friend', 'rook-02', 'vesna-02'];
+ok('flag count', DC.saltbloodFlagCount(FL) === 3 && DC.saltbloodFlagCount(null) === 0);
+ok('fallback to flags when rep missing', DC.saltbloodStanding(null, FL) === 3 && DC.saltbloodStanding(undefined, FL) === 3 && DC.saltbloodStanding(NaN, FL) === 3);
+ok('rep wins when present', DC.saltbloodStanding(0, FL) === 0 && DC.saltbloodStanding(-50, FL) < 0);
+for (let k = 0; k <= 4; k++) ok('no jump when rep loads seeded from ' + k + ' flags', Math.abs(DC.talkChance({ saltbloodRep: DC.saltbloodStanding(DC.flagsToRep(k), []) }) - DC.talkChance({ saltbloodRep: k })) < 0.002);
+ok('readRep absent', DC.readRep('saltblood', {}) === null && DC.readRep('saltblood', null) === null);
+ok('readRep reads', DC.readRep('saltblood', { SSX: { rep: { get: id => id === 'saltblood' ? 40 : 0 } } }) === 40);
+ok('readRep throws -> null', DC.readRep('saltblood', { SSX: { rep: { get() { throw new Error('boom'); } } } }) === null);
+ok('readRep non-number -> null', DC.readRep('saltblood', { SSX: { rep: { get: () => 'lots' } } }) === null);
+// ssx:npc-down faction slugs
+ok('faction: junkie/mugger', DC.npcDownDetail({ kind: 'junkie', role: 'mugger', x: 1, z: 2 }).faction === 'junkies');
+ok('faction: thug', DC.npcDownDetail({ kind: 'thug' }).faction === 'saltblood');
+ok('faction: escort default', DC.npcDownDetail({ kind: 'thug', escort: true }).faction === 'saltblood');
+ok('faction: turf escorts', DC.npcDownDetail({ kind: 'thug', escort: true, faction: 'dustjaws' }).faction === 'dustjaws' && DC.npcDownDetail({ kind: 'thug', escort: true, faction: 'saints' }).name === 'Vacuum Saint escort');
+ok('faction: chase car', DC.npcDownDetail({ x: 0, z: 0, name: 'Saltblood driver', faction: 'saltblood' }).faction === 'saltblood' && DC.npcDownDetail({ name: 'Junkie driver', faction: 'junkies' }).faction === 'junkies');
+ok('faction: colonist/victim/getaway omitted', !('faction' in DC.npcDownDetail({ kind: 'colonist' })) && !('faction' in DC.npcDownDetail({ kind: 'victim' })) && !('faction' in DC.npcDownDetail({ name: 'Fence crew driver', faction: null })));
+ok('faction keeps x/z/name', (d => d.x === 3 && d.z === 4 && d.name === 'Saltblood')(DC.npcDownDetail({ kind: 'thug', x: 3, z: 4 })));
+ok('faction lowercased', DC.npcDownDetail({ kind: 'thug', faction: 'Saints' }).faction === 'saints');
+// backup factions = mars/turf.js slugs
+ok('backup: dustjaws + saints', DC.backupPlan({ faction: 'dustjaws' }, 6, true).ok && DC.backupPlan({ faction: 'saints', count: 9 }, 6, true).n === 4 && DC.backupPlan({ faction: 'saints' }, 6, false).hp > DC.backupPlan({ faction: 'dustjaws' }, 6, false).hp);
+ok('backup: unknown faction refused', DC.backupPlan({ faction: 'colsec' }, 6, true).why === 'faction');
 // heat
 ok('self defense', DC.heatForMugger({ phase: 'fight', killed: true, gun: false, witnessed: true, inColony: true }) === null);
 ok('self defense gun outskirts', DC.heatForMugger({ phase: 'fight', killed: true, gun: true, witnessed: false, inColony: false }) === null);

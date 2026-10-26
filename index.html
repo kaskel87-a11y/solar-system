@@ -426,6 +426,7 @@
   <div id="ctlPanel"><div class="wrap"><button id="ctlClose" class="btn">✕ Close</button><h2>❔ Controls</h2>
     <p style="opacity:.8">Phone: left stick moves, drag anywhere to look, and the big buttons do the rest. Keyboard and mouse:</p>
     <h3>🚀 In space</h3><table><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Fly</td></tr><tr><td><kbd>Q</kbd> <kbd>E</kbd></td><td>Down / up</td></tr><tr><td>Double-tap <kbd>A</kbd> / <kbd>D</kbd></td><td>Barrel roll the Starship</td></tr><tr><td><kbd>Space</kbd> / <kbd>Shift</kbd></td><td>Boost</td></tr><tr><td>Mouse (click to lock)</td><td>Look / steer</td></tr><tr><td><kbd>L</kbd></td><td>Land here, or autopilot to the world you picked (Mars by default); again to cancel</td></tr><tr><td><kbd>F</kbd> / <kbd>Esc</kbd></td><td>Start / stop flying</td></tr></table><h3>🧑‍🚀 On a world</h3><table><tr><td><kbd>E</kbd> near a colonist</td><td>⚔️ Challenge to a legal duel (fists, blades or quick-draw; 🏳 yields)</td></tr><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</td><td>Walk / drive (steer in the air too)</td></tr><tr><td>Mouse (click to lock, <kbd>Esc</kbd> to free it)</td><td>Look and aim</td></tr><tr><td><kbd>Shift</kbd> (hold)</td><td>Run on foot · ⚡ Boost when driving any vehicle (or hold the ⚡ Boost button)</td></tr><tr><td><kbd>Q</kbd> / <kbd>E</kbd> in the air (or double-tap <kbd>A</kbd>/<kbd>D</kbd>)</td><td>🌀 Barrel roll when airborne. Land on your wheels for a stunt bonus; land on the roof and it hurts. Touch: flick the stick sideways twice</td></tr><tr><td><kbd>Space</kbd></td><td>Jump · 🚀 thrust in a rover</td></tr><tr><td>Click / <kbd>F</kbd></td><td>Fire (indoors: click an item on the wall or in a case to buy it)</td></tr><tr><td><kbd>C</kbd></td><td>Melee</td></tr><tr><td><kbd>Q</kbd></td><td>Switch weapon / rover mount</td></tr><tr><td><kbd>X</kbd></td><td>Use a medkit</td></tr><tr><td><kbd>E</kbd></td><td>Context action: drive, take a car, talk, enter or leave a building, shop, buy the item in front of you</td></tr><tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>Accept / skip the job on the radio</td></tr><tr><td><kbd>N</kbd></td><td>Next radio station</td></tr><tr><td><kbd>P</kbd></td><td>Pet the dog</td></tr><tr><td><kbd>V</kbd> · <kbd>+</kbd> <kbd>-</kbd></td><td>Camera view · zoom</td></tr><tr><td><kbd>L</kbd></td><td>Mission log</td></tr><tr><td><kbd>R</kbd> · <kbd>Shift</kbd>+<kbd>R</kbd></td><td>Summon the rover · warp to it</td></tr><tr><td><kbd>H</kbd></td><td>Return to the ship</td></tr><tr><td><kbd>M</kbd> / <kbd>Tab</kbd></td><td>☰ menu</td></tr><tr><td><kbd>U</kbd></td><td>Hide the HUD</td></tr><tr><td><kbd>T</kbd></td><td>Take off</td></tr><tr><td><kbd>?</kbd></td><td>This list</td></tr></table>
+    <h3>⌨️ Keyboard only</h3><table><tr><td><kbd>O</kbd></td><td>Switch Keyboard only / Keyboard + Mouse (also in ⚙️ Settings)</td></tr><tr><td>Arrows</td><td>Turn the camera (the camera follows you and your ride)</td></tr><tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move / drive</td></tr><tr><td><kbd>F</kbd></td><td>Fire: locks onto the nearest target in front</td></tr><tr><td><kbd>M</kbd> then <kbd>Tab</kbd> / <kbd>Enter</kbd></td><td>Open the menu and pick with the keyboard</td></tr></table>
     <p style="opacity:.7">Shop panels: click to buy, <kbd>E</kbd> or <kbd>Esc</kbd> closes. The mouse is freed whenever a menu or shop opens.</p></div></div>
   <div id="duelPanel" role="dialog" aria-modal="true"><div class="wrap"><h2 id="duelHead">⚔️ Challenge</h2><p id="duelBlurb"></p>
     <div class="lbl">Weapons</div><div class="row" id="duelTypes"><button class="btn chipb" data-t="fists">👊 Fists</button><button class="btn chipb" data-t="blades">🔪 Blades</button><button class="btn chipb" data-t="pistol">🔫 Quick-draw</button></div>
@@ -453,120 +454,146 @@
  "imports": {
   "three": "./vendor/three/build/three.module.min.js",
   "three/addons/": "./vendor/three/addons/",
-  "./ambience.js": "./ambience.js?v=7.5.2",
-  "ssx/ambience": "./ambience.js?v=7.5.2",
-  "./ambient.js": "./ambient.js?v=7.5.2",
-  "ssx/ambient": "./ambient.js?v=7.5.2",
-  "./ambientcore.js": "./ambientcore.js?v=7.5.2",
-  "ssx/ambientcore": "./ambientcore.js?v=7.5.2",
-  "./audio7.js": "./audio7.js?v=7.5.2",
-  "ssx/audio7": "./audio7.js?v=7.5.2",
-  "./barks.js": "./barks.js?v=7.5.2",
-  "ssx/barks": "./barks.js?v=7.5.2",
-  "./cameras.js": "./cameras.js?v=7.5.2",
-  "ssx/cameras": "./cameras.js?v=7.5.2",
-  "./city.js": "./city.js?v=7.5.2",
-  "ssx/city": "./city.js?v=7.5.2",
-  "./citydata.js": "./citydata.js?v=7.5.2",
-  "ssx/citydata": "./citydata.js?v=7.5.2",
-  "./danger.js": "./danger.js?v=7.5.2",
-  "ssx/danger": "./danger.js?v=7.5.2",
-  "./dangercore.js": "./dangercore.js?v=7.5.2",
-  "ssx/dangercore": "./dangercore.js?v=7.5.2",
-  "./dangerhooks.js": "./dangerhooks.js?v=7.5.2",
-  "ssx/dangerhooks": "./dangerhooks.js?v=7.5.2",
-  "./game.js": "./game.js?v=7.5.2",
-  "ssx/game": "./game.js?v=7.5.2",
-  "./heist.js": "./heist.js?v=7.5.2",
-  "ssx/heist": "./heist.js?v=7.5.2",
-  "./heistcore.js": "./heistcore.js?v=7.5.2",
-  "ssx/heistcore": "./heistcore.js?v=7.5.2",
-  "./heisthooks.js": "./heisthooks.js?v=7.5.2",
-  "ssx/heisthooks": "./heisthooks.js?v=7.5.2",
-  "./interiors.js": "./interiors.js?v=7.5.2",
-  "ssx/interiors": "./interiors.js?v=7.5.2",
-  "./mars-audio.js": "./mars-audio.js?v=7.5.2",
-  "ssx/mars-audio": "./mars-audio.js?v=7.5.2",
-  "./missions-data.js": "./missions-data.js?v=7.5.2",
-  "ssx/missions-data": "./missions-data.js?v=7.5.2",
-  "./models.js": "./models.js?v=7.5.2",
-  "ssx/models": "./models.js?v=7.5.2",
-  "./portals.js": "./portals.js?v=7.5.2",
-  "ssx/portals": "./portals.js?v=7.5.2",
-  "./pursuit.js": "./pursuit.js?v=7.5.2",
-  "ssx/pursuit": "./pursuit.js?v=7.5.2",
-  "./raccoon.js": "./raccoon.js?v=7.5.2",
-  "ssx/raccoon": "./raccoon.js?v=7.5.2",
-  "./race.js": "./race.js?v=7.5.2",
-  "ssx/race": "./race.js?v=7.5.2",
-  "./racecore.js": "./racecore.js?v=7.5.2",
-  "ssx/racecore": "./racecore.js?v=7.5.2",
-  "./racehooks.js": "./racehooks.js?v=7.5.2",
-  "ssx/racehooks": "./racehooks.js?v=7.5.2",
-  "./radio.js": "./radio.js?v=7.5.2",
-  "ssx/radio": "./radio.js?v=7.5.2",
-  "./safecrack.js": "./safecrack.js?v=7.5.2",
-  "ssx/safecrack": "./safecrack.js?v=7.5.2",
-  "./scicore.js": "./scicore.js?v=7.5.2",
-  "ssx/scicore": "./scicore.js?v=7.5.2",
-  "./scientists.js": "./scientists.js?v=7.5.2",
-  "ssx/scientists": "./scientists.js?v=7.5.2",
-  "./scihooks.js": "./scihooks.js?v=7.5.2",
-  "ssx/scihooks": "./scihooks.js?v=7.5.2",
-  "./storymars.js": "./storymars.js?v=7.5.2",
-  "ssx/storymars": "./storymars.js?v=7.5.2",
-  "./storymars2.js": "./storymars2.js?v=7.5.2",
-  "ssx/storymars2": "./storymars2.js?v=7.5.2",
-  "./streetdata.js": "./streetdata.js?v=7.5.2",
-  "ssx/streetdata": "./streetdata.js?v=7.5.2",
-  "./surface.js": "./surface.js?v=7.5.2",
-  "ssx/surface": "./surface.js?v=7.5.2",
-  "./synth.js": "./synth.js?v=7.5.2",
-  "ssx/synth": "./synth.js?v=7.5.2",
-  "./trackbuilder.js": "./trackbuilder.js?v=7.5.2",
-  "ssx/trackbuilder": "./trackbuilder.js?v=7.5.2",
-  "./world.js": "./world.js?v=7.5.2",
-  "ssx/world": "./world.js?v=7.5.2",
-  "./activities/poker-eval.js": "./activities/poker-eval.js?v=7.5.2",
-  "ssx/activities/poker-eval": "./activities/poker-eval.js?v=7.5.2",
-  "./activities/poker.js": "./activities/poker.js?v=7.5.2",
-  "ssx/activities/poker": "./activities/poker.js?v=7.5.2",
-  "./activities/runner.js": "./activities/runner.js?v=7.5.2",
-  "ssx/activities/runner": "./activities/runner.js?v=7.5.2",
-  "./dimensions/automat.js": "./dimensions/automat.js?v=7.5.2",
-  "ssx/dimensions/automat": "./dimensions/automat.js?v=7.5.2",
-  "./dimensions/gravbog.js": "./dimensions/gravbog.js?v=7.5.2",
-  "ssx/dimensions/gravbog": "./dimensions/gravbog.js?v=7.5.2",
-  "./dimensions/index.js": "./dimensions/index.js?v=7.5.2",
-  "ssx/dimensions/index": "./dimensions/index.js?v=7.5.2",
-  "./dimensions/lounge.js": "./dimensions/lounge.js?v=7.5.2",
-  "ssx/dimensions/lounge": "./dimensions/lounge.js?v=7.5.2",
-  "./dimensions/pantry.js": "./dimensions/pantry.js?v=7.5.2",
-  "ssx/dimensions/pantry": "./dimensions/pantry.js?v=7.5.2",
-  "./dimensions/waitroom.js": "./dimensions/waitroom.js?v=7.5.2",
-  "ssx/dimensions/waitroom": "./dimensions/waitroom.js?v=7.5.2",
-  "./mars/contraband.js": "./mars/contraband.js?v=7.5.2",
-  "ssx/mars/contraband": "./mars/contraband.js?v=7.5.2",
-  "./mars/jobs.js": "./mars/jobs.js?v=7.5.2",
-  "ssx/mars/jobs": "./mars/jobs.js?v=7.5.2",
-  "./planets/europa.js": "./planets/europa.js?v=7.5.2",
-  "ssx/planets/europa": "./planets/europa.js?v=7.5.2",
-  "./planets/hooks.js": "./planets/hooks.js?v=7.5.2",
-  "ssx/planets/hooks": "./planets/hooks.js?v=7.5.2",
-  "./planets/index.js": "./planets/index.js?v=7.5.2",
-  "ssx/planets/index": "./planets/index.js?v=7.5.2",
-  "./planets/io.js": "./planets/io.js?v=7.5.2",
-  "ssx/planets/io": "./planets/io.js?v=7.5.2",
-  "./planets/mercury.js": "./planets/mercury.js?v=7.5.2",
-  "ssx/planets/mercury": "./planets/mercury.js?v=7.5.2",
-  "./planets/referrals.js": "./planets/referrals.js?v=7.5.2",
-  "ssx/planets/referrals": "./planets/referrals.js?v=7.5.2",
-  "./planets/titan.js": "./planets/titan.js?v=7.5.2",
-  "ssx/planets/titan": "./planets/titan.js?v=7.5.2",
-  "./planets/vehicles.js": "./planets/vehicles.js?v=7.5.2",
-  "ssx/planets/vehicles": "./planets/vehicles.js?v=7.5.2",
-  "./planets/venus.js": "./planets/venus.js?v=7.5.2",
-  "ssx/planets/venus": "./planets/venus.js?v=7.5.2"
+  "./ambience.js": "./ambience.js?v=7.5.3.1",
+  "ssx/ambience": "./ambience.js?v=7.5.3.1",
+  "./ambient.js": "./ambient.js?v=7.5.3.1",
+  "ssx/ambient": "./ambient.js?v=7.5.3.1",
+  "./ambientcore.js": "./ambientcore.js?v=7.5.3.1",
+  "ssx/ambientcore": "./ambientcore.js?v=7.5.3.1",
+  "./audio7.js": "./audio7.js?v=7.5.3.1",
+  "ssx/audio7": "./audio7.js?v=7.5.3.1",
+  "./barks.js": "./barks.js?v=7.5.3.1",
+  "ssx/barks": "./barks.js?v=7.5.3.1",
+  "./cameras.js": "./cameras.js?v=7.5.3.1",
+  "ssx/cameras": "./cameras.js?v=7.5.3.1",
+  "./carmeet.js": "./carmeet.js?v=7.5.3.1",
+  "ssx/carmeet": "./carmeet.js?v=7.5.3.1",
+  "./city.js": "./city.js?v=7.5.3.1",
+  "ssx/city": "./city.js?v=7.5.3.1",
+  "./citydata.js": "./citydata.js?v=7.5.3.1",
+  "ssx/citydata": "./citydata.js?v=7.5.3.1",
+  "./clubdancers.js": "./clubdancers.js?v=7.5.3.1",
+  "ssx/clubdancers": "./clubdancers.js?v=7.5.3.1",
+  "./controlmode.js": "./controlmode.js?v=7.5.3.1",
+  "ssx/controlmode": "./controlmode.js?v=7.5.3.1",
+  "./danger.js": "./danger.js?v=7.5.3.1",
+  "ssx/danger": "./danger.js?v=7.5.3.1",
+  "./dangercore.js": "./dangercore.js?v=7.5.3.1",
+  "ssx/dangercore": "./dangercore.js?v=7.5.3.1",
+  "./dangerhooks.js": "./dangerhooks.js?v=7.5.3.1",
+  "ssx/dangerhooks": "./dangerhooks.js?v=7.5.3.1",
+  "./dealership.js": "./dealership.js?v=7.5.3.1",
+  "ssx/dealership": "./dealership.js?v=7.5.3.1",
+  "./game.js": "./game.js?v=7.5.3.1",
+  "ssx/game": "./game.js?v=7.5.3.1",
+  "./garagecore.js": "./garagecore.js?v=7.5.3.1",
+  "ssx/garagecore": "./garagecore.js?v=7.5.3.1",
+  "./gatecore.js": "./gatecore.js?v=7.5.3.1",
+  "ssx/gatecore": "./gatecore.js?v=7.5.3.1",
+  "./heist.js": "./heist.js?v=7.5.3.1",
+  "ssx/heist": "./heist.js?v=7.5.3.1",
+  "./heistcore.js": "./heistcore.js?v=7.5.3.1",
+  "ssx/heistcore": "./heistcore.js?v=7.5.3.1",
+  "./heisthooks.js": "./heisthooks.js?v=7.5.3.1",
+  "ssx/heisthooks": "./heisthooks.js?v=7.5.3.1",
+  "./interiors.js": "./interiors.js?v=7.5.3.1",
+  "ssx/interiors": "./interiors.js?v=7.5.3.1",
+  "./mars-audio.js": "./mars-audio.js?v=7.5.3.1",
+  "ssx/mars-audio": "./mars-audio.js?v=7.5.3.1",
+  "./marsshops.js": "./marsshops.js?v=7.5.3.1",
+  "ssx/marsshops": "./marsshops.js?v=7.5.3.1",
+  "./missions-data.js": "./missions-data.js?v=7.5.3.1",
+  "ssx/missions-data": "./missions-data.js?v=7.5.3.1",
+  "./models.js": "./models.js?v=7.5.3.1",
+  "ssx/models": "./models.js?v=7.5.3.1",
+  "./portals.js": "./portals.js?v=7.5.3.1",
+  "ssx/portals": "./portals.js?v=7.5.3.1",
+  "./pursuit.js": "./pursuit.js?v=7.5.3.1",
+  "ssx/pursuit": "./pursuit.js?v=7.5.3.1",
+  "./raccoon.js": "./raccoon.js?v=7.5.3.1",
+  "ssx/raccoon": "./raccoon.js?v=7.5.3.1",
+  "./race.js": "./race.js?v=7.5.3.1",
+  "ssx/race": "./race.js?v=7.5.3.1",
+  "./racecore.js": "./racecore.js?v=7.5.3.1",
+  "ssx/racecore": "./racecore.js?v=7.5.3.1",
+  "./racehooks.js": "./racehooks.js?v=7.5.3.1",
+  "ssx/racehooks": "./racehooks.js?v=7.5.3.1",
+  "./radio.js": "./radio.js?v=7.5.3.1",
+  "ssx/radio": "./radio.js?v=7.5.3.1",
+  "./rides.js": "./rides.js?v=7.5.3.1",
+  "ssx/rides": "./rides.js?v=7.5.3.1",
+  "./safecrack.js": "./safecrack.js?v=7.5.3.1",
+  "ssx/safecrack": "./safecrack.js?v=7.5.3.1",
+  "./scicore.js": "./scicore.js?v=7.5.3.1",
+  "ssx/scicore": "./scicore.js?v=7.5.3.1",
+  "./scientists.js": "./scientists.js?v=7.5.3.1",
+  "ssx/scientists": "./scientists.js?v=7.5.3.1",
+  "./scihooks.js": "./scihooks.js?v=7.5.3.1",
+  "ssx/scihooks": "./scihooks.js?v=7.5.3.1",
+  "./storymars.js": "./storymars.js?v=7.5.3.1",
+  "ssx/storymars": "./storymars.js?v=7.5.3.1",
+  "./storymars2.js": "./storymars2.js?v=7.5.3.1",
+  "ssx/storymars2": "./storymars2.js?v=7.5.3.1",
+  "./streetdata.js": "./streetdata.js?v=7.5.3.1",
+  "ssx/streetdata": "./streetdata.js?v=7.5.3.1",
+  "./surface.js": "./surface.js?v=7.5.3.1",
+  "ssx/surface": "./surface.js?v=7.5.3.1",
+  "./synth.js": "./synth.js?v=7.5.3.1",
+  "ssx/synth": "./synth.js?v=7.5.3.1",
+  "./trackbuilder.js": "./trackbuilder.js?v=7.5.3.1",
+  "ssx/trackbuilder": "./trackbuilder.js?v=7.5.3.1",
+  "./world.js": "./world.js?v=7.5.3.1",
+  "ssx/world": "./world.js?v=7.5.3.1",
+  "./activities/poker-eval.js": "./activities/poker-eval.js?v=7.5.3.1",
+  "ssx/activities/poker-eval": "./activities/poker-eval.js?v=7.5.3.1",
+  "./activities/poker.js": "./activities/poker.js?v=7.5.3.1",
+  "ssx/activities/poker": "./activities/poker.js?v=7.5.3.1",
+  "./activities/runner.js": "./activities/runner.js?v=7.5.3.1",
+  "ssx/activities/runner": "./activities/runner.js?v=7.5.3.1",
+  "./dimensions/automat.js": "./dimensions/automat.js?v=7.5.3.1",
+  "ssx/dimensions/automat": "./dimensions/automat.js?v=7.5.3.1",
+  "./dimensions/gravbog.js": "./dimensions/gravbog.js?v=7.5.3.1",
+  "ssx/dimensions/gravbog": "./dimensions/gravbog.js?v=7.5.3.1",
+  "./dimensions/index.js": "./dimensions/index.js?v=7.5.3.1",
+  "ssx/dimensions/index": "./dimensions/index.js?v=7.5.3.1",
+  "./dimensions/lounge.js": "./dimensions/lounge.js?v=7.5.3.1",
+  "ssx/dimensions/lounge": "./dimensions/lounge.js?v=7.5.3.1",
+  "./dimensions/pantry.js": "./dimensions/pantry.js?v=7.5.3.1",
+  "ssx/dimensions/pantry": "./dimensions/pantry.js?v=7.5.3.1",
+  "./dimensions/waitroom.js": "./dimensions/waitroom.js?v=7.5.3.1",
+  "ssx/dimensions/waitroom": "./dimensions/waitroom.js?v=7.5.3.1",
+  "./mars/contraband.js": "./mars/contraband.js?v=7.5.3.1",
+  "ssx/mars/contraband": "./mars/contraband.js?v=7.5.3.1",
+  "./mars/jobs.js": "./mars/jobs.js?v=7.5.3.1",
+  "ssx/mars/jobs": "./mars/jobs.js?v=7.5.3.1",
+  "./mars/turf.js": "./mars/turf.js?v=7.5.3.1",
+  "ssx/mars/turf": "./mars/turf.js?v=7.5.3.1",
+  "./modes/hook.js": "./modes/hook.js?v=7.5.3.1",
+  "ssx/modes/hook": "./modes/hook.js?v=7.5.3.1",
+  "./modes/rags.js": "./modes/rags.js?v=7.5.3.1",
+  "ssx/modes/rags": "./modes/rags.js?v=7.5.3.1",
+  "./modes/ragscore.js": "./modes/ragscore.js?v=7.5.3.1",
+  "ssx/modes/ragscore": "./modes/ragscore.js?v=7.5.3.1",
+  "./modes/raids.js": "./modes/raids.js?v=7.5.3.1",
+  "ssx/modes/raids": "./modes/raids.js?v=7.5.3.1",
+  "./planets/europa.js": "./planets/europa.js?v=7.5.3.1",
+  "ssx/planets/europa": "./planets/europa.js?v=7.5.3.1",
+  "./planets/hooks.js": "./planets/hooks.js?v=7.5.3.1",
+  "ssx/planets/hooks": "./planets/hooks.js?v=7.5.3.1",
+  "./planets/index.js": "./planets/index.js?v=7.5.3.1",
+  "ssx/planets/index": "./planets/index.js?v=7.5.3.1",
+  "./planets/io.js": "./planets/io.js?v=7.5.3.1",
+  "ssx/planets/io": "./planets/io.js?v=7.5.3.1",
+  "./planets/mercury.js": "./planets/mercury.js?v=7.5.3.1",
+  "ssx/planets/mercury": "./planets/mercury.js?v=7.5.3.1",
+  "./planets/referrals.js": "./planets/referrals.js?v=7.5.3.1",
+  "ssx/planets/referrals": "./planets/referrals.js?v=7.5.3.1",
+  "./planets/titan.js": "./planets/titan.js?v=7.5.3.1",
+  "ssx/planets/titan": "./planets/titan.js?v=7.5.3.1",
+  "./planets/vehicles.js": "./planets/vehicles.js?v=7.5.3.1",
+  "ssx/planets/vehicles": "./planets/vehicles.js?v=7.5.3.1",
+  "./planets/venus.js": "./planets/venus.js?v=7.5.3.1",
+  "ssx/planets/venus": "./planets/venus.js?v=7.5.3.1"
  }
 }
 </script>
@@ -593,6 +620,9 @@
     import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
     import './storymars2.js'; // v7.5 Mars story, part 2 (Jeff): rook-05 vault finale + Doc Grieve / Wolde / Thorne chains (self-bootstraps)
     import { initHeist } from './heist.js'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
+    import './marsshops.js'; // v7.5.3 Mars district shops (Jeff, PR #10)
+    import * as CTL from './controlmode.js'; // v7.5.3 control mode: Keyboard only / Keyboard + Mouse (key O)
+    import { DEALER_API } from './dealership.js'; // Mars rover dealership, garages + car meets (Pumpkin, PR #7; adds SSX.registerDealerVehicle)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
@@ -1014,6 +1044,7 @@
     const flyBtn = document.getElementById('flyBtn');
 
     function lockPointer() {
+      if (CTL.kbOnly()) return; // v7.5.3 Keyboard only: the pointer is never captured
       try { const r = renderer.domElement.requestPointerLock?.(); r?.catch?.(() => {}); } catch (e) { /* drag-to-look still works */ }
     }
     let landedAt = -1e9, onSurface = false, transitioning = false, flyTarget = null, nearBody = null, landAnim = null, landedBody = null, autopilot = null, landTarget = null;
@@ -1423,10 +1454,10 @@
         W.clubFx('rain', 24); au7.fx.cash();
         toast(pickL(['💸 You make it rain. The dancers work the poles harder and somebody whistles.', '💸 Credits flutter down. Jade catches one mid-spin without missing a beat.', '💸 Tiny, from the rope: “Big spender. Don’t get ideas.”', '💸 A chit lands in the drink of the guy next to you. He’s too drunk to care.']), 2800);
       } else if (s.act === 'private') {
-        if (!g.spend(50)) { toast('Nova: Fifty for a song, sugar. Come back when you’re liquid.', 2600); au7.fx.dry(); return; }
+        if (!g.spend(50)) { toast(`${s.who || 'Danny Alvarez'}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
         W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
-        toast('💃 Nova dances one song just for you. Costume stays on, hands stay on the armrests, Tiny watches from the rope.', 4200);
+        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
       } else if (s.act === 'companion') {
         if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
         au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
@@ -1551,9 +1582,11 @@
       const pick = kind => Object.entries(COSMETICS[kind]).map(([id, c]) => { const own = P.unlocks.includes(`${kind}:${id}`); return `<button class="chip${P.equip[kind] === id ? ' on' : ''}${own ? '' : ' lock'}" data-kind="${kind}" data-id="${id}">${own ? '' : '🔒 '}${esc(c.name)}</button>`; }).join('');
       const sb = document.getElementById('settingsBody');
       sb.innerHTML = `<div class="sw"><span>☣️ Hostiles &amp; combat<br><small style="opacity:.7">Off = peaceful exploring (colonies and security stay)</small></span><button class="btn ${P.settings.aliens ? 'on' : 'off'}" id="setAliens" aria-pressed="${!!P.settings.aliens}">${P.settings.aliens ? 'ON' : 'OFF'}</button></div>`
+        + `<div class="sw"><span>⌨️ Controls<br><small style="opacity:.7">Keyboard only: arrows turn the camera, F fires (auto-aim), no mouse capture. Key O switches.</small></span><button class="btn on" id="setCtl" aria-pressed="${CTL.kbOnly()}" data-mode="${CTL.getMode()}">${CTL.modeName()}</button></div>`
         + `<div class="sw"><span>📻 Radio voice (text-to-speech)</span><button class="btn ${P.settings.voice ? 'on' : 'off'}" id="setVoice" aria-pressed="${!!P.settings.voice}">${P.settings.voice ? 'ON' : 'OFF'}</button></div>`
         + `<h3>🎨 Rover paint</h3><div class="chips">${pick('paint')}</div><h3>🧣 ${esc(dogName)}'s bandana</h3><div class="chips">${pick('bandana')}</div>`;
       tapOf(sb.querySelector('#setAliens')).fn = () => { G.setAliens(!P.settings.aliens); toast(P.settings.aliens ? '☣️ Hostiles ON. Check your corners.' : '🕊 Peaceful mode: no hostiles.', 2500); renderLogTabs(); updateSurfHud(true); };
+      tapOf(sb.querySelector('#setCtl')).fn = () => { CTL.toggleMode(); renderLogTabs(); document.getElementById('setCtl')?.focus(); };
       tapOf(sb.querySelector('#setVoice')).fn = () => { G.setVoice(!P.settings.voice); if (!P.settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* */ } renderLogTabs(); };
       sb.querySelectorAll('[data-kind]').forEach(b => tapOf(b).fn = () => { if (G.equip(b.dataset.kind, b.dataset.id)) renderLogTabs(); else toast('🔒 Earn it on a job, or buy it at a colony shop.', 2500); });
     }
@@ -1703,7 +1736,16 @@
     let lockTipShown = false;
     document.addEventListener('pointerlockchange', () => { document.body.classList.toggle('mlocked', !!document.pointerLockElement); });
     document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement && onSurface && !lockTipShown) { lockTipShown = true; toast('🖱 Mouse aim on. Esc frees the mouse for ☰ and buttons (or press M for the menu).', 3200); } });
-    function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock(); }
+    function toggleMenu(on) { const show = on ?? !roverMenu.classList.contains('show'); roverMenu.classList.toggle('show', show); if (show && document.pointerLockElement) document.exitPointerLock();
+      if (show && CTL.kbOnly()) setTimeout(() => roverMenu.querySelector('button:not([disabled])')?.focus(), 0); } // v7.5.3: keyboard-only lands focus in the menu (Tab / Enter)
+    const menuOpen = () => roverMenu.classList.contains('show') || logPanel.style.display === 'block' || shopPanel.style.display === 'block' || ctlPanel.style.display === 'block';
+    function applyControlMode(m, say = true) { // v7.5.3 control mode
+      const kb = m === 'kb'; document.body.classList.toggle('kbonly', kb);
+      if (kb) { if (document.pointerLockElement) document.exitPointerLock(); mouseAim.has = false; mouseAim.held = false; mouseAim.x = 0; mouseAim.y = 0; try { surface.aim(0, 0, false); } catch (e) { /* not landed */ } }
+      if (say) toast(CTL.toastText(m), 2600);
+      if (logPanel.style.display === 'block' && logTab === 'tabSettings') renderLogTabs();
+    }
+    CTL.onMode(m => applyControlMode(m)); applyControlMode(CTL.getMode(), false);
     tapOf(miniMap).fn = () => toggleMenu(); tapOf(document.getElementById('menuBtn')).fn = () => toggleMenu();
     function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
     tapOf(document.getElementById('hideHudBtn')).fn = () => setCinematic(true);
@@ -1770,8 +1812,10 @@
       roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b;
     }
     window.SSX = {
+      ...(window.SSX?.controls ? { controls: window.SSX.controls } : {}), // v7.5.3 control mode (controlmode.js registers first)
       registerColony, registerDistrict, districtsOf, registerMission, registerInterior,
       registerVehicle, registerMenuItem,
+      ...DEALER_API,
       // v7.4 stub: extra bodies (Ceres, a cloud station) land in v7.5+. Recorded now so mods can declare them early.
       registerBody(def) { if (!def?.name) throw new Error('registerBody({ name, r, orbit, texture?, landable? })'); (window.SSX.bodies ||= []).push(def); return def.name; }
     };
@@ -1881,13 +1925,14 @@
     let sDown = null, lastPinch = 0;
     renderer.domElement.addEventListener('pointerdown', e => {
       if (!onSurface) return;
+      if (e.pointerType === 'mouse' && CTL.kbOnly()) { sDown = null; return; } // v7.5.3 Keyboard only: mouse clicks on the world are ignored
       sDown = { x: e.clientX, y: e.clientY, t: performance.now() };
       if (e.pointerType === 'mouse' && e.button === 0 && document.pointerLockElement && surface.game.info.combat) mouseAim.held = true;
     });
     window.addEventListener('pointerup', () => { mouseAim.held = false; });
     // desktop aiming: crosshair when the mouse is locked, else the mouse pointer
     window.addEventListener('mousemove', e => {
-      if (!onSurface || isTouch) return;
+      if (!onSurface || isTouch || CTL.kbOnly()) return;
       if (document.pointerLockElement) { mouseAim.x = 0; mouseAim.y = 0; } else { mouseAim.x = (e.clientX / innerWidth) * 2 - 1; mouseAim.y = -(e.clientY / innerHeight) * 2 + 1; }
       mouseAim.has = true; surface.aim(mouseAim.x, mouseAim.y, true);
     });
@@ -1910,8 +1955,11 @@
     window.addEventListener('keydown', e => {
       if (ctlPanel.style.display === 'block') { if (['Escape', 'Slash', 'F1', 'Enter'].includes(e.code)) { e.preventDefault(); openControls(false); } return; }
       if ((e.key === '?' || e.code === 'F1') && !e.repeat) { e.preventDefault(); openControls(true); return; }
+      if (CTL.isToggleKey(e)) { e.preventDefault(); CTL.toggleMode(); return; } // v7.5.3 control mode hotkey (O)
+      // v7.5.3 Keyboard only: Tab walks the buttons of an open menu instead of closing it
+      if (e.code === 'Tab' && CTL.kbOnly() && (roverMenu.classList.contains('show') || logPanel.style.display === 'block')) return;
       keys[e.code] = true;
-      if (!e.repeat && ['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)) { const now = performance.now(); if (now - (rollTap[e.code] || 0) < 280) { requestRoll(e.code === 'KeyA' || e.code === 'ArrowLeft' ? -1 : 1); rollTap[e.code] = 0; } else rollTap[e.code] = now; }
+      if (!e.repeat && (CTL.kbOnly() ? ['KeyA', 'KeyD'] : ['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight']).includes(e.code)) { const now = performance.now(); if (now - (rollTap[e.code] || 0) < 280) { requestRoll(e.code === 'KeyA' || e.code === 'ArrowLeft' ? -1 : 1); rollTap[e.code] = 0; } else rollTap[e.code] = now; }
       if (onSurface && !e.repeat && (e.code === 'KeyQ' || e.code === 'KeyE') && surface.info?.driving && surface.info.air) { requestRoll(e.code === 'KeyQ' ? -1 : 1); return; }
       // v7.3 (playtest m6): accept / skip a radio job from the keyboard, even with the mouse locked
       if (radioOffer && radioEl.style.display === 'block' && !e.repeat && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Backspace')) { e.preventDefault(); document.getElementById(e.code === 'Backspace' ? 'radioLater' : 'radioAccept').click(); return; }
@@ -1956,7 +2004,7 @@
     }
     // Desktop: pointer-lock mouse look, or drag-to-look if pointer lock isn't granted
     window.addEventListener('mousemove', e => {
-      if (!flying || isTouch) return;
+      if (!flying || isTouch || CTL.kbOnly()) return;
       if (document.pointerLockElement) look(e.movementX, e.movementY, 0.002);
       else if (e.buttons & 1) look(e.movementX, e.movementY, 0.004);
     });
@@ -2035,12 +2083,17 @@
       const dt = realDt * timeSpeed;
 
       if (onSurface) {
-        if (document.pointerLockElement && !isTouch) { mouseAim.x = 0; mouseAim.y = 0; surface.aim(0, 0, true); }
+        const kbo = CTL.kbOnly();
+        if (document.pointerLockElement && !isTouch && !kbo) { mouseAim.x = 0; mouseAim.y = 0; surface.aim(0, 0, true); }
+        if (kbo && !isTouch) { // v7.5.3 Keyboard only: arrows turn the camera (yaw 2.4 rad/s, pitch 1.2 rad/s); the follow cam does the rest
+          const tx = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0), ty = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0);
+          if ((tx || ty) && !menuOpen()) surface.look(tx * 2.4 * realDt / 0.0036, ty * 1.2 * realDt / 0.0036, 0.004);
+        }
         const fireHeld = !!(keys['KeyF'] || touchBtns.fire || mouseAim.held);
         const runHeld = !!(keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run); document.body.classList.toggle('boosting', runHeld && document.body.classList.contains('driving'));
         const roll = rollReq && performance.now() - rollReqT < 700 ? rollReq : 0; // consumed by the next frame; 700 ms covers slow frames rollReq = 0;
         surface.update(realDt, { keys, joy, roll, jump: keys['Space'] || touchBtns.jump, run: runHeld,
-          fire: fireHeld, fireAim: fireHeld && !touchBtns.fire && !isTouch && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
+          fire: fireHeld, kbOnly: kbo, fireAim: fireHeld && !touchBtns.fire && !isTouch && !kbo && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
         tickAudio7(realDt); updateThrustHud(); updateDuelHud();
         if ((frame++ & 5) === 0 && surface.info) updateSurfHud(false);
@@ -2072,10 +2125,12 @@
         rocket.rotation.z = 0; // v7.4: the barrel roll is cosmetic, re-applied after the camera follows (camera stays level)
         const speed = boost ? 90 : 30;
         move.set(0, 0, 0);
-        if (keys['KeyW'] || keys['ArrowUp']) move.z -= 1;
-        if (keys['KeyS'] || keys['ArrowDown']) move.z += 1;
-        if (keys['KeyA'] || keys['ArrowLeft']) move.x -= 1;
-        if (keys['KeyD'] || keys['ArrowRight']) move.x += 1;
+        const kbs = CTL.kbOnly(); // v7.5.3 Keyboard only: arrows steer the ship (yaw / pitch) instead of strafing
+        if (kbs && flying && !landAnim) { const tx = (keys['ArrowRight'] ? 1 : 0) - (keys['ArrowLeft'] ? 1 : 0), ty = (keys['ArrowDown'] ? 1 : 0) - (keys['ArrowUp'] ? 1 : 0); if (tx || ty) look(tx * 1.6 * realDt / 0.002, ty * 1.0 * realDt / 0.002, 0.002); }
+        if (keys['KeyW'] || (!kbs && keys['ArrowUp'])) move.z -= 1;
+        if (keys['KeyS'] || (!kbs && keys['ArrowDown'])) move.z += 1;
+        if (keys['KeyA'] || (!kbs && keys['ArrowLeft'])) move.x -= 1;
+        if (keys['KeyD'] || (!kbs && keys['ArrowRight'])) move.x += 1;
         if (keys['KeyQ'] || touchBtns.down) move.y -= 1;
         if (keys['KeyE'] || touchBtns.up) move.y += 1;
         move.x += joy.x; move.z += joy.y;
@@ -2198,17 +2253,18 @@
     // test hooks
     window.__app = { openShop, openControls, setFlying, select, overview, bodies, camera, rocket, joy, touchBtns, land, takeOff, surface, keys,
       registerMenuItem, requestRoll, get shipRoll() { return shipRoll ? { ...shipRoll, z: rocket.rotation.z } : null; }, get shipRolls() { return shipRolls; },
-      landOn, landAction, renderer, version: 'v7.5.2', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
+      landOn, landAction, renderer, version: 'v7.5.3.1', toggleMenu, setCinematic, noteCard, toast, mapInfo: () => mapLast, sfx: () => sfxLog, gameLog, dogNameGet: () => dogName,
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
-  <script type="module" src="./mars/contraband.js?v=7.5.2"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
-  <script type="module" src="./mars/jobs.js?v=7.5.2"></script> <!-- v7.5.2 Mars side jobs (window.SSX.jobs); ticked by activities/runner.js -->
+  <script type="module" src="./mars/contraband.js?v=7.5.3.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
+  <script type="module" src="./mars/jobs.js?v=7.5.3.1"></script> <!-- v7.5.2 Mars side jobs (window.SSX.jobs); ticked by activities/runner.js -->
+  <script type="module" src="./mars/turf.js?v=7.5.3.1"></script> <!-- v7.5.3 Mars turf wars (window.SSX.turf) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.2').catch(() => {}));
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.3.1').catch(() => {}));
 </script>
 </body>
 </html>

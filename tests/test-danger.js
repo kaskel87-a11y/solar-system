@@ -4,7 +4,7 @@
 // BASE=http://localhost:8793/ DEV=393x852 BR=webkit NODE_PATH=/workspace/pw/node_modules node tests/test-danger.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8793/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || '393x852';
-const out = process.env.OUT || '/workspace/danger-shots/', PFX = process.env.PFX || 'danger';
+const out = process.env.SHOTS_DIR ? process.env.SHOTS_DIR.replace(/\/?$/, '/') : process.env.OUT || '/workspace/danger-shots/', PFX = process.env.PFX || 'danger';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {
