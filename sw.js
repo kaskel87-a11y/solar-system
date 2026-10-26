@@ -19,6 +19,7 @@ const PRECACHE = [
   `mars/rep.js${q}`,
   `mars/bribes.js${q}`,
   ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`),
+  `mars/lab.js${q}`,
   'vendor/three/build/three.module.min.js',
   `clubdancers.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
