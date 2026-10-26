@@ -390,7 +390,7 @@ export const empire = {
   on(evt, fn) { if (typeof fn !== 'function') throw new Error('SSX.empire.on(event, fn)'); (listeners[evt] ||= []).push(fn); return () => empire.off(evt, fn); },
   off(evt, fn) { const L = listeners[evt]; if (L) { const i = L.indexOf(fn); if (i >= 0) L.splice(i, 1); } },
   debug: {
-    goto(id, where = 'door') { const E = S.P[id], sf = surf(); if (!E || !sf) return false; const q = where === 'garage' ? E.pl.garage : where === 'chop' ? E.pl.chopBay : where === 'near' ? E.pl.at(0, E.pl.d / 2 + 14) : E.pl.door; if (!q) return false; sf.debugMove(q.x, q.z, E.pl.yaw); return { x: q.x, z: q.z }; },
+    goto(id, where = 'door') { const E = S.P[id], sf = surf(); if (!E || !sf) return false; const q = where === 'garage' ? E.pl.garage : where === 'chop' ? E.pl.chopBay : where === 'near' ? E.pl.at(0, E.pl.d / 2 + 14) : where === 'yard' ? E.pl.at(-5, E.pl.d / 2 + 19) : E.pl.door; if (!q) return false; sf.debugMove(q.x, q.z, E.pl.yaw); return { x: q.x, z: q.z }; },
     tick(hours, h) { const ck = clock(); const got = EC.accrue(D, h ?? ck.hour, hours); dirty(); return Math.round(got); },
     threat(id, kind = 'raid', gang) { const p = EC.propById(id); if (!p || !D.owned[id]) return null; if (D.threat) { if (S.defense?.engine === 'raids') try { H.raids()?.stop?.(S.defense.id); } catch (e) { /* */ } S.defense = null; D.threat = null; }
       const c = ctxFor(p), g = gang || EC.gangFor(p, c.turf); startThreat({ prop: id, gang: g, kind, demand: kind === 'extort' ? EC.demand(p, D.owned[id]) : 0, t: 0, phase: kind === 'extort' ? 'demand' : 'alert', limit: kind === 'extort' ? EC.RULES.replyS : (S.mobile ? EC.RULES.arriveSPhone : EC.RULES.arriveS) }); return empire.threat(); },

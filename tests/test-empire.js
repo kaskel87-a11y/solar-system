@@ -52,7 +52,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     R.offline = await G(() => window.SSX.empire.debug.offline()); R.dispPending = (await E('prop', ['fr-disp'])).pending;
     ok('offlineIncome', `${R.offline?.hours} h -> ${R.offline?.total} cr`, R.offline?.hours === 8 && R.dispPending > 0 && R.dispPending <= 900);
     R.clockSrc = (await E('clock')).source; R.seven = (await E('props')).length; ok('props', R.seven, R.seven === 7);
-    await G(() => { window.__empEv = []; window.SSX.empire.on('*', e => window.__empEv.push(e)); });
+    await G(() => { window.__empEv = []; window.SSX.empire.on('*', e => window.__empEv.push(e)); window.SSX.empire.debug.force({ noThreats: true }); });
     await G(() => window.__app.surface.game.reward(0, 30000)); await G(() => window.__danger?.setClock?.(9));
     // ---- buy the laundromat at its door: context button -> sheet -> Buy
     await go('fr-wash'); await sleep(1500);
@@ -83,13 +83,13 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     const dem = (await E('threat')).demand, c2 = await credits(); await tap('#empPanel button[data-a="pay"]'); await sleep(300);
     ok('paid', `${dem} cr`, (await credits()) - c2 === -dem && (await E('threat')) === null && !!(await E('prop', ['fr-wash'])).protect);
     // ---- extortion: refuse -> raid alert, and we're at the door -> the defense starts through SSX.raids
-    await tap('#empPanel button[data-a="close"]'); await go('fr-wash', 'near'); await sleep(500);
+    await tap('#empPanel button[data-a="close"]'); await go('fr-wash', 'yard'); await sleep(500);
     await G(() => window.SSX.empire.debug.threat('fr-wash', 'extort')); await G(() => window.SSX.empire.open()); await wait(() => !!document.querySelector('#empPanel button[data-a="refuse"]'), 5000);
     await tap('#empPanel button[data-a="refuse"]'); ok('refused', null, await wait(() => window.SSX.empire.threat()?.phase !== 'demand', 4000));
     await tap('#empPanel button[data-a="close"]'); await heal();
     ok('defendStarts', null, await wait(() => window.SSX.empire.threat()?.phase === 'defend', 15000)); R.engine = (await E('threat'))?.engine; ok('raidsEngine', R.engine, R.engine === 'raids');
     ok('raidActive', null, await G(() => !!window.SSX.raids?.active?.()));
-    await wait(() => (window.__raids?.npcs || 0) > 0, 20000); R.attackers = await G(() => window.__raids?.npcs || 0); await heal();
+    await wait(() => (window.__raids?.npcs || 0) > 1, 25000); await sleep(2500); R.attackers = await G(() => window.__raids?.npcs || 0); await heal();
     R.npcDefend = await G(() => { const b = window.__app.surface.world.npcBudget?.(); return b ? `${b.used}/${b.cap}` : 'n/a'; });
     ok('npcCap', R.npcDefend, await G(t => { const b = window.__app.surface.world.npcBudget?.(); return !b || (b.used <= b.cap && (!t || b.cap <= 12)); }, touch));
     ok('defendCentreClear', (await centreHits()).join() || 'clear', (await centreHits()).length === 0);
