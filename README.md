@@ -145,6 +145,24 @@ SSX.registerDistrict('Mars', 'olympus-row', { name: 'Olympus Row', centre: [0, -
 SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 ```
 
+### Barrel rolls (airroll.js): `SSX.airRoll`
+Any vehicle you drive (rover, stolen cars, hover bikes, the Raccoon Mobile...) can barrel roll while it's airborne, and the
+Starship can roll in flight. Mods (e.g. a zero-g toggle) should call this instead of building their own roll. Also on `__app.airRoll`.
+
+```js
+SSX.airRoll.roll('left' | 'right')   // true if accepted (starts on the next frame; -1 / +1 also accepted); false when canRoll() is false
+SSX.airRoll.canRoll()                // driving + airborne + not already rolling (not inside), or flying the Starship
+SSX.airRoll.isRolling()              // a vehicle or the Starship is mid-roll
+const off = SSX.airRoll.on('start', e => console.log(e.dir, e.target)); off(); // returns an unsubscribe fn
+// events: 'start' { dir: 'left'|'right', target: 'vehicle'|'ship' } · 'end' { target } · 'land' { rolls } (clean landing)
+//         'crash' {} (landed on the roof: 22 hp + most of your speed) · '*' gets fn(evt, data) for all of them
+```
+A vehicle roll takes 0.75 s; land it clean for 25·n² cr (n = rolls in that jump). The Starship roll (0.9 s) is cosmetic and
+the camera stays level. Events are polled (about 50 ms), so treat them as UI/audio cues, not physics.
+Controls: phones get a 🌀 Roll button that shows only while you're airborne in a vehicle or flying the Starship (hold the stick
+or swipe the button left/right to pick the side; default right). Desktop: **Z** (toward the A/D you're holding, else right),
+plus the v7.4 inputs: Q / E in the air, double-tap A / D, double-flick the stick, swipe across Thrust.
+
 ### Heist mechanics (v7.5 add-on: heist.js)
 Generic, data-driven heist pieces for the Mars city builder. `SSX.heist` (also `__app.heist`, or `import { heist } from './heist.js?v=7.4'`):
 

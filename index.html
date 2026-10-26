@@ -454,6 +454,8 @@
  "imports": {
   "three": "./vendor/three/build/three.module.min.js",
   "three/addons/": "./vendor/three/addons/",
+  "./airroll.js": "./airroll.js?v=7.5.3.1",
+  "ssx/airroll": "./airroll.js?v=7.5.3.1",
   "./ambience.js": "./ambience.js?v=7.5.3.1",
   "ssx/ambience": "./ambience.js?v=7.5.3.1",
   "./ambient.js": "./ambient.js?v=7.5.3.1",
@@ -620,6 +622,7 @@
     import './marsshops.js'; // v7.5.3 Mars district shops (Jeff, PR #10)
     import * as CTL from './controlmode.js'; // v7.5.3 control mode: Keyboard only / Keyboard + Mouse (key O)
     import { DEALER_API } from './dealership.js'; // Mars rover dealership, garages + car meets (Pumpkin, PR #7; adds SSX.registerDealerVehicle)
+    import './airroll.js'; // SSX.airRoll barrel-roll API + phone 🌀 Roll button (only while airborne) + desktop Z (Ben)
 
     // v7.3: touch UI follows the LAST input. Touchscreen laptops start in keyboard/mouse mode and flip to touch on a finger tap
     // (and back on a key press or real mouse move). Phones/tablets stay in touch mode.
