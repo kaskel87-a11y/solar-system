@@ -175,17 +175,19 @@ function flopBunk(L) {
     { label: '😴 Sleep it off', sub: 'Saves. Heals some. Risky with cash on you.', fn: () => { fadeOut('…', 3200, () => { const r = sleep(); toast(r.msg, 5200); }); } }
   ]);
 }
+// night: SSX.time (Steve's game clock, #30: 21:00-05:00) when present, else the real clock
+function nightNow() { try { const T = window.SSX?.time; const n = T?.isNight?.(); if (typeof n === 'boolean') return n; const h = +T?.hour?.(); if (isFinite(h)) return h >= 21 || h < 5; } catch (e) { /* fall through */ } const h = new Date().getHours(); return h >= 21 || h < 5; }
 function sleep({ rng = Math.random } = {}) {
   const L = live.flats_flop, g = game(); if (!L || !g) return { ok: false, msg: '' };
   const lock = L.S.rented === 'lock', cash = credits(), gk = grime();
-  let risk = cash >= 60 ? 0.22 + gk * 0.12 + (cash > 500 ? 0.1 : 0) : (ST.dirty > 0 ? 0.15 : 0.04); if (lock) risk *= 0.3;
+  let risk = cash >= 60 ? 0.22 + gk * 0.12 + (cash > 500 ? 0.1 : 0) : (ST.dirty > 0 ? 0.15 : 0.04); if (lock) risk *= 0.3; const night = nightNow(); if (!night) risk *= 0.8;
   heal(Math.round(health().max * 0.35)); L.S.rented = false; ST.stats.slept++;
   let lost = 0, dirtyLost = 0, msg;
   if (rng() < risk) {
     lost = take(Math.min(600, cash * (0.15 + rng() * 0.2))); if (ST.dirty > 0 && !lock) { dirtyLost = Math.round(ST.dirty * (0.25 + rng() * 0.35)); ST.dirty -= dirtyLost; }
     ST.stats.robbed++; ST.stats.lost += lost + dirtyLost; msg = `💸 ${pick(LINES.flop_robbed)} −${lost} cr${dirtyLost ? `, −${dirtyLost} dirty` : ''}.`;
   } else msg = `😴 ${pick(LINES.flop_rest)} Game saved.`;
-  save(); g.save?.(); emit('sleep', { robbed: lost + dirtyLost > 0, lost, dirtyLost });
+  save(); g.save?.(); emit('sleep', { robbed: lost + dirtyLost > 0, lost, dirtyLost, night });
   return { ok: true, robbed: lost + dirtyLost > 0, lost, dirtyLost, risk, msg };
 }
 
@@ -382,7 +384,7 @@ const API = {
   version: 1, places: () => KINDS.map(k => { const P = PLACES[k], d = doors().find(x => x.kind === k); return { kind: k, sign: P.sign, title: P.title, who: P.who, district: DISTRICT, local: [P.at[0], P.at[1]], door: d ? { x: d.x, z: d.z, name: d.name } : null }; }),
   get placed() { return placed; }, get inside() { return curLive()?.kind || null; }, get loaded() { return KINDS.filter(k => live[k]?.kit); },
   get dirty() { return ST.dirty; }, addDirty(n, src = 'mod') { n = Math.max(0, Math.round(+n || 0)); ST.dirty += n; save(); emit('dirty', { n, src }); return ST.dirty; },
-  launder, launderCut, hot: () => ST.hot.map(h => ({ ...h })), addHot, fenceable, fence, clinicPrice, patch, sellBlood, rent, sleep,
+  launder, launderCut, hot: () => ST.hot.map(h => ({ ...h })), addHot, fenceable, fence, clinicPrice, patch, sellBlood, rent, sleep, nightNow,
   get pawn() { const S = live.flats_pawn?.S || {}; return { mode: S.mode || 0, hostile: !!S.hostile, dead: !!S.dead || Date.now() < ST.deadUntil, hp: S.hp ?? 3, barredUntil: ST.barredUntil }; },
   provoke(why = 'test') { const L = curLive(); if (L?.kind !== 'flats_pawn') return false; pawnWarn(L, why); return true; },
   act, open: id => act(id), get ticks() { return Object.fromEntries(KINDS.map(k => [k, live[k]?.n || 0])); }, close: closePanel, get stats() { return { ...ST.stats }; },
