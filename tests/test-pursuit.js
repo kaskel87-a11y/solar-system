@@ -97,7 +97,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const fee = Math.max(50, Math.round(2000 * 0.15));
     ok('busted', { b0, b1, fee }, busted && (b1.ev.includes('boxed') || b1.ev.includes('ram')) && b1.ev.includes('busted') && b1.ev.includes('outcome:' + fee) && b0.cr - b1.cr === fee && b0.qty === 4 && b1.qty === 0 && b1.heat === 0);
     // ---- wasted: SWAT rounds -> killed, core med-evac fee, half the stash ----
-    await wait(() => window.__app.state.onSurface && !window.__app.game.info.down, 20000); await sleep(1000);
+    await wait(() => window.__app.state.onSurface && !window.__app.game.info.down, 20000); // respawn grants 3 game-s of invulnerability + a landing intro (~15 s+ real on headless desktop): probe until a 1-pt hit lands
+    R.vulnerable = await wait(() => { const g = window.__app.game, i = g.info, a = i.hp + i.shield; if (window.__app.surface.info.intro > 0) return false; g.hurtPlayer(1, { x: 0, z: 0 }); const j = g.info; return j.hp + j.shield < a; }, desk ? 90000 : 20000);
     const w0 = await G(() => { const C = window.SSX.contraband; C?.add?.('glowdust', 4, 1); const g = window.__app.game; g.progress.credits = 2000; g.save(); const s = window.__app.surface; if (s.info.driving) s.interact(); const P = window.SSX.pursuit; P.debug.setHeat(5); P.debug.los(true); window.__pev3 = window.__pev.length; return { qty: C?.stash?.().items?.glowdust?.qty | 0, pit: P.inPit() }; });
     let shots = 0; for (let i = 0; i < 12 && !(await G(() => window.__app.game.info.down)); i++) { shots += await G(() => window.SSX.pursuit.debug.volley(4, 60)); await sleep(300); }
     const wasted = await wait(() => window.__pev.slice(window.__pev3).some(e => e.type === 'outcome'), desk ? 90000 : 30000); await sleep(3500);
