@@ -3,7 +3,11 @@
 // or drive up to a car and tap 🏁 Race to challenge its driver to a quarter-mile drag on the strip. The drag itself runs on
 // race.js (startRace with a two-gate sprint def: grid hold, 3-2-1, GO, timer chip, rival car, finish, purse + result card);
 // this file adds the wager, the rival's pace from its car's stats, and rep. Phone cap: 8 cars + 3 spectators (≤ 12 NPCs).
+// Mars tracks add-on: the challenge sheet can also pick a circuit (a preset street circuit, race.js's Mars presets, or one of
+// your saved Mars tracks) instead of the drag; same wager escrow, pace from the meet car's stats (marstracks.js).
 import { startRace } from './race.js';
+import { meetTracks, meetCircuitDef } from './marstracks.js';
+import { circuitRep } from './marstrackcore.js';
 
 const NAMES = ['Nix Calder', 'Tamsin Vey', 'Big Oyelaran', 'Juno Park', 'Rustbucket Ray', 'Kira Sol', 'Dex Marlow', 'Fen Oduya', 'Bo Okafor', 'Sister Volt', 'Lalo Brandt', 'Marisol Quan'];
 const LINES = ['"Nice paint. Shame about the driver."', '"You lost, tourist? Meet’s for real cars."', '"Quarter mile. Loser buys the drinks and the tow."', '"I’ve seen faster ore haulers."', '"Line up or shut up."', '"My grandma’s hab heater has more horsepower."'];
@@ -17,7 +21,10 @@ export function createMeet(D) {
   const S = () => D.spots();
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   const now = () => Date.now();
-  const meetOn = () => GC.isMeetHour(GC.colonyHour(now(), D.garage().clock));
+  // Steve's day/night cycle (SSX.time.isNight, when present) decides when meets run and does the darkening itself;
+  // without it we keep our own colony clock (21:00-03:00) and dim the lot locally.
+  const sharedNight = () => typeof window.SSX?.time?.isNight === 'function';
+  const meetOn = () => { if (sharedNight()) { try { return !!window.SSX.time.isNight(); } catch (e) { /* fall back */ } } return GC.isMeetHour(GC.colonyHour(now(), D.garage().clock)); };
   const curMeet = () => GC.meetId(now(), D.garage().clock);
 
   function buildLot() {
@@ -94,7 +101,7 @@ export function createMeet(D) {
     // show-off orbit cam
     if (orbit > 0 && c.car) { orbit -= dt; const a = orbit * 0.9; c.camera.position.set(c.car.x + Math.sin(a) * 9, c.car.y + 3.2, c.car.z + Math.cos(a) * 9); c.camera.lookAt(c.car.x, c.car.y + 0.8, c.car.z); }
     // night: the lot runs darker under the floodlights while the meet is on
-    const want = on && dMeet < 160 ? 0.62 : null; const R = D.app()?.renderer;
+    const want = on && dMeet < 160 && !sharedNight() ? 0.62 : null; const R = D.app()?.renderer;
     if (R) { if (want != null) { if (expo == null) expo = R.toneMappingExposure; R.toneMappingExposure += (want - R.toneMappingExposure) * Math.min(1, dt * 2); } else if (expo != null) { R.toneMappingExposure += (expo - R.toneMappingExposure) * Math.min(1, dt * 3); if (Math.abs(R.toneMappingExposure - expo) < 0.01) restoreExposure(); } }
     // drag race bookkeeping (race.js runs the race itself)
     if (drag && !window.__race?.state && performance.now() - drag.t0 > 400) settle();
@@ -122,16 +129,26 @@ export function createMeet(D) {
   }
 
   // ---------- challenge sheet + drag race ----------
-  let pick = { car: null, w: 50 };
+  let pick = { car: null, w: 50, track: 'drag' };
   function openChallenge(car) {
     pick.car = car; if (pick.w > D.credits()) pick.w = 0;
     D.openSheet('challenge', renderChallenge, () => car.v.group);
   }
   function renderChallenge() {
     const car = pick.car, mine = D.activeRide(), ms = D.specOf(mine), est = GC.dragTime(car.spec) * car.skill, my = GC.dragTime(ms);
-    const ws = [0, 50, 100, 250, 500];
+    const ws = [0, 50, 100, 250, 500], tracks = meetTracks(D.cfg().world); if (pick.track !== 'drag' && !tracks.some(t => t.id === pick.track)) pick.track = 'drag';
+    const tr = tracks.find(t => t.id === pick.track), cdef = tr ? meetCircuitDef(tr.id, car, pick.w) : null;
+    const chips = `<div class="chips">${[{ id: 'drag', name: '¼ mile drag', icon: '🛣' }, ...tracks.map(t => ({ id: t.id, name: t.name, icon: t.src === 'saved' ? '💾' : '🏁' }))]
+      .map(t => `<button data-mtrack="${D.esc(t.id)}" class="${pick.track === t.id ? 'on' : ''}">${t.icon} ${D.esc(t.name)}</button>`).join('')}</div>`;
+    if (cdef) return `<button class="close" data-close="1">✕</button><h3>🏁 ${D.esc(car.name)}</h3><div class="sub">💰 ${D.credits()} cr · ⭐ ${Math.round(D.garage().rep)} rep</div>
+      <div class="blurb">${D.esc(car.line)}</div>${chips}
+      <div>Their ride: <b>${D.esc(D.rideName(car.ride))}</b> · PI ${GC.perfIndex(car.spec)} · ~${cdef.par.toFixed(0)} s a lap</div>
+      <div>Your ride: <b>${D.esc(D.rideName(mine))}</b> · PI ${GC.perfIndex(ms)}</div>
+      <div class="sub">${D.esc(tr.name)}: ${tr.loop ? `${tr.laps} lap${tr.laps > 1 ? 's' : ''}` : 'sprint'}, ${tr.gates} gates, ${tr.length} m. You both grid up at the start line. Your wager is matched. Win and the purse pays ${cdef.purse} cr. Usual ${GC_BUYIN} cr buy-in at GO.</div>
+      <div class="row">${ws.map(w => `<button data-wager="${w}" class="${pick.w === w ? 'on' : ''}" ${w > D.credits() ? 'disabled' : ''}>${w ? '💰 ' + w : 'No bet'}</button>`).join('')}</div>
+      <div class="row"><button class="go" data-drag="1">🏁 Race them</button></div>`;
     return `<button class="close" data-close="1">✕</button><h3>🏁 ${D.esc(car.name)}</h3><div class="sub">💰 ${D.credits()} cr · ⭐ ${Math.round(D.garage().rep)} rep</div>
-      <div class="blurb">${D.esc(car.line)}</div>
+      <div class="blurb">${D.esc(car.line)}</div>${chips}
       <div>Their ride: <b>${D.esc(D.rideName(car.ride))}</b> · PI ${GC.perfIndex(car.spec)} · ~${est.toFixed(1)} s</div>
       <div>Your ride: <b>${D.esc(D.rideName(mine))}</b> · PI ${GC.perfIndex(ms)} · ~${my.toFixed(1)} s flat out</div>
       <div class="sub">Quarter mile down the south strip. Hold ⚡ Boost the whole way. Your wager is matched. Win and the purse pays both stakes + 30 cr. Usual ${GC_BUYIN} cr buy-in at GO.</div>
@@ -142,7 +159,8 @@ export function createMeet(D) {
   D.handlers = null;
   function onTap(key, val) {
     if (key === 'wager') { pick.w = +val; return true; }
-    if (key === 'drag') { const r = startDrag(pick.car, pick.w); D.toast(r.msg, 3000); return 'close'; }
+    if (key === 'mtrack') { pick.track = val; return true; }
+    if (key === 'drag') { const r = pick.track === 'drag' ? startDrag(pick.car, pick.w) : startCircuit(pick.car, pick.track, pick.w); D.toast(r.msg, 3000); return 'close'; }
     return false;
   }
   function startDrag(car, wager = 0) {
@@ -155,20 +173,32 @@ export function createMeet(D) {
       rival: { name: car.name, kind: car.kind }, par: Math.max(4, GC.dragTime(car.spec) * car.skill - 1.0), purse: wager * 2 + 30, props: [], blurb: 'Quarter mile.' };
     const r = startRace(def);
     if (!r.ok) { if (wager) { const P = D.app()?.game?.progress; if (P) P.credits += wager; } D.save(); return { ok: false, msg: `🚫 ${r.why}` }; }
-    D.save(); car.v.group.visible = false; drag = { car, wager, t0: performance.now() }; document.body.classList.add('ssx-drag'); dragClassT = 0;
+    D.save(); car.v.group.visible = false; drag = { car, wager, t0: performance.now(), id: 'meet-drag' }; document.body.classList.add('ssx-drag'); dragClassT = 0;
     return { ok: true, msg: `🏁 ${car.name} rolls up beside you. ${wager ? `${wager} cr each on the line. ` : ''}Hold Boost on GO.` };
+  }
+  function startCircuit(car, trackId, wager = 0) {
+    const c = C(); if (!car || !spawned) return { ok: false, msg: 'No one to race.' };
+    if (drag || window.__race?.state) return { ok: false, msg: 'Already racing.' };
+    if (c.car && c.car !== c.rover) return { ok: false, msg: '🚫 Not in a stolen ride. Bring your own.' };
+    const def = meetCircuitDef(trackId, car, wager); if (!def) return { ok: false, msg: '🚫 No such track.' };
+    if (wager > 0 && !D.spend(wager)) return { ok: false, msg: `💸 You don’t have ${wager} cr.` };
+    const r = startRace(def);
+    if (!r.ok) { if (wager) { const P = D.app()?.game?.progress; if (P) P.credits += wager; } D.save(); return { ok: false, msg: `🚫 ${r.why}` }; }
+    D.save(); car.v.group.visible = false; drag = { car, wager, t0: performance.now(), id: def.id, circuit: true, laps: def.laps, track: def.name }; document.body.classList.add('ssx-drag'); dragClassT = 0;
+    return { ok: true, msg: `🏁 ${car.name} follows you to the line. ${wager ? `${wager} cr each on the line. ` : ''}${def.loop ? `${def.laps} lap${def.laps > 1 ? 's' : ''}.` : 'Sprint.'}` };
   }
   function settle() {
     const d = drag; drag = null; d.car.v.group.visible = true; const res = window.__race?.result, G = D.garage();
-    if (!res || res.id !== 'meet-drag') { dragClassT = 0.1; return; }
+    if (!res || res.id !== (d.id || 'meet-drag')) { dragClassT = 0.1; return; }
     G.races++; const won = !!res.won; if (won) G.wins++;
-    const rep = GC.dragRep(won, d.wager, d.car.tier); G.rep += rep; D.save(); dragClassT = 13;
+    const rep = d.circuit ? circuitRep(won, d.wager, d.car.tier, d.laps) : GC.dragRep(won, d.wager, d.car.tier); G.rep += rep; D.save(); dragClassT = 13;
     D.toast(won ? `🏆 You smoked ${d.car.name}. ${d.wager ? `Wager +${d.wager * 2} cr in the purse. ` : ''}+${rep} rep.` : `🥈 ${d.car.name} takes it${d.wager ? ` and your ${d.wager} cr` : ''}. +${rep} rep for showing up.`, 3600);
-    lastDrag = { won, wager: d.wager, rep, name: d.car.name, credits: res.credits, time: res.time, rivalTime: res.rivalTime };
+    lastDrag = { won, wager: d.wager, rep, name: d.car.name, credits: res.credits, time: res.time, rivalTime: res.rivalTime, id: d.id, circuit: !!d.circuit };
   }
   let lastDrag = null;
   return { buildLot, reset, tick, ctxAction, onTap, onSheetClosed() {},
-    debug: { get on() { return meetOn(); }, get spawned() { return spawned ? { id: spawned.id, cars: spawned.cars.length, people: spawned.people.length, arrived: spawned.cars.filter(c => c.done).length } : null; }, npcCount,
+    debug: { get on() { return meetOn(); }, get sharedNight() { return sharedNight(); }, get dimmed() { return expo != null; }, get spawned() { return spawned ? { id: spawned.id, cars: spawned.cars.length, people: spawned.people.length, arrived: spawned.cars.filter(c => c.done).length } : null; }, npcCount,
       cars: () => spawned ? spawned.cars.map(c => ({ name: c.name, kind: c.kind, x: c.x, z: c.z, done: c.done, pi: GC.perfIndex(c.spec) })) : [], arriveAll() { if (spawned) spawned.t = 999; },
-      showOff: () => showOffNow(), startDrag: (i, w) => startDrag(spawned?.cars[i], w), openChallenge: i => openChallenge(spawned.cars[i]), get drag() { return drag ? { name: drag.car.name, wager: drag.wager } : null; }, get last() { return lastDrag; } } };
+      showOff: () => showOffNow(), startDrag: (i, w) => startDrag(spawned?.cars[i], w), openChallenge: i => openChallenge(spawned.cars[i]), get drag() { return drag ? { name: drag.car.name, wager: drag.wager, id: drag.id, circuit: !!drag.circuit } : null; },
+      startCircuit: (i, id, w) => startCircuit(spawned?.cars[i], id, w), tracks: () => meetTracks(D.cfg().world).map(({ t, ...m }) => m), circuitDef: (i, id, w) => meetCircuitDef(id, spawned?.cars[i], w), get pick() { return { track: pick.track, w: pick.w }; }, get last() { return lastDrag; } } };
 }
