@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
-import { clearGate, segHit } from './gatecore.js'; // v7.5.3 gate guards
+import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
@@ -183,12 +183,9 @@ function disposeGroup(g) { if (!g) return; g.parent?.remove(g); g.traverse(o => 
 let questTracks = null;
 function allDefs() { questTracks ??= RC.questSprints(QUESTS); return [...RC.PRESETS, ...questTracks, ...data.tracks]; }
 function defsHere() { return allDefs().filter(d => d.world === planet); }
-function resolve(def) { // v7.5.3: gates inside a building footprint move to the nearest open road point (Blue Lights gate 4/8)
-  const t = RC.resolveTrack(def, C?.world?.colony), W = C?.world; if (!W?.collide) return t;
-  let moved = false; for (const g of t.gates) { const q = clearGate(g, W); if (q.moved && isFinite(q.x)) { g.x = q.x; g.z = q.z; moved = true; } }
-  if (moved) { RC.orientGates(t.gates, t.loop); t.length = RC.trackLength ? RC.trackLength(t.gates, t.loop) : t.length; }
-  return t;
-}
+// gates never sit inside a dome or building: world.collide(x, z, r) is the same test the cars use
+function blockedFn() { const w = C?.world; return w?.collide ? (x, z, r) => !!w.collide(x, z, r) : null; }
+function resolve(def) { return RC.resolveTrack(def, C?.world?.colony, blockedFn()); }
 
 function setupPlanet() {
   disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
@@ -553,7 +550,7 @@ setInterval(() => {
 window.__race = {
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
-  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })), props: t.props, length: t.length, custom: !!d.custom }; }),
+  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
   start: (id, o) => startRace(id, o), quit: () => quitRace(null), openPanel, closePanel, openBuilder: (id, copy) => openBuilder(id ? allDefs().find(d => d.id === id) : null, copy),
   get builder() { return builder; }, reload() { data = RC.loadRace(LS); rebuildIdle(); },
   skipCountdown() { if (R && R.phase === 'grid') R.count = 0.001; },
@@ -562,5 +559,6 @@ window.__race = {
   car: () => { const c = myCar(); return c ? { x: c.x, z: c.z, y: c.y, yaw: c.yaw, speed: c.speed, air: !!c.air, vy: c.vy, lift: c.lift || 0, kind: c.kind } : null; },
   setCarSpeed(v) { const c = myCar(); if (c) c.speed = v; },
   rivalPace(k) { if (R?.rival) R.rival.pace *= k; },
+  blocked: (x, z, r = 0) => !!blockedFn()?.(x, z, r),
   counts: () => ({ root: root?.children.length || 0, idle: idleG?.children.length || 0, race: raceG?.children.length || 0, ctx: ui?.ctx.style.display })
 };

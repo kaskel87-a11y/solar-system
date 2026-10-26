@@ -8,7 +8,8 @@ import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
 import { kbOnly, KB_AIM_CONE } from './controlmode.js';
-import { clearGate, segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission race gates: off buildings, xz segment hits // v7.5.3 Keyboard-only mode: auto-aim locks to the nearest target in front
+import { segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission checkpoints: xz segment hits (airborne / fast frames)
+import { clearGates } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -1213,7 +1214,9 @@ export function createGame(ctx) {
     const s = stepDef(); if (gate) { scene.remove(gate); gate = null; }
     if (!quest || s?.type !== 'race' || quest.gi >= s.pts.length) return;
     const p = ctx.colonyAt?.(s.pts[quest.gi]) || { x: quest.target.x, z: quest.target.z }, nx = s.pts[quest.gi + 1] ? ctx.colonyAt(s.pts[quest.gi + 1]) : null;
-    { const W = ctx.gateWorld?.(), q = W ? clearGate(p, W) : null; if (q?.moved && isFinite(q.x)) { p.x = q.x; p.z = q.z; } }
+    { const W = ctx.gateWorld?.(); if (W?.collide && ctx.colonyAt) { // same points as the race.js quest sprint -> same nudge, so gate 4 of Blue Lights is reachable here too
+      if (quest.gatePts?.step !== quest.step) { const g = s.pts.map(q => { const w = ctx.colonyAt(q); return { x: w.x, z: w.z }; }); clearGates(g, (x, z, r) => !!W.collide(x, z, r), false); quest.gatePts = { step: quest.step, g }; }
+      const c = quest.gatePts.g[quest.gi], cn = quest.gatePts.g[quest.gi + 1]; if (c) { p.x = c.x; p.z = c.z; } if (nx && cn) { nx.x = cn.x; nx.z = cn.z; } } }
     quest.target = { x: p.x, z: p.z, r: CP_RADIUS }; quest.lastP = null;
     gate = new THREE.Group(); const ring = new THREE.Mesh(A.gateGeo, A.mGate); ring.position.y = 4.2; gate.add(ring);
     const beam = new THREE.Mesh(A.pickBeam, A.mPickBeam); beam.frustumCulled = false; gate.add(beam);
