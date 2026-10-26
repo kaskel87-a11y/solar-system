@@ -198,7 +198,7 @@ function ensureUi() {
     if (!build) return;
     const k = { Digit1: 'wall', Digit2: 'gate', Digit3: 'garage', Digit4: 'stash', Digit5: 'turret', Digit6: 'remove' }[e.code];
     if (k) { build.tool = k === 'remove' ? 'remove' : 'place'; if (k !== 'remove') build.type = k; refreshBar(); e.preventDefault(); }
-    else if (e.code === 'KeyO') { build.r = (build.r + 1) & 3; e.preventDefault(); } else if (e.code === 'Escape') setBuild(false);
+    else if (e.code === 'Comma') { build.r = (build.r + 1) & 3; e.preventDefault(); } else if (e.code === 'Escape') setBuild(false);
   });
   ui = { btn, bar, panel, hint: bar.querySelector('#baseHint') }; return ui;
 }

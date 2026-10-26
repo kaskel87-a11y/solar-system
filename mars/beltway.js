@@ -19,7 +19,7 @@ import * as THREE from 'three';
  *  activities           -> [{ id, name, key, blurb }]
  *  crew() / setCrew(id, on) -> armored-transport crew [{ id, name, role, cut, perk, on }]
  *  isNight() / nightIn() -> Beltway sol clock (races run at night); waitForDark()
- *  open() / close()     -> the Beltway panel (☰ "🛣️ Beltway", key O, phone dock 🛣️). Key I = context action (#beltAct).
+ *  open() / close()     -> the Beltway panel (☰ "🛣️ Beltway", key . (period; O is the control-mode toggle), phone dock 🛣️). Key I = context action (#beltAct).
  *  stats()              -> { hijacks, armored, shakedowns, races, earned }
  *  debug                -> toRoad(s?), target(), disable(), toTarget(), toFence(), toCheckpoint(id?), finishCrack(),
  *                          clearHeat(), setNight(bool), finishRace(won?), state(), reset()
@@ -406,10 +406,10 @@ function ui() {
   panel = document.createElement('div'); panel.id = 'beltPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Ares Beltway"><div id="beltBody"></div><div class="msg" id="beltMsg"></div><div class="foot"><button id="beltClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); body = panel.querySelector('#beltBody'); msgEl = panel.querySelector('#beltMsg');
   tap(panel.querySelector('#beltClose'), close);
-  dockButton('dockBelt', '🛣️\nBelt', 'Beltway (O)', 4, () => panel.classList.contains('show') ? close() : open());
+  dockButton('dockBelt', '🛣️\nBelt', 'Beltway (.)', 4, () => panel.classList.contains('show') ? close() : open());
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
-    if (e.code === 'KeyO') { panel.classList.contains('show') ? close() : open(); }
+    if (e.code === 'Period') { panel.classList.contains('show') ? close() : open(); }
     else if (e.code === 'KeyI' && actBtn.classList.contains('show')) { e.preventDefault(); doAction(); }
   });
 }

@@ -100,7 +100,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const plan = [['wall', 2, 1, 1, 1, false], ['gate', 4, 1, 1, 1, true], ['garage', 6, 1, 2, 3, false], ['stash', 2, 6, 1, 1, false], ['turret', 7, 7, 1, 1, false]];
     for (const [t, i, j, w, d, rot] of plan) {
       await ourTap('#baseT-' + t); await wait(t => window.SSX.base.building?.type === t && window.SSX.base.building.tool === 'place', 3000, t);
-      if (rot) { const r0 = await G(() => window.SSX.base.building.r); if (desk) await page.keyboard.press('KeyO'); else await ourTap('#baseRot'); ok('rotate', await wait(r0 => window.SSX.base.building.r === ((r0 + 1) & 3), 3000, r0)); }
+      if (rot) { const r0 = await G(() => window.SSX.base.building.r); if (desk) await page.keyboard.press('Comma'); else await ourTap('#baseRot'); ok('rotate', await wait(r0 => window.SSX.base.building.r === ((r0 + 1) & 3), 3000, r0)); }
       const [lx, lz] = cellC(i, j, ...(rot ? [d, w] : [w, d])); await aimAt(lx, lz);
       ok('ghost-' + t, await wait(() => window.SSX.base.debug.ghost?.ok && window.SSX.base.debug.ghost.visible && window.SSX.base.debug.ghost.tint === 'ok', 6000));
       if (t === 'garage') await shot('build-ghost');
