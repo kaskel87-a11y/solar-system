@@ -33,7 +33,7 @@ function measureHud() {
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
   const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : (({ defaultBrowserType, ...d }) => d)(devices[DEV] || devices['iPhone 14']);
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
-  await ctx.addInitScript(() => { try { localStorage.setItem('ssx.v8.nogov', '1'); } catch (e) {} }); // software GL is ~10x slower than a phone GPU
+  await ctx.addInitScript(() => { try { localStorage.setItem('ssx.v8.nogov', '1'); localStorage.setItem('ssx.v8.nodrs', '1'); } catch (e) {} }); // software GL is ~10x slower than a phone GPU
   const errs = [];
   page.on('pageerror', e => errs.push('PE ' + e.message));
   page.on('console', m => { if (m.type() === 'error' || (m.type() === 'warning' && /v8 look/.test(m.text()))) errs.push(m.text().slice(0, 220)); });
@@ -71,7 +71,7 @@ function measureHud() {
       L.state = await G(() => { const s = window.SSX.look.state(); return { tier: s.tier, pr: s.pixelRatio, shadows: s.shadows, cast: s.castShadow, env: s.env, post: s.post, gtao: s.gtao, tex: s.textures, patched: s.patched, terrain: s.terrain, casters: s.casters, envBuilds: s.envBuilds, night: s.night }; });
       const S = L.state;
       if (look === 'classic') ok('classic_' + tag, S, !S.shadows && !S.cast && !S.env && !S.post && S.patched === 0);
-      else ok('tier_' + look, S, S.tier === look && S.shadows && S.cast && S.env && S.post === !!(look !== 'low') && S.terrain >= 1 && S.patched > 3);
+      else ok('tier_' + look, S, S.tier === look && S.shadows === (look !== 'low') && S.cast === (look !== 'low') && S.env && S.post === (look === 'high' || look === 'ultra') && S.terrain >= 1 && S.patched > 3);
       L.dayShot = await shot(look + '-day');
       L.fpsDay = await fps();
       L.info = await G(() => { const s = window.SSX.look.state(), r = window.__app.renderer.info.render; return s.frameCalls != null && s.tier !== 'classic' ? { calls: s.frameCalls, tris: s.frameTris } : { calls: r.calls, tris: r.triangles }; });
@@ -93,7 +93,13 @@ function measureHud() {
       await G(() => window.SSX.look.set('classic')); await frames(8);
       const c = await G(() => window.SSX.look.state()); ok('switchClassic', { shadows: c.shadows, post: c.post, patched: c.patched, env: c.env }, !c.shadows && !c.post && c.patched === 0 && !c.env);
       await G(t => window.SSX.look.set(t), last); await frames(8); await sleep(2500); await frames(4);
-      const b = await G(() => window.SSX.look.state()); ok('switchBack', { tier: b.tier, shadows: b.shadows, post: b.post, patched: b.patched }, b.tier === last && b.shadows && b.patched > 3);
+      const b = await G(() => window.SSX.look.state()); ok('switchBack', { tier: b.tier, shadows: b.shadows, post: b.post, patched: b.patched }, b.tier === last && b.shadows === (last !== 'low') && b.patched > 3);
+      // dynamic resolution: software GL is far over 16.7 ms, so with DRS on the ratio must step down from the cap
+      const d0 = await G(() => { const S = window.__v8.S; S.drsOff = false; return S.drsCap; });
+      await page.waitForTimeout(9000);
+      const d1 = await G(() => window.SSX.look.state().dynres);
+      ok('dynres', { cap: d0, ...d1 }, d1.pr < d0 && d1.drops >= 1 && d1.pr >= d1.floor);
+      await G(() => { window.__v8.S.drsOff = true; });
       // indoors: no sun shadows, env dimmed, room still renders
       const inn = await G(() => { const s = window.__app.surface, ds = s.world.doorList(), d = ds.find(x => x.kind === 'cantina') || ds[0]; s.debugPlace(d.x, d.z + 1.2, Math.PI); return s.world.enterBuilding ? !!s.enterBuilding?.() : null; });
       await frames(10); await sleep(1200);

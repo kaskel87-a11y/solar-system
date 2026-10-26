@@ -2,10 +2,18 @@
 import * as K from '../look/v8core.js';
 let fails = 0; const t = (name, cond) => { if (!cond) { fails++; console.log('FAIL', name); } };
 t('order', K.ORDER.join() === 'low,med,high,ultra');
-for (const n of K.ORDER) { const T = K.TIERS[n]; t('tier ' + n, T && T.pixelRatio > 0 && T.shadow >= 1024 && T.shadowRange > 0 && typeof T.post === 'boolean'); }
+for (const n of K.ORDER) { const T = K.TIERS[n]; t('tier ' + n, T && T.pixelRatio > 0 && T.shadow >= 0 && T.shadowRange >= 0 && typeof T.post === 'boolean'); }
 t('tiers rise', K.ORDER.every((n, i) => !i || (K.TIERS[n].shadow >= K.TIERS[K.ORDER[i - 1]].shadow && K.TIERS[n].pixelRatio >= K.TIERS[K.ORDER[i - 1]].pixelRatio)));
 t('ao ultra only', K.ORDER.filter(n => K.TIERS[n].ao).join() === 'ultra');
-t('low no post', !K.TIERS.low.post && K.TIERS.med.post);
+t('low/med no post', !K.TIERS.low.post && !K.TIERS.med.post && K.TIERS.high.post && !K.TIERS.med.bloomScale);
+t('med phone budget', K.TIERS.med.pixelRatio <= 1.5 && K.TIERS.med.shadow <= 1024 && K.TIERS.med.shadowEvery >= 2 && !K.TIERS.med.shadowSoft && K.TIERS.med.detail === 1 && !K.TIERS.med.msaa);
+{ const d = K.dynres({ cap: 1.5, floor: 0.75 }); let pr = 1.5, t0 = 0; for (let i = 0; i < 300; i++) { t0 += 33; const r = d.step(33, t0, pr); if (r != null) pr = r; }
+  t('dynres drops to floor', pr === 0.75 && d.atFloor(pr));
+  for (let i = 0; i < 2000; i++) { t0 += 16.7; const r = d.step(16.7, t0, pr); if (r != null) pr = r; }
+  t('dynres recovers to cap', pr === 1.5);
+  const e = K.dynres({ cap: 1.5 }); let q = 1.5, t1 = 0; for (let i = 0; i < 600; i++) { t1 += 16.7; const r = e.step(16.7, t1, q); if (r != null) q = r; }
+  t('dynres holds at 60', q === 1.5 && e.st.drops === 0);
+  const f = K.dynres({ cap: 1.5 }); t('dynres clamps to cap', f.step(16, 0, 2) === 1.5); }
 t('frozen', Object.isFrozen(K.TIERS.med));
 const iph = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 t('phone', K.deviceClass({ ua: iph, touch: true, w: 390, h: 844 }) === 'phone');

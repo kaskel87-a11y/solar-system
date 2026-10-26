@@ -3,16 +3,19 @@
 
 // 'classic' is the pre-v8 look (no v8 code touches the frame); the four real tiers go low -> ultra.
 export const ORDER = ['low', 'med', 'high', 'ultra'];
+// Phone budget (Grok Bot, 2026-10-25): med must hold ~60 fps on a real iPhone, so med has NO composer (no bloom, no
+// full-screen passes; the vignette is a CSS overlay), one 1024 shadow map updated every 3rd frame, single-scale detail,
+// and pixel ratio capped at 1.5 with dynamic resolution underneath. Bloom/grade/MSAA start at high, GTAO at ultra.
 export const TIERS = {
   classic: { name: 'classic', label: 'Classic (v7)' },
-  low: { name: 'low', label: 'Low', pixelRatio: 1.25, shadow: 1024, shadowSoft: false, shadowRange: 30, shadowEvery: 2, post: false, msaa: 0,
-    bloomScale: 0, ao: false, grain: false, vignette: false, envEvery: 4, detail: 1, triplanar: false, weather: true, aniso: 2 },
-  med: { name: 'med', label: 'Medium', pixelRatio: 1.5, shadow: 1024, shadowSoft: false, shadowRange: 34, shadowEvery: 1, post: true, msaa: 0,
-    bloomScale: 0.5, ao: false, grain: true, vignette: true, envEvery: 2, detail: 2, triplanar: false, weather: true, aniso: 4 },
+  low: { name: 'low', label: 'Low', pixelRatio: 1.25, shadow: 0, shadowSoft: false, shadowRange: 0, shadowEvery: 1, post: false, msaa: 0,
+    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 4, detail: 1, triplanar: false, weather: true, aniso: 2 },
+  med: { name: 'med', label: 'Medium', pixelRatio: 1.5, shadow: 1024, shadowSoft: false, shadowRange: 28, shadowEvery: 3, post: false, msaa: 0,
+    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 2, detail: 1, triplanar: false, weather: true, aniso: 4 },
   high: { name: 'high', label: 'High', pixelRatio: 2, shadow: 2048, shadowSoft: true, shadowRange: 42, shadowEvery: 1, post: true, msaa: 4,
-    bloomScale: 0.75, ao: false, grain: true, vignette: true, envEvery: 1, detail: 2, triplanar: true, weather: true, aniso: 8 },
+    bloomScale: 0.5, ao: false, grain: true, vignette: true, envEvery: 1, detail: 2, triplanar: true, weather: true, aniso: 8 },
   ultra: { name: 'ultra', label: 'Ultra', pixelRatio: 2, shadow: 4096, shadowSoft: true, shadowRange: 48, shadowEvery: 1, post: true, msaa: 4,
-    bloomScale: 1, ao: true, grain: true, vignette: true, envEvery: 0.5, detail: 2, triplanar: true, weather: true, aniso: 16 },
+    bloomScale: 0.75, ao: true, grain: true, vignette: true, envEvery: 0.5, detail: 2, triplanar: true, weather: true, aniso: 16 },
 };
 for (const k in TIERS) Object.freeze(TIERS[k]);
 
@@ -40,8 +43,9 @@ export function pickTier({ param = null, saved = null, cls = 'desktop' } = {}) {
 }
 export const stepDown = t => { const i = ORDER.indexOf(t); return i > 0 ? ORDER[i - 1] : t; };
 
-// FPS governor (auto tier only): step down one tier after `need` consecutive windows under `floor` fps.
-export function governor({ floor = 24, need = 2 } = {}) {
+// FPS governor (auto tier only): step down one tier after `need` consecutive 4 s windows under `floor` fps.
+// It is only fed while dynamic resolution is already at its floor, so resolution drops first, then the tier.
+export function governor({ floor = 45, need = 2 } = {}) {
   let bad = 0;
   return {
     sample(fps, tier) { if (tier === 'low' || tier === 'classic') { bad = 0; return null; } bad = fps < floor ? bad + 1 : 0; if (bad >= need) { bad = 0; return stepDown(tier); } return null; },
@@ -94,3 +98,29 @@ export function detailSetFor({ metalness = 0, roughness = 1, transparent = false
 export const DUST = { Mars: 0xa8583a, Moon: 0x8d8a86, Mercury: 0x7a7068, Ceres: 0x6e6a66, Europa: 0xc8d2dc, Titan: 0x7a5a30, Venus: 0x9a6a3a, Io: 0xc8b060, default: 0x8a7a6a };
 export const dustFor = w => DUST[w] ?? DUST.default;
 export const weatherAmount = (w, big) => (w === 'Europa' ? 0.2 : w === 'Mars' ? 0.5 : 0.35) * (big ? 1 : 0.55);
+
+// Dynamic resolution: frame-time EMA in ms -> new pixel ratio (or null). Drops a step when over budget; when holding
+// budget it probes one step up, and a probe that fails doubles the wait before the next one (vsync hides headroom,
+// so probing is the only way to find it). Pure state machine: drs.step(ms, now, pr) -> pr | null.
+export function dynres({ cap = 1.5, floor = 0.75, step = 0.125, budget = 16.7, over = 18.5, settle = 700, probeAfter = 3000, maxBackoff = 30000 } = {}) {
+  const st = { ema: 0, changed: -1e9, lastDrop: -1e9, lastRaise: -1e9, backoff: probeAfter, drops: 0, raises: 0 };
+  return {
+    st, get cap() { return cap; }, get floor() { return floor; },
+    setCap(c, f) { cap = c; floor = Math.min(f ?? floor, c); },
+    step(ms, now, pr) {
+      ms = Math.min(50, Math.max(1, ms)); st.ema = st.ema ? st.ema * 0.9 + ms * 0.1 : ms;
+      if (pr > cap + 1e-6) { st.changed = now; return cap; }
+      if (now - st.changed < settle) return null;
+      if (st.ema > over && pr > floor + 1e-6) {
+        if (now - st.lastRaise < probeAfter) st.backoff = Math.min(maxBackoff, st.backoff * 2); // the probe failed
+        st.changed = st.lastDrop = now; st.drops++; st.ema = budget; return Math.max(floor, Math.round((pr - step) / step) * step);
+      }
+      if (st.ema <= budget + 0.7 && pr < cap - 1e-6 && now - st.lastDrop > st.backoff && now - st.lastRaise > st.backoff) {
+        st.changed = st.lastRaise = now; st.raises++; return Math.min(cap, pr + step);
+      }
+      if (now - st.lastRaise > 10000 && now - st.lastDrop > 10000) st.backoff = probeAfter; // stable for a while: probe normally again
+      return null;
+    },
+    atFloor: pr => pr <= floor + 1e-6,
+  };
+}

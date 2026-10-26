@@ -34,6 +34,8 @@ let tier = K.TIERS[pick.tier];
 const S = { ctx: null, scene: null, world: '', sky: null, dl: null, hemi: null, frames: 0, stats: { scans: 0, patched: 0, terrain: 0, casters: 0, envBuilds: 0, recompiles: 0, governed: [] },
   origPR: null, prSet: null, shadowsWas: null, composer: null, passes: null, env: null, envRT: null, envSig: null, envT: -1e9, pmrem: null,
   T: null, Tloading: null, mats: new Set(), emissive: new Set(), terrainMats: new Set(), objs: new Set(), scanT: 0, lastNow: 0, fpsWin: { t: 0, n: 0 }, fps: 0,
+  drs: K.dynres(), prCur: null, drsCap: 0, vig: null,
+  drsOff: qs.get('v8drs') === '0' || (() => { try { return localStorage.getItem('ssx.v8.nodrs') === '1'; } catch { return false; } })(),
   gov: K.governor(), govOff: qs.get('v8gov') === '0' || (() => { try { return localStorage.getItem('ssx.v8.nogov') === '1'; } catch { return false; } })(), listeners: new Set() };
 
 // ---------- textures (lazy, first surface frame with v8 on) ----------
@@ -164,22 +166,38 @@ function disposeComposer() {
   S.composer = null; S.passes = null;
 }
 
+// ---------- CSS vignette (tiers without a composer: costs nothing on the GPU's frame budget) ----------
+function vignette(on) {
+  on = on && !!tier.vignette && !(tier.post && !DBG.nopost);
+  if (!on) { if (S.vig) S.vig.style.display = 'none'; return; }
+  if (!S.vig) { const c = renderer.domElement, d = document.createElement('div'); d.id = 'v8-vignette';
+    d.style.cssText = 'position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,0.38) 100%)';
+    c.parentNode?.insertBefore(d, c.nextSibling); S.vig = d; }
+  if (S.vig.style.display === 'none') S.vig.style.display = '';
+}
+
 // ---------- the frame ----------
 const dbs = new THREE.Vector2();
 function surfaceFrame(scene, camera) {
-  const ctx = S.ctx, now = performance.now(), dt = S.lastNow ? Math.min(0.1, (now - S.lastNow) / 1000) : 0.016; S.lastNow = now;
+  const ctx = S.ctx, now = performance.now(), rawMs = S.lastNow ? now - S.lastNow : 16.7, dt = S.lastNow ? Math.min(0.1, (now - S.lastNow) / 1000) : 0.016; S.lastNow = now;
   // fps + governor (auto tiers only)
   S.fpsWin.n++; if (!S.fpsWin.t) S.fpsWin.t = now;
   if (now - S.fpsWin.t >= 4000) { S.fps = S.fpsWin.n * 1000 / (now - S.fpsWin.t); S.fpsWin = { t: now, n: 0 };
-    if (pick.auto && !S.govOff && !document.hidden) { const nt = S.gov.sample(S.fps, tier.name); if (nt) { S.stats.governed.push([tier.name, nt, Math.round(S.fps)]); setTier(nt, { auto: true, why: 'governor' }); toast(`✨ Graphics: ${K.TIERS[nt].label} (auto, to keep it smooth)`); } } }
+    if (pick.auto && !S.govOff && !document.hidden && (S.drsOff || S.drs.atFloor(S.prCur ?? 0))) { const nt = S.gov.sample(S.fps, tier.name); if (nt) { S.stats.governed.push([tier.name, nt, Math.round(S.fps)]); setTier(nt, { auto: true, why: 'governor' }); toast(`✨ Graphics: ${K.TIERS[nt].label} (auto, to keep it smooth)`); } } }
   if (!tier.pixelRatio) return origRender(scene, camera);
   // pixel ratio (never above what the core picked)
   if (S.origPR == null) S.origPR = renderer.getPixelRatio();
-  const pr = Math.min(S.origPR, tier.pixelRatio); if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); S.prSet = pr; }
+  // cap: the tier's ratio, never above the core's; phones on med top out at 1.5. Dynamic resolution works under the cap.
+  const cap = Math.min(S.origPR, tier.pixelRatio, cls() === 'phone' && tier.name === 'med' ? 1.5 : 9);
+  if (S.drsCap !== cap) { S.drsCap = cap; S.drs.setCap(cap, Math.max(0.75, Math.min(1, cap * 0.6))); S.prCur = cap; }
+  if (!S.drsOff && rawMs < 250 && !document.hidden) { const r = S.drs.step(rawMs, now, S.prCur); if (r != null) S.prCur = r; }
+  const pr = S.drsOff ? cap : S.prCur; if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); S.prSet = pr; }
+  vignette(true);
   if (!S.T && !S.Tloading && !DBG.nodetail) loadTextures();
   if (S.scanT <= now) { S.scanT = now + 2000; try { scan(ctx); } catch (e) { warnOnce('scan', e); } }
   const indoor = !!ctx.world?.inside, insideKind = indoor ? ctx.world.inside?.kind : null, n = nightness(), dl = S.dl, hemi = S.hemi;
-  setupShadows(!indoor && !!dl && !DBG.noshadow);
+  const shadowOn = !indoor && !!dl && !DBG.noshadow && tier.shadow > 0;
+  setupShadows(shadowOn);
   if (!DBG.noenv) try { updateEnv(now, indoor); } catch (e) { warnOnce('env', e); }
   if (S.envRT && scene.environment !== S.envRT.texture) { S.prevEnv ??= scene.environment; scene.environment = S.envRT.texture; }
   scene.environmentIntensity = (indoor ? K.RIG.envIndoor : K.RIG.env);
@@ -187,14 +205,14 @@ function surfaceFrame(scene, camera) {
   saved.dlI = dl?.intensity ?? 0; saved.hemiI = hemi?.intensity ?? 0; saved.em.length = 0;
   if (dl) {
     saved.pos.copy(dl.position); saved.tpos.copy(dl.target.position);
-    if (!indoor && !DBG.noshadow) {
+    if (shadowOn) {
       dl.castShadow = true; dl.intensity *= K.RIG.sun;
       const P = ctx.car?.position || ctx.car || ctx.player; vC.set(P?.x ?? 0, P?.y ?? 0, P?.z ?? 0);
       sunDir(vDir); vR.crossVectors(vDir, UP); if (vR.lengthSq() < 1e-6) vR.set(1, 0, 0); vR.normalize(); vU.crossVectors(vR, vDir).normalize();
       const u = vC.dot(vR), v = vC.dot(vU), [su, sv] = K.snapTexel(u, v, tier.shadowRange, tier.shadow); vC.addScaledVector(vR, su - u).addScaledVector(vU, sv - v);
       dl.target.position.copy(vC); dl.position.copy(vC).addScaledVector(vDir, 110); dl.target.updateMatrixWorld();
-      if (!renderer.shadowMap.autoUpdate) renderer.shadowMap.needsUpdate = (S.frames % tier.shadowEvery) === 0;
-    } else dl.castShadow = false;
+      if (!renderer.shadowMap.autoUpdate) renderer.shadowMap.needsUpdate = !dl.shadow.map || (S.frames % tier.shadowEvery) === 0; // med: every 3rd frame
+    } else { dl.castShadow = false; if (!indoor && !DBG.noshadow) dl.intensity *= K.RIG.sun; }
   }
   if (hemi && !indoor) hemi.intensity *= K.RIG.hemi;
   if (n > 0.01) for (const m of S.emissive) { saved.em.push(m, m.emissiveIntensity); m.emissiveIntensity *= 1 + K.RIG.emissiveNight * n; }
@@ -203,7 +221,8 @@ function surfaceFrame(scene, camera) {
     const info = renderer.info; info.autoReset = false; info.reset();
     if (tier.post && !DBG.nopost) {
       renderer.getDrawingBufferSize(dbs);
-      if (!S.passes || S.passes.w !== dbs.x || S.passes.h !== dbs.y || S.passes.tier !== tier.name) { buildComposer(dbs.x, dbs.y); S.passes.tier = tier.name; }
+      if (!S.passes || S.passes.tier !== tier.name) { buildComposer(dbs.x, dbs.y); S.passes.tier = tier.name; }
+      else if (S.passes.w !== dbs.x || S.passes.h !== dbs.y) { S.passes.composer.setSize(dbs.x, dbs.y); S.passes.w = dbs.x; S.passes.h = dbs.y; } // dynamic resolution: resize, don't rebuild
       const P = S.passes; P.rp.scene = scene; P.rp.camera = camera; if (P.gtao) { P.gtao.scene = scene; P.gtao.camera = camera; }
       const pp = K.postParams(n, indoor); P.bloom.strength = pp.strength; P.bloom.radius = pp.radius; P.bloom.threshold = pp.threshold;
       const g = K.gradeFor(S.world, insideKind), u = P.grade.uniforms;
@@ -224,6 +243,7 @@ function wrappedRender(scene, camera) {
   const surf = window.__app?.surface;
   if (!surf || scene !== surf.scene || camera !== surf.camera || !S.ctx || S.ctx.scene !== scene || tier.name === 'classic') {
     if (S.prSet != null && S.origPR != null && scene !== surf?.scene) { renderer.setPixelRatio(S.origPR); S.prSet = null; } // back in space: core pixel ratio
+    if (scene !== surf?.scene || tier.name === 'classic') vignette(false);
     return origRender(scene, camera);
   }
   inRender = true;
@@ -248,7 +268,7 @@ function applyClassic() {
   S.envRT?.dispose(); S.envRT = null; S.envSig = null;
   if (S.dl) S.dl.castShadow = false;
   if (S.shadowsWas) { renderer.shadowMap.enabled = S.shadowsWas.enabled; renderer.shadowMap.type = S.shadowsWas.type; renderer.shadowMap.autoUpdate = S.shadowsWas.auto; }
-  if (S.origPR != null) renderer.setPixelRatio(S.origPR); S.prSet = null;
+  if (S.origPR != null) renderer.setPixelRatio(S.origPR); S.prSet = null; S.drsCap = 0; vignette(false);
   S.scene?.traverse(o => { if (o.material) for (const m of [].concat(o.material)) if (m) m.needsUpdate = true; });
 }
 function setTier(name, o = {}) {
@@ -258,7 +278,7 @@ function setTier(name, o = {}) {
   const prev = tier; tier = K.TIERS[name];
   if (prev === tier) return true;
   if (tier.name === 'classic') applyClassic();
-  else { if (prev.name === 'classic') S.origPR = null; disposeComposer(); for (const m of S.mats) unpatch(m); S.mats.clear(); S.terrainMats.clear(); S.scanT = 0; S.envT = -1e9; S.gov.reset();
+  else { if (prev.name === 'classic') S.origPR = null; S.drsCap = 0; S.drs = K.dynres(); disposeComposer(); for (const m of S.mats) unpatch(m); S.mats.clear(); S.terrainMats.clear(); S.scanT = 0; S.envT = -1e9; S.gov.reset();
     if (S.T) for (const s of Object.values(S.T)) for (const t of [s.diff, s.nor, s.arm]) t.anisotropy = Math.min(tier.aniso || 4, renderer.capabilities.getMaxAnisotropy?.() || 1); }
   updateMenu(); for (const f of S.listeners) { try { f(tier.name, prev.name); } catch (e) { warnOnce('listener', e); } }
   return true;
@@ -284,6 +304,7 @@ const API = {
   env: () => S.envRT?.texture || null, nightness,
   state: () => ({ version: VERSION, tier: tier.name, auto: pick.auto, why: pick.why, device: cls(), gpu: gpuName, fps: Math.round(S.fps * 10) / 10, pixelRatio: renderer?.getPixelRatio(),
     shadows: !!renderer?.shadowMap.enabled, castShadow: !!S.dl?.castShadow, env: !!S.envRT, post: !!S.passes, gtao: !!S.passes?.gtao, textures: S.T ? Object.keys(S.T) : null,
+    dynres: { on: !S.drsOff, pr: S.prCur, cap: S.drsCap, floor: S.drs.floor, drops: S.drs.st.drops, raises: S.drs.st.raises, emaMs: Math.round(S.drs.st.ema * 10) / 10 },
     world: S.world, debug: Object.keys(DBG).filter(k => DBG[k]), ...S.stats, governed: S.stats.governed.slice(), night: Math.round(nightness() * 100) / 100 }),
 };
 window.__v8 = { API, S, K, get tier() { return tier; }, scanNow: () => { S.scanT = 0; } };
