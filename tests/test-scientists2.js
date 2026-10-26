@@ -78,7 +78,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       if (!P.upgrades.includes('raccoon_mobile')) P.upgrades.push('raccoon_mobile'); });
     ok('pack2Loaded', null, await G(() => !!window.__sci && window.__sci.ids2?.().length === 5 && ['orchard', 'hum', 'pawn', 'rehearsal', 'gut'].every(k => window.__sci.DIMENSIONS[k])));
     // spy on SSX.bark (keep the real one underneath) so we can see the categories the pack uses
-    await G(() => { window.__barkCats = []; const X = window.SSX; if (X && typeof X.bark === 'function' && !X.__sciSpy) { const real = X.bark; X.bark = function (n, c, o) { window.__barkCats.push(c); return real.apply(this, arguments); }; X.__sciSpy = true; } });
+    await G(() => { window.__barkCats = []; const X = window.SSX; if (X && typeof X.bark === 'function' && !X.__sciSpy) { const real = X.bark; X.bark = function (n, c, o) { if (/scihooks/.test(new Error().stack || '')) window.__barkCats.push(c); return real.apply(this, arguments); }; /* only the lab's own barks: ambient Mars NPCs (dangercore junkies) bark raw lines through SSX.bark too */ X.__sciSpy = true; } });
     R.vmax0 = await G(() => window.__sci.raccoonSpec()?.vmax);
     let getaways = 0; await G(() => { window.__getaways = 0; window.addEventListener('ssx:getaway', () => window.__getaways++); });
     let chain = [['sci-06', 'Silas'], ['sci-07', 'Tam'], ['sci-08', 'Silas'], ['sci-09', 'Tam'], ['sci-10', 'Silas']];
