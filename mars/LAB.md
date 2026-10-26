@@ -104,3 +104,16 @@ debug: goto, advance(sec), heat(n), raid(kind, gang?), arrive, clearWave, resolv
 - **Bribes / rep:** both are read through optional chaining only.
 
 Test: `BASE=http://127.0.0.1:8882/ [BR=webkit DEV="iPhone 14"] OUT=./shots/lab/ node tests/test-lab.js`.
+
+## Lab quality in prices (`qualityMult`)
+
+`SSX.lab.qualityMult(item, have?)` returns a price factor (1 to 1.4) for that item in your contraband stash: the purity
+multiplier at collect time (1 / 1.1 / 1.25 / 1.4), weighted by how much of the stack came from the Vat House. Contraband's
+`buyerPrice` multiplies it in, guarded (`labMult`, PR #18). Pass `have` (stash qty) when calling from inside contraband;
+the lab never calls back into `stash()` then. Runner sales from the locker divide it back out, so they aren't double-counted.
+
+## Ben's base (PR #24)
+
+On the Flats Scrap Lot, a lab raid fought with the lab's own waves calls `SSX.base.raid('flats-scrap', ...)`, which arms
+the lot's turrets, and `SSX.base.endRaid` at the end. With Steve's `SSX.raids` loaded the engine raid is used instead,
+and the base picks it up from there.

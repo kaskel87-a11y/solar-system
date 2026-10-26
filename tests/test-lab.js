@@ -49,6 +49,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('purityUnlock', R.purity, !R.purity.before && R.purity.up && R.purity.after);
     R.collect = await G(() => { const L = window.SSX.lab, C = window.SSX.contraband; const r = L.collect(); return { ok: r.ok, moved: r.moved, left: r.left, stash: C.stash().items.glowdust, cap: C.capacity() }; });
     ok('collectOverflow', R.collect, R.collect.ok && R.collect.moved.glowdust > 0 && R.collect.stash.qty === R.collect.moved.glowdust && R.collect.left === 20 - R.collect.moved.glowdust && R.collect.left > 0 && R.collect.stash.fresh <= 0.86);
+    R.quality = await G(() => ({ q: window.SSX.lab.qualityMult('glowdust'), none: window.SSX.lab.qualityMult('lowg'), passed: window.SSX.lab.qualityMult('glowdust', 3) }));
+    ok('qualityMult', R.quality, R.quality.q === 1.1 && R.quality.none === 1 && R.quality.passed === 1.1);
     R.runner = await G(() => { const L = window.SSX.lab; L.hire('runner'); const t0 = L.status().till; const n = L.debug.sale(); return { n, till: L.status().till - t0, left: L.status().lockerUsed }; });
     ok('runnerSale', R.runner, R.runner.n > 0 && R.runner.till === R.runner.n);
     R.wages = await G(() => { const L = window.SSX.lab, P = window.__app.game.progress; P.credits = 0; L.collect({ force: true }); P.credits = 0; const st = []; for (let i = 0; i < 4; i++) { L.debug.payday(); st.push(L.status().crew.cook.owed); } return { st, cook: L.status().crew.cook, ev: window.__lev.filter(e => e === 'skim' || e === 'quit') }; });

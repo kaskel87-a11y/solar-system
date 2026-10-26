@@ -29,6 +29,8 @@
 //  hire(role) / fire(role) -> { ok, msg }          'cook' | 'guard' | 'runner'
 //  payCrew()           -> { ok, paid, msg }        settle back wages from your wallet
 //  collect()           -> { ok, moved:{ item: qty }, till, left, msg }  product -> SSX.contraband stash, till -> wallet
+//  qualityMult(item, have?) -> price factor (1..1.4) for that item in your stash, by the share that came from the Vat House and
+//                         its purity at collect. contraband buyerPrice multiplies it in (guarded) once PR #18 lands.
 //  layLow() / greaseBeat() -> heat control: pause the vats 3 min (-30 heat), or pay the beat cop (-40 heat)
 //  on(event, fn) | on(fn) -> unsubscribe. Events: buy supplies batch collect sale payday skim quit hire fire upgrade
 //                           repair product heat warn raid wave raid:win raid:lose laylow grease change.
@@ -68,9 +70,9 @@ const COLSEC = { name: 'ColSec', types: ['guard', 'sdrone', 'guard'] };
 // ---------- state ----------
 const fresh = () => ({ v: 1, owned: false, site: null, product: 'glowdust', supplies: 0, progress: 0, locker: {}, till: 0, heat: 0, bricks: true,
   up: { capacity: 0, purity: 0, speed: 0, security: 0 }, damaged: {}, crew: { cook: { hired: false, owed: 0 }, guard: { hired: false, owed: 0 }, runner: { hired: false, owed: 0 } },
-  lastAt: Date.now(), payAt: Date.now(), runAt: Date.now(), downUntil: 0, pauseUntil: 0, stats: { made: 0, sold: 0, earned: 0, wages: 0, raids: 0, won: 0, lost: 0 } });
+  inStash: {}, lastAt: Date.now(), payAt: Date.now(), runAt: Date.now(), downUntil: 0, pauseUntil: 0, stats: { made: 0, sold: 0, earned: 0, wages: 0, raids: 0, won: 0, lost: 0 } });
 let S = load();
-function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) { const f = fresh(); return { ...f, ...s, up: { ...f.up, ...s.up }, crew: { ...f.crew, ...s.crew }, stats: { ...f.stats, ...s.stats }, damaged: s.damaged || {}, locker: s.locker || {} }; } } catch (e) { /* fresh */ } return fresh(); }
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) { const f = fresh(); return { ...f, ...s, up: { ...f.up, ...s.up }, crew: { ...f.crew, ...s.crew }, stats: { ...f.stats, ...s.stats }, damaged: s.damaged || {}, locker: s.locker || {}, inStash: s.inStash || {} }; } } catch (e) { /* fresh */ } return fresh(); }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode */ } };
 
 // ---------- plumbing ----------
@@ -147,7 +149,19 @@ function coolHeat(sec) { S.heat = Math.max(0, S.heat - sec / 60 * (patrolSheet()
 function unitPrice(item) {
   let p = 0; try { p = CB()?.buyerPrice?.(item, 'red-tape-flats') || 0; } catch (e) { /* none */ }
   if (!p) p = { glowdust: 70, lowg: 38, redstatic: 128, glow_dust_brick: 400 }[item] || 30;
-  return p * PURITY_MULT[lvl('purity')];
+  return p / qualityMult(item) * PURITY_MULT[lvl('purity')]; // locker product: its own purity, not the stash's
+}
+// lab-quality price factor for product in your contraband stash (read by contraband buyerPrice's modMult list, PR #18).
+// Tracks how many stash units of each item came from the Vat House and at what purity; sells from a mixed stack are
+// assumed to come out evenly, so the share is clamped to what the stash still holds.
+// have = stash qty; contraband passes it in (its stash() prices through buyerPrice, so we must not call back into it)
+let qmBusy = false;
+function qualityMult(item, have) {
+  const m = S.inStash[item]; if (!m || !(m.qty > 0)) return 1;
+  if (!Number.isFinite(have)) { if (qmBusy) return 1; qmBusy = true; try { have = CB()?.stash?.().items?.[item]?.qty | 0; } catch (e) { return 1; } finally { qmBusy = false; } }
+  if (have <= 0) { delete S.inStash[item]; return 1; }
+  if (m.qty > have) m.qty = have;
+  return Math.round((1 + (m.q - 1) * (m.qty / have)) * 1000) / 1000;
 }
 function runnerSale() {
   if (!crewOn('runner') || !S.owned) return 0;
@@ -250,7 +264,8 @@ function collect(opts = {}) {
     }
     for (const id of Object.keys(S.locker)) {
       const want = S.locker[id] | 0; if (!want) continue; let r = null; try { r = C.add(id, want, fr); } catch (e) { r = null; }
-      const q = r?.qty | 0; if (q > 0) { moved[id] = q; S.locker[id] -= q; if (S.locker[id] <= 0) delete S.locker[id]; }
+      const q = r?.qty | 0; if (q > 0) { moved[id] = q; S.locker[id] -= q; if (S.locker[id] <= 0) delete S.locker[id];
+        const m = S.inStash[id] || { qty: 0, q: 1 }, qm = PURITY_MULT[lvl('purity')]; m.q = (m.q * m.qty + qm * q) / (m.qty + q); m.qty += q; S.inStash[id] = m; }
     }
   }
   const till = Math.floor(S.till); if (till > 0) { S.till -= till; pay(till); }
@@ -311,6 +326,7 @@ function endRaid() {
   const r = raid; if (!r) return; raid = null;
   try { r.unsub?.(); } catch (e) { /* ignore */ }
   if (r.raidId) try { window.SSX?.raids?.stop?.(r.raidId, 'lab'); } catch (e) { /* already over */ }
+  if (r.baseRaid) try { BASE()?.endRaid?.(BASE_PLOT, r.result || 'ended'); } catch (e) { /* lot gone */ }
   try { window.SSX?.city?.npcReserve?.('lab', 0); } catch (e) { /* optional */ }
   if (zoneRing) zoneRing.visible = false; renderHud(); render();
 }
@@ -336,6 +352,11 @@ function arrive() {
   try { window.SSX?.city?.npcReserve?.('lab', Math.min(8, r.plan[r.plan.length - 1])); } catch (e) { /* optional */ }
   if (r.kind === 'colsec') { try { const w = world(); if (w?.setWanted && (w.wanted | 0) < 2) w.setWanted(2, 'Vat House raid'); } catch (e) { /* optional */ } }
   if (r.engine === 'raids') startEngineRaid();
+  // own waves on Ben's lot: SSX.base.raid arms that lot's turrets (it only routes to SSX.raids when that engine exists,
+  // and then we'd have used the engine above)
+  if (r.engine !== 'raids' && site() === 'base' && typeof BASE()?.raid === 'function') {
+    try { const b = BASE().raid(BASE_PLOT, { s: 900, why: 'Vat House raid', attackers: r.kind === 'colsec' ? 'colsec' : 'gang', waves: r.waves }); if (b?.ok) r.baseRaid = b.id; } catch (e) { console.warn('lab base raid', e); }
+  }
   toast(`🛡️ Hold the Vat House: ${r.waves} waves of ${r.name}.`, 2600);
 }
 function stepRaid(dt, h) {
@@ -353,14 +374,14 @@ function stepRaid(dt, h) {
 }
 function resolveAway() { const p = defence(); if (Math.random() < p) winRaid(true); else loseRaid('away'); }
 function winRaid(away) {
-  const r = raid; S.stats.won++;
+  const r = raid; r.result = 'win'; S.stats.won++;
   if (r.kind === 'colsec') S.heat = Math.max(0, S.heat - 35); else { try { window.SSX?.rep?.add?.(r.gang, -2, 'beat their raid on the Vat House'); } catch (e) { /* optional */ } }
   const cr = away ? 0 : 50 + 25 * r.waves; if (cr) try { game()?.reward?.(20, cr); } catch (e) { /* ignore */ }
   save(); toast(away ? `🛡️ ${crewOn('guard') ? CREW.guard.name : 'The shutters'} held the Vat House against ${r.name}.` : `🛡️ Vat House held. ${r.name} crawl off. +${cr} cr.`, 3600);
   emit('raid:win', { kind: r.kind, gang: r.gang, away: !!away, credits: cr }); endRaid();
 }
 function loseRaid(why) {
-  const r = raid, frac = clamp(0.7 - 0.12 * lvl('security') - (crewOn('guard') && !crewSulking('guard') ? 0.1 : 0), 0.2, 0.7), lost = {};
+  const r = raid; r.result = 'lose'; const frac = clamp(0.7 - 0.12 * lvl('security') - (crewOn('guard') && !crewSulking('guard') ? 0.1 : 0), 0.2, 0.7), lost = {};
   for (const id of Object.keys(S.locker)) { const q = Math.ceil(S.locker[id] * frac); if (q) { lost[id] = q; S.locker[id] -= q; if (S.locker[id] <= 0) delete S.locker[id]; } }
   const sup = Math.ceil(S.supplies * frac / 2); S.supplies -= sup;
   const ups = Object.keys(UPGRADES).filter(id => (S.up[id] | 0) > 0 && !S.damaged[id]), dmg = ups.length ? pick(ups) : null; if (dmg) S.damaged[dmg] = true;
@@ -539,7 +560,7 @@ function status() {
     downtime: Math.max(0, Math.round((S.downUntil - Date.now()) / 1000)), perHour: Math.round(3600 / (bs / rate) * PRODUCTS[S.product].units), defence: Math.round(defence() * 100) / 100, turrets: turrets(), stats: { ...S.stats } };
 }
 const API = {
-  status, buy, buySupplies, setProduct, upgrade, repair, hire, fire, payCrew, collect, layLow, greaseBeat, on, open, close,
+  status, qualityMult, buy, buySupplies, setProduct, upgrade, repair, hire, fire, payCrew, collect, layLow, greaseBeat, on, open, close,
   products: PRODUCTS, upgrades: UPGRADES, crewRoles: CREW,
   debug: {
     goto() { const h = here(), s = surf(); if (!h) return false; const d = doorAt(); s.debugMove(h.cx + d[0] + 2, h.cz + d[1] + 2, 0); return true; },
