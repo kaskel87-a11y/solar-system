@@ -20,7 +20,7 @@ import { LINES, pick } from './flats-interiors-lines.js';
 // the grime shanties (#21) and the pad/vehicle slots. Doors face south (+z) like every block.
 export const PLACES = {
   flats_flop: { sign: 'RESTWELL BUNKS', color: 0xffb040, at: [-44, 28, 10, 6, 5], title: 'RESTWELL BUNKS · FLOPHOUSE', who: 'Rooney' },
-  flats_clinic: { sign: 'BAY SIX DENTAL', color: 0x6aff9a, at: [36, -28, 7, 5, 4], title: 'BAY SIX DENTAL · WALK-INS', who: 'Doc Varga' },
+  flats_clinic: { sign: 'BAY SIX DENTAL', color: 0x6aff9a, at: [-32, -20, 7, 5, 4], title: 'BAY SIX DENTAL · WALK-INS', who: 'Doc Varga' },
   flats_pawn: { sign: 'GOLD STAR PAWN', color: 0xffd040, at: [-36, -34, 8, 5, 4.5], title: 'GOLD STAR PAWN & LOAN', who: 'Benny' },
   flats_laund: { sign: 'RINSE & REPEAT', color: 0x40e0ff, at: [28, 40, 9, 5, 4], title: 'RINSE & REPEAT COIN-OP', who: 'Auntie Ro' }
 };

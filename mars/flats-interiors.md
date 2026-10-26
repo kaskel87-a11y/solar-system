@@ -8,7 +8,7 @@ on the radar as small coloured dots (`SSX.minimap` id `flats`).
 | Kind | Sign | Local (x, z) | Who | What you do |
 | --- | --- | --- | --- | --- |
 | `flats_flop` | RESTWELL BUNKS (amber) | -44, 28 | Rooney | Rent a bunk (15 cr, or 30 with a lockbox) and sleep. Sleeping saves and heals ~35% HP. With 60+ cr on you there is a ~20-40% overnight robbery chance (15-35% of your cash, capped at 600, plus some dirty cash). A lockbox cuts that risk to 30%, and SSX.grime raises it. |
-| `flats_clinic` | BAY SIX DENTAL (green) | 36, -28 | Doc Varga | A full patch-up (`game.restore()`) or half a heal. Price = 40 + missing HP, plus a surcharge of 35/star + 10/star² when wanted. It never adds wanted. Sell a pint of blood: +25 cr for -25% HP, with a 3 min cooldown. |
+| `flats_clinic` | BAY SIX DENTAL (green) | -32, -20 | Doc Varga | A full patch-up (`game.restore()`) or half a heal. Price = 40 + missing HP, plus a surcharge of 35/star + 10/star² when wanted. It never adds wanted. Sell a pint of blood: +25 cr for -25% HP, with a 3 min cooldown. |
 | `flats_pawn` | GOLD STAR PAWN (gold) | -36, -34 | Benny | Fences hot goods (heist and safe loot plus `SSX.flats.addHot`) and Marsmania stash goods: plates, cells, chips, tags, salvage, whiskey, paste. Offers are 36-44% of value (worse when wanted). You get two haggles, and a failed second haggle shuts him down on that item. Payout is clean credits, or dirty cash at +20%. He does not take drugs or Quiet crates. |
 | `flats_laund` | RINSE & REPEAT (cyan) | 28, 40 | Knuckles, Auntie Ro | Knuckles lets you into the back room if you carry dirty cash, or for a 10 cr bribe. Ro washes dirty cash into credits for an 18% cut, +4% per wanted star. Kick dryer six for loose change. |
 
