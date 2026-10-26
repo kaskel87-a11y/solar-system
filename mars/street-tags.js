@@ -142,6 +142,10 @@ export function createTags(K) {
       return out;
     },
     marks() { const M = []; for (const s of SPOTS) { const p = K.L(s.at[0], s.at[1]), o = own(s.id); M.push({ x: p.x, z: p.z, r: 1.8, color: o?.by === 'you' ? '#7a7a7a' : '#ffffff' }); } return M; },
+    colliders() { // the freestanding props the tags are painted on (same boxes buildProps draws)
+      const SZ = { container: [6, 2.4, 1.2], jersey: [6, 0.62, 0.27], dumpster: [2.3, 1.25, 0.62], yardwall: [12, 0.3, 0.13], pylon: [4.6, 0.7, 0.35] };
+      return SPOTS.map(s => { const p = K.L(s.at[0], s.at[1]), [nx, nz] = s.n, [w, dpt, b] = SZ[s.prop]; return { type: 'box', x: p.x - nx * b, z: p.z - nz * b, hx: w / 2, hz: dpt / 2, yaw: Math.atan2(nx, nz), tag: 'tag:' + s.id }; });
+    },
     list: () => SPOTS.map(s => { const o = own(s.id), p = K.D ? K.L(s.at[0], s.at[1]) : null; return { id: s.id, name: s.name, by: o?.by || null, t: o?.t || 0, local: [...s.at], x: p?.x, z: p?.z, mine: o?.by === 'you' }; }),
     tagAt(id) { const s = SPOTS.find(x => x.id === id); if (!s) return { ok: false, msg: 'No such spot.' }; if (!K.ST.cans) return { ok: false, msg: 'No cans.' }; if (spray) return { ok: false, msg: 'Already spraying.' }; commit(s); return { ok: true, by: 'you' }; },
     rival,

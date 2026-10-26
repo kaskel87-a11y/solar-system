@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { buildHuman } from '../interiors.js';
 import { puff, flame, rust } from './street-tex.js';
+import { pickRant, mangle, volume } from './street-rant.js';
 
 export const BARRELS = [ // district-local; open ground clear of blocks, #10 shops, #21 shanties, #32 doors and vehicle slots
   { id: 'b-south', name: 'the south lot barrel', at: [-2, -36] },
@@ -54,18 +55,20 @@ export function createCrowds(K) {
     if (s.h) return s.h; const h = buildHuman(s.look); s.h = h; h.group.visible = false; h.group.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } }); root.add(h.group); return h;
   }
   function pose(h) { h.hips.position.y = h.base; h.hips.rotation.set(0, 0, 0); h.torso.rotation.set(0, 0, 0); h.head.rotation.set(0, 0, 0); for (const a of h.arms) a.rotation.set(0, 0, 0); for (const l of h.legs) l.rotation.set(0, 0, 0); h.group.rotation.set(0, 0, 0); }
+  K.posePlain = pose; K.walkAnim = (h, t, k) => walk(h, t, k);
   function walk(h, t, k = 1) { const s = Math.sin(t * 7) * 0.55 * k; h.legs[0].rotation.x = s; h.legs[1].rotation.x = -s; h.arms[0].rotation.x = -s * 0.7; h.arms[1].rotation.x = s * 0.7; h.hips.position.y = h.base + Math.abs(Math.cos(t * 7)) * 0.03 * k; }
   function lie(s, h) { h.group.rotation.x = -Math.PI / 2; h.group.position.y = K.hgt(s.x, s.z) + 0.2; h.arms[0].rotation.z = 0.9; h.legs[1].rotation.x = 0.4; }
   function select(P) {
     const night = K.night(), out = [];
     for (const s of slots) {
+      if (s.dead || s.flee) { out.push({ s, d: -99 }); continue; } // bodies and runners stay until street-combat lets go
       if (s.gone > K.T) continue; if (s.role === 'crowd' && !night) continue;
       const d = Math.hypot(s.home.x - P.x, s.home.z - P.z); if (d < 70) out.push({ s, d: d + (s.role === 'dealer' ? -6 : 0) });
     }
     out.sort((a, b) => a.d - b.d); const n = K.budget(out.length), pick = new Set(out.slice(0, n).map(o => o.s));
     for (const f of fights) { if (!pick.has(f.a) || !pick.has(f.b)) f.over = true; }
     for (const s of slots) { const on = pick.has(s); if (on && !s.on) { human(s); s.on = true; s.x = s.role === 'crowd' ? s.home.x + Math.cos(s.a) * 1.3 : s.home.x; s.z = s.role === 'crowd' ? s.home.z + Math.sin(s.a) * 1.3 : s.home.z; s.st = 'idle'; s.t = R() * 3; } if (!on && s.on) { s.on = false; if (s.h) s.h.group.visible = false; s.st = 'idle'; } if (s.h) s.h.group.visible = on && !P.inside; }
-    shown = pick.size; K.reserve(shown + (K.extra || 0));
+    shown = pick.size; K.reserve(shown + (K.extra || 0) + (K.tweak || 0));
   }
   // ---------- per-role behaviour ----------
   function crowdTick(s, h, dt, t, P) {
@@ -90,6 +93,7 @@ export function createCrowds(K) {
     if (s.st === 'idle' || s.t <= 0 && s.st !== 'approach' && s.st !== 'wait') { const r = R(); s.st = r < 0.4 ? 'nod' : r < 0.65 ? 'scratch' : 'wander'; s.t = 5 + R() * 8; s.tx = null; }
     if (s.st !== 'approach' && s.st !== 'wait' && s.st !== 'high' && d < 10 && !P.driving && !P.inside && K.T > s.cool && R() < dt * 0.25) { s.st = 'approach'; s.t = 18; s.cool = K.T + 50; s.mood = 0.55 + R() * 0.35; }
     if (s.st === 'wander' || s.st === 'leave') {
+      if (K.night() && d < 30 && !P.inside && K.T > (s.rantT || 0)) { s.rantT = K.T + 12 + R() * 13; K.yell(s, s.name, mangle(pickRant(), volume(d)), volume(d)); } // yelling at nobody
       if (!s.tx) { const a = R() * 6.283, r = 1.5 + R() * 4.5; s.tx = { x: s.home.x + Math.cos(a) * r, z: s.home.z + Math.sin(a) * r }; }
       const dx = s.tx.x - s.x, dz = s.tx.z - s.z, L = Math.hypot(dx, dz); if (L < 0.3) { s.tx = null; if (s.st === 'leave') { s.st = 'nod'; s.t = 8; } }
       else { const lurch = Math.sin(t * 1.9 + s.home.x) > 0.85 ? 1.9 : 1, v = 0.55 * lurch * dt; s.x += dx / L * v + Math.sin(t * 3.1) * 0.012; s.z += dz / L * v + Math.cos(t * 2.7) * 0.012; s.yaw = faceYaw(s.x, s.z, s.tx.x, s.tx.z) + Math.sin(t * 2.3) * 0.25; }
@@ -192,13 +196,14 @@ export function createCrowds(K) {
       if ((selT -= dt) <= 0) { selT = 0.6; select(P); }
       fights = fights.filter(F => fightTick(F, dt, t));
       for (const s of slots) { if (!s.on || !s.h) continue; const h = s.h;
+        if (K.combat?.drive?.(s, h, dt, t, P)) continue;
         if (!s.fight) { if (s.role === 'crowd') crowdTick(s, h, dt, t, P); else if (s.role === 'dealer') dealerTick(s, h, dt, t, P); else junkieTick(s, h, dt, t, P); }
         if (s.st !== 'down') { h.group.position.set(s.x, K.hgt(s.x, s.z), s.z); h.group.rotation.y = s.yaw; } else h.group.rotation.y = s.yaw;
         h.group.position.x = s.x; h.group.position.z = s.z; }
     },
     acts(P) {
       if (P.driving) return []; const out = [];
-      for (const s of slots) { if (!s.on || s.st === 'down' || s.fight || s.role === 'crowd') continue; const d = Math.hypot(P.x - s.x, P.z - s.z); if (d > 2.5) continue;
+      for (const s of slots) { if (!s.on || s.st === 'down' || s.fight || s.dead || s.flee || s.role === 'crowd') continue; const d = Math.hypot(P.x - s.x, P.z - s.z); if (d > 2.5) continue;
         if (s.role === 'dealer') out.push({ d, label: `\ud83d\udc8a Buy from ${s.name}`, fn: () => dealerPanel(s) });
         else out.push({ d, label: `\ud83e\udd44 Talk to ${s.name}`, fn: () => junkiePanel(s) }); }
       fx.forEach((f, bi) => { const d = Math.hypot(P.x - f.c.x, P.z - f.c.z); if (d < 3.2 && slots.some(s => s.on && s.role === 'crowd' && s.barrel === bi)) out.push({ d: d + 0.8, label: '\ud83d\udd25 Warm up at the barrel', fn: () => barrelPanel(bi) }); });
@@ -208,6 +213,10 @@ export function createCrowds(K) {
     list: () => BARRELS.map((b, i) => { const p = K.D ? K.L(b.at[0], b.at[1]) : null; return { id: b.id, name: b.name, local: [...b.at], x: p?.x, z: p?.z, people: slots.filter(s => s.on && s.role === 'crowd' && s.barrel === i).length, fighting: fights.some(f => f.bi === i) }; }),
     npcs: () => slots.filter(s => s.on).map(s => ({ key: s.key, role: s.role, name: s.name, state: s.fight ? 'fight' : s.st, x: +s.x.toFixed(2), z: +s.z.toFixed(2) })),
     fight: (i = 0) => fight(i),
+    slots: () => slots, reselect() { selT = 0; },
+    colliders() { // burn barrels (cylinders) and the crate beside each one; the flat pallet is walkable
+      const out = []; for (const b of BARRELS) { const c = K.L(b.at[0], b.at[1]); out.push({ type: 'cyl', x: c.x, z: c.z, r: 0.42, tag: 'barrel:' + b.id });
+        out.push({ type: 'box', x: c.x + 2.0, z: c.z + 0.6, hx: 0.45, hz: 0.3, yaw: 0.4, tag: 'crate:' + b.id }); } return out; },
     debug: () => ({ ...dbg, shown, slots: slots.length, built: slots.filter(s => s.h).length, fights: fights.length })
   };
 }

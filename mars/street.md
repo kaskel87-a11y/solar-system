@@ -29,6 +29,48 @@ Wrench (existing chop) scraps a stolen ride for small cash and **clears your hea
 `stats(), state(), on(fn), reset()`, plus `debug.*`
 Events: `SSX.emit('street:<type>')` and `window` `ssx:street` CustomEvent (`load`, `unload`, `can`, `cans`, `spray`, `tag`, `cred`, `covered`, `spotted`, `fight`, `round`, `mouthoff`, `buy`, `sell`, `bust`, `gift`, `shove`, `towed`, `impoundPaid`, `impoundJumped`, `fence`, `strip`, `hot`).
 
+## Outdoor colliders (`mars/colliders.js`, `SSX.colliders`)
+A tiny 2D collider set on an 8 m spatial grid. `world.collide()` (player outdoors, vehicles, walking NPCs, freeSpot) calls
+`SSX.colliders.resolve(x, z, r)` through one guarded line, so everything that already respects buildings respects these.
+The player slides along them; vehicles get the existing building response (blocked, small bounce, crash event).
+- `add({ type: 'box', x, z, hx, hz, yaw?, group?, tag? })` or `add({ type: 'cyl', x, z, r, group?, tag? })` -> id
+- `remove(id)`, `removeGroup(group)`, `list(group?)`, `query(x, z, r)`, `blocked(x, z, r)`, `resolve(x, z, r)` -> `{x, z}` | null, `stats()`, `clear()`
+- Street life registers group `'street'` on load (tag props, burn barrels + crates, tow-yard fence runs, office, truck,
+  hulks, tyre stack) and removes it on unload.
+- **For grime (#21) and other mods:** `SSX.colliders?.add?.({ type: 'box', x, z, hx, hz, group: 'grime' })` when your props
+  build, `SSX.colliders?.removeGroup?.('grime')` when they dispose. Indoors is unaffected (rooms have their own collide).
+
+## Street violence (`street-combat.js`, `street-blood.js`)
+Dealers, junkies and barrel crowds are hittable through the same world wrapper pattern danger.js uses (hitWorld, targets,
+meleeTarget, meleeWorld, blast). hp: crowd/junkie 3, dealer 4. A hit bleeds (instanced ground spatter + `game.gore`),
+knocks back and makes the victim run; the first hit on a civilian is `crime(1)`, a kill is another `crime(1)` (heat via the
+existing wanted system). Deaths crumple and tip over (tween), the body stays 60 s, the slot is empty for 5 min. Bodies drop
+cash (dealers also 1-3 product into `SSX.contraband`, cash if that module is missing); walk over it to take it. Witnesses
+within ~22 m flee and scream. Blood: capped ring buffers (phone 18 spatter / 8 pools, desktop 40 / 16), per-instance fade
+attribute, fully visible 18 s then fading out by 60 s.
+
+## Rockheads (`street-tweakers.js`, `street-rant.js`)
+Red Static addicts who spot you on foot, storm over ranting gibberish (louder as they close in), accuse you and call you
+out. Panel: Fight / Back off / Pay 10 cr. Fight is fists through the normal melee path; he swings erratically and sometimes
+pulls a broken bottle. Win: he crumples and bleeds, drops a little cash or a rock, +8 street cred, no heat for a fair fight.
+Shoot or blow him up: heat as usual. Lose (your health would drop under ~22): you hit the dirt and he takes 10-25% of your
+credits (max 60). Back off: taunt, maybe a shove, maybe a chase. One at a time (phones: pool of 1, counted in the street
+NPC budget). Checks every 8 s: 4% by day, 12% at night, times `SSX.grime.level` (0..1 -> x0.6..x1.5) when present, 60-90 s
+cooldown; never while `window.__danger.state.mug` is active (that is the knife mugging; this is not a robbery).
+Junkies wandering at night also yell at nobody. Lines go through `SSX.bark` (literal text) or a black/white speech bubble.
+
+## Night (`street-night.js`)
+When `SSX.time.isNight()` (or `setNight(true)`) and outdoors in the Flats: sky shader uniforms, background, fog colour,
+sun and hemisphere intensity ease toward a dirty sodium night (0.5/s), and the 10 district lamps get glow sprites plus
+ground pools (desktop adds two point lights on the nearest lamps). Base values are captured and restored exactly by day
+and on unload; values changed by someone else are re-based, not fought.
+
+## API additions
+`challenge({ near?, reset? })` force a rockhead, `rockhead()` its state, `drops()`, `blood()`, `night()`, `colliders()`,
+`hurt(key, dmg, how)`, `debug.ageBlood(s)`, `debug.yell(text, lvl)`, `debug.parts()` (blood/combat/rockheads/night counters).
+Events (`ssx:street` / `SSX.emit('street:*')`): `hurt`, `kill`, `drop`, `loot`, `yell`, `rockhead`, `brawl`, `brawlWon`,
+`brawlLost`, `rockheadPaid`, `rockheadKilled`.
+
 ## Hooks used (all optional)
 SSX.contraband (buy/sell/registerOffer), SSX.city (crime/wanted/npcBudget/npcReserve/hostiles), SSX.bark, SSX.time.isNight (fallback: dangercore `marsHour()`, night is 21–05), SSX.turf.ownerAt (which crew paints over you), SSX.rep.add (crews/junkies), SSX.garage (grantVehicle/grantUpgrade).
 
