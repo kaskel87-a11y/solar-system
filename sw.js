@@ -16,6 +16,7 @@ const PRECACHE = [
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   'vendor/three/build/three.module.min.js',
   `clubdancers.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
+  ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'textures/2k_stars_milky_way.jpg'
 ];
