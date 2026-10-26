@@ -111,9 +111,9 @@ function ensureUI() {
   actBtn = document.createElement('button'); actBtn.id = 'stAct'; actBtn.type = 'button'; document.body.appendChild(actBtn);
   onTap(actBtn, () => { const a = act; if (a) try { a.fn(); } catch (e) { console.warn('street act', e); } });
   chip = document.createElement('div'); chip.id = 'stChip'; document.body.appendChild(chip);
-  addEventListener('keydown', e => { if (e.code === 'KeyY' && !e.repeat && act && actBtn.classList.contains('show') && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { e.preventDefault(); try { act.fn(); } catch (er) { console.warn(er); } } });
+  addEventListener('keydown', e => { if (e.code === 'Digit7' && !e.repeat && act && actBtn.classList.contains('show') && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { e.preventDefault(); try { act.fn(); } catch (er) { console.warn(er); } } });
 }
-function showAct(a) { act = a; if (!actBtn) return; if (!a) { actBtn.classList.remove('show'); return; } const l = a.label + (PHONE ? '' : '  [Y]'); if (actBtn.textContent !== l) actBtn.textContent = l; actBtn.classList.add('show'); }
+function showAct(a) { act = a; if (!actBtn) return; if (!a) { actBtn.classList.remove('show'); return; } const l = a.label + (PHONE ? '' : '  [7]'); if (actBtn.textContent !== l) actBtn.textContent = l; actBtn.classList.add('show'); }
 function showChip(t) { if (!chip) return; if (!t) { chip.classList.remove('show'); return; } if (chip.textContent !== t) chip.textContent = t; chip.classList.add('show'); }
 
 // ---------- shared kit for the parts ----------
