@@ -47,6 +47,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { window.SSX.on?.('heist:escape', d => { window.__ssxEsc = d; }); });
     ok('started', await wait(() => window.SSX.heist.active?.w, 8000));
     const w = await G(() => window.SSX.heist.active.w);
+    await G(() => window.SSX.heist.guards?.setOptions?.({ passive: true, fire: false })); // v7.5.4: guards have their own e2e (test-guards.js)
     ok('activeCallable', await G(() => typeof window.SSX.heist.active === 'function' && window.SSX.heist.active('mansion', 'x') === true && window.__app.surface.game.heistAt('mansion', 'x') === true)); // main's game.heistAt calls active?.(kind, name)
     ok('camerasPlaced', await G(() => window.SSX.heist.cameras().length), (await G(() => window.SSX.heist.cameras().length)) === 3);
     R.tip = await G(() => { const h = window.SSX.heist; const c = h.applyTip('heist-sample', { type: 'cameras' }); const s = h.applyTip('heist-sample', { type: 'safe', ease: 0.3 });
