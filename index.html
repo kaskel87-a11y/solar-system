@@ -615,7 +615,7 @@
     import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js';
     import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
     import { registerInterior } from './interiors.js';
-    import { privateShow } from './privateshow.js'; // v7.5.4 Danny's upstairs private show
+    import { privateShow } from './privateshow.js'; import { DANNY_NAME } from './clubdancers.js'; // v7.5.4 Danny's upstairs private show
     import { createAudio7 } from './audio7.js';
     import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
     import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
@@ -1454,10 +1454,10 @@
         W.clubFx('rain', 24); au7.fx.cash();
         toast(pickL(['💸 You make it rain. The dancers work the poles harder and somebody whistles.', '💸 Credits flutter down. Jade catches one mid-spin without missing a beat.', '💸 Tiny, from the rope: “Big spender. Don’t get ideas.”', '💸 A chit lands in the drink of the guy next to you. He’s too drunk to care.']), 2800);
       } else if (s.act === 'private') {
-        if (!g.spend(50)) { toast(`${s.who || 'Danny Alvarez'}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
+        if (!g.spend(50)) { toast(`${s.who || DANNY_NAME}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
         W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
-        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
+        toast(`💃 ${s.who || DANNY_NAME} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
       } else if (s.act === 'companion') {
         if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
         au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');

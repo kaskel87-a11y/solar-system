@@ -5,7 +5,8 @@
 // Hooks: interiors.js calls addBooth(api, ...) while building the club; index.html calls privateShow(...) once and
 // routes the 'show' hotspot to show.offer(spot). Phone buttons use window.__onTap (one finger per button on iOS).
 import * as THREE from 'three';
-import { spawn } from './clubdancers.js';
+import { spawn, DANNY_NAME } from './clubdancers.js';
+const DF = DANNY_NAME.split(' ')[0]; // first name for captions; the full display name lives in clubdancers.js (DANNY_NAME)
 
 export const SHOW_PRICE = 150, TIP = 20, TIPS_FOR_NUMBER = 3, SHOW_SEC = 34, TIP_SEC = 6;
 const NUMBER = '555-0142'; // 555-01xx: reserved for fiction
@@ -44,7 +45,7 @@ export function addBooth(api, { x = 0, z = 0, sit = null } = {}) {
   add(neon, 0, 1.9, -D / 2 + 0.03, 2.6, 0.04, 0.02); add(neon, 0, 0.08, -D / 2 + 0.03, 2.6, 0.03, 0.02);
   add(gold, 1.2, 0.5, 1.3, 0.36, 0.03, 0.36); add(gold, 1.2, 0.25, 1.3, 0.04, 0.5, 0.04);
   // a sign on the back wall
-  const signT = keep(canvasTex(512, 96, (c, w, h) => { c.font = 'italic bold 56px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = '#ff3cc8'; c.shadowBlur = 18; c.fillStyle = '#ffd6f0'; c.fillText('Danny', w / 2, h / 2); }));
+  const signT = keep(canvasTex(512, 96, (c, w, h) => { c.font = 'italic bold 56px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = '#ff3cc8'; c.shadowBlur = 18; c.fillStyle = '#ffd6f0'; c.fillText(DF, w / 2, h / 2); }));
   const sign = new THREE.Mesh(keep(new THREE.PlaneGeometry(1.6, 0.3)), keep(new THREE.MeshBasicMaterial({ map: signT, transparent: true, depthWrite: false })));
   sign.position.set(0, 2.2, -D / 2 + 0.05); g.add(sign);
   // the seated player (blocky, like the rest of the club crowd)
@@ -57,14 +58,14 @@ export function addBooth(api, { x = 0, z = 0, sit = null } = {}) {
 
 // ---------- the show ----------
 const LINES = {
-  open: ['Danny: Rule of the room, cowboy. You look, I lead.', 'Danny: Sit back. Hands on the armrests. Good boy.', 'Danny: You paid for a song. Let’s see if you can survive it.'],
-  mid: ['Danny: Breathe. It’s only a song… mostly.', 'Danny: Closer? Nah. The wanting is the whole show.', 'Danny: I can tell when you’re thinking about it. Stop thinking.', 'Danny: Every one of these tattoos has a story. You haven’t earned one yet.', 'Danny: Eyes up here, spacer. …Okay, fine. Everywhere.', 'Danny: You’re blushing. On Mars. That’s a first.'],
-  tip: ['Danny: Ooh, generous. That bought you another verse.', 'Danny: Now we’re talking. Keep the meter running.', 'Danny: Big spender. I might start remembering your name.'],
-  broke: ['Danny: Tips are twenty, sugar. Your wallet says no.'],
-  number: 'Danny leans in, close but not touching: “Fine. You earned it.”',
-  touch: ['Danny: Ah-ah.', 'TINY: That’s the one rule, genius.'],
+  open: [DF + ': Rule of the room, cowboy. You look, I lead.', DF + ': Sit back. Hands on the armrests. Good boy.', DF + ': You paid for a song. Let’s see if you can survive it.'],
+  mid: [DF + ': Breathe. It’s only a song… mostly.', DF + ': Closer? Nah. The wanting is the whole show.', DF + ': I can tell when you’re thinking about it. Stop thinking.', DF + ': Every one of these tattoos has a story. You haven’t earned one yet.', DF + ': Eyes up here, spacer. …Okay, fine. Everywhere.', DF + ': You’re blushing. On Mars. That’s a first.'],
+  tip: [DF + ': Ooh, generous. That bought you another verse.', DF + ': Now we’re talking. Keep the meter running.', DF + ': Big spender. I might start remembering your name.'],
+  broke: [DF + ': Tips are twenty, sugar. Your wallet says no.'],
+  number: DF + ' leans in, close but not touching: “Fine. You earned it.”',
+  touch: [DF + ': Ah-ah.', 'TINY: That’s the one rule, genius.'],
   out: 'Tiny carries you down the back stairs and drops you on the street. Your pride stays upstairs.',
-  end: ['The song fades. Danny blows you a kiss from the doorway. “Same booth next time, spacer.”', 'The lights come up. Danny pulls her cover-up on and winks. “Don’t fall in love. It’s bad for business.”'],
+  end: ['The song fades. ' + DF + ' blows you a kiss from the doorway. “Same booth next time, spacer.”', 'The lights come up. ' + DF + ' pulls her cover-up on and winks. “Don’t fall in love. It’s bad for business.”'],
 };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const CSS = `
@@ -83,7 +84,7 @@ body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibi
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><h3>💋 Danny Alvarez</h3><div>“Private show, upstairs. One song, my booth, my rules: costume stays on, your hands stay on the chair.”</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private show · 150 cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div></div>';
+  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private show, upstairs. One song, my booth, my rules: costume stays on, your hands stay on the chair.”</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private show · 150 cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
   ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>';
   document.body.append(offerEl, ui);
@@ -91,16 +92,16 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   let S = null, capT = 0, unreg = null;
   const say = (msg, sec = 3.6) => { cap.textContent = msg; capT = sec; };
   const contacts = () => { try { return JSON.parse(localStorage.getItem('ssx.contacts') || '{}'); } catch (e) { return {}; } };
-  const hasNumber = () => !!contacts()['Danny Alvarez'];
+  const hasNumber = () => !!contacts()[DANNY_NAME];
 
   function offer(spot) {
     if (S) return; if (document.pointerLockElement) document.exitPointerLock();
     offerEl.style.display = 'flex';
   }
-  onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast('Danny: Your loss, sugar.', 2000); });
+  onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast(DF + ': Your loss, sugar.', 2000); });
   onTap($('pshowYes'), () => {
     offerEl.style.display = 'none';
-    if (!surface.game.spend(SHOW_PRICE)) { toast('Danny: Upstairs is 150. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
+    if (!surface.game.spend(SHOW_PRICE)) { toast(DF + ': Upstairs is 150. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
     fx.cash?.(); hud(); start();
   });
   onTap($('pshowTip'), () => tip()); onTap($('pshowTouch'), () => touch()); onTap($('pshowLeave'), () => end('leave'));
@@ -115,7 +116,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   function boothNow() { for (const b of booths) { if (!b.g.parent) { booths.delete(b); continue; } let o = b.g.parent, vis = true; while (o) { if (!o.visible) { vis = false; break; } o = o.parent; } if (vis) return b; } return null; }
 
   function start() {
-    const b = boothNow(); if (!b) { toast('Danny: The booth’s being cleaned. Rain check.', 2400); return; }
+    const b = boothNow(); if (!b) { toast(DF + ': The booth’s being cleaned. Rain check.', 2400); return; }
     const visits = +(localStorage.getItem('ssx.dannyShows') || 0); localStorage.setItem('ssx.dannyShows', visits + 1);
     const outfit = ['aqua', 'crop', 'string'][visits % 3]; // aqua crochet, pink ribbed, white string + cover-up
     const h = spawn({ dancer: 'danny', outfit, look: { key: [0.35, 0.8, 1.0], keyCol: 0xffeee4, keyInt: 2.1, rim: [-0.3, 0.4, -1.0], rimCol: 0xff3cc8, rimInt: 1.25, fill: 0xd0d4e8, fillInt: 0.45, scene: 0.12 } });
@@ -165,8 +166,8 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (!surface.game.spend(TIP)) { say(pick(LINES.broke)); fx.dry?.(); return; }
     fx.cash?.(); S.tips++; S.left += TIP_SEC; hud();
     if (S.tips >= TIPS_FOR_NUMBER && !hasNumber()) {
-      const c = contacts(); c['Danny Alvarez'] = NUMBER; localStorage.setItem('ssx.contacts', JSON.stringify(c));
-      say(LINES.number + ' 📱 Danny Alvarez added to your contacts.', 5); window.SSX?.emit?.('contact:add', { name: 'Danny Alvarez', number: NUMBER });
+      const c = contacts(); c[DANNY_NAME] = NUMBER; localStorage.setItem('ssx.contacts', JSON.stringify(c));
+      say(LINES.number + ' 📱 ' + DANNY_NAME + ' added to your contacts.', 5); window.SSX?.emit?.('contact:add', { name: DANNY_NAME, number: NUMBER });
     } else say(pick(LINES.tip));
   }
   function touch() {
@@ -179,8 +180,8 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   function end(why) {
     if (!S || S.ending) return; S.ending = true; const S0tips = S.tips;
     const f = fade(); f.textContent = ''; f.classList.add('on');
-    setTimeout(() => { f.textContent = why === 'leave' ? 'You thank Danny and head back downstairs.' : pick(LINES.end); }, 650);
-    setTimeout(() => { stop(); f.classList.remove('on'); hud(); if (hasNumber() && S0tips >= TIPS_FOR_NUMBER) toast(`📱 Danny Alvarez · ${NUMBER} is in your contacts.`, 3000); }, why === 'leave' ? 2000 : 3400);
+    setTimeout(() => { f.textContent = why === 'leave' ? 'You thank ' + DF + ' and head back downstairs.' : pick(LINES.end); }, 650);
+    setTimeout(() => { stop(); f.classList.remove('on'); hud(); if (hasNumber() && S0tips >= TIPS_FOR_NUMBER) toast(`📱 ${DANNY_NAME} · ${NUMBER} is in your contacts.`, 3000); }, why === 'leave' ? 2000 : 3400);
   }
   function stop() {
     if (!S) return; const { b, h } = S;

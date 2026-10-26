@@ -77,8 +77,10 @@ const OUTFITS = {
   string: ['SSX string top', 'SSX string bottom', 'ring', 'SSX coverup'], // alternate stage look: white string bikini + ring, open crochet cover-up
   crop: ['SSX string top', 'SSX string bottom', 'SSX crop top', 'SSX shorts', 'SSX cardigan'] // private dance: pink ribbed two-piece (+ cardigan)
 };
+/** Danny's display name: the ONE place it is set (nameplate/sign, spots, captions, contacts and toasts all read it). */
+export const DANNY_NAME = 'Danny Alvarez';
 export const DANCERS = {
-  danny: { file: 'dancer_danny', name: 'Danny Alvarez', sheen: 0.55 }, // long straight wet-look black hair
+  danny: { file: 'dancer_danny', name: DANNY_NAME, sheen: 0.55 }, // long straight wet-look black hair
   rhea: { file: 'dancer_rhea', name: 'Rhea', sheen: 0.18 },
   kiara: { file: 'dancer_kiara', name: 'Kiara', sheen: 0.18 }
 };
@@ -110,7 +112,10 @@ function dancerMaterial(src, auxTex, { alt = null, sheen = 0.18, lu } = {}) {
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aCell; attribute vec4 aGm; varying vec4 vCell; varying vec4 vGm;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvCell = aCell; vGm = aGm;');
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvCell = aCell; vGm = aGm;\n' +
+        // cloth (bikini / crop / shorts / straps): a per-vertex polygon offset, pulled 4 mm toward the camera along the view ray
+        // (same pixel, nearer depth) so skin never pokes through the garment edges at any distance
+        'float ssxV = floor(aGm.x + 0.5); if ((ssxV > 0.5 && ssxV < 7.5) || ssxV == 10.0) { vec4 ssxMv = mvPosition; ssxMv.xyz -= normalize(ssxMv.xyz) * 0.004; gl_Position = projectionMatrix * ssxMv; }');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D uAux; uniform vec4 uAlt; uniform vec3 uRimA; uniform vec3 uRimB; uniform float uRim; uniform float uHairSheen;
 uniform vec3 uKeyV; uniform vec3 uKeyC; uniform vec3 uRimV; uniform vec3 uRimC; uniform vec3 uFill; uniform float uScene; uniform float uNeutral;
