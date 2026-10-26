@@ -560,6 +560,8 @@
   "ssx/dimensions/pantry": "./dimensions/pantry.js?v=7.5.3.1",
   "./dimensions/waitroom.js": "./dimensions/waitroom.js?v=7.5.3.1",
   "ssx/dimensions/waitroom": "./dimensions/waitroom.js?v=7.5.3.1",
+  "./mars/consequences.js": "./mars/consequences.js?v=7.5.3.1",
+  "ssx/mars/consequences": "./mars/consequences.js?v=7.5.3.1",
   "./mars/contraband.js": "./mars/contraband.js?v=7.5.3.1",
   "ssx/mars/contraband": "./mars/contraband.js?v=7.5.3.1",
   "./mars/jobs.js": "./mars/jobs.js?v=7.5.3.1",
@@ -2256,6 +2258,7 @@
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
+  <script type="module" src="./mars/consequences.js?v=7.5.3.1"></script> <!-- Mars wasted/busted consequences: Helios Mercy, Deimos Lockup, bail, lawyer, impound (window.SSX.consequences); see mars/CONSEQUENCES.md -->
   <script type="module" src="./mars/contraband.js?v=7.5.3.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
   <script type="module" src="./mars/jobs.js?v=7.5.3.1"></script> <!-- v7.5.2 Mars side jobs (window.SSX.jobs); ticked by activities/runner.js -->
   <script type="module" src="./mars/turf.js?v=7.5.3.1"></script> <!-- v7.5.3 Mars turf wars (window.SSX.turf) -->
