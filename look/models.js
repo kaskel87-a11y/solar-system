@@ -217,7 +217,7 @@ function watchBolts(ctx) {
 import('./models-kits.js').then(m => { S.kitMod = m; }, e => warnOnce('kits module', e));
 
 // ---------------------------------------------------------------- runtime ----------------------------------------------------------------
-function wanted() { if (FORCE === 'off') return false; const t = window.SSX?.look?.tier?.(); S.tier = typeof t === 'string' ? t : 'classic'; return FORCE === 'on' ? true : S.tier !== 'classic'; }
+function wanted() { const t = window.SSX?.look?.tier?.(); S.tier = typeof t === 'string' ? t : 'classic'; if (FORCE === 'off') return false; return FORCE === 'on' ? true : S.tier !== 'classic'; }
 function clearAll() {
   for (const e of S.people.values()) detach(e); S.people.clear(); if (S.player) { detach(S.player); S.player = null; }
   for (const k of S.kits.values()) S.kitMod?.removeKit?.(k); S.kits.clear();

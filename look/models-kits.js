@@ -117,6 +117,17 @@ function mats() {
   const w = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.05 });
   const g = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.15, metalness: 0.45, envMapIntensity: 1.5 });
   const l = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0, emissive: 0xffffff, emissiveIntensity: 0.6 });
+  w.onBeforeCompile = (sh) => { // cheap world-space grime: blotches + vertical streaks (no textures to fetch)
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vKW;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvKW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vKW;
+float kh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float kn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(kh(i), kh(i + vec2(1, 0)), f.x), mix(kh(i + vec2(0, 1)), kh(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+{ vec2 q = vec2(vKW.x + vKW.z, vKW.y); float b = kn(q * 0.9) * 0.6 + kn(q * 3.1) * 0.4; float st = kn(vec2(q.x * 2.3, q.y * 0.12));
+  diffuseColor.rgb *= 0.82 + 0.26 * b - 0.12 * smoothstep(0.55, 0.9, st); }`);
+  };
+  w.customProgramCacheKey = () => 'ssxkit-wall';
   l.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vColor.rgb;'); };
   l.customProgramCacheKey = () => 'ssxkit-lit';
   for (const m of [w, g, l]) { m.userData.weathered = true; m.userData.ssxKit = true; }
@@ -171,7 +182,7 @@ async function build(S, site, kind) {
   const hidden = [];
   if (kind === 'gated') sv.domes.forEach((d, i) => free.push([VILLAS[i % VILLAS.length], null, d]));
   const g = new THREE.Group(); g.name = 'ssx-kit-' + kind; g.userData.ssxKit = true;
-  for (const k of ['wall', 'glass', 'lit']) { const geo = B[k].geo(); if (geo) { const m = new THREE.Mesh(geo, M[k]); m.userData.ssxKit = true; m.receiveShadow = true; m.castShadow = k === 'wall'; g.add(m); } }
+  for (const k of ['wall', 'glass', 'lit']) { const geo = B[k].geo(); if (geo) { const m = new THREE.Mesh(geo, M[k]); m.userData.ssxKit = true; m.userData.noV8 = true; /* v8 would read a district-wide vertex-coloured mesh as terrain */ m.receiveShadow = true; m.castShadow = k === 'wall'; g.add(m); } }
   // props: group placements per GLB, then one InstancedMesh per primitive
   const want = new Map();
   for (const [id, f, u, y, o, s] of place) { if (!want.has(id)) want.set(id, []); want.get(id).push(onFace(f, u, y, o, s, id)); }
