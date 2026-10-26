@@ -853,11 +853,19 @@ export function createWorld(ctx) {
     return best;
   }
   const duelPub = p => p && { name: p.name, champion: !!p.fighter, minWager: p.fighter?.minWager || 0, record: p.duels || 0, rematch: !!p.duels };
-  function challenge(type = 'fists', wager = 0, who = null) {
-    const p = who ? people.find(q => q.name === who && q.kind === 'colonist') : nearDuelist(4.5), T = DUEL_TYPES[type], g = ctx.game();
-    if (!C || !p || !T) return { ok: false, msg: 'Nobody close enough to call out.' };
+  // opts.as (v7.5 fight club, mars/fightclub.js): a named ring fighter { name, tough, dmg, purse, label } borrows the nearest
+  // free colonist's body for the bout (renamed, restored after). opts.tag rides along on the result.
+  const borrowBody = () => { let best = null, bd = Infinity; for (const p of people) { if (p.kind !== 'colonist' || p.stun || p.fighter || p.flee > 0) continue; const d = Math.hypot(p.x - player.x, p.z - player.z) + (p.on === false ? 1e4 : 0); if (d < bd) { bd = d; best = p; } }
+    if (best && best.on === false) { best.on = true; best.group.visible = true; } return best; };
+  function challenge(type = 'fists', wager = 0, who = null, opts = null) {
+    const as = opts?.as || null;
+    const p = as ? (duel ? null : borrowBody()) : who ? people.find(q => q.name === who && q.kind === 'colonist') : nearDuelist(4.5), T = DUEL_TYPES[type], g = ctx.game();
+    if (!C || !p || !T) return { ok: false, msg: duel ? 'One fight at a time.' : 'Nobody close enough to call out.' };
     if (duel) return { ok: false, msg: 'One fight at a time.' };
-    if (wanted > 0) return { ok: false, msg: `${p.name}: With the law on you? No chance.` };
+    if (wanted > 0) return { ok: false, msg: `${as ? as.name : p.name}: With the law on you? No chance.` };
+    let restore = null;
+    if (as) { restore = { name: p.name, fighter: p.fighter, label: null }; p.name = as.name; p.fighter = { purse: as.purse | 0, minWager: 0, tough: as.tough || 1 };
+      if (as.label) { restore.label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(as.label), transparent: true, depthWrite: false })); restore.label.position.y = 2.6; restore.label.scale.set(2.8, 0.7, 1); p.group.add(restore.label); } }
     wager = Math.max(0, Math.round(wager)); const F = p.fighter;
     if (F && wager < F.minWager) return { ok: false, msg: `${p.name}: I don’t get out of bed for less than ${F.minWager}.` };
     if (!F && p.temper < 0.2) return { ok: false, refused: true, msg: `${p.name}: ` + ['Not today, spacer. I just got this suit cleaned.', 'Fight you? I’ve seen you drive. Pass.', 'Nope. Go bother somebody tougher.'][(p.duels || 0) % 3] };
@@ -866,7 +874,7 @@ export function createWorld(ctx) {
     const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
     p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
     duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,
-      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0 };
+      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null };
     // the ring, and a crowd (guards too, but they only watch)
     if (!ringM) { ringM = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.0, 48), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ringM.rotation.x = -Math.PI / 2; }
     ringM.position.set(duel.cx, height(duel.cx, duel.cz) + 0.06, duel.cz); scene.add(ringM);
@@ -889,9 +897,9 @@ export function createWorld(ctx) {
     } else if (D.phase === 'fight') {
       if (Math.hypot(player.x - D.cx, player.z - D.cz) > 11) return endDuel('forfeit');
       D.ocd -= dt;
-      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.2 : 1)); } }
+      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
       else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
-      else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.4 : 1)); }
+      else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1))); }
     }
     if (!duel) return;
     const w = moving ? Math.sin(p.phase * 12) * 0.6 : 0; p.legs[0].rotation.x = w; p.legs[1].rotation.x = -w;
@@ -908,12 +916,13 @@ export function createWorld(ctx) {
     else if (why === 'chicken' || why === 'abandon') { cr = D.wager; if (cr) g.reward?.(0, cr); }
     if (why === 'ko-win') { p.stun = 5; p.hp = 0; } else if (why === 'chicken') { p.flee = 4; p.fx = (p.x - player.x) || 1; p.fz = (p.z - player.z) || 1; const l = Math.hypot(p.fx, p.fz); p.fx /= l; p.fz /= l; }
     if (why !== 'ko-win') p.hp = 3;
-    const res = { end: true, why, win, name: p.name, type: D.type, pot: D.pot, wager: D.wager, credits: win ? cr : 0, xp, refund: !win && cr ? cr : 0, champion: !!F };
+    const res = { end: true, why, win, name: p.name, type: D.type, pot: D.pot, wager: D.wager, credits: win ? cr : 0, xp, refund: !win && cr ? cr : 0, champion: !!F, tag: D.tag, hits: D.hits, taken: D.taken };
+    if (D.restore) { const o = D.restore; p.name = o.name; if (o.fighter) p.fighter = o.fighter; else delete p.fighter; if (o.label) { p.group.remove(o.label); o.label.material.map?.dispose(); o.label.material.dispose(); } }
     if (!quiet) onEvent('duel', res);
     lastDuel = res; return res;
   }
   let lastDuel = null;
-  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
