@@ -177,7 +177,7 @@ function groundY(x, z, fallback) { // only used off the flat district discs (the
 function buildDistrict(id, siteGroup, info) {
   const t0 = performance.now(), D = dcfg(id), k = mult(), g = D.grime * k, gr = D.graffiti * k, tr = D.trash * k;
   const r = T.rng(1 + [...id].reduce((a, c) => a + c.charCodeAt(0), 0)), bk = new Baker(), root = new THREE.Group(); root.userData.grime = true; root.name = 'grime:' + id;
-  const rec = { id, root, siteGroup, signs: [], fx: null, barrels: [], vents: [], stat: { decals: 0, props: 0 }, tm: {} }; let tl = t0; const mark = k => { const n = performance.now(); rec.tm[k] = Math.round(n - tl); tl = n; };
+  const rec = { id, root, siteGroup, signs: [], fx: null, barrels: [], vents: [], cols: [], stat: { decals: 0, props: 0 }, tm: {} }; colsDirty = true; let tl = t0; const mark = k => { const n = performance.now(); rec.tm[k] = Math.round(n - tl); tl = n; };
   if (k <= 0) { scene.add(root); return rec; }
   const { blocks, domes } = id === 'mars-highway' ? { blocks: [], domes: [] } : readSite(siteGroup);
   const y0 = blocks[0]?.y0 ?? domes[0]?.y0 ?? surf().info?.y ?? 0, cx = info.x, cz = info.z, rr = Math.min(info.r || 58, 60);
@@ -234,23 +234,24 @@ function buildDistrict(id, siteGroup, info) {
   // ---- trash clusters along the walls: bags, boxes, cans, tyres; a stained mattress or sofa here and there
   const bagCols = [[0.06, 0.06, 0.06], [0.08, 0.1, 0.07], [0.12, 0.13, 0.15], [0.16, 0.14, 0.1]];
   const trash = (x, z, yaw, n = 1) => {
-    for (let i = 0, nb = 1 + (r() * 3 * n | 0); i < nb; i++) { const s = 0.75 + r() * 0.55; bk.put(R.geo.bag, R.plastic, x + (r() - 0.5) * 1.4, y0 + 0.2 * s, z + (r() - 0.5) * 1.4, (r() - 0.5) * 0.4, r() * 6.28, (r() - 0.5) * 0.4, s, s, s, pick(r, bagCols)); rec.stat.props++; }
+    const nbag = 1 + (r() * 3 * n | 0); if (nbag >= 2) solid(rec, { type: 'cyl', x, z, r: 0.8 }); // a real junk pile blocks; a lone bag doesn't
+    for (let i = 0, nb = nbag; i < nb; i++) { const s = 0.75 + r() * 0.55; bk.put(R.geo.bag, R.plastic, x + (r() - 0.5) * 1.4, y0 + 0.2 * s, z + (r() - 0.5) * 1.4, (r() - 0.5) * 0.4, r() * 6.28, (r() - 0.5) * 0.4, s, s, s, pick(r, bagCols)); rec.stat.props++; }
     for (let i = 0, nb = r() * 2.4 * n | 0; i < nb; i++) { const s = 0.4 + r() * 0.5, sq = r() < 0.4 ? 0.35 : 1; bk.put(R.geo.box, R.card, x + (r() - 0.5) * 1.6, y0 + s * sq / 2, z + (r() - 0.5) * 1.6, 0, yaw + r() * 1.2, 0, s * 1.3, s * sq, s, shade(0.6, 1)); rec.stat.props++; }
     for (let i = 0, nb = r() * 5 * n | 0; i < nb; i++) bk.put(R.geo.cyl, R.metal, x + (r() - 0.5) * 2.4, y0 + 0.04, z + (r() - 0.5) * 2.4, Math.PI / 2, r() * 6.28, 0, 0.07, 0.12, 0.07, pick(r, [[0.9, 0.2, 0.2], [0.5, 0.6, 0.7], [0.8, 0.7, 0.3], [0.4, 0.4, 0.4]]), null, 'YXZ');
     if (r() < 0.25 * n) bk.put(R.geo.tire, R.rubber, x + (r() - 0.5) * 1.5, y0 + 0.13, z + (r() - 0.5) * 1.5, Math.PI / 2 + (r() - 0.5) * 0.3, 0, r() * 3, 1);
   };
   for (const s of spots) if (r() < 0.45 * tr + 0.05) trash(s.x, s.z, s.f.yaw, 0.6 + tr * 0.6);
   if (tr > 0.6) for (let i = 0; i < 2; i++) { const s = spots[(r() * spots.length) | 0]; if (!s) break; // mattress against a wall, a sofa left to rot
-    if (i === 0) bk.put(R.geo.box, R.cloth, s.x, y0 + 0.11, s.z, 0, s.f.yaw + 0.2, 0.05, 1.9, 0.2, 0.95, [0.75, 0.66, 0.52]);
-    else { const c = [0.35, 0.18, 0.14]; bk.put(R.geo.box, R.cloth, s.x, y0 + 0.25, s.z, 0, s.f.yaw, 0, 2, 0.4, 0.85, c); bk.put(R.geo.box, R.cloth, s.x - s.f.nx * 0.35, y0 + 0.65, s.z - s.f.nz * 0.35, -0.2, s.f.yaw, 0, 2, 0.5, 0.2, c); } rec.stat.props += 2; }
+    if (i === 0) bk.put(R.geo.box, R.cloth, s.x, y0 + 0.11, s.z, 0, s.f.yaw + 0.2, 0.05, 1.9, 0.2, 0.95, [0.75, 0.66, 0.52]); // flat: walk over it
+    else { const c = [0.35, 0.18, 0.14]; solid(rec, { type: 'box', x: s.x, z: s.z, hx: 1, hz: 0.45, yaw: s.f.yaw }); bk.put(R.geo.box, R.cloth, s.x, y0 + 0.25, s.z, 0, s.f.yaw, 0, 2, 0.4, 0.85, c); bk.put(R.geo.box, R.cloth, s.x - s.f.nx * 0.35, y0 + 0.65, s.z - s.f.nz * 0.35, -0.2, s.f.yaw, 0, 2, 0.5, 0.2, c); } rec.stat.props += 2; }
 
   // ---- shanties: swap the plain hull for rusted corrugated sheet, hang tarps off them
   if (D.shanties) for (const b of blocks) { if (!b.m || !cfg.shanties.some(s => Math.abs(cx + s[0] - b.X) < 0.05 && Math.abs(cz + s[1] - b.Z) < 0.05)) continue;
-    b.m.userData.grimeOrig ??= b.m.material; b.m.material = R.corr; rec.shanty = rec.shanty || []; rec.shanty.push(b.m);
+    b.m.userData.grimeOrig ??= b.m.material; b.m.material = R.corr; rec.shanty = rec.shanty || []; rec.shanty.push(b.m); solid(rec, { type: 'box', x: b.X, z: b.Z, hx: b.w / 2, hz: b.d / 2 });
     const f = faces(b)[r() < 0.5 ? 2 : 3]; bk.put(R.geo.plane, R.tarp, f.cx + f.nx * 1.1, y0 + b.h * 0.45, f.cz + f.nz * 1.1, -0.6, f.yaw, 0, b.d * 0.8, 2.6, 1, pick(r, [[0.3, 0.45, 0.7], [0.5, 0.48, 0.3], [0.6, 0.3, 0.18]]), null, 'YXZ'); }
 
   // ---- burn barrels + steam vents (particles), a burnt-out hauler
-  const barrelAt = (x, z) => { bk.put(R.geo.barrel, R.metal, x, y0 + 0.45, z, 0, r() * 6, 0, 1, 1, 1, shade(0.6, 0.9)); bk.put(R.geo.disc, R.coal, x, y0 + 0.78, z, -Math.PI / 2, 0, 0, 0.5); rec.barrels.push({ x, y: y0 + 0.85, z }); };
+  const barrelAt = (x, z) => { bk.put(R.geo.barrel, R.metal, x, y0 + 0.45, z, 0, r() * 6, 0, 1, 1, 1, shade(0.6, 0.9)); bk.put(R.geo.disc, R.coal, x, y0 + 0.78, z, -Math.PI / 2, 0, 0, 0.5); rec.barrels.push({ x, y: y0 + 0.85, z }); solid(rec, { type: 'cyl', x, z, r: 0.35 }); };
   const nb = Math.round((D.barrels || 0) * Math.min(1, k));
   for (let i = 0; i < nb; i++) { const s = spots[(r() * spots.length) | 0]; if (s) barrelAt(s.x + s.f.nx * 0.8, s.z + s.f.nz * 0.8); }
   for (let i = 0; i < (D.vents || 0); i++) { const a = r() * 6.28, d = 8 + r() * rr * 0.6, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (!freeOf(blocks, domes, x, z, 1)) continue; groundDecal(GC.drain[0], R.ground, x, z, 1.3, [0.9, 0.9, 0.9], 0.002); rec.vents.push({ x, y: y0 + 0.05, z }); }
@@ -258,7 +259,7 @@ function buildDistrict(id, siteGroup, info) {
 
   mark('props');
   // ---- encampments (tents, tarps, carts, sleepers, people round the fire) live in the street module
-  if (street && D.camps > 0) street.camps({ id, bk, R, r, rng: r, blocks, domes, faces, freeOf, spots, y0, cx, cz, rr, level: D.camps * k, barrelAt, trash, rec });
+  if (street && D.camps > 0) street.camps({ id, solid: c => solid(rec, c), bk, R, r, rng: r, blocks, domes, faces, freeOf, spots, y0, cx, cz, rr, level: D.camps * k, barrelAt, trash, rec });
 
   mark('camps');
   // ---- overhead power lines sagging between roofs
@@ -282,7 +283,7 @@ function carHulk(bk, r, blocks, domes, cx, cz, y0, rec) { // a torched hauler on
     put(0, 0.95, -1.6, 2.4, 1.5, 1.8); put(0, 0.75, 1.1, 2.6, 1.1, 3.8); put(0, 1.55, -1.6, 2.2, 0.1, 1.6, 0.15, R.char, [0.25, 0.22, 0.2]); put(0.2, 1.4, 1.6, 1.8, 0.08, 2.2, -0.1, R.metal, [0.7, 0.55, 0.45]);
     for (const [sx, sz] of [[-1.25, -1.7], [1.25, -1.7], [-1.25, 1.9], [1.25, 1.9]]) if (r() < 0.6) { const c = Math.cos(yaw), s = Math.sin(yaw); bk.put(R.geo.tire, R.rubber, x + sx * c + sz * s, y0 + 0.25, z - sx * s + sz * c, 0, yaw + Math.PI / 2, 0, 1.2, 1.2, 1.2, [0.5, 0.5, 0.5]); }
     bk.put(R.geo.plane, R.ground, x, y0 + 0.025, z, -Math.PI / 2, 0, yaw, 6.5, 6.5, 1, [0.9, 0.9, 0.9], cellUV(T.GROUND_CELLS.stain[0]));
-    rec.barrels.push({ x, y: y0 + 1.7, z, smoulder: true }); rec.stat.props += 6; return; }
+    rec.barrels.push({ x, y: y0 + 1.7, z, smoulder: true }); solid(rec, { type: 'box', x, z, hx: 1.35, hz: 3, yaw }); rec.stat.props += 6; return; }
 }
 
 function wires(root, blocks, amt, r) { // catenary power lines between nearby roof corners
@@ -310,7 +311,7 @@ function beltway(bk, r, rec, D, k, trash, barrelAt) { // seedy shoulders: an ove
   for (const p of picked) { const L = Math.hypot(p.fx, p.fz) || 1, fx = p.fx / L, fz = p.fz / L, rx = -fz, rz = fx, yaw = Math.atan2(fx, fz), yR = groundY(p.x, p.z, 0);
     const deck = 6.2; // overpass deck across the road on two fat pillars
     for (const sd of [-1, 1]) { const x = p.x + rx * sd * (Wd + 2.2), z = p.z + rz * sd * (Wd + 2.2), y = groundY(x, z, yR);
-      bk.put(R.geo.box, R.conc, x, (y + yR + deck) / 2 - 0.5, z, 0, yaw, 0, 1.6, deck - (y - yR) + 1, 6, [0.8, 0.78, 0.74]);
+      bk.put(R.geo.box, R.conc, x, (y + yR + deck) / 2 - 0.5, z, 0, yaw, 0, 1.6, deck - (y - yR) + 1, 6, [0.8, 0.78, 0.74]); solid(rec, { type: 'box', x, z, hx: 0.8, hz: 3, yaw });
       const f = { cx: x - rx * sd * 0.8, cz: z - rz * sd * 0.8, nx: -rx * sd, nz: -rz * sd, tx: fx * (sd > 0 ? 1 : -1), tz: fz * (sd > 0 ? 1 : -1), L: 6, h: deck, y0: y, yaw: Math.atan2(-rx * sd, -rz * sd) };
       const put = (cell, mat, u, v, sx, sy, layer) => bk.put(R.geo.plane, mat, f.cx + f.tx * u + f.nx * (0.03 + layer * 0.012), y + v, f.cz + f.tz * u + f.nz * (0.03 + layer * 0.012), 0, f.yaw, 0, sx, sy, 1, [1, 1, 1], cellUV(cell, r() < 0.5));
       put(pick(r, T.WALL_CELLS.soot), R.wall, 0, 1.2, 6, 2.4, 0); put(pick(r, T.WALL_CELLS.water), R.wall, (r() - 0.5) * 2, deck - 2, 2.5, 4, 1); put(pick(r, T.WALL_CELLS.rust), R.wall, (r() - 0.5) * 3, deck - 1.8, 1.4, 3.6, 1);
@@ -318,10 +319,10 @@ function beltway(bk, r, rec, D, k, trash, barrelAt) { // seedy shoulders: an ove
       rec.stat.decals += 6;
       // the camp on the far side of the pillar, away from traffic
       const ox = x + rx * sd * 2.6, oz = z + rz * sd * 2.6; rec.street.push({ x: ox, z: oz, y, yaw: f.yaw });
-      if (street) street.camps({ id: 'mars-highway', bk, R, r, rng: r, blocks: [], domes: [], faces, freeOf, spots: [{ x: ox, z: oz, f: { nx: rx * sd, nz: rz * sd, yaw: f.yaw + Math.PI } }], y0: y, cx: ox, cz: oz, rr: 6, level: D.camps * k, barrelAt: (bx, bz) => { bk.put(R.geo.barrel, R.metal, bx, y + 0.45, bz, 0, 0, 0, 1); bk.put(R.geo.disc, R.coal, bx, y + 0.78, bz, -Math.PI / 2, 0, 0, 0.5); rec.barrels.push({ x: bx, y: y + 0.85, z: bz }); }, trash: (tx, tz, ty, n) => { for (let i = 0; i < 3 * n; i++) { const s = 0.8 + r() * 0.4; bk.put(R.geo.bag, R.plastic, tx + (r() - 0.5) * 2, y + 0.2 * s, tz + (r() - 0.5) * 2, 0, r() * 6, 0, s, s, s, [0.07, 0.07, 0.07]); } }, rec, highway: true });
+      if (street) street.camps({ id: 'mars-highway', solid: c => solid(rec, c), bk, R, r, rng: r, blocks: [], domes: [], faces, freeOf, spots: [{ x: ox, z: oz, f: { nx: rx * sd, nz: rz * sd, yaw: f.yaw + Math.PI } }], y0: y, cx: ox, cz: oz, rr: 6, level: D.camps * k, barrelAt: (bx, bz) => { bk.put(R.geo.barrel, R.metal, bx, y + 0.45, bz, 0, 0, 0, 1); bk.put(R.geo.disc, R.coal, bx, y + 0.78, bz, -Math.PI / 2, 0, 0, 0.5); rec.barrels.push({ x: bx, y: y + 0.85, z: bz }); }, trash: (tx, tz, ty, n) => { for (let i = 0; i < 3 * n; i++) { const s = 0.8 + r() * 0.4; bk.put(R.geo.bag, R.plastic, tx + (r() - 0.5) * 2, y + 0.2 * s, tz + (r() - 0.5) * 2, 0, r() * 6, 0, s, s, s, [0.07, 0.07, 0.07]); } }, rec, highway: true });
       // jersey barriers along the shoulder, tagged
       for (let j = -1; j <= 1; j += 2) { const bx = p.x + rx * sd * (Wd + 0.4) + fx * j * 9, bz = p.z + rz * sd * (Wd + 0.4) + fz * j * 9, by = groundY(bx, bz, yR);
-        bk.put(R.geo.box, R.conc, bx, by + 0.45, bz, 0, yaw, 0, 0.6, 0.9, 3.6, [0.75, 0.73, 0.7]);
+        bk.put(R.geo.box, R.conc, bx, by + 0.45, bz, 0, yaw, 0, 0.6, 0.9, 3.6, [0.75, 0.73, 0.7]); solid(rec, { type: 'box', x: bx, z: bz, hx: 0.3, hz: 1.8, yaw });
         bk.put(R.geo.plane, R.graf, bx - rx * sd * 0.31, by + 0.5, bz - rz * sd * 0.31, 0, Math.atan2(-rx * sd, -rz * sd), 0, 1.6, 0.7, 1, [0.9, 0.9, 0.9], cellUV(pick(r, T.GRAF_CELLS.tag))); }
     }
     bk.put(R.geo.box, R.conc, p.x, yR + deck + 0.4, p.z, 0, yaw, 0, Wd * 2 + 6, 0.8, 6, [0.72, 0.7, 0.66]); // deck
@@ -432,12 +433,25 @@ function blendLook(dt) {
 function restoreFog() { if (fogOrig?.scene?.fog === fogOrig.fog) { fogOrig.fog.color.copy(fogOrig.color); fogOrig.fog.near = fogOrig.near; fogOrig.fog.far = fogOrig.far; } }
 
 // ---------------------------------------------------------------- streaming + per-frame ----------------------------------
+// ---------- colliders (PR #44's SSX.colliders; guarded, no-op without it) ----------
+// Solid props only: shanties, tents, carts, burn barrels, junk piles, the sofa, the burnt hauler, Beltway pillars/barriers.
+// Decals, litter, tarps, mattresses and sleepers stay walk-through. Everything is registered under group 'grime'
+// and re-synced as a whole (removeGroup + re-add for every built district) whenever a district builds or is disposed.
+let colsDirty = false;
+function solid(rec, c) { if (rec?.cols && isFinite(c.x) && isFinite(c.z)) rec.cols.push({ ...c, group: 'grime' }); }
+function colApi() { const C = window.SSX?.colliders; return C && typeof C.add === 'function' ? C : null; }
+function syncCols() {
+  const C = colApi(); if (!C) { stats.colliders = 0; return false; }
+  try { C.removeGroup?.('grime'); let n = 0; const per = {}; for (const rec of built.values()) { per[rec.id] = rec.cols?.length || 0; for (const c of rec.cols || []) { C.add(c); n++; } }
+    stats.colliders = n; stats.collidersPer = per; colsDirty = false; return true; } catch (e) { console.warn('grime: colliders', e); colsDirty = false; return false; } }
+function colsTick() { if (colsDirty && colApi()) syncCols(); } // per frame; cheap. If #44 loads later, props register then
+try { window.addEventListener('colliders:ready', () => { colsDirty = true; syncCols(); }); } catch (e) { /* */ }
 function dispose(rec) {
   rec.root.parent?.remove(rec.root);
   rec.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); if (o.material && !o.material.userData.shared) { o.material.map && !o.material.map.userData.shared && o.material.map !== R.glow && o.material.map.dispose(); o.material.dispose(); } });
   for (const m of rec.shanty || []) if (m.userData.grimeOrig) { m.material = m.userData.grimeOrig; }
   street?.dropCamps(rec.id);
-  built.delete(rec.id);
+  built.delete(rec.id); colsDirty = true; syncCols();
 }
 function rebuildAll() { for (const rec of [...built.values()]) dispose(rec); stats.particles = 0; }
 function stream() {
@@ -461,6 +475,7 @@ let last = 0, acc = 0, was = false;
 function tick() {
   requestAnimationFrame(tick);
   const now = performance.now() / 1000, dt = Math.min(0.1, now - (last || now)); last = now;
+  colsTick();
   const on = onMars(); if (!on) { if (was) { was = false; street?.pause(true); } return; }
   const s = surf(); if (scene !== s.scene) { scene = s.scene; built.clear(); fireLight = null; }
   if (!was) { was = true; street?.pause(false); }

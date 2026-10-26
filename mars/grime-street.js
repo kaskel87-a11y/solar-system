@@ -79,10 +79,10 @@ export function createStreet(ctx) {
       const f = s.f, ux = Math.cos(f.yaw), uz = -Math.sin(f.yaw), at = (u, o) => [s.x + ux * u + f.nx * o, s.z + uz * u + f.nz * o];
       // tents and a tarp lean-to
       for (let k = 0, nt = 1 + (r() * 2.5 * Math.min(1.3, level) | 0); k < nt; k++) { const [x, z] = at(-2 + k * 2.3 + (r() - 0.5) * 0.6, 0.6 + r() * 0.6), sc = 0.9 + r() * 0.4;
-        bk.put(R.geo.tent, R.tarp, x, y0 + 0.62 * sc, z, 0, f.yaw + Math.PI / 4 + (r() - 0.5) * 0.4, 0, 1.25 * sc, 1.25 * sc, 1.6 * sc, tarps[(r() * tarps.length) | 0]); }
+        c.solid?.({ type: 'cyl', x, z, r: 0.85 * sc }); bk.put(R.geo.tent, R.tarp, x, y0 + 0.62 * sc, z, 0, f.yaw + Math.PI / 4 + (r() - 0.5) * 0.4, 0, 1.25 * sc, 1.25 * sc, 1.6 * sc, tarps[(r() * tarps.length) | 0]); }
       if (r() < 0.7) { const [x, z] = at(2.6, 0.3); bk.put(R.geo.plane, R.tarp, x + f.nx * 0.6, y0 + 1, z + f.nz * 0.6, -0.75, f.yaw, 0, 2.6, 2.4, 1, tarps[(r() * tarps.length) | 0], null, 'YXZ'); }
       // shopping cart stuffed with junk
-      if (r() < 0.8) { const [x, z] = at(-3.4 + r(), 1.4), yaw = f.yaw + (r() - 0.5) * 1.5; cart(bk, R, x, y0, z, yaw, r); }
+      if (r() < 0.8) { const [x, z] = at(-3.4 + r(), 1.4), yaw = f.yaw + (r() - 0.5) * 1.5; cart(bk, R, x, y0, z, yaw, r); c.solid?.({ type: 'box', x, z, hx: 0.35, hz: 0.55, yaw }); }
       trash(c, at(0.5, 1.6), 1);
       // somebody asleep in the doorway / along the wall, under a blanket
       if (r() < 0.85) { const [x, z] = at(-0.6 + (r() - 0.5) * 2, 0.45); sleeper(bk, R, x, y0, z, f.yaw + Math.PI / 2, r); list.push({ x, z, kind: 'sleeper' }); }
