@@ -4,9 +4,11 @@
 // light count never changes (no shader recompiles). Hotspots drive the action button; colliders are boxes.
 // All game fiction. The club is a dance club: costumed performers (bikinis, club wear) on a stage, a bar, a
 // bouncer and a VIP back room used as a contact hub. No nudity, no sexual content, no interactions with
-// the performers.
+// the performers. v7.4/v7.5.4 adds adults-only (18+ gate) paid dances: costumes stay on, hands off, the upstairs
+// fades to black, and Danny's private show (privateshow.js) is a non-explicit teasing routine in a booth.
 import * as THREE from 'three';
 import { dress } from './clubdancers.js';
+import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth (private show)
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -433,6 +435,9 @@ export const INTERIORS = {
       api.sign('DANNY ALVAREZ', 0xff7eb8, X0 + 0.12, 3.0, PZ, Math.PI / 2, 2.2, { w: 512, h: 96, font: 'bold 60px system-ui, sans-serif' });
       api.privateDance = (sec = 9) => { privT = sec; return sec; };
       api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: 'Danny Alvarez' });
+      // v7.5.4 private show: talk to Danny for her upstairs booth (privateshow.js; adults only, costumed, hands off)
+      addBooth(api, { x: PX, z: PZ, sit: sitPose });
+      api.spot({ id: 'show', x: PX - 1.05, z: PZ + 1.3, r: 0.6, label: '💋 Danny · Private show 150', act: 'show', who: 'Danny Alvarez' });
       // v7.4 upstairs: a door in the back wall and its host. Adults only; the game fades to black and never shows or describes anything.
       const UX = X1 - 1.6;
       box(UX, 1.3, Z0 + 0.08, 1.4, 2.6, 0.08, mat(0x3a0a20, { roughness: 0.6 })); box(UX, 2.66, Z0 + 0.1, 1.5, 0.08, 0.08, mat(0xffd040, { basic: true }));
