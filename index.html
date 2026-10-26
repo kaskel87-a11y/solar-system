@@ -508,6 +508,8 @@
   "ssx/models": "./models.js?v=7.5.3.1",
   "./portals.js": "./portals.js?v=7.5.3.1",
   "ssx/portals": "./portals.js?v=7.5.3.1",
+  "./privateshow.js": "./privateshow.js?v=7.5.3.1",
+  "ssx/privateshow": "./privateshow.js?v=7.5.3.1",
   "./pursuit.js": "./pursuit.js?v=7.5.3.1",
   "ssx/pursuit": "./pursuit.js?v=7.5.3.1",
   "./raccoon.js": "./raccoon.js?v=7.5.3.1",
@@ -613,6 +615,7 @@
     import { registerColony, registerVehicle, registerDistrict, districtsOf, registerHighway, MATERIAL_ROLES, VEHICLES } from './world.js';
     import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
     import { registerInterior } from './interiors.js';
+    import { privateShow } from './privateshow.js'; // v7.5.4 Danny's upstairs private show
     import { createAudio7 } from './audio7.js';
     import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
     import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
@@ -1463,6 +1466,7 @@
       }
       updateSurfHud(true);
     }
+    const pshow = privateShow({ surface, toast, onTap, fx: au7.fx, hud: () => updateSurfHud(true) }); // v7.5.4 (privateshow.js)
     function doSpot(s) {
       const g = surface.game;
       if (s.act === 'leave') { surface.leaveBuilding(); }
@@ -1476,6 +1480,7 @@
         surface.world.openVip(); toast('Tiny unhooks the rope. "Ines will see you. Don\u2019t touch anything."', 3200);
       }
       else if (s.act === 'tip' || s.act === 'private' || s.act === 'companion') adultGate(() => clubAct(s));
+      else if (s.act === 'show') adultGate(() => pshow.offer(s)); // v7.5.4
       else if (s.act === 'stash') { if (g.stash(s.stash, s.perm, s.perm === 'maxhp' ? 'Stolen biomod' : 'Spare bandolier')) toast('📦 Somebody forgot this. 40 cr and something better.', 3000); }
       updateSurfHud(true);
     }
