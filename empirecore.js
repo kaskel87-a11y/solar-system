@@ -87,7 +87,7 @@ export function migrate(raw, now = Date.now()) {
 }
 // income while the game was closed: real minutes at the fallback clock (1 game hour = 2 real minutes), average rate, capped
 export function offline(state, now = Date.now()) {
-  const hrs = Math.max(0, Math.min(RULES.offlineCapHours, (now - (state.lastAt || now)) / 120000)); let total = 0;
+  const hrs = Math.max(0, Math.min(RULES.offlineCapHours, (now - (state.lastAt ?? now)) / 120000)); let total = 0;
   if (hrs > 0) for (const [id, o] of Object.entries(state.owned)) { const p = propById(id); if (!isFront(p) || o.closedH > 0) continue; const add = Math.min(capOf(p.kind) - o.pending, avgRate(p.kind) * hrs); if (add > 0) { o.pending += add; total += add; } }
   state.lastAt = now; return { hours: +hrs.toFixed(2), total: Math.round(total) };
 }
