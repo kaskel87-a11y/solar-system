@@ -87,6 +87,25 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('medL2', await G(() => window.SSX.jobs.level('paramedic')) === 2);
     await G(() => window.SSX.jobs.stop());
 
+    // ---- PARAMEDIC from the seat (v7.5.3, Collin: stuck in the rover at 'Stabilise Tilly 0/3 · 2 m S'): far = hint,
+    // within 6 m in the rover = G (desktop) / the black-white button (touch) stabilises; then straight to the clinic
+    if (!(await G(() => window.__app.surface.info.driving))) ok('roverSeat', await enterRover());
+    ok('med2Started', (await G(() => window.SSX.jobs.start('paramedic')))?.ok);
+    await goal(); ok('med2Reached', await wait(() => window.SSX.jobs.active()?.stage === 'stabilise', 8000));
+    await G(() => { const s = window.__app.surface, t = window.SSX.jobs.active().target, c = s.info.colony; s.debugMove(c.x + t.x + 18, c.z + t.z, 0); }); await sleep(500);
+    ok('med2FarHint', await G(() => document.getElementById('jobHud').textContent + ' | ' + document.getElementById('jobAct').textContent),
+      await wait(() => /Get close to .* and (press G|tap Stabilise)/.test(document.getElementById('jobHud').textContent) && /Get close/.test(document.getElementById('jobAct').textContent), 4000));
+    await G(() => { const s = window.__app.surface, t = window.SSX.jobs.active().target, c = s.info.colony; s.debugMove(c.x + t.x + 2, c.z + t.z - 2, 0); }); await sleep(500);
+    ok('med2InCar', await G(() => window.__app.surface.info.driving));
+    ok('med2Btn', await G(() => document.getElementById('jobAct').textContent), await wait(() => /Stabilise 0\//.test(document.getElementById('jobAct').textContent) && getComputedStyle(document.getElementById('jobAct')).display !== 'none', 4000));
+    const sty2 = await G(() => { const c = getComputedStyle(document.getElementById('jobAct')); return c.backgroundColor + '/' + c.color; }); ok('med2BlackWhite', sty2, /rgb\(0, 0, 0\)\/rgb\(255, 255, 255\)/.test(sty2));
+    await shot(`${out}jobs-${tag}-paramedic-seat.png`);
+    for (let k = 0; k < 8 && (await J())?.stage === 'stabilise'; k++) { if (desk) { await page.keyboard.press('KeyG'); await sleep(250); } else await tapSel('#jobAct'); }
+    ok('med2StableFromSeat', (await J())?.stage, await wait(() => ['load', 'transport'].includes(window.SSX.jobs.active()?.stage), 3000));
+    ok('med2Loaded', await wait(() => window.SSX.jobs.active()?.stage === 'transport', 8000));
+    await goal(); ok('med2Done', await wait(() => window.SSX.jobs.stats().paramedic.done === 6, 8000));
+    await G(() => window.SSX.jobs.stop());
+
     // ---- VIGILANTE: find the mark, shoot through world.hitWorld (patched), get paid without stars
     await G(() => { window.SSX.jobs.debug.setDone('vigilante', 4); window.__app.surface.interact(); });
     ok('vigStarted', (await G(() => window.SSX.jobs.start('vigilante')))?.ok);

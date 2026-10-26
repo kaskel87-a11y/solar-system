@@ -346,7 +346,7 @@ function stepRun(dt, h) {
       else if (r.t <= 0) fail(`${P.name} didn\u2019t make it. Dispatch is not impressed.`);
     } else if (r.stage === 'stabilise') {
       r.target = P.at; const d = dist(p, P.at);
-      r.text = i.driving ? `Get out and stabilise ${P.name}` : d > 3.5 ? `Walk to ${P.name}` : `Stabilise ${P.name}: ${r.taps}/${P.need}`;
+      r.text = d > STAB_R ? `Get close to ${P.name} and ${isTouch() ? 'tap Stabilise' : 'press G'}` : `Stabilise ${P.name}: ${r.taps}/${P.need} · ${isTouch() ? 'tap 🩺' : 'press G'}`; // v7.5.3: works from the seat too
       if (r.t <= 0) fail(`${P.name} didn\u2019t make it. Dispatch is not impressed.`);
     } else if (r.stage === 'load') {
       r.target = P.at; r.text = i.driving ? `Pull up next to ${P.name}` : `Get in a vehicle to carry ${P.name}`;
@@ -379,9 +379,10 @@ function stepRun(dt, h) {
   if (run && marker && run.target) { settle(marker, run.target, h); marker.userData.ring.material.opacity = 0.4 + 0.3 * Math.sin(performance.now() / 250); }
   renderHud();
 }
+const STAB_R = 6; // v7.5.3 (Collin stuck in the rover at 'Stabilise Tilly 0/3 · 2 m'): G / the button works on foot or seated within 6 m
 function actStabilise() {
   const h = here(); if (!run || run.type !== 'paramedic' || run.stage !== 'stabilise' || !h) return false;
-  if (h.info.driving || dist([h.x, h.z], run.patient.at) > 3.5) { toast('🩺 Get out and kneel next to the patient.', 1800); return false; }
+  if (dist([h.x, h.z], run.patient.at) > STAB_R) { toast(`🩺 Get close to ${run.patient.name} (within ${STAB_R} m) and ${isTouch() ? 'tap Stabilise' : 'press G'}.`, 1800); return false; }
   run.taps++; emit('stage', { stage: 'stabilise', taps: run.taps });
   if (run.taps >= run.patient.need) { toast(`🩺 ${run.patient.name} is stable. Get them in a vehicle.`, 2400); setStage('load', Math.max(25, 40 - 2 * run.L), { text: 'Load patient' }); }
   renderHud(); return true;
@@ -442,7 +443,8 @@ function ui() {
 }
 function actionFor() {
   const h = here(); if (!h) return null; const i = h.info;
-  if (run?.type === 'paramedic' && run.stage === 'stabilise' && !i.driving && dist([h.x, h.z], run.patient.at) < 3.5) return { id: 'stab', label: `🩺 Stabilise ${run.taps}/${run.patient.need}` };
+  if (run?.type === 'paramedic' && run.stage === 'stabilise') return dist([h.x, h.z], run.patient.at) <= STAB_R // v7.5.3: on foot or in a vehicle; far = a hint button
+    ? { id: 'stab', label: `🩺 Stabilise ${run.taps}/${run.patient.need}` } : { id: 'stabhint', label: `🩺 Get close to ${run.patient.name}` };
   if (near) { const t = near.kind; return run?.type === t ? { id: 'stop', label: `${META[t].icon} Stop ${META[t].name}` } : { id: 'start:' + t, label: `${META[t].icon} Start ${META[t].name}` }; }
   if (i.driving && !run) return { id: 'start:taxi', label: '🚕 Taxi duty' }; // vehicle toggle
   if (i.driving && run?.type === 'taxi') return null; // HUD has Stop
@@ -450,7 +452,7 @@ function actionFor() {
 }
 function doAction() {
   const a = actionFor(); if (!a) return;
-  if (a.id === 'stab') actStabilise();
+  if (a.id === 'stab' || a.id === 'stabhint') actStabilise();
   else if (a.id === 'stop') endRun('stop');
   else { const r = startRun(a.id.slice(6)); if (!r.ok) toast(r.msg, 2600); }
   refreshAct(true);
