@@ -558,6 +558,8 @@
   "ssx/songs": "./songs.js?v=7.5.4",
   "./storymars.js": "./storymars.js?v=7.5.4",
   "ssx/storymars": "./storymars.js?v=7.5.4",
+  "./storymars2.js": "./storymars2.js?v=7.5.4",
+  "ssx/storymars2": "./storymars2.js?v=7.5.4",
   "./streetdata.js": "./streetdata.js?v=7.5.4",
   "ssx/streetdata": "./streetdata.js?v=7.5.4",
   "./surface.js": "./surface.js?v=7.5.4",
@@ -692,6 +694,7 @@
     import './base.js'; // v7.5 Mars base building (lots, walls, garage, stash, turrets); self-registers via SSX.registerSurfaceTick + SSX.base
     import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
     import { initStoryMars } from './storymars.js'; // v7.5 Mars story chains (Rook, Vesna, Kestrel, Ines, Rusk)
+    import './storymars2.js'; // v7.5 Mars story, part 2 (Jeff): rook-05 vault finale + Doc Grieve / Wolde / Thorne chains (self-bootstraps)
     import { initHeist } from './heist.js'; // v7.5 heist mechanics (Ben): safe-crack, cameras, alarms, tips; ?heisttest=1 adds a sample job
     import './marsshops.js'; // v7.5.3 Mars district shops (Jeff, PR #10)
     import * as CTL from './controlmode.js'; // v7.5.3 control mode: Keyboard only / Keyboard + Mouse (key O)
