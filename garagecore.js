@@ -135,6 +135,30 @@ export function migrateGarage(g) {
 }
 export const MAX_RIDES = 6; // garage slots (stock rover included)
 
+// ---------- respray (SSX.garage.respray): new plate on a ride, for pursuit / wanted modules ----------
+export const RESPRAY_PRICE = 300; // default when the caller passes no price
+const PLATE_CHARS = 'ABCDEFGHJKLMNPRSTUVWXYZ', PLATE_DIGITS = '0123456789';
+// 'MRS·4K7' style: 3 letters, a dot, digit letter digit (no I/O/Q so plates read cleanly); rand() in [0,1)
+export function makePlate(rand = Math.random, avoid = []) {
+  const pick = s => s[Math.min(s.length - 1, Math.floor(rand() * s.length))];
+  for (let i = 0; i < 20; i++) { const p = pick(PLATE_CHARS) + pick(PLATE_CHARS) + pick(PLATE_CHARS) + '·' + pick(PLATE_DIGITS) + pick(PLATE_CHARS) + pick(PLATE_DIGITS); if (!avoid.includes(p)) return p; }
+  return 'MRS·' + Date.now().toString(36).slice(-3).toUpperCase();
+}
+export const resprayPriceOk = p => p == null || (typeof p === 'number' && Number.isFinite(p) && p >= 0);
+// pure part of a respray: validates, checks credits, mutates the ride (plate, plates history ≤ 5, resprays, spent untouched)
+// returns { ok, plate, price, ride } or { ok:false, reason: 'no-ride' | 'bad-price' | 'funds', need }
+export function respray(g, rideId, { price, reason, credits = 0, rand = Math.random, now = Date.now() } = {}) {
+  const r = g?.rides?.find(x => x.id === (rideId === 'current' || rideId == null ? g.active : String(rideId)));
+  if (!r) return { ok: false, reason: 'no-ride' };
+  if (!resprayPriceOk(price)) return { ok: false, reason: 'bad-price' };
+  const cost = Math.round(price ?? RESPRAY_PRICE);
+  if (credits < cost) return { ok: false, reason: 'funds', need: cost - credits, price: cost };
+  const old = r.plate || null, plate = makePlate(rand, [old, ...(r.plates || []).map(p => p.plate)].filter(Boolean));
+  r.plates = [...(Array.isArray(r.plates) ? r.plates : []), ...(old ? [{ plate: old, until: now, reason: r.plateReason || '' }] : [])].slice(-5);
+  r.plate = plate; r.plateReason = String(reason || '').slice(0, 80); r.resprays = (+r.resprays || 0) + 1;
+  return { ok: true, plate, price: cost, ride: r.id, old };
+}
+
 // ---------- dealer stock ----------
 // Every vehicle kind with a numeric `price` (and no `hidden: true`, no `dealer: false`) is for sale, so mods only need
 // SSX.registerVehicle(kind, { name, vmax, ..., price }). SSX.registerDealerVehicle(kind, opts) adds or overrides a listing.

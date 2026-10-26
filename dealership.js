@@ -77,7 +77,22 @@ export function grant(rideId, what, n) {
   if (typeof what === 'string' && what.includes(':')) { const [sl, v] = what.split(':'); return grantPart(rideId, sl, v); }
   return grantUpgrade(rideId, what, n);
 }
-export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+// SSX.garage.respray({ reason, price }): pay for a respray + new plate on the active ride, and lose the wanted heat if a wanted API is there
+function respray({ reason = '', price } = {}) {
+  const P = app()?.game?.progress; if (!P) return { ok: false, reason: 'no-game' };
+  const r = GC.respray(garage(), 'current', { price, reason, credits: +P.credits || 0 });
+  if (!r.ok) {
+    if (r.reason === 'funds') toast(`🎨 A respray is ${r.price} cr. You’re ${r.need} cr short.`, 3000);
+    return { ok: false, reason: r.reason, ...(r.reason === 'funds' ? { need: r.need, price: r.price } : {}) };
+  }
+  P.credits -= r.price;
+  const w = C?.world || app()?.surface?.world; let heat = null;
+  if (typeof w?.setWanted === 'function') { const from = +w.wanted || 0; if (from > 0) w.setWanted(0, 'resprayed: ' + (reason || 'new plate')); heat = { from, to: +w.wanted || 0 }; }
+  save(); toast(`🎨 Fresh paint, new plate ${r.plate}.${heat?.from ? ' ColSec loses your description.' : ''}`, 3000);
+  try { window.dispatchEvent(new CustomEvent('ssx:respray', { detail: { plate: r.plate, old: r.old, ride: r.ride, price: r.price, reason, heat } })); } catch (e) { }
+  return { ok: true, plate: r.plate, price: r.price, ride: r.ride, heat };
+}
+export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), respray, get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
   upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
