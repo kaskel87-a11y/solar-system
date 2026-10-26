@@ -44,7 +44,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   };
   const tap = async sel => {
     if (!touch) { const c = await center(sel); if (!c) throw new Error('no ' + sel); await page.mouse.click(c.x, c.y); await sleep(250); return; }
-    await holdStick(); const c = await center(sel); if (!c) throw new Error('no ' + sel);
+    await holdStick(); let c = await center(sel); if (!c) throw new Error('no ' + sel);
+    // v7.5.3 #ssxDock (mars/turf.js) steps left of #surfBtns on a 300 ms tick once a ctx button grows the column: wait for it like a thumb would
+    await wait(s => { const e = document.querySelector(s), b = e?.getBoundingClientRect(); return !!b && e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }, 1500, sel).catch(() => null); c = await center(sel) || c;
     const id = tid++, j = stick;
     if (BR === 'chromium') { const pts = j ? [{ x: j.x, y: j.y, id: 1 }] : []; await T('touchStart', [...pts, { x: c.x, y: c.y, id }]); await sleep(60); await T('touchEnd', [{ x: c.x, y: c.y, id }]); }
     else await G(([c, id]) => { const el = document.elementFromPoint(c.x, c.y); const o = { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: false, clientX: c.x, clientY: c.y };
