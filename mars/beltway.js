@@ -201,7 +201,7 @@ function disable() {
   if (t) { t.wreck = 1e6; t.v = 0; } v.speed = 0; run.phase = run.type === 'armored' ? 'crack' : 'grab'; run.t = 90; run.crackT = 0;
   emit('disabled', { x: v.x, z: v.z });
   if (run.type === 'armored') { const lvl = hasPerk('wren') ? 3 : 4; setWanted(Math.max(wanted(), lvl), 'armored transport robbery'); hostiles(['guard', 'guard'], v.x + 5, v.z + 5, 'ColSec'); toast(`🛡️ Transport down! ${lvl}★. Crack the doors (I) before ColSec boxes you in.`, 3200); }
-  else { toast('🚚 Hauler\u2019s dead in the lane. Get out and grab the crates (I).', 3000); if (world()?.hostileAt?.(v.x, v.z)) world().crime?.(1, 'hijacked a hauler'); }
+  else { toast('🚚 Hauler\u2019s dead in the lane. Get out and grab the crates (8).', 3000); if (world()?.hostileAt?.(v.x, v.z)) world().crime?.(1, 'hijacked a hauler'); }
 }
 function grabCargo() {
   if (!run || run.phase !== 'grab') return { ok: false };
@@ -410,7 +410,7 @@ function ui() {
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
     if (e.code === 'Period') { panel.classList.contains('show') ? close() : open(); }
-    else if (e.code === 'KeyI' && actBtn.classList.contains('show')) { e.preventDefault(); doAction(); }
+    else if (e.code === 'Digit8' && actBtn.classList.contains('show')) { e.preventDefault(); doAction(); }
   });
 }
 function actionFor() {
@@ -427,7 +427,7 @@ function doAction() {
   if (res?.msg && a.id !== 'shake') toast(res.msg, 2400); refreshAct(true);
 }
 let actKey = '';
-function refreshAct(force) { if (!actBtn) return; const a = actionFor(), k = a ? a.id + a.label : ''; if (!force && k === actKey) return; actKey = k; actBtn.textContent = a ? a.label + (isTouch() ? '' : ' (I)') : ''; actBtn.classList.toggle('show', !!a); }
+function refreshAct(force) { if (!actBtn) return; const a = actionFor(), k = a ? a.id + a.label : ''; if (!force && k === actKey) return; actKey = k; actBtn.textContent = a ? a.label + (isTouch() ? '' : ' (8)') : ''; actBtn.classList.toggle('show', !!a); }
 function hudLines() {
   const r = run, h = here(); if (!r || !h) return null; const A = ACT(r.type);
   const far = (x, z) => `${Math.round(Math.hypot(x - h.x, z - h.z))} m ${dirTo(h.x, h.z, x, z)}`;

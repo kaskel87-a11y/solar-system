@@ -25,3 +25,12 @@ SSX.grime.street.trigger('panhandler'|'hustler'|'yeller'|'shover'|'pickpocket'|'
 SSX.grime.street.actors(); SSX.grime.street.stats()
 ```
 On phones the defaults are the med tier, the lite film pass, a 512 atlas, no MSAA, no fire light and a street pool of 3.
+
+## Colliders (PR #44)
+
+Solid grime props register with `SSX.colliders` when it exists. Every call is guarded, so they do nothing without #44.
+* `{type:'box', x, z, hx, hz, yaw?, group:'grime'}`: shanties, shopping carts, the rotting sofa, the burnt-out hauler, Beltway overpass pillars and jersey barriers.
+* `{type:'cyl', x, z, r, group:'grime'}`: tents (r ≈ 0.85), burn barrels (0.35), junk piles of 2+ bags (0.8).
+* Non-solid: all decals, litter, single bags, cans, tyres, tarps, mattresses, sleepers and power lines.
+* Grime re-syncs the whole group, `removeGroup('grime')` and then re-adding every built district, whenever a district builds, streams out, rebuilds or `disable()` runs. If `SSX.colliders` isn't there yet, it keeps checking each frame (and on a `colliders:ready` window event) and registers once #44 loads.
+* `SSX.grime.stats()` reports `colliders` and `collidersPer`. Typical counts per district: Red Tape Flats ≈120 desktop max / 74 phone med, Beltway ≈25 / 19, Ares Junction ≈10 / 7, Olympus Row ≈23 / 15, Helios Heights 0.

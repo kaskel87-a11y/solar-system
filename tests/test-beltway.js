@@ -20,7 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const C = () => G(() => window.__app.game.progress.credits);
   const calm = () => G(() => { try { window.__app.game.debug.calm(true); const H = window.__app.game.debug.H(); if (H) H.hp = H.max; } catch (e) {} });
   const openPanel = async () => { if (desk) await page.keyboard.press('Period'); else if (await G(() => !!document.getElementById('dockBelt'))) await tapSel('#dockBelt'); else { await tapSel('#menuBtn'); await sleep(400); await tapSel('#rmBeltway'); } return wait(() => document.getElementById('beltPanel').classList.contains('show'), 4000); };
-  const act = async () => { if (desk) { await page.keyboard.press('KeyI'); await sleep(300); } else await tapSel('#beltAct'); };
+  const act = async () => { if (desk) { await page.keyboard.press('Digit8'); await sleep(300); } else await tapSel('#beltAct'); };
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear());
