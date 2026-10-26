@@ -431,14 +431,15 @@ function openHub() {
   openSheet('hub', renderHub);
 }
 function renderHub() {
-  const G = garage(), r = activeRide(), h = GC.colonyHour(Date.now(), G.clock), on = GC.isMeetHour(h), mins = GC.minsToMeet(Date.now(), G.clock);
+  const G = garage(), r = activeRide(), h = GC.colonyHour(Date.now(), G.clock), mins = GC.minsToMeet(Date.now(), G.clock), shared = typeof window.SSX?.time?.isNight === 'function';
+  const on = meet?.debug ? meet.debug.on : GC.isMeetHour(h); // follows SSX.time.isNight() when Steve's day/night cycle is in
   if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>`;
   const me = meOf(), S = spots(), dd = n => Math.round(dist(me, S[n]));
   return head('🚗 Rides & meets', wallet()) +
     `<div>Your ride: <b>${esc(rideName(r))}</b> · ${G.rides.length}/${GC.MAX_RIDES} in the garage · drags ${G.wins}/${G.races} won</div>${statBars(r.kind === 'rover' ? specOf(r) : specOf(r))}
-    <div>🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}</div>
+    <div>${shared ? (on ? '🌙 <b style="color:#3cff8a">Car meet is ON</b> (till dawn)' : '☀️ Car meets start at nightfall') : `🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}`}</div>
     <div class="row"><button data-nav="dealer">📍 Dealer · ${dd('dealer')} m</button><button data-nav="garage">📍 Garage · ${dd('garage')} m</button><button data-nav="meet">📍 Meet · ${dd('meet')} m</button></div>
-    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>`;
+    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on || shared ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>`;
 }
 handlers.nav = n => { closeSheet(true); navTo(n); };
 handlers.open = n => n === 'dealer' ? openDealer() : openGarage();
