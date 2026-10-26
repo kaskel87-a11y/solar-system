@@ -532,6 +532,8 @@
   "ssx/pit": "./pit.js?v=7.5.4",
   "./portals.js": "./portals.js?v=7.5.4",
   "ssx/portals": "./portals.js?v=7.5.4",
+  "./privateshow.js": "./privateshow.js?v=7.5.4",
+  "ssx/privateshow": "./privateshow.js?v=7.5.4",
   "./pursuit.js": "./pursuit.js?v=7.5.4",
   "ssx/pursuit": "./pursuit.js?v=7.5.4",
   "./raccoon.js": "./raccoon.js?v=7.5.4",
@@ -710,6 +712,7 @@
     import { DEALER_API } from './dealership.js'; // Mars rover dealership, garages + car meets (adds SSX.registerDealerVehicle)
     import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
     import { registerInterior } from './interiors.js';
+    import { privateShow } from './privateshow.js'; import { DANNY_NAME } from './clubdancers.js'; // v7.5.4 Danny's upstairs private show
     import { createAudio7 } from './audio7.js';
     import './base.js'; // v7.5 Mars base building (lots, walls, garage, stash, turrets); self-registers via SSX.registerSurfaceTick + SSX.base
     import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
@@ -1552,10 +1555,10 @@
         W.clubFx('rain', 24); au7.fx.cash();
         toast(pickL(['💸 You make it rain. The dancers work the poles harder and somebody whistles.', '💸 Credits flutter down. Jade catches one mid-spin without missing a beat.', '💸 Tiny, from the rope: “Big spender. Don’t get ideas.”', '💸 A chit lands in the drink of the guy next to you. He’s too drunk to care.']), 2800);
       } else if (s.act === 'private') {
-        if (!g.spend(50)) { toast(`${s.who || 'Danny Alvarez'}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
+        if (!g.spend(50)) { toast(`${s.who || DANNY_NAME}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
         W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
-        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
+        toast(`💃 ${s.who || DANNY_NAME} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
       } else if (s.act === 'companion') {
         if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
         au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
@@ -1564,6 +1567,7 @@
       }
       updateSurfHud(true);
     }
+    const pshow = privateShow({ surface, toast, onTap, fx: au7.fx, hud: () => updateSurfHud(true) }); // v7.5.4 (privateshow.js)
     function doSpot(s) {
       const g = surface.game;
       if (s.act === 'leave') { surface.leaveBuilding(); }
@@ -1577,6 +1581,7 @@
         surface.world.openVip(); toast('Tiny unhooks the rope. "Ines will see you. Don\u2019t touch anything."', 3200);
       }
       else if (s.act === 'tip' || s.act === 'private' || s.act === 'companion') adultGate(() => clubAct(s));
+      else if (s.act === 'show') adultGate(() => pshow.offer(s)); // v7.5.4
       else if (s.act === 'stash') { if (g.stash(s.stash, s.perm, s.perm === 'maxhp' ? 'Stolen biomod' : 'Spare bandolier')) toast('📦 Somebody forgot this. 40 cr and something better.', 3000); }
       updateSurfHud(true);
     }
