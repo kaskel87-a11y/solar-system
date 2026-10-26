@@ -4,7 +4,7 @@
 //   * broken neon (made-up brands, half-dead letters that buzz), sagging power lines, trash, burn barrels with fire/smoke,
 //     steam vents, a burnt-out hauler, corrugated shanties in Red Tape Flats, a graffiti'd Beltway underpass
 //   * a film look (grade, grain, vignette, slight fringing) behind a toggle; phones get a 1-pass "lite" overlay
-//   * crude barks + PIRATE 66.6 through Pumpkin's audio API (SSX.bark / registerBarks / registerStation), always guarded
+//   * crude barks + PIRATE 66.9 through Pumpkin's audio API (SSX.bark / registerBarks / registerStation), always guarded
 //   * street hassle (mars/grime-street.js): panhandlers, hustlers, a yeller, a shover, a pickpocket, a mugger with a shiv
 // Everything hangs off ONE config object (GRIME_CONFIG) and the SSX.grime API, so the v8 realistic renderer can swap it.
 // Per-district work streams in/out by distance; one static draw per material per district (decals and props are baked).

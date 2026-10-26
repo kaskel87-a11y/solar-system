@@ -1,4 +1,4 @@
-// Grime pass: crude street chatter (bark line packs) + PIRATE 66.6, a pirate radio station. Data only.
+// Grime pass: crude street chatter (bark line packs) + PIRATE 66.9, a pirate radio station. Data only.
 // Added through Pumpkin's audio API (SSX.registerBarks / SSX.bark / SSX.registerStation); no second bark or radio system.
 // Mature rating: profanity, crime and gore are in; nothing sexual, no slurs, no real brands. Lines stay <= 65 chars.
 
@@ -55,12 +55,12 @@ export const STREET_BARKS = {
   grime_sleeper: ['Mmph. Fuck off. Sleeping.', 'Touch my bag and lose the hand.', '...five more minutes, Ma...', 'Got no credits. Got lice. Want some?']
 };
 
-// PIRATE 66.6: Spit Valve's illegal station, broadcast off a stolen relay. Procedural music only (synth.js through radio.js).
+// PIRATE 66.9: Spit Valve's illegal station, broadcast off a stolen relay. Procedural music only (synth.js through radio.js).
 export const PIRATE_STATION = {
-  id: 'pirate', name: 'PIRATE 66.6', tag: 'Illegal Relay \u00b7 Sludge & Rage', bpm: 96, mars: 'flats', talk: true,
-  dj: ['PIRATE 66.6. Stolen signal, stolen music, stolen everything.', 'Spit Valve here. ColSec can choke on my exhaust.'],
+  id: 'pirate', name: 'PIRATE 66.9', tag: 'Illegal Relay \u00b7 Sludge & Rage', bpm: 96, mars: 'flats', talk: true,
+  dj: ['PIRATE 66.9. Stolen signal, stolen music, stolen everything.', 'Spit Valve here. ColSec can choke on my exhaust.'],
   segs: [
-    'Spit: This is PIRATE 66.6. If ColSec finds this relay, I\u2019m dead. Hi.', 'Spit: Meridian took my lungs. I took their antenna. We\u2019re even.',
+    'Spit: This is PIRATE 66.9. If ColSec finds this relay, I\u2019m dead. Hi.', 'Spit: Meridian took my lungs. I took their antenna. We\u2019re even.',
     'Spit: Shout-out to whoever torched the precinct van. Art.', 'Spit: Water tower\u2019s poisoned again. Boil it. Pray. Drink beer.',
     'Spit: Rusk, I know you listen. Your mom does too. She calls in.', 'Spit: Weather: shit. Traffic: shit. Life: shit. Here\u2019s a song.',
     'Ad: Doc Kettle\u2019s Back-Alley Clinic. Stitches, no questions.', 'Ad: Gus\u2019s Rovers. If it\u2019s hot, it\u2019s cheaper.',
