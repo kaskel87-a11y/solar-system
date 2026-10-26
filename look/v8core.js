@@ -5,17 +5,18 @@
 export const ORDER = ['low', 'med', 'high', 'ultra'];
 // Phone budget (Grok Bot, 2026-10-25): med must hold ~60 fps on a real iPhone, so med has NO composer (no bloom, no
 // full-screen passes; the vignette is a CSS overlay), one 1024 shadow map updated every 3rd frame, single-scale detail,
+// IBL only on metals (envMode 'metal': terrain and walls skip the cube-UV lookups, the hemi light carries the fill),
 // and pixel ratio capped at 1.5 with dynamic resolution underneath. Bloom/grade/MSAA start at high, GTAO at ultra.
 export const TIERS = {
   classic: { name: 'classic', label: 'Classic (v7)' },
   low: { name: 'low', label: 'Low', pixelRatio: 1.25, shadow: 0, shadowSoft: false, shadowRange: 0, shadowEvery: 1, post: false, msaa: 0,
-    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 4, detail: 1, triplanar: false, weather: true, aniso: 2 },
+    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 4, envMode: 'metal', detail: 1, triplanar: false, weather: true, aniso: 2 },
   med: { name: 'med', label: 'Medium', pixelRatio: 1.5, shadow: 1024, shadowSoft: false, shadowRange: 28, shadowEvery: 3, post: false, msaa: 0,
-    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 2, detail: 1, triplanar: false, weather: true, aniso: 4 },
+    bloomScale: 0, ao: false, grain: false, vignette: true, envEvery: 2, envMode: 'metal', detail: 1, triplanar: false, weather: true, aniso: 4 },
   high: { name: 'high', label: 'High', pixelRatio: 2, shadow: 2048, shadowSoft: true, shadowRange: 42, shadowEvery: 1, post: true, msaa: 4,
-    bloomScale: 0.5, ao: false, grain: true, vignette: true, envEvery: 1, detail: 2, triplanar: true, weather: true, aniso: 8 },
+    bloomScale: 0.5, ao: false, grain: true, vignette: true, envEvery: 1, envMode: 'all', detail: 2, triplanar: true, weather: true, aniso: 8 },
   ultra: { name: 'ultra', label: 'Ultra', pixelRatio: 2, shadow: 4096, shadowSoft: true, shadowRange: 48, shadowEvery: 1, post: true, msaa: 4,
-    bloomScale: 0.75, ao: true, grain: true, vignette: true, envEvery: 0.5, detail: 2, triplanar: true, weather: true, aniso: 16 },
+    bloomScale: 0.75, ao: true, grain: true, vignette: true, envEvery: 0.5, envMode: 'all', detail: 2, triplanar: true, weather: true, aniso: 16 },
 };
 for (const k in TIERS) Object.freeze(TIERS[k]);
 

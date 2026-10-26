@@ -67,10 +67,10 @@ function measureHud() {
 
     // 2) each look: reload with ?look=, land, same spot, day (and night with SSX.time)
     for (const look of LOOKS) {
-      await page.goto(base + '?look=' + look + '&t=' + Date.now());
+      await page.goto(base + '?look=' + look + '&t=' + Date.now(), { timeout: 120000 });
       await land(); await place(); await setHour('noon'); await frames(10); await sleep(2500); await G(() => window.__v8.scanNow()); await frames(6); await sleep(1500);
       const L = R.looks[look] = {};
-      L.state = await G(() => { const s = window.SSX.look.state(); return { tier: s.tier, pr: s.pixelRatio, shadows: s.shadows, cast: s.castShadow, env: s.env, post: s.post, gtao: s.gtao, tex: s.textures, patched: s.patched, terrain: s.terrain, casters: s.casters, envBuilds: s.envBuilds, night: s.night }; });
+      L.state = await G(() => { const s = window.SSX.look.state(); return { tier: s.tier, pr: s.pixelRatio, shadows: s.shadows, cast: s.castShadow, env: s.env, envMats: s.envMats, post: s.post, gtao: s.gtao, tex: s.textures, patched: s.patched, terrain: s.terrain, casters: s.casters, envBuilds: s.envBuilds, night: s.night }; });
       const S = L.state;
       if (look === 'classic') ok('classic_' + tag, S, !S.shadows && !S.cast && !S.env && !S.post && S.patched === 0);
       else ok('tier_' + look, S, S.tier === look && S.shadows === (look !== 'low') && S.cast === (look !== 'low') && S.env && S.post === (look === 'high' || look === 'ultra') && S.terrain >= 1 && S.patched > 3);

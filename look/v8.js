@@ -33,7 +33,7 @@ let pick = K.pickTier({ param: qs.get('look') || qs.get('tier'), saved: loadLS()
 let tier = K.TIERS[pick.tier];
 const S = { ctx: null, scene: null, world: '', sky: null, dl: null, hemi: null, frames: 0, stats: { scans: 0, patched: 0, terrain: 0, casters: 0, envBuilds: 0, recompiles: 0, governed: [] },
   origPR: null, prSet: null, shadowsWas: null, composer: null, passes: null, env: null, envRT: null, envSig: null, envT: -1e9, pmrem: null,
-  T: null, Tloading: null, mats: new Set(), emissive: new Set(), terrainMats: new Set(), objs: new Set(), scanT: 0, lastNow: 0, fpsWin: { t: 0, n: 0 }, fps: 0,
+  T: null, Tloading: null, mats: new Set(), envMats: new Set(), emissive: new Set(), terrainMats: new Set(), objs: new Set(), scanT: 0, lastNow: 0, fpsWin: { t: 0, n: 0 }, fps: 0,
   drs: K.dynres(), prCur: null, drsCap: 0, vig: null,
   drsOff: qs.get('v8drs') === '0' || (() => { try { return localStorage.getItem('ssx.v8.nodrs') === '1'; } catch { return false; } })(),
   gov: K.governor(), govOff: qs.get('v8gov') === '0' || (() => { try { return localStorage.getItem('ssx.v8.nogov') === '1'; } catch { return false; } })(), listeners: new Set() };
@@ -74,6 +74,7 @@ function scan(ctx) {
     if (!transparent) { o.receiveShadow = true; o.castShadow = !terrain && !dress && rad < 70; }
     for (const m of mats) {
       if (!m?.isMeshStandardMaterial || m.userData.noV8) continue;
+      if (tier.envMode === 'metal' && m.metalness >= 0.35 && (!m.envMap || m.userData.__v8env)) S.envMats.add(m);
       if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0.05 && m.emissiveIntensity > 0) S.emissive.add(m);
       if (terrain) { if (S.T && m.vertexColors) { patchTerrain(m, S.T, tier); S.terrainMats.add(m); S.mats.add(m); } continue; }
       let r = info.get(m); if (!r) info.set(m, r = { maxRadius: 0, skinned: false, dress: false });
@@ -97,9 +98,22 @@ function scan(ctx) {
   S.stats.casters = 0; for (const o of S.objs) if (o.castShadow) S.stats.casters++;
 }
 function unscan() {
+  clearEnvMats();
   for (const m of S.mats) unpatch(m); S.mats.clear(); S.terrainMats.clear(); S.emissive.clear();
   for (const o of S.objs) { const f = o.userData.__v8s; if (f) { o.castShadow = f[0]; o.receiveShadow = f[1]; delete o.userData.__v8s; } } S.objs.clear();
   S.stats.patched = 0; S.stats.terrain = 0; S.stats.casters = 0;
+}
+
+// envMode 'metal' (low/med): the IBL goes on metallic materials only; everything else skips the cube-UV lookups
+function setEnvMats(tex, k) {
+  for (const m of S.envMats) {
+    if (!m.userData.__v8env) { m.userData.__v8env = { i: m.envMapIntensity }; m.needsUpdate = true; }
+    if (m.envMap !== tex) m.envMap = tex; m.envMapIntensity = k;
+  }
+}
+function clearEnvMats() {
+  for (const m of S.envMats) { const o = m.userData.__v8env; if (o) { m.envMap = null; m.envMapIntensity = o.i; m.needsUpdate = true; delete m.userData.__v8env; } }
+  S.envMats.clear();
 }
 
 // ---------- rig: lights, shadows, env ----------
@@ -199,8 +213,9 @@ function surfaceFrame(scene, camera) {
   const shadowOn = !indoor && !!dl && !DBG.noshadow && tier.shadow > 0;
   setupShadows(shadowOn);
   if (!DBG.noenv) try { updateEnv(now, indoor); } catch (e) { warnOnce('env', e); }
-  if (S.envRT && scene.environment !== S.envRT.texture) { S.prevEnv ??= scene.environment; scene.environment = S.envRT.texture; }
-  scene.environmentIntensity = (indoor ? K.RIG.envIndoor : K.RIG.env);
+  const envK = indoor ? K.RIG.envIndoor : K.RIG.env;
+  if (tier.envMode === 'metal') { if (S.prevEnv !== undefined && S.envRT && scene.environment === S.envRT.texture) scene.environment = S.prevEnv; if (S.envRT) setEnvMats(S.envRT.texture, envK); }
+  else { if (S.envRT && scene.environment !== S.envRT.texture) { S.prevEnv ??= scene.environment; scene.environment = S.envRT.texture; } scene.environmentIntensity = envK; }
   // scale the rig for this draw only
   saved.dlI = dl?.intensity ?? 0; saved.hemiI = hemi?.intensity ?? 0; saved.em.length = 0;
   if (dl) {
@@ -214,7 +229,7 @@ function surfaceFrame(scene, camera) {
       if (!renderer.shadowMap.autoUpdate) renderer.shadowMap.needsUpdate = !dl.shadow.map || (S.frames % tier.shadowEvery) === 0; // med: every 3rd frame
     } else { dl.castShadow = false; if (!indoor && !DBG.noshadow) dl.intensity *= K.RIG.sun; }
   }
-  if (hemi && !indoor) hemi.intensity *= K.RIG.hemi + (1 - K.RIG.hemi) * 0.7 * n; // by day the env carries the fill; at night keep the clock's ambient so it stays readable
+  if (hemi && !indoor) hemi.intensity *= tier.envMode === 'metal' ? 0.85 : K.RIG.hemi + (1 - K.RIG.hemi) * 0.7 * n; // by day the env carries the fill; at night keep the clock's ambient so it stays readable
   if (n > 0.01) for (const m of S.emissive) { saved.em.push(m, m.emissiveIntensity); m.emissiveIntensity *= 1 + K.RIG.emissiveNight * n; }
   S.frames++;
   try {
@@ -254,7 +269,7 @@ function wrappedRender(scene, camera) {
 // ---------- tick (runs inside surface.update, before the frame) ----------
 function tick(dt, ctx) {
   if (S.scene !== ctx.scene || S.world !== ctx.name) { // new planet (or first landing)
-    if (S.scene) { S.mats.clear(); S.terrainMats.clear(); S.emissive.clear(); S.objs.clear(); }
+    if (S.scene) { clearEnvMats(); S.mats.clear(); S.terrainMats.clear(); S.emissive.clear(); S.objs.clear(); }
     S.scene = ctx.scene; S.world = ctx.name; S.envRT?.dispose(); S.envRT = null; S.envSig = null; S.scanT = 0; S.gov.reset(); S.prevEnv = undefined;
   }
   S.ctx = ctx;
@@ -278,7 +293,7 @@ function setTier(name, o = {}) {
   const prev = tier; tier = K.TIERS[name];
   if (prev === tier) return true;
   if (tier.name === 'classic') applyClassic();
-  else { if (prev.name === 'classic') S.origPR = null; S.drsCap = 0; S.drs = K.dynres(); disposeComposer(); for (const m of S.mats) unpatch(m); S.mats.clear(); S.terrainMats.clear(); S.scanT = 0; S.envT = -1e9; S.gov.reset();
+  else { if (prev.name === 'classic') S.origPR = null; S.drsCap = 0; S.drs = K.dynres(); disposeComposer(); clearEnvMats(); if (S.scene && S.envRT && S.scene.environment === S.envRT.texture) S.scene.environment = S.prevEnv ?? null; for (const m of S.mats) unpatch(m); S.mats.clear(); S.terrainMats.clear(); S.scanT = 0; S.envT = -1e9; S.gov.reset();
     if (S.T) for (const s of Object.values(S.T)) for (const t of [s.diff, s.nor, s.arm]) t.anisotropy = Math.min(tier.aniso || 4, renderer.capabilities.getMaxAnisotropy?.() || 1); }
   updateMenu(); for (const f of S.listeners) { try { f(tier.name, prev.name); } catch (e) { warnOnce('listener', e); } }
   return true;
@@ -303,7 +318,7 @@ const API = {
   skip(obj) { if (obj) obj.userData.noV8 = true; return obj; }, // opt an object/material out of the v8 pass (e.g. hand-made kit art)
   env: () => S.envRT?.texture || null, nightness,
   state: () => ({ version: VERSION, tier: tier.name, auto: pick.auto, why: pick.why, device: cls(), gpu: gpuName, fps: Math.round(S.fps * 10) / 10, pixelRatio: renderer?.getPixelRatio(),
-    shadows: !!renderer?.shadowMap.enabled, castShadow: !!S.dl?.castShadow, env: !!S.envRT, post: !!S.passes, gtao: !!S.passes?.gtao, textures: S.T ? Object.keys(S.T) : null,
+    shadows: !!renderer?.shadowMap.enabled, castShadow: !!S.dl?.castShadow, env: !!S.envRT, envMode: tier.envMode, envMats: S.envMats.size, post: !!S.passes, gtao: !!S.passes?.gtao, textures: S.T ? Object.keys(S.T) : null,
     dynres: { on: !S.drsOff, pr: S.prCur, cap: S.drsCap, floor: S.drs.floor, drops: S.drs.st.drops, raises: S.drs.st.raises, emaMs: Math.round(S.drs.st.ema * 10) / 10 },
     world: S.world, debug: Object.keys(DBG).filter(k => DBG[k]), ...S.stats, governed: S.stats.governed.slice(), night: Math.round(nightness() * 100) / 100 }),
 };

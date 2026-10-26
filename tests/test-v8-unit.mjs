@@ -6,7 +6,7 @@ for (const n of K.ORDER) { const T = K.TIERS[n]; t('tier ' + n, T && T.pixelRati
 t('tiers rise', K.ORDER.every((n, i) => !i || (K.TIERS[n].shadow >= K.TIERS[K.ORDER[i - 1]].shadow && K.TIERS[n].pixelRatio >= K.TIERS[K.ORDER[i - 1]].pixelRatio)));
 t('ao ultra only', K.ORDER.filter(n => K.TIERS[n].ao).join() === 'ultra');
 t('low/med no post', !K.TIERS.low.post && !K.TIERS.med.post && K.TIERS.high.post && !K.TIERS.med.bloomScale);
-t('med phone budget', K.TIERS.med.pixelRatio <= 1.5 && K.TIERS.med.shadow <= 1024 && K.TIERS.med.shadowEvery >= 2 && !K.TIERS.med.shadowSoft && K.TIERS.med.detail === 1 && !K.TIERS.med.msaa);
+t('med phone budget', K.TIERS.med.pixelRatio <= 1.5 && K.TIERS.med.shadow <= 1024 && K.TIERS.med.shadowEvery >= 2 && !K.TIERS.med.shadowSoft && K.TIERS.med.detail === 1 && !K.TIERS.med.msaa && K.TIERS.med.envMode === 'metal' && K.TIERS.high.envMode === 'all');
 { const d = K.dynres({ cap: 1.5, floor: 0.75 }); let pr = 1.5, t0 = 0; for (let i = 0; i < 300; i++) { t0 += 33; const r = d.step(33, t0, pr); if (r != null) pr = r; }
   t('dynres drops to floor', pr === 0.75 && d.atFloor(pr));
   for (let i = 0; i < 2000; i++) { t0 += 16.7; const r = d.step(16.7, t0, pr); if (r != null) pr = r; }
