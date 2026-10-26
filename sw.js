@@ -14,6 +14,7 @@ const PRECACHE = [
   ...['grime', 'grime-tex', 'grime-lines', 'grime-street'].map(n => `mars/${n}.js${q}`), // Mars grime pass
   ...['flats-interiors', 'flats-interiors-rooms', 'flats-interiors-tex', 'flats-interiors-lines'].map(n => `mars/${n}.js${q}`), // v7.5 Red Tape Flats interiors
   ...['radio-extra', 'songs', 'pit', 'dust', 'night'].map(n => `${n}.js${q}`), // Mars radio: PIT 66.6, DUST 98.3, MY MUSIC, night mix
+  ...['street', 'street-tags', 'street-crowds', 'street-tow', 'street-tex', 'street-lines'].map(n => `mars/${n}.js${q}`), // v7.5 Red Tape Flats street life
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
