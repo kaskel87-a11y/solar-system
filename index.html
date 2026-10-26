@@ -1425,7 +1425,7 @@
         if (!g.spend(50)) { toast(`${s.who || 'Danny Alvarez'}: Fifty for a song, sugar. Come back when you’re liquid.`, 2600); au7.fx.dry(); return; }
         W.clubFx('private', 9); au7.fx.cash(); document.body.classList.add('cinebars'); clearTimeout(clubAct.t);
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
-        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song just for you. Costume stays on, hands stay on the armrests, Tiny watches from the rope.`, 4200);
+        toast(`💃 ${s.who || 'Danny Alvarez'} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
       } else if (s.act === 'companion') {
         if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
         au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');

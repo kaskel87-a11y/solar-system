@@ -374,7 +374,7 @@ export const INTERIORS = {
       const poleM = chrome, poles = [[-2.8, -6.0], [0, -6.6], [2.8, -6.0]];
       poles.forEach(([x, z]) => { box(x, (stageY + api.h) / 2, z, 0.07, api.h - stageY, 0.07, poleM); box(x, stageY + 0.03, z, 0.6, 0.05, 0.6, mat(0xff3cc8, { basic: true })); });
       const dancers = poles.map(([x, z], i) => api.person(looks[i], x, z, 0, (p, t, k) => poleDance(p, t, k, x, z, stageY), i));
-      ['rhea', 'danny', 'kiara'].forEach((n, i) => dress(api, dancers[i], { dancer: n, outfit: n === 'danny' ? 'string' : 'bikini', k: i })); // v7.5.x realistic dancers (lazy GLBs, blocky fallback)
+      ['rhea', 'danny', 'kiara'].forEach((n, i) => dress(api, dancers[i], { dancer: n, outfit: n === 'danny' ? 'stage' : 'bikini', k: i })); // v7.5.x realistic dancers (lazy GLBs, blocky fallback)
       api.sign('LIVE ON STAGE', 0x7af0ff, -w / 2 + 0.06, 3.6, -1.2, Math.PI / 2, 3.6, { h: 96 });
       // make it rain: credit chits flutter down over the stage (one instanced pool, parked off-stage when idle)
       const chitM = new THREE.MeshBasicMaterial({ color: 0x7dff9a, side: THREE.DoubleSide }); api.disposables.push(chitM);
