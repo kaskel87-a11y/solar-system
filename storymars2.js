@@ -59,11 +59,11 @@ export const MISSIONS2 = [
     reward: { xp: 500, credits: 5000, badge: 'Withdrawal Slip' },
     steps: [
       { type: 'goto', at: [18, -416], r: 4, text: 'Meet your crew in the Red Planet Noodle back booth' },
-      { type: 'heist', heist: 'rook', text: 'Hit the First Junction Trust vault' },
+      { type: 'heist', heist: 'rook', advanceOn: 'crack', text: 'Hit the First Junction Trust vault' },
       { type: 'crack', building: BANK, id: 'bank-vault', difficulty: 3, loot: 0, text: 'Crack the vault' },
       { type: 'hold', at: 'bankdoor', r: 12, seconds: 30, wave: ['guard', 'guard', 'squad'], text: 'Hold the bank steps while the crew loads the van' },
       { type: 'goto', at: FLATS(-26, -24), r: 6, vehicle: 'any', wanted: 3, text: 'Drive the take to the Red Tape Flats lockup' },
-      { type: 'pick', who: 'Rook', prompt: 'Under the cash: the Quiet\u2019s black ledger. Then Rook raises his gun. He\u2019s worked for Mr. Sable all along.',
+      { type: 'pick', who: 'Rook', text: 'Decide what happens with Rook and the ledger', prompt: 'Under the cash: the Quiet\u2019s black ledger. Then Rook raises his gun. He\u2019s worked for Mr. Sable all along.',
         options: [
           { id: 'take_cut', label: 'Take the cut, give Rook the ledger (+2000 cr)', credits: 2000, flag: 'rook_loyal_to_sable', line: 'Rook: Smart. Paper gets people killed.' },
           { id: 'talk', label: 'Talk him down, keep the ledger', flag: ['ledger', 'rook_turned'], line: 'Rook: \u2026Fine. I always hated the old man.' },
@@ -95,7 +95,7 @@ export const MISSIONS2 = [
       { type: 'goto', at: FLATS(14, 20), r: 5, text: 'Find the courier at the Flats noodle cart' },
       { type: 'tail', vehicle: 'buggy', speed: 6, path: [FLATS(12, 14), FLATS(20, -6), FLATS(34, -18), FLATS(36, -28)], close: 6, lose: 50, text: 'Tail the courier\u2019s buggy (not too close)' },
       { type: 'defeat', at: FLATS(36, -28), r: 8, wave: ['jacker', 'jacker', 'hitter'], text: 'Take out the cook\u2019s crew' },
-      { type: 'pick', who: 'Doc Grieve', prompt: 'The cook is on his knees in a puddle of coolant, begging.',
+      { type: 'pick', who: 'Doc Grieve', text: 'Decide what happens to the cook', prompt: 'The cook is on his knees in a puddle of coolant, begging.',
         options: [
           { id: 'execute', label: 'Execute him', flag: 'sm2:cook_dead', wanted: 2, line: 'Doc Grieve: \u2026Good. I\u2019ll sleep. Eventually.' },
           { id: 'sell', label: 'Sell him to Saltblood (+600 cr)', credits: 600, flag: 'sm2:cook_sold', line: 'Saltblood drag him off by the ankles. You don\u2019t ask.' },
@@ -116,7 +116,7 @@ export const MISSIONS2 = [
       { type: 'goto', at: ROW(-34, 24), r: 6, text: 'Wait outside ColSec Downtown' },
       { type: 'tail', vehicle: 'hauler', speed: 8, path: [ROW(-34, 30), ROW(-62, 86), ROW(-140, 194), ROW(-218, 302), FLATS(18, -38)], close: 6, lose: 60, text: 'Tail the ColSec van (stay back)' },
       { type: 'defeat', at: FLATS(18, -38), r: 8, wave: ['colsec', 'colsec'], text: 'Drop Pruitt\u2019s ColSec babysitters' },
-      { type: 'pick', who: 'Counselor Wolde', prompt: 'Pruitt is shaking behind the van door, holding his statement like a shield.',
+      { type: 'pick', who: 'Counselor Wolde', text: 'Deal with Pruitt', prompt: 'Pruitt is shaking behind the van door, holding his statement like a shield.',
         options: [
           { id: 'scare', label: 'Put the fear of Wolde in him', flag: 'sm2:pruitt_scared', line: 'Pruitt: I didn\u2019t see anything. I don\u2019t even have eyes.' },
           { id: 'buy', label: 'Pay him to leave Mars (800 cr)', cost: 800, flag: 'sm2:pruitt_bought', line: 'Counselor Wolde: Money well spent. Yours, specifically.' },
@@ -136,7 +136,7 @@ export const MISSIONS2 = [
     steps: [
       { type: 'goto', at: ROW(-30, 28), r: 5, text: 'Meet Dez outside the precinct' },
       { type: 'escort', who: 'Dez Kincaid', look: 'suit', at: FLATS(20, -30), r: 7, wanted: 3, backup: true, wave: ['colsec', 'colsec', 'sdrone'], text: 'Get Dez to the Flats alive' },
-      { type: 'pick', who: 'Counselor Wolde', prompt: 'Wolde on the radio: Dez is going to flip. Next arrest, he trades me for a lighter sentence. End it.',
+      { type: 'pick', who: 'Counselor Wolde', text: 'Decide what happens to Dez', prompt: 'Wolde on the radio: Dez is going to flip. Next arrest, he trades me for a lighter sentence. End it.',
         options: [
           { id: 'kill', label: 'Do what the lawyer says (+1500 cr)', credits: 1500, flag: 'sm2:dez_dead', line: 'Counselor Wolde: Billable. Beautifully billable.' },
           { id: 'warn', label: 'Tip Dez off and let him run', flag: 'sm2:dez_warned', give: 'bike', line: 'Dez: Keys to my bike. No plates. I owe you my teeth.' },
@@ -167,13 +167,15 @@ export const MISSIONS2 = [
     steps: [
       { type: 'goto', at: ROW(24, 30), r: 3, item: 'contraband', wanted: 2, text: 'Grab the ransom bag off the bench (it\u2019s watched)' },
       { type: 'race', pts: [ROW(60, 60), ROW(140, 180), HTS(-90, -190), HTS(-20, -60)], pursuers: ['sbuggy', 'sbuggy'], text: 'Shake the Thorne family\u2019s hired guns' },
-      { type: 'pick', who: 'Cassius Thorne', prompt: 'Cassius at the villa gate, grinning: \u201cFifty-fifty, partner?\u201d',
+      { type: 'pick', who: 'Cassius Thorne', text: 'Settle the ransom with Cassius', prompt: 'Cassius at the villa gate, grinning: \u201cFifty-fifty, partner?\u201d',
         options: [
           { id: 'split', label: 'Split it fifty-fifty (+1500 cr)', credits: 1500, flag: 'sm2:thorne_split', line: 'Cassius Thorne: Partners! I\u2019m getting us matching jackets.' },
           { id: 'all', label: 'Take the whole bag (+3000 cr, 3\u2605)', credits: 3000, wanted: 3, flag: 'sm2:thorne_burned', line: 'Cassius Thorne: You\u2019re robbing my kidnapping? That\u2019s so cool. I hate you.' },
           { id: 'return', label: 'Give the bag back to his father', credits: 500, flag: 'sm2:thorne_dad', give: 'engine', line: 'Mr. Thorne: My son\u2019s an idiot. You\u2019re not. My mechanic will see you.' }] },
       { type: 'clean', text: 'Lose the heat' }] })
 ];
+const PICK_TEXT = s => (s.who ? `Make the call (${s.who})` : 'Make the call');
+for (const q of MISSIONS2) for (const s of q.steps) if (!s.text) s.text = s.type === 'pick' ? PICK_TEXT(s) : 'Next step'; // the tracker prints step.text
 for (const q of MISSIONS2) { GM.registerMission(q); const i = GM.STORY_DEFERRED.indexOf(q.id); if (i >= 0) GM.STORY_DEFERRED.splice(i, 1); }
 delete DEFERRED[ROOK_ID];
 BARTER_STORY['rook-product-unlock-withdrawal'] = ROOK_ID;
@@ -228,13 +230,30 @@ const relTo = (app, p) => { const c = app.surface.world.colonyAt([0, 0]); return
 const nudge = (app, x, z, r = 1) => { const w = app.surface.world, c = w.colonyAt([0, 0]), f = w.freeSpot?.(c.x + x, c.z + z, r); return f ? relTo(app, f) : { x, z }; };
 const camAt = (id, x, z, tx, tz, label, range = 12, phase = 0) => ({ id, x, z, yaw: Math.atan2(tx - x, tz - z), fov: 70, range, sweep: 30, phase, label });
 const crew = (g, k) => { for (const v of ({ quality: ['pros', 'cheap'], driller: ['ozzie', 'drunk'], hacker: ['penny', 'halo'], wheel: ['kestrel', 'self'] })[k]) if (g.flag(`story:rook-04-crew:${k}=${v}`)) return v; return null; };
+// The Trust's vault is inside the bank interior, and interiors float above the colony centre (Ares Junction), so the
+// vault's x/z coincide with the AJ plaza. rookGate() (in tick) only arms the safe while you're inside the bank and keeps
+// the escape centred on the bank door outside (centred on the room while you're inside), so neither fires on the plaza.
+const ROOK_HEIST_ID = 'rook-05-first-junction', ROOK_ESCAPE_R = 60, VAULT_IN_ROOM = { x: 6.4, z: -5.25 }; // vault spot, metres from the bank room's centre
+const RG = { w: null, out: null };
+function rookGate(app) {
+  let a = null; try { a = X().heist?.active; } catch (e) { return; }
+  if (!a || a.id !== ROOK_HEIST_ID || !a.w?.safe || !a.w.site) { RG.w = null; return; }
+  const W = a.w; if (RG.w !== W) { RG.w = W; RG.out = { sx: W.safe.x, sz: W.safe.z, cx: W.site.x, cz: W.site.z }; }
+  const w = app.surface.world;
+  if (typeof w.exitBuilding === 'function' && !w.exitBuilding.__sm2) { // re-gate the moment you step out, before the heist's next frame sees you at the door with the site still on the room
+    const orig = w.exitBuilding, wrapped = function (...args) { const r = orig.apply(this, args); try { rookGate(app); } catch (e) { /* */ } return r; }; wrapped.__sm2 = true; w.exitBuilding = wrapped; }
+  const ins = w.inside, d = w.doorFor?.(BANK), inBank = !!ins && !!d && ins.kind === d.kind && ins.name === d.name, O = RG.out;
+  if (inBank) { W.safe.x = ins.ax + VAULT_IN_ROOM.x; W.safe.z = ins.az + VAULT_IN_ROOM.z; W.site.x = ins.ax; W.site.z = ins.az; }
+  else { W.safe.x = O.sx; W.safe.z = O.sz; W.site.x = O.cx; W.site.z = O.cz; }
+  return inBank;
+}
 export const HEISTS2 = {
   rook(app) {
     const g = app.game, w = app.surface.world, d = w.doorFor?.(BANK); if (!d) return null;
     const door = relTo(app, d);
     const pros = crew(g, 'quality') === 'pros', ozzie = crew(g, 'driller') === 'ozzie';
-    return { id: 'rook-05-first-junction', title: 'First Junction Trust vault', world: 'Mars', rel: 'colony', kind: 'rook-vault', name: BANK, payout: false,
-      site: { x: 0, z: 0, r: 9 }, escapeR: 30, door, safe: { x: 6.4, z: -5.25, tier: 'vault', time: ozzie ? 60 : 42 },
+    return { id: ROOK_HEIST_ID, title: 'First Junction Trust vault', world: 'Mars', rel: 'colony', kind: 'rook-vault', name: BANK, payout: false,
+      site: { x: door.x, z: door.z, r: 9 }, escapeR: ROOK_ESCAPE_R, door, safe: { x: door.x, z: door.z - 3.6, tier: 'vault', time: ozzie ? 60 : 42 },
       power: nudge(app, door.x - 9, door.z + 4), cameras: [
         camAt('fjt-cam0', door.x - 7, door.z + 6, door.x, door.z, 'the Trust camera'),
         camAt('fjt-cam1', door.x + 7, door.z + 6, door.x, door.z, 'the Trust camera', 12, 1.3),
@@ -267,36 +286,62 @@ function ensureSheet() {
   sheet = document.createElement('div'); sheet.id = 'sm2Sheet'; sheet.innerHTML = '<div class="wrap"><div class="who"></div><div class="p"></div><div class="opts"></div></div>';
   document.body.appendChild(sheet); return sheet;
 }
-function openSheet(who, text, buttons) {
+// On touch the sheet sits above the joystick / fire buttons, so a thumb going back to the stick can't land on a choice.
+const PICK_ARM_MS = 320; // taps in the first ~300 ms after the sheet opens are ignored (a finger already moving lands on it)
+const sheetOpen = () => !!sheet && sheet.style.display === 'block';
+function controlsTop() {
+  if (typeof document === 'undefined' || !document.body?.classList.contains('touch')) return null;
+  let top = null;
+  for (const id of ['joy', 'fireBtn', 'meleeBtn', 'jumpBtn', 'runBtn', 'driveBtn']) { const e = document.getElementById(id); if (!e) continue;
+    const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || r.bottom < innerHeight * 0.55) continue; if (top === null || r.top < top) top = r.top; }
+  return top;
+}
+function placeSheet(el) {
+  const top = controlsTop(), lift = top === null ? 0 : Math.max(0, Math.round(innerHeight - top + 6));
+  el.style.bottom = lift + 'px'; el.style.maxHeight = Math.max(150, Math.round(innerHeight * 0.6 - lift)) + 'px';
+  el.style.borderBottom = lift ? '1px solid rgba(255,255,255,.3)' : '';
+}
+function openSheet(who, text, buttons, key) {
   const el = ensureSheet(); el.querySelector('.who').textContent = who; el.querySelector('.p').textContent = text;
   const box = el.querySelector('.opts'); box.innerHTML = '';
-  for (const b of buttons) { const btn = document.createElement('button'); btn.textContent = b.label; btn.dataset.opt = b.id; btn.disabled = !!b.disabled; tapEl(btn, () => { if (!btn.disabled) b.on(); }); box.appendChild(btn); }
-  el.style.display = 'block';
+  const tok = ++S.pickTok; S.pickFired = false; S.pickAt = performance.now();
+  for (const b of buttons) { const btn = document.createElement('button'); btn.textContent = b.label; btn.dataset.opt = b.id; btn.disabled = !!b.disabled;
+    tapEl(btn, () => { // one choice per sheet: stale sheets, a closed sheet, a second finger and the arming window all do nothing
+      if (btn.disabled || tok !== S.pickTok || S.pickFired || S.pickFor !== key || !sheetOpen() || performance.now() - S.pickAt < PICK_ARM_MS) return;
+      S.pickFired = true; if (b.on() === false) S.pickFired = false; });
+    box.appendChild(btn); }
+  el.style.display = 'block'; placeSheet(el);
 }
 const closeSheet = () => { if (sheet) sheet.style.display = 'none'; };
 
 // ---------- the step runner ----------
-const S = { key: null, qid: null, t: 0, spawnT: 0, k: 0, seen: 0, lost: 0, tail: null, esc: null, heist: null, raid: null, pickFor: null, vaultWas: null };
+const S = { live: null, lastStep: -1, pickTok: 0, pickFired: false, pickAt: 0, key: null, qid: null, t: 0, spawnT: 0, k: 0, seen: 0, lost: 0, tail: null, esc: null, heist: null, raid: null, pickFor: null, vaultWas: null };
 const mine = id => MISSIONS2.find(q => q.id === id);
 const myHostiles = g => g.debug.agents().filter(a => a.src === 'quest' || a.src === 'sm2');
 const groundY = app => (app.surface.info?.y ?? 1.7) - 1.7;
-function setText(s, extra) { s._base ??= s.text; s.text = extra ? `${s._base} ${extra}` : s._base; }
+function setText(s, extra) { s._base ??= (s.text || (s.type === 'pick' ? PICK_TEXT(s) : 'Next step')); s.text = extra ? `${s._base} ${extra}` : s._base; }
 let app0 = null;
 function spawnNear(app, g, types, x, z, r = 16) { // never more than 3 (phone) / 5 (desktop) of ours alive; g.hostiles caps humans (8 phone / 24 desktop) and shrinks ambient walkers so phones stay under 12 people
   const live = myHostiles(g).length, room = Math.min((MOBILE ? 3 : 5) - live, (types || []).length);
   if (room <= 0 || !g.hostiles) return 0;
   return g.hostiles(types.slice(0, room), x, z, { r, src: 'quest', faction: 'storymars2' });
 }
+// endHeist: drop our listeners. A run still casing/cracking is aborted; one that's escaping or getting clean is left to
+// Ben's heist (it finishes itself: escape -> clean -> done), and remembered in S.live so a failed/abandoned job can stop it.
+const PRE_ESCAPE = ['case', 'breakin', 'crack'];
 function endHeist(why) { const H = X().heist, h = S.heist; if (h?.off) h.off.forEach(f => { try { f(); } catch (e) { /* */ } }); S.heist = null;
   if (!h || h.fallback || !H) return;
-  try { const a = H.active; if (a && a.id === h.id && !['clean', 'done', 'failed'].includes(a.stage)) H.abortHeist?.(why); } catch (e) { /* */ } }
+  try { const a = H.active; if (a && a.id === h.id) { if (PRE_ESCAPE.includes(a.stage)) H.abortHeist?.(why); else S.live = h.id; } } catch (e) { /* */ } }
+function dropLive(completed) { const id = S.live; S.live = null; if (!id || completed) return;
+  try { const H = X().heist, a = H?.active; if (a && a.id === id && a.stage === 'escape') H.abortHeist?.('job dropped'); } catch (e) { /* */ } }
 function cleanup(app) {
   if (sheet) sheet.style.display = 'none'; S.pickFor = null;
   if (S.tail) { S.tail.group.parent?.remove(S.tail.group); S.tail = null; }
   if (S.esc) { S.esc.group.parent?.remove(S.esc.group); S.esc = null; try { app.surface?.world?.npcReserve?.('storymars2', 0); } catch (e) { /* */ } }
 }
 function questEnded(app, g, qid) { // quest left (done/failed/abandoned): drop our heist and restore the vault flag
-  endHeist('job dropped'); S.raid = null;
+  const def0 = mine(qid), completed = !!def0 && S.lastStep >= def0.steps.length - 1 && !!g.progress.quests?.[qid]?.everDone; S.lastStep = -1;
+  endHeist('job dropped'); dropLive(completed); S.raid = null;
   if (qid === ROOK_ID && S.vaultWas !== null) { const F = g.progress.flags, i = F.indexOf('cracked:bank-vault');
     if (S.vaultWas && i < 0) F.push('cracked:bank-vault'); if (!S.vaultWas && i >= 0) F.splice(i, 1); g.save?.(); S.vaultWas = null; }
   const def = mine(qid);
@@ -304,7 +349,8 @@ function questEnded(app, g, qid) { // quest left (done/failed/abandoned): drop o
 }
 function questStarted(app, g, def) {
   if (def.id === ROOK_ID) { // the Trust re-keyed the vault after Kline's ledger job: it's shut again for this run
-    const F = g.progress.flags, i = F.indexOf('cracked:bank-vault'); S.vaultWas = i >= 0; if (i >= 0) { F.splice(i, 1); g.save?.(); }
+    const F = g.progress.flags, i = F.indexOf('cracked:bank-vault'); S.vaultWas = i >= 0; if (i >= 0) { F.splice(i, 1); g.save?.();
+      toast(app, '\ud83d\udd12 First Junction Trust re-keyed the vault after the ledger job. It\u2019s locked again: you\u2019ll have to crack it.', 4600); }
     const d = app.surface.world.doorFor?.(BANK), s = def.steps.find(x => x.at === 'bankdoor' || x._bankdoor);
     if (s) { s._bankdoor = true; const dr = d ? relTo(app, d) : null; s.at = dr ? [dr.x, dr.z + 4] : ROW(-18, -14); }
     const names = { pros: 'pros', cheap: 'bargain muscle', ozzie: 'Ozzie on the drill', drunk: 'a drunk on the drill', penny: 'Penny on the cameras', halo: 'Halo on the cameras', kestrel: 'Kestrel at the wheel', self: 'you at the wheel' };
@@ -361,17 +407,19 @@ function startRaid(app, g, q, s) {
 }
 function pickSheet(app, g, q, s, def) {
   const credits = g.progress.credits;
+  const key = S.key;
   openSheet(s.who || def.contact || 'Choice', s.prompt || s.text, s.options.map(o => ({ id: o.id, label: o.label, disabled: !!(o.cost && credits < o.cost), on: () => {
-    if (o.cost && !g.spend(o.cost)) return;
+    const q2 = g.debug.quest(); if (!q2 || `${q2.id}:${q2.step}` !== key) return false;
+    if (o.cost && !g.spend(o.cost)) return false;
     for (const f of [].concat(o.flag || [])) g.setFlag(f.includes(':') ? f : `story:${q.id}:${f}`);
     if (o.credits) g.reward(0, o.credits);
     if (o.wanted) app.surface.world.setWanted?.(Math.max(app.surface.world.wanted || 0, o.wanted), 'choice');
     if (o.clearWanted) app.surface.world.setWanted?.(0, 'choice');
     if (o.give === 'bike') giveRide(app, (o.line || '').split(':')[0] + ': A ride, no plates.');
     if (o.give === 'engine') giveUpgrade(app, 'engine');
-    if (sheet) sheet.style.display = 'none'; S.pickFor = null; if (o.line) toast(app, `\ud83d\udcac ${o.line}`, 3600); nextStep(g);
-  } })));
-  S.pickFor = S.key;
+    if (sheet) sheet.style.display = 'none'; if (o.line) toast(app, `\ud83d\udcac ${o.line}`, 3600); nextStep(g); S.pickFor = null;
+  } })), key);
+  S.pickFor = key;
   if (s.options.every(o => o.cost && credits < o.cost)) { if (sheet) sheet.style.display = 'none'; failJob(app, g, `Can\u2019t cover it (${Math.min(...s.options.map(o => o.cost))} cr).`); }
 }
 function holdLogic(app, g, s, dt, tg, info, inside, near) {
@@ -388,11 +436,12 @@ function tick(app, dt) {
   app0 = app; if (performance.now() - (S.hookT || 0) > 1000) { S.hookT = performance.now(); try { hookCheck(); } catch (e) { /* */ } }
   const g = app.game;
   if (!g?.debug || !app.state?.onSurface) { if (S.qid) { const p = S.qid; cleanup(app); questEnded(app, g, p); S.qid = null; S.key = null; } return; }
+  try { rookGate(app); } catch (e) { /* optional */ }
   const q = g.debug.quest(), def = q && mine(q.id);
   if (S.qid && (!q || q.id !== S.qid)) { const p = S.qid; cleanup(app); questEnded(app, g, p); S.qid = null; S.key = null; }
   if (!q || !def) return;
   if (q.id !== S.qid) { S.qid = q.id; questStarted(app, g, def); }
-  const s = def.steps[q.step]; if (!s) return;
+  const s = def.steps[q.step]; if (!s) return; S.lastStep = q.step;
   const key = `${q.id}:${q.step}`;
   if (key !== S.key) { S.key = key; startStep(app, g, q, s, def); }
   if (!['hold', 'tail', 'escort', 'heist', 'raid', 'pick'].includes(s.type)) return; // core steps are game.js's job
@@ -402,11 +451,13 @@ function tick(app, dt) {
     case 'hold': if (holdLogic(app, g, s, dt, tg, info, inside, near)) nextStep(g); return;
     case 'pick': { if (inside) { setText(s, '(step outside)'); return; } if (S.pickFor !== key) pickSheet(app, g, q, s, def); return; }
     case 'heist': {
-      const h = S.heist; const a = (() => { try { return X().heist?.active; } catch (e) { return null; } })();
+      const h = S.heist, rookIn = s.heist === 'rook' && !!world.inside; const a = (() => { try { return X().heist?.active; } catch (e) { return null; } })();
       setText(s, a && a.stage ? `(${a.stage})` : h?.fallback ? '(the crew handles it)' : '');
       if (!h || h.fallback) { toast(app, '\ud83d\udd78\ufe0f The crew cracks it the old-fashioned way.', 2600); if (s.heist === 'rook') g.setFlag('cracked:bank-vault'); endHeist('fallback'); return nextStep(g); }
       if (h.failed) { endHeist('blown'); return failJob(app, g, 'The job went loud and fell apart.'); }
-      if (h.escaped || h.cracked) { endHeist('done'); return nextStep(g); }
+      if (h.escaped || (h.cracked && s.advanceOn === 'crack')) { endHeist('done'); return nextStep(g); }
+      if (h.cracked) setText(s, '(get clear of the site)');
+      else if (s.heist === 'rook' && a?.stage === 'crack' && !rookIn) setText(s, '(the vault is inside the bank)');
       return;
     }
     case 'raid': {
@@ -454,7 +505,8 @@ export function initStoryMars2(app) {
     missions: MISSIONS2.map(q => q.id), offers: OFFERS2.map(o => o.id), types: Object.keys(TYPES2),
     get registered() { return [...H2.offers]; },
     get state() { return { key: S.key, qid: S.qid, t: +S.t.toFixed(1), heist: S.heist && { id: S.heist.id, fallback: !!S.heist.fallback, cracked: S.heist.cracked, escaped: S.heist.escaped, failed: S.heist.failed }, raid: S.raid && { mode: S.raid.mode, win: S.raid.win, lose: S.raid.lose }, tail: S.tail ? { x: +S.tail.group.position.x.toFixed(1), z: +S.tail.group.position.z.toFixed(1), i: S.tail.i } : null, esc: S.esc ? { x: +S.esc.x.toFixed(1), z: +S.esc.z.toFixed(1), hp: Math.round(S.esc.hp) } : null, sheet: sheet?.style.display === 'block' }; },
-    skip(sec = 60) { S.t += sec; }, pick(id) { const b = sheet?.querySelector(`button[data-opt="${id}"]`); if (b && !b.disabled) { b.click(); return true; } return false; },
+    skip(sec = 60) { S.t += sec; }, pick(id) { const b = sheet?.querySelector(`button[data-opt="${id}"]`); if (b && !b.disabled && sheetOpen()) { const n = S.pickTok, f = S.pickFired; b.click(); return n === S.pickTok && !f && S.pickFired; } return false; },
+    get pickArmMs() { return PICK_ARM_MS; },
     heistDone(ok = true) { if (!S.heist) return false; if (ok) { S.heist.cracked = true; S.heist.escaped = true; } else S.heist.failed = true; return true; },
     raidDone(ok = true) { if (!S.raid) return false; if (ok) S.raid.win = true; else S.raid.lose = true; return true; }
   };

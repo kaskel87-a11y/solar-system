@@ -84,9 +84,10 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       } else if (s.type === 'pick') {
         const vis = await wait(() => window.__storymars2.state.sheet, 6000);
         const geo = await G(() => { const r = document.getElementById('sm2Sheet').getBoundingClientRect(); return { top: r.top, h: innerHeight }; });
-        if (geo.top < geo.h * 0.45) bad.push(id + ':sheetCoversCentre');
-        const n = (seen.filter(t => t === 'pick').length - 1); let opt = (picks.pick || [])[n]; if (!s.options.some(o => o.id === opt)) opt = s.options[0].id;
+        if (geo.top < geo.h * 0.4 - 1) bad.push(id + ':sheetCoversCentre'); // on touch it sits above the joystick (max 60% of the screen tall)
+        const n = (seen.filter(t => t === 'pick').length - 1); let opt = (picks.pick || [])[n]; if (!s.options.some(o => o.id === opt)) { bad.push(id + ':unknownPick:' + opt); opt = s.options[0].id; }
         if (id === 'rook-05-withdrawal') await shot('pick');
+        await sleep(400); // the sheet ignores taps for its first ~300 ms
         const tapped = await tapOpt(opt); takenPicks[opt] = true;
         if (!vis || !tapped) bad.push(id + ':pick');
         await sleep(900);
@@ -149,7 +150,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---- C) rook-05-withdrawal via Ben's SSX.heist ----
     ok('ssxHeistPresent', await G(() => !!(window.SSX && window.SSX.heist && window.SSX.heist.registerHeist)));
     if (await begin('rook-05-withdrawal', ['rook-04-crew'])) {
-      const r1 = await drive('rook-05-withdrawal', { pick: ['split'] });
+      const r1 = await drive('rook-05-withdrawal', { pick: ['talk'] });
       notes['rook-05:steps'] = r1.steps.join('>'); await bumpPeak();
       ok('rookHeistWired', notes['rook-05-withdrawal:heist'], notes['rook-05-withdrawal:heist'] === 'ssx-heist');
       ok('rookDone', r1.done);
@@ -158,7 +159,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---- C2) rook-05 again with no SSX.heist -> fallback path ----
     await G(() => { window.__ssxHeistBak = window.SSX.heist; delete window.SSX.heist; });
     if (await begin('rook-05-withdrawal', ['rook-04-crew'])) {
-      const r2 = await drive('rook-05-withdrawal', { pick: ['burn'] });
+      const r2 = await drive('rook-05-withdrawal', { pick: ['shoot'] });
       notes['rook-05fb:steps'] = r2.steps.join('>');
       ok('rookFallbackNoHeist', await G(() => !(window.SSX && window.SSX.heist)));
       ok('rookFallbackDone', r2.done);
@@ -169,7 +170,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       const exists = await G(id => !!window.__app.game.debug && !!(window.__storymars2.missions.includes(id)), id);
       if (!exists) continue;
       if (!(await begin(id))) { bad.push(id + ':accept'); continue; }
-      const rr = await drive(id, { pick: ['lean', 'quiet', 'walk'] }); await bumpPeak();
+      const rr = await drive(id, { pick: ['hire'] }); await bumpPeak();
       notes[id] = rr.steps.join('>');
       ok(id, rr.done);
     }
