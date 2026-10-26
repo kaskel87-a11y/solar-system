@@ -67,6 +67,7 @@ function buildSample(ctx, g) {
 // ---------- HUD: one chip in the right stack + one context button in #surfBtns (hidden unless there's an action) ----------
 const CSS = `#heistChip { display: none; padding: 4px 9px; border-radius: 9px; font-size: 0.7rem; line-height: 1.3; background: rgba(8,10,20,0.66); border: 1px solid rgba(255,208,64,0.5); color: #fff; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
 #heistChip.on { display: block; } #heistChip .eye { display: inline-block; width: 38px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.15); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+@media (max-width: 520px) { #heistChip { white-space: normal; max-width: min(64vw, 300px); } } /* v7.5.4: the guard / lockdown suffix wraps instead of running off a phone */
 #heistChip.lock { border-color: #ff8a3c; background: rgba(60,14,8,0.72); } #heistChip .eye i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb020, #ff2a2a); } #heistChip.seen { border-color: #ff3c3c; }
 #heistBtn { display: none; height: 44px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(160,110,10,0.7) !important; border-color: rgba(255,208,64,0.6) !important; }
 body:not(.touch) #heistBtn { font-size: 0.8rem !important; }

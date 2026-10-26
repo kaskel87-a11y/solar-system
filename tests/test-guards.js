@@ -147,6 +147,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const clear = await G(() => { const W = innerWidth, H = innerHeight, c = { l: W * 0.3, r: W * 0.7, t: H * 0.3, b: H * 0.7 };
       return ['heistBtn', 'heistChip'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });
     ok('centerClear', clear.join() || 'clear', clear.length === 0);
+    const cr = await G(() => { const r = document.getElementById('heistChip').getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), w: innerWidth }; });
+    ok('chipOnScreen', cr, cr.l >= 0 && cr.r <= cr.w + 1); // the lockdown timer must not run off a phone
     await shot('lockdown');
     // ---- shots at a guard: hit through the world's hit path (auto-aim targets include them)
     const tg = await G(() => window.__app.surface.world.targets().some(t => t.kind === 'guard')); ok('aimTargets', tg);
