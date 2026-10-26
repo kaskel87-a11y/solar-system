@@ -120,7 +120,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
           let diff = ((tg - a) % 360 + 540) % 360 - 180; while (Math.abs(diff) > 1.5) { const st = Math.sign(diff) * Math.min(2.5, Math.abs(diff)); a += st; diff -= st; E('pointermove', a); await new Promise(r => requestAnimationFrame(r)); }
           await sl(950); E('pointerup', a); await sl(100); } }, { ...dial, touch });
     }
-    ok('convoyLooted', null, await wait(() => window.SSX.beltway.convoy()?.state === 'looted', 40000));
+    ok('convoyLooted', null, await wait(() => window.SSX.beltway.stats().convoyLoot > 0, 40000));
     await sleep(250); await shot('convoy-loot');
     const lev = await G(() => window.__bwLast?.convoyLoot || {}); R.lootDelta = (await credits()) - cr0; // guards can still drop you (and a bust costs cash) after the doors open
     ok('lootCredits', `${lev.credits} cr (wallet ${R.lootDelta >= 0 ? '+' : ''}${R.lootDelta})`, lev.credits >= 380 && lev.credits <= 720);
