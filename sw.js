@@ -13,6 +13,7 @@ const PRECACHE = [
   ...['mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
   ...['street', 'street-tags', 'street-crowds', 'street-tow', 'street-tex', 'street-lines'].map(n => `mars/${n}.js${q}`), // v7.5 Red Tape Flats street life
   ...['colliders', 'street-blood', 'street-combat', 'street-tweakers', 'street-rant', 'street-night'].map(n => `mars/${n}.js${q}`), // Red Tape Flats colliders, street violence, rockheads, night
+  `mars/street-knockdown.js${q}`, // Red Tape Flats: player knockdown + daze after a lost fight
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),

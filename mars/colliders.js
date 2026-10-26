@@ -1,6 +1,6 @@
 // v7.5 outdoor collider API (Snuffles): window.SSX.colliders. Props that aren't core buildings (street props, grime
 // shanties, burn barrels, fences) register simple shapes here, and the player, vehicles and walking NPCs respect them
-// through ONE guarded line in world.collide() (core): `globalThis.SSX?.colliders?.resolve?.(x, z, r)`.
+// through ONE guarded line in world.collide() (core): `globalThis.SSX?.colliders?.resolve?.(x, z, r, skip)`.
 // Shapes (world metres, ground plane):
 //   { type: 'box', x, z, hx, hz, yaw? }   AABB half-extents; optional yaw (radians, same sense as three.js rotation.y) for a rotated box
 //   { type: 'cyl', x, z, r }              vertical cylinder
@@ -8,6 +8,7 @@
 // contact normal / shortest axis, so movement slides along walls. A uniform grid (8 m cells) keeps it cheap on phones:
 // resolve() only tests shapes in the 1-4 cells the mover overlaps.
 const CELL = 8;
+let ticked = false;
 const grid = new Map(), byId = new Map();
 let seq = 0, stamp = 0;
 const stats = { resolves: 0, hits: 0, tests: 0 };
@@ -46,10 +47,12 @@ function push(s, x, z, r) {
   if (s.yaw) { const a = ox * s.c + oz * s.n, b = -ox * s.n + oz * s.c; ox = a; oz = b; }
   return [s.x + ox, s.z + oz];
 }
-// resolve a mover; returns { x, z } when it was pushed, else null (same contract as world.collide)
-export function resolve(x, z, r = 0.45) {
+// resolve a mover; returns { x, z, nx, nz } when it was pushed (nx/nz = unit contact normal, pointing out of the shapes),
+// else null (same contract as world.collide). `mover` (optional) is the vehicle world.collide was asked about (its `skip`):
+// a driven vehicle scraping a collider slides along it instead of bouncing (see slide()).
+export function resolve(x, z, r = 0.45, mover = null) {
   if (!byId.size || !Number.isFinite(x) || !Number.isFinite(z)) return null; stats.resolves++;
-  let hit = false;
+  let hit = false; const x0 = x, z0 = z;
   for (let it = 0; it < 2; it++) {
     stamp++; let moved = false;
     const i0 = Math.floor((x - r) / CELL), i1 = Math.floor((x + r) / CELL), j0 = Math.floor((z - r) / CELL), j1 = Math.floor((z + r) / CELL);
@@ -57,7 +60,40 @@ export function resolve(x, z, r = 0.45) {
       for (const s of a) { if (s._s === stamp) continue; s._s = stamp; stats.tests++; const p = push(s, x, z, r); if (p) { x = p[0]; z = p[1]; hit = moved = true; } } }
     if (!moved) break;
   }
-  if (hit) { stats.hits++; return { x, z }; } return null;
+  if (!hit) return null; stats.hits++;
+  const dx = x - x0, dz = z - z0, L = Math.hypot(dx, dz) || 1, out = { x, z, nx: dx / L, nz: dz / L };
+  if (mover) slide(mover, out, r);
+  return out;
+}
+// ---------- vehicles slide along walls ----------
+// Core surface.js answers any collide() hit on a vehicle with `speed *= -0.25` (a bounce) and, above 9 m/s, a crash event
+// (above 16 m/s it hurts you). For our colliders we want a scrape: velocity projected onto the wall tangent. We can't touch
+// surface.js, so: when a moving vehicle (it has speed / yaw / spec.r, and r is its collide radius) grazes one of our shapes
+// (not head-on), remember its tangent velocity and slid position, clamp its speed under the crash threshold for core's
+// check, and restore the slide in a registerSurfaceTick that runs right after the vehicle update in the same frame.
+// Head-on hits (> ~37 deg into the wall) keep core's bounce + crash, as they should.
+const slides = new Map(), slideStats = { slides: 0, headOn: 0, applied: 0, last: null };
+const HEAD_ON = 0.6; // |v.n| / |v| above this = head-on
+function slide(v, o, r) {
+  if (!v || typeof v.speed !== 'number' || typeof v.yaw !== 'number' || !v.spec || !(Math.abs(r - v.spec.r * 0.75) < 1e-6)) return; // only the vehicle's own move step
+  const sp = v.speed, s = Math.abs(sp); if (s < 0.6) return;
+  const vx = -Math.sin(v.yaw) * sp, vz = -Math.cos(v.yaw) * sp, vn = vx * o.nx + vz * o.nz;
+  if (vn >= 0) return; // already moving away from the wall
+  if (-vn / s > HEAD_ON) { slideStats.headOn++; return; }
+  const tx = vx - vn * o.nx, tz = vz - vn * o.nz, vt = Math.hypot(tx, tz) * 0.93; // a little scrape friction
+  const yaw = sp >= 0 ? Math.atan2(-tx, -tz) : Math.atan2(tx, tz);
+  slides.set(v, { x: o.x, z: o.z, speed: Math.sign(sp) * vt, yaw, nx: o.nx, nz: o.nz });
+  v.speed = Math.sign(sp) * Math.min(s, 8.5); slideStats.slides++; o.slide = true;
+}
+const wrap = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+function afterVehicles() { // registerSurfaceTick: after updateRover(), before render
+  if (!slides.size) return;
+  for (const [v, p] of slides) {
+    v.x = p.x; v.z = p.z; v.speed = p.speed; v.yaw += wrap(p.yaw - v.yaw) * 0.35;
+    try { if (v.group) { v.group.position.x = v.x; v.group.position.z = v.z; } } catch (e) { /* */ }
+    slideStats.applied++; slideStats.last = { speed: +p.speed.toFixed(2), nx: +p.nx.toFixed(2), nz: +p.nz.toFixed(2) };
+  }
+  slides.clear();
 }
 const pub = s => s.type === 'cyl' ? { id: s.id, type: 'cyl', x: s.x, z: s.z, r: s.r, group: s.group } : { id: s.id, type: 'box', x: s.x, z: s.z, hx: s.hx, hz: s.hz, yaw: s.yaw || 0, group: s.group };
 export function query(x, z, r = 1) { const out = []; stamp++; cells([x - r, z - r, x + r, z + r], k => { for (const s of grid.get(k) || []) if (s._s !== stamp) { s._s = stamp; const b = s._b; if (x + r > b[0] && x - r < b[2] && z + r > b[1] && z - r < b[3]) out.push(pub(s)); } }); return out; }
@@ -66,11 +102,14 @@ export const API = {
   blocked: (x, z, r = 0.45) => !!resolve(x, z, r),
   list: group => [...byId.values()].filter(s => group == null || s.group === group).map(pub),
   get count() { return byId.size; }, get cells() { return grid.size; },
-  stats: () => ({ ...stats, count: byId.size, cells: grid.size }), clear() { grid.clear(); byId.clear(); return true; }
+  stats: () => ({ ...stats, count: byId.size, cells: grid.size, slide: { ...slideStats, ticked } }), clear() { grid.clear(); byId.clear(); return true; }
 };
 // window.SSX is rebuilt by index.html after module evaluation; keep re-attaching (cheap) so SSX.colliders is always there
 if (typeof window !== 'undefined') {
-  const attach = () => { if (window.SSX && window.SSX.colliders !== API) window.SSX.colliders = API; };
+  const attach = () => {
+    if (window.SSX && window.SSX.colliders !== API) window.SSX.colliders = API;
+    if (!ticked && typeof window.SSX?.registerSurfaceTick === 'function') { try { window.SSX.registerSurfaceTick(afterVehicles); ticked = true; } catch (e) { /* */ } }
+  };
   window.SSX = window.SSX || {}; attach(); setInterval(attach, 1000);
 }
 export default API;

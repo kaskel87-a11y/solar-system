@@ -19,6 +19,7 @@ import { createBlood } from './street-blood.js';
 import { createCombat } from './street-combat.js';
 import { createTweakers } from './street-tweakers.js';
 import { createNight } from './street-night.js';
+import { createKnockdown } from './street-knockdown.js';
 
 const DISTRICT = 'mars-rough', CDIST = 'red-tape-flats', AJ0 = [-280, -40]; // district-local -> AJ-relative offset
 const LOAD_R = 170, UNLOAD_R = 230;
@@ -150,8 +151,9 @@ const K = {
   player: null // filled every frame: { x, z, y, driving, stolen, kind, speed, inside, rover, car, ctx }
 };
 
-const parts = [createTags(K), createCrowds(K), createTow(K), createBlood(K), createCombat(K), createTweakers(K), createNight(K)];
-const [TAGS, CROWDS, TOW, BLOOD, COMBAT, TWEAK, NIGHT] = parts;
+const parts = [createTags(K), createCrowds(K), createTow(K), createBlood(K), createCombat(K), createTweakers(K), createNight(K), createKnockdown(K)];
+const [TAGS, CROWDS, TOW, BLOOD, COMBAT, TWEAK, NIGHT, KO] = parts;
+K.knockdown = (text, o) => KO.start(text, o); K.knocked = () => KO.active();
 K.hittables.push(() => CROWDS.slots().filter(s => s.on && s.h).map(s => COMBAT.hittable(s)), () => TWEAK.hittables());
 // outdoor colliders for our own props (SSX.colliders group 'street'); world.collide resolves them for the player, vehicles and NPCs
 function colliders(on) { try { COL.removeGroup('street'); if (on) for (const p of parts) for (const c of p.colliders?.() || []) COL.add({ ...c, group: 'street' }); } catch (e) { console.warn('street colliders', e); } }
@@ -215,13 +217,14 @@ const API = {
   tags: () => TAGS.list(), tag: id => TAGS.tagAt(id), rivalPaint: id => TAGS.rival(id),
   crowds: () => CROWDS.list(), npcs: () => CROWDS.npcs(), fight: i => CROWDS.fight(i),
   challenge: (o) => TWEAK.challenge(o), rockhead: () => TWEAK.state(), // force a rockhead fight challenge / read its state
+  knockdown: (text = 'Lights out.', o) => KO.start(text, o), knockedDown: () => KO.phase(), // put the player on the ground (lost fight)
   drops: () => COMBAT.drops(), blood: () => BLOOD.list(), night: () => NIGHT.debug(), colliders: () => COL.list('street'),
   hurt(key, dmg = 1, how = 'shot') { const s = CROWDS.slots().find(x => x.key === key || x.name === key); if (!s?.on) return false; COMBAT.hurt(s, dmg, how, K.player); return true; },
   tow: { get impound() { return ST.impound ? { ...ST.impound } : null; }, hook: () => TOW.hook(true), pay: () => TOW.payImpound(), yard: () => TOW.yard(), quote: () => TOW.quote(), sell: () => TOW.sell(false), strip: () => TOW.sell(true), buyHot: kind => TOW.buyHot(kind), stock: () => TOW.stock() },
   stats: () => ({ ...ST.stats }), state: () => JSON.parse(JSON.stringify(ST)),
   on(fn) { const h = e => fn(e.detail); addEventListener('ssx:street', h); return () => removeEventListener('ssx:street', h); },
   reset() { const t = ST.tag; Object.assign(ST, S0(), { tag: t }); save(); TAGS.refresh?.(); return true; },
-  debug: { forceSeen(p) { if (p == null) delete ST.forceSeen; else ST.forceSeen = +p; return ST.forceSeen ?? null; }, act: () => act ? act.label : null, doAct: () => { if (act) { act.fn(); return true; } return false; }, budget: w => K.budget(w), reserved: () => reserved, panel: () => panel ? panel.textContent : null, tap: label => { const b = panel && [...panel.querySelectorAll('button')].find(x => x.textContent.startsWith(label)); if (!b) return false; b.click(); return true; }, close: () => closePanel(), local: (x, z) => D ? [x - D.x, z - D.z] : null, world: (lx, lz) => D ? K.L(lx, lz) : null, parts: () => ({ tags: TAGS.debug?.(), crowds: CROWDS.debug?.(), tow: TOW.debug?.(), blood: BLOOD.debug(), combat: COMBAT.debug(), rockheads: TWEAK.debug(), night: NIGHT.debug() }), ageBlood: s => BLOOD.age(s), hgt: (x, z) => K.hgt(x, z), yell: (text, lvl = 1) => { const P = K.player; return P ? yell({ x: P.x + 2, z: P.z }, 'Test', text, lvl) : null; } }
+  debug: { forceSeen(p) { if (p == null) delete ST.forceSeen; else ST.forceSeen = +p; return ST.forceSeen ?? null; }, act: () => act ? act.label : null, doAct: () => { if (act) { act.fn(); return true; } return false; }, budget: w => K.budget(w), reserved: () => reserved, panel: () => panel ? panel.textContent : null, tap: label => { const b = panel && [...panel.querySelectorAll('button')].find(x => x.textContent.startsWith(label)); if (!b) return false; b.click(); return true; }, close: () => closePanel(), local: (x, z) => D ? [x - D.x, z - D.z] : null, world: (lx, lz) => D ? K.L(lx, lz) : null, parts: () => ({ tags: TAGS.debug?.(), crowds: CROWDS.debug?.(), tow: TOW.debug?.(), blood: BLOOD.debug(), combat: COMBAT.debug(), rockheads: TWEAK.debug(), night: NIGHT.debug(), knockdown: KO.debug() }), ageBlood: s => BLOOD.age(s), hgt: (x, z) => K.hgt(x, z), yell: (text, lvl = 1) => { const P = K.player; return P ? yell({ x: P.x + 2, z: P.z }, 'Test', text, lvl) : null; } }
 };
 window.SSX = window.SSX || {};
 window.SSX.street = API;

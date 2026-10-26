@@ -71,6 +71,27 @@ and on unload; values changed by someone else are re-based, not fought.
 Events (`ssx:street` / `SSX.emit('street:*')`): `hurt`, `kill`, `drop`, `loot`, `yell`, `rockhead`, `brawl`, `brawlWon`,
 `brawlLost`, `rockheadPaid`, `rockheadKilled`.
 
+## Polish pass (PR stacked on #39 → #44)
+**Knockdown (`street-knockdown.js`).** Losing a street fight drops your astronaut in a ragdoll-lite crumple: 0.7 s fall
+backwards with a bounce wiggle, 1.8 s lying in the dirt, 0.9 s getting up, then 6 s dazed: canvas blur (1.2 px phone /
+2.2 px desktop, eased out), a decaying camera wobble, and movement scaled from 45% back to 100%. Movement is pinned while
+down. Costs cash (10-25%, max 60) **and -3 street cred**. Falls back to the old overlay when driving or inside. API:
+`SSX.street.knockdown(text, o)`, `knockedDown()` → `'fall'|'down'|'rise'|'dazed'|'done'|null`; parts add `knockdown`.
+
+**Vehicles slide along walls (`colliders.js`).** `resolve(x, z, r, mover)` now returns `{x, z, nx, nz}` (contact normal).
+When the mover is a vehicle (radius matches `spec.r*0.75`) hitting at a glancing angle, its velocity is projected onto
+the wall tangent (×0.93), speed is held under the core crash threshold so the core bounce/crash/hurt don't fire, and a
+surface tick (`registerSurfaceTick`) right after the vehicle update restores the slid position and tangent speed and eases
+yaw along the wall. Head-on hits (>60% into the normal) still bounce as before. The only world.js change is the existing
+guarded hook line, which now passes the mover. Counters: `colliders.stats().slide`.
+
+**Rockheads ≠ danger.js junkie.** Rockheads are gaunt, hoodless (mohawk/bald/long hair), stained tank top or torn red
+flannel, with glowing **Red Static** eyes (#ff2414, flickering) and burned glowing fingertips, plus a constant jitter and
+a violent spasm every 1-3 s. The danger junkie keeps its brown suit, hood, blue visor and knife; the rant lines share no
+text with `dangercore.BARKS` (checked in tests). They never coexist: no rockhead spawns (even forced) while a mugging,
+an unfinished danger fight or a danger director event is active, and a rockhead already out runs off if a mugging starts.
+danger.js has no public pause hook, so the reverse direction (pausing danger during a rockhead) is not possible from here.
+
 ## Hooks used (all optional)
 SSX.contraband (buy/sell/registerOffer), SSX.city (crime/wanted/npcBudget/npcReserve/hostiles), SSX.bark, SSX.time.isNight (fallback: dangercore `marsHour()`, night is 21–05), SSX.turf.ownerAt (which crew paints over you), SSX.rep.add (crews/junkies), SSX.garage (grantVehicle/grantUpgrade).
 

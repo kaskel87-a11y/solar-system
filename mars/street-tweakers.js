@@ -10,25 +10,34 @@ import { buildHuman } from '../interiors.js';
 import { RANT, ACCUSE, CHALLENGE, TAUNT, PAID, SWING, BOTTLE, KO, WON, HURT, pickRant, mangle, volume } from './street-rant.js';
 const R = () => Math.random(), pick = a => a[(R() * a.length) | 0];
 const NAMES = ['Twitch', 'Gary', 'Sparky', 'Rattlecan', 'Skeeter', 'Glassjaw Lenny', 'Static Pete', 'Dome Rat', 'Crickets'];
-const LOOKS = [{ top: 0x4a2a22, bottom: 0x24221e, skin: 0xa88068, hair: 0x2a2018, hairStyle: 'long', bulk: 0.8 }, { top: 0x2e3436, bottom: 0x2a2420, skin: 0xc49a80, hair: 0x6a5a40, hairStyle: 'short', bulk: 0.78 },
-  { top: 0x5a4a30, bottom: 0x1e1e22, skin: 0x7a5a44, hair: 0x101010, hairStyle: 'buzz', bulk: 0.84 }];
+// Their own look, never danger.js's knife junkie (brown hooded suit, BLUE glow visor, knife): no hood, no suit, gaunt and
+// ashen in a stained tank top or a torn red flannel, burn-scarred fingertips, and Red Static eyes that glow and crackle red.
+const LOOKS = [{ top: 0xcfc6b2, bottom: 0x3a3430, skin: 0xb59684, hair: 0x1a1412, hairStyle: 'mohawk', bulk: 0.72 }, { top: 0x7a1c16, bottom: 0x2a2624, skin: 0xa8907e, hair: 0x5a5048, hairStyle: 'bald', bulk: 0.74 },
+  { top: 0xbab09a, bottom: 0x1e1c1c, skin: 0x8a6a58, hair: 0x2a2018, hairStyle: 'long', bulk: 0.7 }];
+const EYE = 0xff2414; // Red Static
+
 const faceYaw = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z));
 
 export function createTweakers(K) {
   let root = null, pool = [], cur = null, checkT = 6, coolT = 0, dbg = { spawned: 0, confronts: 0, fights: 0, won: 0, lost: 0, paid: 0, backed: 0, killed: 0, forced: 0 };
   const MAX = K.PHONE ? 1 : 2;
   const mugging = () => { try { const m = window.__danger?.state?.mug; return !!(m && !m.done && !m.over && m.phase !== 'done'); } catch (e) { return false; } };
+  // anything of danger.js's on the street right now (knife mugging, NPC street fight, ambient event): rockheads stay home
+  const dangerBusy = () => { if (mugging()) return true; try { const D = window.__danger; if ((D?.state?.fights || []).some(f => !f.over)) return true; if (D?.director?.()?.active) return true; } catch (e) { /* */ } return false; };
   const grimeK = () => { try { const G = K.X().grime; const v = typeof G?.level === 'function' ? G.level() : G?.level; return Number.isFinite(+v) ? 0.6 + Math.max(0, Math.min(1, +v)) * 0.9 : 1; } catch (e) { return 1; } };
   function actor() {
     let a = pool.find(p => !p.busy); if (!a && pool.length < MAX) { const h = buildHuman(pick(LOOKS)); h.group.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } }); h.group.visible = false; root.add(h.group);
       const bottle = new THREE.Mesh(K.geo().cyl, K.mat('st_bottle', { color: 0x2c4a22, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85 })); bottle.scale.set(0.07, 0.26, 0.07); bottle.position.set(0, -0.72, -0.08); bottle.rotation.x = 1.3; bottle.visible = false; h.arms[1].add(bottle);
-      a = { h, bottle, busy: false }; pool.push(a); }
+      const eyeM = K.mat('st_rh_eye', { color: 0x300000, emissive: EYE, emissiveIntensity: 3, roughness: 0.3 }), tipM = K.mat('st_rh_tip', { color: 0x401010, emissive: 0xff3a10, emissiveIntensity: 0.9 }), eyes = [];
+      for (const sx of [-1, 1]) { const e = new THREE.Mesh(K.geo().sph, eyeM); e.scale.set(0.045, 0.03, 0.02); e.position.set(sx * 0.046, 0.025, -0.132); h.head.add(e); eyes.push(e); }
+      for (const A of h.arms) { const f = new THREE.Mesh(K.geo().sph, tipM); f.scale.setScalar(0.07); f.position.set(0, -0.64, -0.02); A.add(f); } // pipe-burned fingers
+      a = { h, bottle, eyes, eyeM, busy: false }; pool.push(a); }
     return a || null;
   }
   const hpOf = () => { try { const i = K.game()?.info; return i ? (i.hp || 0) + (i.shield || 0) : 100; } catch (e) { return 100; } };
   function say(s, line, lvl = 1) { K.yell(s, s.name, mangle(line, lvl), lvl); }
   function spawn(force = false) {
-    const P = K.player; if (!root || cur || !P || P.driving || P.inside) return null; if (!force && K.room() - (K.extra || 0) < 1) return null;
+    const P = K.player; if (!root || cur || !P || P.driving || P.inside || mugging()) return null; if (!force && K.room() - (K.extra || 0) < 1) return null;
     const a = actor(); if (!a) return null; a.busy = true;
     const d = force ? 9 : 17 + R() * 6, ang = (P.yaw || 0) + (R() - 0.5) * 1.4; // in front of you, so you watch him come
     let x = P.x - Math.sin(ang) * d, z = P.z - Math.cos(ang) * d; const c = K.collide(x, z, 0.5); if (c) { x = c.x; z = c.z; }
@@ -56,7 +65,7 @@ export function createTweakers(K) {
   function lose(s) {
     dbg.lost++; s.st = 'gloat'; s.t = 0; const c = K.credits(), cut = Math.min(c, Math.max(5, Math.min(60, Math.round(c * (0.1 + R() * 0.15)))));
     if (cut) K.take(cut); say(s, pick(WON), 2); K.ST.stats.brawlsLost = (K.ST.stats.brawlsLost || 0) + 1; K.save();
-    knockdown(`${s.name} put you on the ground and went through your pockets. -${cut} cr.`); K.cred(-2, 'lost a fistfight'); K.emit('brawlLost', { name: s.name, took: cut });
+    const why = `${s.name} put you on the ground and went through your pockets. -${cut} cr, -3 cred.`; if (!K.knockdown?.(why)) knockdown(why); K.cred(-3, 'lost a fistfight'); K.emit('brawlLost', { name: s.name, took: cut });
   }
   function knockdown(text) {
     let o = document.getElementById('stKO'); if (!o) { o = document.createElement('div'); o.id = 'stKO'; o.style.cssText = 'position:fixed;inset:0;z-index:60;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font:800 18px/1.4 system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .35s'; document.body.appendChild(o); }
@@ -89,12 +98,17 @@ export function createTweakers(K) {
     if (!root) return;
     if (!cur) {
       if ((checkT -= dt) > 0) return; checkT = 8;
-      if (P.driving || P.inside || K.panelOpen || mugging() || K.T < coolT || P.d > 90) return;
+      if (P.driving || P.inside || K.panelOpen || dangerBusy() || K.T < coolT || P.d > 90) return;
       if (R() < (K.night() ? 0.12 : 0.04) * grimeK()) spawn(false); return;
     }
     const s = cur, h = s.h, d = Math.hypot(P.x - s.x, P.z - s.z); s.t += dt; s.life += dt; K.posePlain(h); h.group.rotation.order = 'YXZ';
-    if (s.st !== 'down' && s.st !== 'dead' && s.st !== 'leave' && s.st !== 'gloat' && (P.driving || P.inside || d > 32 || (mugging() && s.st !== 'brawl'))) { if (s.panelUp) { K.closePanel(); s.panelUp = false; } if (d < 30) say(s, pick(TAUNT), volume(d)); leave(s); }
-    const twitch = () => { h.head.rotation.y = Math.sin(t * 13) * 0.25 + (Math.sin(t * 3.1) > 0.9 ? 0.6 : 0); h.head.rotation.z = Math.sin(t * 7.7) * 0.12; h.torso.rotation.z = Math.sin(t * 5.3) * 0.08; };
+    if (s.st !== 'down' && s.st !== 'dead' && s.st !== 'leave' && s.st !== 'gloat' && (P.driving || P.inside || d > 32 || mugging())) { if (mugging()) { dbg.yielded = (dbg.yielded || 0) + 1; s.run = true; } if (s.panelUp) { K.closePanel(); s.panelUp = false; } if (d < 30) say(s, pick(TAUNT), volume(d)); leave(s); }
+    // the Red Static twitch: constant jitter plus a full-body spasm every 1-3 s (head snaps, shoulder jerks, a hand to the face)
+    if ((s.spT = (s.spT ?? 1.5) - dt) <= 0) { s.spT = 1 + R() * 2; s.spasm = 0.28; s.spSide = R() < 0.5 ? -1 : 1; dbg.spasms = (dbg.spasms || 0) + 1; }
+    const sp = s.spasm > 0 ? Math.sin((s.spasm -= dt) / 0.28 * Math.PI) : 0;
+    const twitch = () => { h.head.rotation.y = Math.sin(t * 13) * 0.25 + (Math.sin(t * 3.1) > 0.9 ? 0.6 : 0) + sp * 0.7 * s.spSide; h.head.rotation.z = Math.sin(t * 7.7) * 0.12 + sp * 0.35 * s.spSide; h.torso.rotation.z = Math.sin(t * 5.3) * 0.08 + sp * 0.22 * s.spSide;
+      if (sp > 0.2) { h.arms[s.spSide > 0 ? 1 : 0].rotation.z = -0.9 * s.spSide * sp; h.arms[0].rotation.x += sp * 1.2; } h.torso.position.y = Math.abs(Math.sin(t * 21)) * 0.012; };
+    const flick = Math.sin(t * 31) > 0.85 ? 0.4 : 1; s.a.eyeM.emissiveIntensity = (s.st === 'brawl' || s.st === 'confront' ? 4 : 2.6) * flick;
     if (s.st === 'storm' || s.st === 'chase') {
       step(s, P, s.st === 'chase' ? 4.6 : 3.4, dt); s.yaw = faceYaw(s.x, s.z, P.x, P.z); K.walkAnim(h, t * 1.5, 1.2); h.torso.rotation.x = 0.22; h.arms[0].rotation.x = 0.9 + Math.sin(t * 17) * 0.3; h.arms[1].rotation.z = -0.4; twitch();
       if ((s.rantT -= dt) <= 0) { s.rantT = 1.6 + R() * 1.6; say(s, R() < 0.6 ? pickRant(RANT) : pick(CHALLENGE), volume(d)); }
@@ -138,6 +152,6 @@ export function createTweakers(K) {
     tick, acts: () => [], hittables: () => cur ? [hittable] : [],
     challenge: (o = {}) => { if (cur) { if (o.reset !== false) despawn(); else return { name: cur.name, st: cur.st }; } coolT = 0; const s = spawn(true); if (s && o.close !== false && o.near) { const P = K.player; s.x = P.x - Math.sin(P.yaw || 0) * 3; s.z = P.z - Math.cos(P.yaw || 0) * 3; } return s ? { name: s.name, st: s.st } : null; },
     state: () => cur ? { name: cur.name, st: cur.st, hp: cur.hp, bottle: cur.bottle, x: +cur.x.toFixed(2), z: +cur.z.toFixed(2), d: K.player ? +Math.hypot(K.player.x - cur.x, K.player.z - cur.z).toFixed(2) : null, panel: cur.panelUp } : null,
-    debug: () => ({ ...dbg, max: MAX, active: !!cur, mugging: mugging(), grimeK: grimeK() })
+    debug: () => ({ ...dbg, max: MAX, active: !!cur, mugging: mugging(), dangerBusy: dangerBusy(), grimeK: grimeK(), look: cur ? { eyes: cur.a.eyes.length, eye: '#' + cur.a.eyeM.emissive.getHexString(), hood: false } : null })
   };
 }
