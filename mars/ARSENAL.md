@@ -32,9 +32,9 @@ fails if an arsenal key gets bound anywhere else (run with `REFS="origin/main pr
 |---|---|
 | hold **Q** (on foot) | weapon wheel; mouse picks, release selects. Tap Q cycles. In a vehicle Q is left to the game / zero-G roll |
 | **I** | reload |
-| **.** (Period) | cycle ammo type (std / hollow / AP) |
+| **'** (Quote) | cycle ammo type (std / hollow / AP) |
 | **right mouse** | scope: hold to zoom, quick click toggles (scope mod only) |
-| **,** (Comma) | scope toggle (keyboard fallback; X is the medkit) |
+| **\\** (Backslash) | scope toggle (keyboard fallback; X is the medkit) |
 | phone | long-press the 🔫 HUD chip (tap cycles) or 🎯 on the dock; pill: ⟳ Reload, STD/HP/AP, 🔭 (all 44 px+) |
 
 Ammo readout: the game's own 🔫 HUD chip shows `mag/reserve` (and HP/AP when loaded) for arsenal guns, ⟳ while reloading.

@@ -26,7 +26,7 @@ import { initGunsmith } from './gunsmith.js';
  *  gunsmith           -> { open(), close(), at(), catalog(), trade(id, pay:'stash'|'cash'|'favor') } (mars/gunsmith.js)
  *  debug              -> test helpers (see bottom)
  * Keys (free across main + PRs #41/#43/#44; tests/test-keys-unit.mjs guards it): hold Q = wheel on foot (tap Q still cycles; in a
- *   vehicle Q stays the game's/zero-G roll), I reload, . (Period) ammo type, right mouse = scope (hold, or click to toggle), , (Comma)
+ *   vehicle Q stays the game's/zero-G roll), I reload, ' (Quote) ammo type, right mouse = scope (hold, or click to toggle), \ (Backslash)
  *   scope fallback. Phone: long-press the 🔫 HUD chip or the 🎯 dock button; the chip shows mag/reserve for arsenal guns.
  * Persistence: localStorage 'ssx.arsenal.v1' (owned, mags, ammo boxes, ammo choice, mods). The equipped weapon and the
  * game's own ammo (rounds, shells) stay in the game save.
@@ -45,7 +45,7 @@ export const TYPES = {
   slug: { name: 'Coil slug', short: 'SLUG', dmg: 1 }
 };
 export const CALS = { light: { name: 'Light rounds', types: ['std', 'hollow', 'ap'], core: 'rounds' }, shell: { name: 'Shells', types: ['std', 'ap'], core: 'shells' }, heavy: { name: 'Heavy rounds', types: ['std', 'hollow', 'ap'] }, rail: { name: 'Coil slugs', types: ['slug'] } };
-export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Period', scope: 'Comma' }; // + right mouse for scope
+export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Quote', scope: 'Backslash' }; // + right mouse for scope. v7.5.5: . is the Beltway panel, , is base build
 export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No "discharging a weapon" crime, quieter shots, -8% damage.' }, extmag: { name: 'Extended mag', icon: '➕', blurb: '+50% magazine, slightly slower reload.' }, scope: { name: 'Scope', icon: '🔭', blurb: 'Zoom (right mouse / , / 🔭) and half the bloom while scoped.' } };
 // core = the game.js WEAPONS id this gun fires through. smg + shotgun are the game's own guns (Ozzie's / colony shop).
 export const ARS = {
@@ -325,7 +325,7 @@ let hud = null, hudTx = null, rlBtn = null, scBtn = null, amBtn = null, ret = nu
 const tap = (el, fn) => { if (window.__onTap) window.__onTap(el, fn); else { el.addEventListener('pointerup', e => { e.preventDefault(); fn(e); }); } };
 function ui() {
   if (hud) return; const st = document.createElement('style'); st.id = 'arCss'; st.textContent = css; document.head.appendChild(st);
-  hud = document.createElement('div'); hud.id = 'arHud'; hud.innerHTML = '<button id="arAmmo" type="button" aria-label="Reload" title="Reload (I)"><span class="tx"></span></button><button id="arType" type="button" aria-label="Ammo type" title="Ammo type (.)">STD</button><button id="arScope" type="button" aria-label="Scope" title="Scope (right mouse or ,)">🔭</button>';
+  hud = document.createElement('div'); hud.id = 'arHud'; hud.innerHTML = '<button id="arAmmo" type="button" aria-label="Reload" title="Reload (I)"><span class="tx"></span></button><button id="arType" type="button" aria-label="Ammo type" title="Ammo type (&#39;)">STD</button><button id="arScope" type="button" aria-label="Scope" title="Scope (right mouse or \\)">🔭</button>';
   document.body.appendChild(hud); rlBtn = hud.querySelector('#arAmmo'); hudTx = rlBtn.querySelector('.tx'); amBtn = hud.querySelector('#arType'); scBtn = hud.querySelector('#arScope');
   tap(rlBtn, () => { const a = curArs(); if (a?.kind === 'gun') startReload(a); else openWheel(); });
   tap(amBtn, () => { const r = setAmmo(); toast(r.msg, 1500); });
