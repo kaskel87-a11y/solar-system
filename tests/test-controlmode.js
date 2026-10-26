@@ -59,7 +59,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // ---- arrows turn the camera, no strafe
     const p0 = await G(() => ({ x: window.__app.surface.info.x, z: window.__app.surface.info.z, y: window.__app.surface.info.viewYaw }));
-    await page.keyboard.down('ArrowLeft'); await sleep(1500); // swiftshader under load runs a few fps; thresholds are frame-rate tolerant await page.keyboard.up('ArrowLeft'); await sleep(100);
+    await page.keyboard.down('ArrowLeft'); await sleep(1500); await page.keyboard.up('ArrowLeft'); await sleep(100); // swiftshader under load runs a few fps; thresholds are frame-rate tolerant
     const p1 = await G(() => ({ x: window.__app.surface.info.x, z: window.__app.surface.info.z, y: window.__app.surface.info.viewYaw }));
     const dy = Math.atan2(Math.sin(p1.y - p0.y), Math.cos(p1.y - p0.y));
     ok('arrowTurns', +dy.toFixed(2), dy > 0.2); // left = yaw up
