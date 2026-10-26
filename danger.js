@@ -204,7 +204,7 @@ function setChip(html) { ensureUI(); if (html == null) { ui.chip.classList.remov
 function commit(choice, o = {}) {
   const m = mug; if (!m || (m.phase !== 'standoff' && !(o.attacked && m.phase === 'approach'))) return null;
   const g = C.game, P = g.progress;
-  const env = { credits: P.credits, xp: P.xp, armed: !!g.info?.canFire && !['blade', 'cleaver'].includes(P.equip.weapon), dog: !!C.dogNear, night: DC.timeBand(DC.marsHour()) === 'night', saltbloodRep: (P.flags || []).filter(f => /^vesna-|saltblood/.test(f)).length };
+  const env = { credits: P.credits, xp: P.xp, armed: !!g.info?.canFire && !['blade', 'cleaver'].includes(P.equip.weapon), dog: !!C.dogNear, night: DC.timeBand(DC.marsHour()) === 'night', saltbloodRep: DC.saltbloodStanding(DC.readRep('saltblood'), P.flags) }; // SSX.rep when Marsmania's rep.js is loaded, else flag count
   const out = o.attacked ? { result: 'fight', bark: 'junkieFight', lunge: false } : DC.resolveChoice(choice, m, env);
   m.outcome = out.result; stats.outcomes[out.result] = (stats.outcomes[out.result] || 0) + 1; stats.lastOutcome = { choice, ...out };
   setChoices(false); setChip(null); say(m.n, out.bark, null, 2400);
@@ -378,7 +378,8 @@ function spawnBackup(g = {}) {
     backup = { faction: plan.faction, dur: plan.dur, t: 0, escorts, leaving: 0, n: plan.n };
     backupStats.spawned += plan.n; backupStats.last = { n: plan.n, want: plan.want, dur: plan.dur };
     say(escorts[0], 'escortArrive', null, 2600, '#ff8a3a');
-    toast(`🩸 Saltblood backup: ${plan.n} for ${Math.max(1, Math.round(plan.dur / 60))} min${plan.trimmed ? ' (all Marrow could spare)' : ''}`, 2600);
+    const crew = { saltblood: 'Saltblood', dustjaws: 'Dustjaw', saints: 'Vacuum Saints' }[plan.faction] || 'Gang';
+    toast(`🩸 ${crew} backup: ${plan.n} for ${Math.max(1, Math.round(plan.dur / 60))} min${plan.trimmed ? (plan.faction === 'saltblood' ? ' (all Marrow could spare)' : ' (all they could spare)') : ''}`, 2600);
     return { ok: true, n: plan.n, durationSec: plan.dur, trimmed: plan.trimmed };
   } catch (e) { console.warn('spawnBackup', e); return refuseBackup('error'); }
 }

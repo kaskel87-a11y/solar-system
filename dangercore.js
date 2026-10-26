@@ -143,8 +143,21 @@ export function demandFor(credits, rng = Math.random) {
   return Math.max(20, Math.min(150, want));
 }
 // talk-down odds: rank/XP, a gun already out, Frankie at your side, a rep with the dust crews; desperation (night) hurts
+// Saltblood standing for talkChance, in "flag units" (0..3 saturates the +0.15 bonus; negatives cost up to -0.15).
+// Source: Marsmania's SSX.rep.get('saltblood') (integer -100..+100, 0 neutral) when it exists, else the vesna-/saltblood flag count.
+// REP_PER_FLAG keeps the two scales identical: rep = flagsToRep(count) maps back to the same count, so nothing jumps when rep loads.
+export const REP_PER_FLAG = 100 / 3;
+export const SALTBLOOD_FLAG = /^vesna-|saltblood/;
+export const saltbloodFlagCount = flags => (Array.isArray(flags) ? flags : []).filter(f => typeof f === 'string' && SALTBLOOD_FLAG.test(f)).length;
+export const flagsToRep = count => Math.max(0, Math.min(100, Math.round((+count || 0) * REP_PER_FLAG)));
+export function repToTalkUnits(rep) { const r = +rep; if (!Number.isFinite(r)) return 0; return Math.max(-100, Math.min(100, r)) / REP_PER_FLAG; }
+// rep: number | null | undefined (undefined/null/NaN -> fall back to flags); never throws
+export function saltbloodStanding(rep, flags) { return rep != null && Number.isFinite(+rep) ? repToTalkUnits(rep) : saltbloodFlagCount(flags); }
+// guarded read of window.SSX.rep (Marsmania, marsmania/rep): returns null when absent or it throws
+export function readRep(id, root = typeof window !== 'undefined' ? window : null) { try { const v = root?.SSX?.rep?.get?.(id); return v != null && Number.isFinite(+v) ? +v : null; } catch (e) { return null; } }
 export function talkChance({ xp = 0, armed = false, dog = false, saltbloodRep = 0, night = false, tries = 0 } = {}) {
-  let p = 0.32 + Math.min(0.25, xp / 4000) + (armed ? 0.18 : 0) + (dog ? 0.1 : 0) + Math.min(0.15, saltbloodRep * 0.05) - (night ? 0.08 : 0) - tries * 0.25;
+  const sr = Number.isFinite(+saltbloodRep) ? +saltbloodRep : 0;
+  let p = 0.32 + Math.min(0.25, xp / 4000) + (armed ? 0.18 : 0) + (dog ? 0.1 : 0) + Math.max(-0.15, Math.min(0.15, sr * 0.05)) - (night ? 0.08 : 0) - tries * 0.25;
   return Math.max(0.05, Math.min(0.9, p));
 }
 // what happens when the player picks. Returns a plain outcome; the runtime applies it (credits, damage, heat, barks).
@@ -298,7 +311,8 @@ export function escapeRequest(d, worldName) {
 }
 
 // ---------- gang backup escorts (barter.json gives.type "gang_backup": {faction, count, durationSec, armed, vehicle?}) ----------
-export const BACKUP = { factions: { saltblood: { kind: 'thug', hp: 6 } }, maxPhone: 4, maxDesktop: 6, minDur: 20, maxDur: 600, follow: 4.2, leash: 45, engage: 24 };
+// faction slugs match mars/turf.js GANGS (PR #15): saltblood, dustjaws (Dustjaw Boys: many, cheap), saints (Vacuum Saints: fewer, tougher)
+export const BACKUP = { factions: { saltblood: { kind: 'thug', hp: 6 }, dustjaws: { kind: 'thug', hp: 4.5 }, saints: { kind: 'thug', hp: 7.5 } }, maxPhone: 4, maxDesktop: 6, minDur: 20, maxDur: 600, follow: 4.2, leash: 45, engage: 24 };
 const ARMED = { pistols: 'pipe', smgs: 'pipe', knives: 'knife', fists: 'fists' }; // NPC ranged attacks need an engine export; escorts melee for now
 export function backupPlan(g, room, mobile) {
   if (!g || typeof g !== 'object') return { ok: false, why: 'bad' };
@@ -318,7 +332,14 @@ export function escortTarget(e, P, targets, range = BACKUP.engage) {
 
 // ---------- ssx:npc-down (Marsmania's paramedic job, PR #12, listens on window) ----------
 const DOWN_NAMES = { junkie: 'Junkie', thug: 'Saltblood', colonist: 'Colonist', victim: 'Colonist', escort: 'Saltblood escort' };
-export function npcDownDetail(n) { const x = +n?.x, z = +n?.z; return { x: Number.isFinite(x) ? x : 0, z: Number.isFinite(z) ? z : 0, name: String(n?.name || (n?.escort ? DOWN_NAMES.escort : DOWN_NAMES[n?.kind] || DOWN_NAMES[n?.role] || n?.kind || 'Someone')) }; }
+const ESCORT_NAMES = { saltblood: 'Saltblood escort', dustjaws: 'Dustjaw escort', saints: 'Vacuum Saint escort' };
+// optional faction slug on ssx:npc-down (for SSX.rep): junkies + muggers -> 'junkies', Saltblood thugs/cars/escorts -> 'saltblood',
+// other gangs -> their mars/turf.js slug (n.faction). Colonists/victims/unknown -> no faction field.
+export const NPC_FACTION = { junkie: 'junkies', thug: 'saltblood' };
+export function npcFaction(n) { const f = n?.faction; if (typeof f === 'string' && /^[a-z0-9_-]{1,24}$/i.test(f)) return f.toLowerCase(); if (n?.escort) return 'saltblood'; return NPC_FACTION[n?.kind] || null; }
+export function npcDownDetail(n) { const x = +n?.x, z = +n?.z, faction = npcFaction(n);
+  const d = { x: Number.isFinite(x) ? x : 0, z: Number.isFinite(z) ? z : 0, name: String(n?.name || (n?.escort ? ESCORT_NAMES[faction] || DOWN_NAMES.escort : DOWN_NAMES[n?.kind] || DOWN_NAMES[n?.role] || n?.kind || 'Someone')) };
+  if (faction) d.faction = faction; return d; }
 // guarded: never throws into the game loop. tgt defaults to window (absent in node unless a test passes one)
 export function emitNpcDown(n, tgt = typeof window !== 'undefined' ? window : null) {
   try { if (!tgt?.dispatchEvent || typeof CustomEvent !== 'function') return false; tgt.dispatchEvent(new CustomEvent('ssx:npc-down', { detail: npcDownDetail(n) })); return true; } catch (e) { return false; }
