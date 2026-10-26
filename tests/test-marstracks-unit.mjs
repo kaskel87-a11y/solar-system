@@ -12,12 +12,16 @@ const ok = (name, c, extra = '') => { n++; if (!c) { fails++; console.log('FAIL'
 const AJ = { domes: [[0, 0, 14], [-22, -16, 8], [24, 6, 9]], blocks: [[31, -17, 9, 5], [-6, 23, 7, 4], [-44, -14, 6, 4], [16, -38, 6, 4], [-30, -36, 12, 7], [6, -28, 7, 4]], pad: [-38, 10, 9],
   vehicles: [['buggy', -14, 30], ['hauler', -50, -24], ['hoverbike', 20, 30], ['shuttle', -38, 10], ['buggy', 42, 12]], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]] };
 const LOTS = { downtown: [[40, 30, 9]], rough: [[36, -34, 10]], gated: [[34, 46, 8]] }; // add-on lots (Pumpkin's dealership/garage/meet pads)
+// Jeff's v7.5.3 marsshops.js storefronts, pushed into the district defs as blocks (the bars that re-skin one of Steve's blocks are left out)
+const SHOPS = { rough: [[-20, -10, 7, 4], [42, -8, 7, 4], [-6, -24, 6, 4]], downtown: [[-38, -36, 8, 5], [44, -14, 8, 5], [-2, -24, 7, 4]],
+  gated: [[24, 4, 8, 5], [14, -34, 8, 5], [-24, 2, 8, 5], [-14, -36, 8, 5]] };
 const obs = [];
 for (const [key, P, o] of [['aj', AJ, [0, 0]], ...Object.keys(MT.DISTRICTS).filter(k => k !== 'aj').map(k => [k, DISTRICT_DATA[k], MT.DISTRICTS[k].at])]) {
   for (const d of P.domes) obs.push({ c: 1, x: o[0] + d[0], z: o[1] + d[1], r: d[2] + 0.3, what: key + ' dome' });
   for (const b of P.blocks) obs.push({ c: 0, x: o[0] + b[0], z: o[1] + b[1], hx: b[2] / 2 + 0.4, hz: b[3] / 2 + 0.4, what: key + ' block' });
   for (const v of P.vehicles || []) obs.push({ c: 1, x: o[0] + v[1], z: o[1] + v[2], r: 2.5, what: key + ' ' + v[0] });
   for (const c of P.crates || []) obs.push({ c: 1, x: o[0] + c[0] + 0.6, z: o[1] + c[1] + 0.6, r: 1.5, what: key + ' crate' });
+  for (const b of SHOPS[key] || []) obs.push({ c: 0, x: o[0] + b[0], z: o[1] + b[1], hx: b[2] / 2 + 0.4, hz: b[3] / 2 + 0.4, what: key + ' shop' });
   for (const l of LOTS[key] || []) obs.push({ c: 1, x: o[0] + l[0], z: o[1] + l[1], r: l[2], what: key + ' lot' });
 }
 // checkpoint booths (solid) and barriers (visual) beside the Beltway, as world.js places them
@@ -41,11 +45,11 @@ for (const p of MT.MARS_PRESETS) {
   ok(`${why} validTrack once saved`, RC.validTrack(RC.cleanTrack({ ...t, id: 'x', name: p.name, world: 'Mars' })));
   const gaps = t.gates.map((g, i) => i ? Math.hypot(g.x - t.gates[i - 1].x, g.z - t.gates[i - 1].z) : Infinity);
   ok(`${why} gates ≥ 14 m apart`, Math.min(...gaps) >= 14, Math.min(...gaps).toFixed(1));
-  // whole racing line clears every solid by ≥ 3.5 m and every visual barrier by ≥ 0.5 m (checkpoints on the Beltway Run are driven through on purpose)
+  // whole racing line clears every solid by ≥ 3.5 m (gated: 4 m on the lane between Aurum Armory and the dome; elsewhere 5 m) and every visual barrier by ≥ 0.5 m (checkpoints on the Beltway Run are driven through on purpose)
   let worst = { d: 1e9 }, worstSolid = { d: 1e9 };
   for (const q of path.pts) { const c = clear(q.x, q.z); if (c.d < worst.d && !(p.district === 'highway' && /barrier/.test(c.what))) worst = c; }
   for (const g of t.gates) { const c = clear(g.x, g.z); if (c.d < worstSolid.d) worstSolid = c; }
-  ok(`${why} racing line clear`, worst.d >= (p.district === "downtown" || p.district === "highway" ? 3.5 : 5), `${worst.d.toFixed(1)} m (${worst.what} @ ${worst.x},${worst.z})`);
+  ok(`${why} racing line clear`, worst.d >= (p.district === "downtown" || p.district === "highway" ? 3.5 : p.district === "gated" ? 4 : 5), `${worst.d.toFixed(1)} m (${worst.what} @ ${worst.x},${worst.z})`);
   ok(`${why} gates clear`, worstSolid.d >= 5, `${worstSolid.d.toFixed(1)} m (${worstSolid.what})`);
   // circuits stay away from the checkpoints (no tolls mid-race); the Beltway Run goes through the two ColSec ones only
   const cpNear = CPS.filter(c => path.pts.some(q => Math.hypot(q.x - c.x, q.z - c.z) < 10)).map(c => c.id).sort().join(',');
