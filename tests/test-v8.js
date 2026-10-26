@@ -32,7 +32,8 @@ function measureHud() {
 
 (async () => {
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
-  const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : (({ defaultBrowserType, ...d }) => d)(devices[DEV] || devices['iPhone 14']);
+  const [vw, vh] = (process.env.VIEW || '1280x800').split('x').map(Number); // smaller desktop viewport keeps software GL inside the shot timeout
+  const dev = DEV === 'desktop' ? { viewport: { width: vw, height: vh } } : (({ defaultBrowserType, ...d }) => d)(devices[DEV] || devices['iPhone 14']);
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
   await ctx.addInitScript(() => { try { localStorage.setItem('ssx.v8.nogov', '1'); localStorage.setItem('ssx.v8.nodrs', '1'); } catch (e) {} }); // software GL is ~10x slower than a phone GPU
   const errs = [];
