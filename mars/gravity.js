@@ -4,6 +4,7 @@
 // mars/gravitycore.js. The spaceship is never touched: we only act on the vehicle you're driving on the Mars surface.
 //
 // Toggle: Z (keyboard) or the black/white 🌍 button on the phone #ssxDock. Cycles MARS -> LOW-G -> ZERO-G.
+// With Ben's airroll.js (PR #41, desktop Z = barrel roll) loaded, Z only toggles gravity when no roll is possible (on the ground).
 // Safety: leaving the vehicle, going indoors, leaving Mars, a race / drag race / story race gate, or a job start drops back to
 // MARS. Races force MARS while they run (the toggle refuses). Coming out of ZERO-G high up, the car falls no faster than
 // 10 m/s until it touches down, so switching back never kills you.
@@ -14,11 +15,11 @@
 // isn't loaded, Q/E (⟲ ⟳) spin the plain roll axis. Auto-level kicks in when pitch and roll are released.
 //
 // window.SSX.gravity = { mode, modes, set(mode, why?), cycle(), on(fn) }    window.__gravity = test/debug helpers
-import { MODES, nextMode, lowGLift, lowGLand, LOW_HOP, LOW_HOVER_LIFT, SOFT_FALL_VY, zgFrom, zgStep, routeRoll, airRolling, headingOf, bankOf, pitchOf, tiltOf, fwdOf, ZG } from './gravitycore.js';
+import { MODES, nextMode, lowGLift, lowGLand, LOW_HOP, LOW_HOVER_LIFT, SOFT_FALL_VY, zgFrom, zgStep, routeRoll, airRolling, barrelAngle, floatingOf, qMul, qAxis, headingOf, bankOf, pitchOf, tiltOf, fwdOf, ZG } from './gravitycore.js';
 
 const app = () => window.__app;
 const ICON = { 'MARS': '🌍', 'LOW-G': '🪶', 'ZERO-G': '🛸' };
-let mode = 'MARS', zs = null, zCar = null, soft = null, lastCar = null, fuelKeep = null, jumpWas = false, rollWas = 0, rollRoute = '', eligible = false;
+let mode = 'MARS', floating = false, zs = null, zCar = null, soft = null, lastCar = null, fuelKeep = null, jumpWas = false, rollWas = 0, rollRoute = '', eligible = false;
 const subs = new Set(), log = [];
 const pad = { up: false, down: false, rl: false, rr: false };
 const isTouch = () => document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
@@ -49,7 +50,7 @@ function hint(m) {
 }
 function setMode(m, reason, quiet) {
   if (!MODES.includes(m) || m === mode) { render(); return mode; }
-  const prev = mode; mode = m;
+  const prev = mode; mode = m; if (m === 'MARS') floating = false;
   const car = lastTc?.car;
   if (prev === 'ZERO-G' && car && zs) leaveZeroG(car, lastTc);
   if (m === 'ZERO-G') { zs = null; zCar = null; }
@@ -82,7 +83,8 @@ function tick(dt, tc) {
   hookJobs();
   if (soft && soft === car && mode !== 'ZERO-G') { if (car.air) car.vy = Math.max(car.vy, SOFT_FALL_VY); else soft = null; }
   syncUi();
-  if (!car || mode === 'MARS') { jumpWas = false; return; }
+  if (window.SSX && window.SSX.gravity !== api) window.SSX.gravity = api; // index.html may (re)assign window.SSX
+  if (!car || mode === 'MARS') { jumpWas = false; floating = false; return; }
   const keys = a?.keys || {}, tb = a?.touchBtns || {}, joy = a?.joy || { x: 0, y: 0 };
   if (mode === 'LOW-G') {
     const jump = !!(keys.Space || tb.jump);
@@ -93,7 +95,7 @@ function tick(dt, tc) {
       const thrusty = car === tc.rover || car.kind === 'hoverbike';
       if (jump && !jumpWas && !thrusty && alt < 0.3) { car.vy = LOW_HOP; car.y += 0.3; car.air = true; car.prevG = null; }
     }
-    jumpWas = jump; return;
+    jumpWas = jump; floating = floatingOf(mode, car, car.y - tc.height(car.x, car.z)); return;
   }
   // ---- ZERO-G ----
   if (!zs || zCar !== car) { zs = zgFrom(car); zCar = car; }
@@ -109,12 +111,15 @@ function tick(dt, tc) {
   };
   for (const n of ['fwd', 'yaw', 'pitch', 'strafe', 'up']) inp[n] = Math.max(-1, Math.min(1, inp[n]));
   const rollIn = Math.max(-1, Math.min(1, k('KeyE') - k('KeyQ') + (pad.rr ? 1 : 0) - (pad.rl ? 1 : 0)));
-  const ar = window.SSX?.airRoll;
-  if (ar && typeof ar.roll === 'function') { if (rollIn && rollIn !== rollWas) rollRoute = routeRoll(ar, rollIn); }
-  else { inp.roll = rollIn; if (rollIn) rollRoute = 'axis'; car.barrel = null; car.rolls = 0; } // no airRoll: plain roll axis, no v7.4 stunt flourish
+  // roll: Ben's SSX.airRoll first (it drives car.barrel, the v7.4 stunt roll, which we draw on top of our pose); plain roll
+  // axis only if roll() said no or airRoll isn't loaded. Without airRoll, index.html's Q/E air-roll would start that stunt
+  // barrel too, so we cancel it here (one roll, not two).
+  const ar = window.SSX?.airRoll, hasAr = !!(ar && typeof ar.roll === 'function');
+  if (rollIn && rollIn !== rollWas) rollRoute = routeRoll(ar, rollIn, hasAr && (!!car.barrel || airRolling(ar)));
+  if (rollIn && rollRoute === 'axis') inp.roll = rollIn;
+  if (!hasAr || rollRoute === 'axis') { car.barrel = null; car.rolls = 0; }
   rollWas = rollIn;
-  inp.hold = airRolling(ar);
-  const ox = zs.p[0], oz = zs.p[2];
+  inp.hold = airRolling(ar) || !!car.barrel;
   zgStep(zs, inp, dt, tc.height);
   // collisions with buildings / domes near the ground (same collider the wheels use); only block moving INTO one
   const col = (x, z) => tc.world?.collide?.(x, z, (car.spec?.r || 2) * 0.75, car);
@@ -123,8 +128,10 @@ function tick(dt, tc) {
   car.x = zs.p[0]; car.y = zs.p[1]; car.z = zs.p[2]; car.yaw = headingOf(zs.q); car.pitch = pitchOf(zs.q); car.roll = bankOf(zs.q);
   car.vy = 0; car.speed = 0; car.prevG = null; car.air = zs.alt > 0.9; car.wasAir = car.air; car.susp = 0;
   if (car.spec?.hover) car.lift = Math.max(0, zs.alt - (car.spec.hover || 0));
-  car.group.position.set(car.x, car.y, car.z); car.group.quaternion.set(zs.q[0], zs.q[1], zs.q[2], zs.q[3]);
+  const bq = car.barrel ? qMul(zs.q, qAxis(0, 0, 1, barrelAngle(car.barrel))) : zs.q;
+  car.group.position.set(car.x, car.y, car.z); car.group.quaternion.set(bq[0], bq[1], bq[2], bq[3]);
   if (car.fuel !== undefined) fuelKeep = car.fuel;
+  floating = floatingOf(mode, car, zs.alt);
   if (tc.player) { tc.player.x = car.x; tc.player.z = car.z; tc.player.y = car.y + 1.7; tc.player.grounded = !car.air; }
 }
 let jobsHooked = false;
@@ -177,6 +184,7 @@ function ui() {
   addEventListener('keydown', e => {
     if (e.code !== 'KeyZ' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (!app()?.state?.onSurface || window.__race?.builder?.open) return;
+    const ar = window.SSX?.airRoll; if (ar && (ar.canRoll?.() || ar.isRolling?.())) return; // airborne: Z is SSX.airRoll's barrel roll (PR #41)
     e.preventDefault(); cycle();
   });
   addEventListener('blur', () => { for (const k in pad) pad[k] = false; });
@@ -192,11 +200,14 @@ function render() {
 }
 
 // ---------- boot ----------
-const api = {
-  get mode() { return mode; }, modes: MODES.slice(),
+// public: SSX.gravity.mode (read-only), .floating (read-only: your vehicle is airborne/floating in LOW-G or ZERO-G; false in
+// MARS, on the ground, on foot or off Mars - Marsmania pursuit reads this), set(mode), cycle(), on(fn) -> unsubscribe
+const api = Object.freeze({
+  get mode() { return mode; }, modes: Object.freeze(MODES.slice()),
+  get floating() { return floating && mode !== 'MARS' && !!lastCar && !!app()?.state?.onSurface; },
   set: (m, reason) => { if (m !== 'MARS') { const w = why(lastTc); if (w) return { ok: false, mode, why: w }; } setMode(m, reason || 'toggle'); return { ok: true, mode }; },
   cycle, on(fn) { subs.add(fn); return () => subs.delete(fn); }
-};
+});
 window.__gravity = {
   get mode() { return mode; }, set: api.set, cycle, log, pad,
   get eligible() { return eligible; }, get simT() { return simT; }, why: () => why(lastTc),
@@ -209,4 +220,5 @@ function boot() {
   if (!S?.registerSurfaceTick || !a?.surface) return false;
   S.gravity = api; S.registerSurfaceTick(tick); ui(); return true;
 }
+if (window.SSX && !window.SSX.gravity) window.SSX.gravity = api;
 if (!boot()) { const iv = setInterval(() => { if (boot()) clearInterval(iv); }, 250); }

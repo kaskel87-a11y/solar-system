@@ -43,6 +43,7 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear());
     ok('api', await G(() => !!window.SSX?.gravity && typeof window.SSX.gravity.cycle === 'function' && window.SSX.gravity.mode === 'MARS'));
+    ok('apiFloatingReadOnly', await G(() => { const g = window.SSX.gravity; try { g.mode = 'ZERO-G'; } catch (e) { /* frozen */ } return g.floating === false && g.mode === 'MARS' && typeof g.set === 'function'; }));
     ok('airRollAbsentOnMain', await G(() => !window.SSX.airRoll));
     // in space: Z does nothing (the ship is never affected)
     await page.keyboard.press('KeyZ'); await sleep(200); ok('spaceZIgnored', await mode(), (await mode()) === 'MARS');
@@ -71,7 +72,10 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('toastLowG', await toastTx(), /LOW-G/.test(await toastTx()));
     if (touch) ok('dockShowsLowG', await G(() => { const b = document.getElementById('dockGrav'), s = getComputedStyle(b); return /LOW-G/.test(b.textContent) && s.backgroundColor === 'rgb(255, 255, 255)' && s.color === 'rgb(0, 0, 0)'; }));
     const hp0 = await G(() => window.__app.surface.game.info.hp);
+    ok('floatingFalseGrounded', await G(() => window.SSX.gravity.floating === false));
+    await G(() => { window.__flt = false; window.__fltI = setInterval(() => { if (window.SSX.gravity.floating) window.__flt = true; }, 30); });
     const pL = airtime(spot); await sleep(1500); await shot('lowg-jump'); const tL = await pL;
+    ok('floatingLowGAir', await G(() => { clearInterval(window.__fltI); return window.__flt; }));
     ok('airtimeLOWG', `${tL.toFixed(2)} s vs MARS ${tM.toFixed(2)} s (x${(tL / tM).toFixed(2)})`, tL > tM * 1.8);
     ok('lowGNoDamage', await G(h => window.__app.surface.game.info.hp >= h, hp0));
     // LOW-G hop on Space for a non-thrust vehicle is unit-tested; rover Space = thrusters (unchanged)
@@ -90,6 +94,7 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('zeroLeavesGround', `${a0.toFixed(1)} -> ${(await G(() => window.__gravity.state().alt)).toFixed(1)} m`, rose);
     // hovers: no input for 1.5 s, altitude holds (no gravity)
     const h1 = await G(() => window.__gravity.state().alt); await sleep(1500); const h2 = await G(() => window.__gravity.state().alt);
+    ok('floatingZeroG', await G(() => window.SSX.gravity.floating === true));
     ok('zeroHovers', `${h1.toFixed(1)} -> ${h2.toFixed(1)}`, h2 > h1 - 1.0 && h2 > 3);
     // forward thrust: W / ⚡ Boost on phones
     const p0 = await G(() => window.__gravity.state().p);
@@ -127,6 +132,7 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await G(() => window.SSX.gravity.set('MARS'));
     const landed = await wait(() => !window.__app.surface.info.air, 150000); await sleep(500);
     ok('marsSoftLanding', `from ${alt.toFixed(1)} m, hp ${hpB} -> ${await G(() => window.__app.surface.game.info.hp)}`, landed && (await G(h => window.__app.surface.game.info.hp >= h - 0.5, hpB)));
+    ok('floatingFalseMars', await G(() => window.SSX.gravity.floating === false));
     // safety: leaving the vehicle resets
     await G(() => window.SSX.gravity.set('LOW-G')); await page.keyboard.press('KeyE'); await wait(() => !window.__app.surface.info.driving, 6000);
     ok('exitResets', await wait(() => window.SSX.gravity.mode === 'MARS', 3000));

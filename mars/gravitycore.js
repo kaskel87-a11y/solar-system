@@ -97,13 +97,24 @@ export function zgStep(s, inp, dt, ground) {
 }
 // roll input routing: Ben's SSX.airRoll when it is there and allows a roll, else the plain roll axis.
 // Returns 'airRoll' (called it), 'blocked' (airRoll present but canRoll() false) or 'axis' (caller applies the roll rate).
-export function routeRoll(airRoll, dir) {
+// ZERO-G roll input -> who rolls. Ben's SSX.airRoll (PR #41): roll('left'|'right') returns true when accepted (it starts next
+// frame); we fall back to the plain roll axis only when it returns false or airRoll is missing. busy = a roll is already
+// running (e.g. index.html's Q/E air-roll fired this frame), so we don't ask twice or stack the axis on top.
+export function routeRoll(airRoll, dir, busy = false) {
   if (!dir) return 'none';
   if (airRoll && typeof airRoll.roll === 'function') {
-    const can = typeof airRoll.canRoll === 'function' ? !!airRoll.canRoll() : true;
-    if (!can) return 'blocked';
-    airRoll.roll(dir < 0 ? 'left' : 'right'); return 'airRoll';
+    if (busy) return 'airRoll';
+    let ok = false; try { ok = airRoll.roll(dir < 0 ? 'left' : 'right') === true; } catch (e) { ok = false; }
+    return ok ? 'airRoll' : 'axis';
   }
   return 'axis';
 }
+// the v7.4 stunt barrel angle surface.js draws for car.barrel = { dir, t } (ROLL_T 0.75 s, ease in-out); we compose it onto
+// the ZERO-G pose so an airRoll barrel roll is visible while we own the car's orientation
+export const BARREL_T = 0.75;
+export function barrelAngle(b) {
+  if (!b) return 0; const p = Math.min(1, (b.t || 0) / BARREL_T), e = p < 0.5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p);
+  return p >= 1 ? 0 : -(b.dir || 0) * Math.PI * 2 * e;
+}
+export const floatingOf = (mode, car, alt) => !!car && mode !== 'MARS' && (mode === 'ZERO-G' ? alt > 0.25 : !!car.air || (!!car.spec?.hover && (car.lift || 0) > 0.6));
 export const airRolling = airRoll => !!(airRoll && typeof airRoll.isRolling === 'function' && airRoll.isRolling());

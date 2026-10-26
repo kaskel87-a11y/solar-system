@@ -52,11 +52,16 @@ ok('auto-level keeps the heading', Math.abs(Math.atan2(Math.sin(G.headingOf(s.q)
 s = G.zgFrom({ ...car, y: 10 }); for (let i = 0; i < 40; i++) G.zgStep(s, { roll: 1 }, 1 / 60, flat);
 const tH = G.tiltOf(s.q); s.w = [0, 0, 0]; for (let i = 0; i < 60; i++) G.zgStep(s, { hold: true }, 1 / 60, flat);
 ok('hold (isRolling) skips auto-level', Math.abs(G.tiltOf(s.q) - tH) < 0.02);
-// roll routing with a stub SSX.airRoll
-const calls = []; const stub = { roll: d => calls.push(d), canRoll: () => true, isRolling: () => true };
-ok('airRoll present + canRoll -> airRoll.roll(dir)', G.routeRoll(stub, -1) === 'airRoll' && G.routeRoll(stub, 1) === 'airRoll' && calls.join() === 'left,right');
-ok('airRoll present, canRoll false -> blocked (no call)', G.routeRoll({ ...stub, canRoll: () => false }, 1) === 'blocked' && calls.length === 2);
+// roll routing with a stub SSX.airRoll (PR #41 API: roll() returns a bool)
+const calls = []; const stub = { roll: d => { calls.push(d); return true; }, canRoll: () => true, isRolling: () => true };
+ok('airRoll.roll accepted -> airRoll', G.routeRoll(stub, -1) === 'airRoll' && G.routeRoll(stub, 1) === 'airRoll' && calls.join() === 'left,right');
+ok('airRoll.roll returns false -> plain axis', G.routeRoll({ roll: d => { calls.push(d); return false; } }, 1) === 'axis' && calls.length === 3);
+ok('airRoll.roll throws -> plain axis', G.routeRoll({ roll: () => { throw new Error('x'); } }, 1) === 'axis');
+ok('roll already running (Q/E air-roll) -> airRoll, no second call', G.routeRoll(stub, 1, true) === 'airRoll' && calls.length === 3);
 ok('airRoll missing -> plain roll axis', G.routeRoll(undefined, 1) === 'axis' && G.routeRoll({}, -1) === 'axis');
-ok('no roll input -> none', G.routeRoll(stub, 0) === 'none' && calls.length === 2);
+ok('no roll input -> none', G.routeRoll(stub, 0) === 'none' && calls.length === 3);
+ok('barrel angle: 0 -> -2pi*dir, ends at 0', G.barrelAngle(null) === 0 && Math.abs(G.barrelAngle({ dir: 1, t: 0.375 }) + Math.PI) < 1e-9 && G.barrelAngle({ dir: 1, t: 0.75 }) === 0);
+ok('floating flag', !G.floatingOf('MARS', { air: true }, 5) && !G.floatingOf('LOW-G', { air: false }, 0) && G.floatingOf('LOW-G', { air: true }, 3)
+  && G.floatingOf('ZERO-G', { air: false }, 0.6) && !G.floatingOf('ZERO-G', { air: false }, 0.1) && !G.floatingOf('ZERO-G', null, 5) && G.floatingOf('LOW-G', { spec: { hover: 1 }, lift: 2 }, 0));
 ok('isRolling feature-detect', G.airRolling(stub) === true && G.airRolling({}) === false && G.airRolling(undefined) === false);
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASS'); process.exit(fails ? 1 : 0);
