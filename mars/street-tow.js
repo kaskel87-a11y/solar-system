@@ -124,7 +124,17 @@ export function createTow(K) {
     try { c.registerOffer({ id: 'hookcrook-plates', npc: 'lou-hook', district: K.CDIST, wants: { item: 'hot_plates', qty: 1 }, gives: { type: 'cash', credits: 90 }, label: 'Lou buys hot plates: 90 cr', cooldownSec: 60, repeatable: true,
       npcDef: { name: 'Lou Hook', role: 'tow yard fence', district: K.CDIST, at: K.AJ(44, 31), line: 'Plates? I collect \u2019em.' } }); } catch (e) { console.warn('street registerOffer', e); }
   }
+  function colliders() { // fence runs (gate gap left open), office, truck, hulks, tyre stack; same numbers build() uses
+    const [cx, cz] = YARD.at, x0 = cx - YARD.w / 2, x1 = cx + YARD.w / 2, z0 = cz - YARD.d / 2 - 0.1, z1 = cz + YARD.d / 2, out = [], T = 0.2;
+    const seg = (ax, az, bx, bz, tag) => { const a = K.L(Math.min(ax, bx), Math.min(az, bz)), b = K.L(Math.max(ax, bx), Math.max(az, bz)); out.push({ type: 'box', x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, hx: Math.max(T, (b.x - a.x) / 2), hz: Math.max(T, (b.z - a.z) / 2), tag }); };
+    seg(x0, z0, x0, z1, 'fence:w'); seg(x1, z0, x1, z1, 'fence:e'); seg(x0, z1, cx - 2.5, z1, 'fence:sw'); seg(cx + 3.5, z1, x1, z1, 'fence:se');
+    const o = K.L(YARD.office[0], YARD.office[1]); out.push({ type: 'box', x: o.x, z: o.z, hx: 1.8, hz: 1.3, tag: 'office' });
+    const tr = K.L(YARD.truck[0], YARD.truck[1]); out.push({ type: 'box', x: tr.x, z: tr.z - 0.45, hx: 1.1, hz: 2.95, tag: 'truck' });
+    for (const [hx, hz, ry] of [[46.4, 21.4, 0.25], [50.4, 21.2, -0.15]]) { const h = K.L(hx, hz); out.push({ type: 'box', x: h.x, z: h.z, hx: 1.8, hz: 0.9, yaw: ry, tag: 'hulk' }); }
+    const ts = K.L(41.2, 27.4); out.push({ type: 'cyl', x: ts.x + 0.05, z: ts.z, r: 0.5, tag: 'tyres' }); return out;
+  }
   return {
+    colliders,
     build(g) { root = g; build(g); K.extra = 1; dbg.built++; },
     dispose() { lou?.group.parent?.remove(lou.group); root = null; lou = null; light = null; K.extra = 0; },
     always(dt, c, loaded) {

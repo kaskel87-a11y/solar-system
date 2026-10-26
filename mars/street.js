@@ -14,6 +14,11 @@ import { LINES, pick } from './street-lines.js';
 import { createTags } from './street-tags.js';
 import { createCrowds } from './street-crowds.js';
 import { createTow } from './street-tow.js';
+import COL from './colliders.js';
+import { createBlood } from './street-blood.js';
+import { createCombat } from './street-combat.js';
+import { createTweakers } from './street-tweakers.js';
+import { createNight } from './street-night.js';
 
 const DISTRICT = 'mars-rough', CDIST = 'red-tape-flats', AJ0 = [-280, -40]; // district-local -> AJ-relative offset
 const LOAD_R = 170, UNLOAD_R = 230;
@@ -21,7 +26,7 @@ const PHONE = typeof window !== 'undefined' && (/iPhone|iPad|iPod|Android/i.test
 
 // ---------- persistent state ----------
 const LS = 'ssx.street.v1';
-const S0 = () => ({ v: 1, tag: 'NOBODY', style: 0, cans: 0, cred: 0, tags: {}, canAt: {}, impound: null, seen: 0, stats: { tagged: 0, covered: 0, lost: 0, spotted: 0, bought: 0, sold: 0, begged: 0, fights: 0, towed: 0, fenced: 0, stripped: 0, hot: 0 } });
+const S0 = () => ({ v: 1, tag: 'NOBODY', style: 0, cans: 0, cred: 0, tags: {}, canAt: {}, impound: null, seen: 0, stats: { tagged: 0, covered: 0, lost: 0, spotted: 0, bought: 0, sold: 0, begged: 0, fights: 0, towed: 0, fenced: 0, stripped: 0, hot: 0, kills: 0, looted: 0, brawls: 0, brawlsWon: 0, brawlsLost: 0 } });
 let ST = S0();
 try { const s = JSON.parse(localStorage.getItem(LS) || 'null'); if (s?.v === 1) ST = { ...S0(), ...s, stats: { ...S0().stats, ...(s.stats || {}) } }; } catch (e) { /* private mode */ }
 const save = () => { ST.seen = Date.now(); try { localStorage.setItem(LS, JSON.stringify(ST)); } catch (e) { /* private mode */ } };
@@ -54,6 +59,23 @@ function say(at, name, cat, { toastToo = false, quiet = false } = {}) {
   if (!line) { line = pick(LINES[cat] || ['...']); if (!quiet || performance.now() - lastToast > 9000) { lastToast = performance.now(); toast(`${name}: ${line}`, 3200); } } else if (toastToo) toast(`${name}: ${line}`, 3200);
   return line;
 }
+// literal lines (rants): SSX.bark captions when the audio module is there, else a black/white speech bubble over the head
+const bubbles = [];
+function yell(at, name, text, lvl = 1) {
+  const B = X().bark; let ok = null;
+  if (at && typeof B === 'function') { try { ok = B({ x: at.x, z: at.z, kind: 'street', name }, text, { force: true, blip: lvl > 0 }); } catch (e) { ok = null; } }
+  if (!ok && at) bubble(at, text, lvl);
+  emit('yell', { name, text, lvl, via: ok ? 'bark' : 'bubble' }); return text;
+}
+function bubble(at, text, lvl) {
+  css(); let b = bubbles.find(x => x.at === at); if (!b) { if (bubbles.length >= (PHONE ? 2 : 4)) { const o = bubbles.shift(); o.el.remove(); } const el = document.createElement('div'); el.className = 'stBubble'; document.body.appendChild(el); b = { el, at }; bubbles.push(b); }
+  b.el.textContent = text; b.el.style.fontSize = lvl >= 2 ? '16px' : lvl <= 0 ? '12px' : '14px'; b.el.style.fontStyle = lvl <= 0 ? 'italic' : 'normal'; b.t = 2.2 + text.length * 0.045;
+}
+function bubbleTick(dt, cam) {
+  for (const b of [...bubbles]) { b.t -= dt; if (b.t <= 0 || !cam || !live) { b.el.remove(); bubbles.splice(bubbles.indexOf(b), 1); continue; }
+    const v = new THREE.Vector3(b.at.x, K.hgt(b.at.x, b.at.z) + 2.25, b.at.z).project(cam); const on = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
+    b.el.style.display = on ? 'block' : 'none'; if (on) b.el.style.transform = `translate(${((v.x + 1) / 2 * innerWidth).toFixed(0)}px,${((1 - v.y) / 2 * innerHeight).toFixed(0)}px) translate(-50%,-100%)`; }
+}
 
 // ---------- UI: black/white, 44px+ buttons through window.__onTap ----------
 const CSS = `#stAct{position:fixed;z-index:13;left:calc(10px + env(safe-area-inset-left));top:50%;display:none;min-height:52px;min-width:140px;max-width:62vw;padding:0 16px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 15px system-ui,sans-serif;touch-action:manipulation;text-align:left}
@@ -62,6 +84,7 @@ const CSS = `#stAct{position:fixed;z-index:13;left:calc(10px + env(safe-area-ins
 #stPanel h3{margin:0 0 6px;font:800 13px/1.2 system-ui;letter-spacing:.14em;text-transform:uppercase}#stPanel p{margin:0 0 10px;color:#ddd}#stPanel .q{font-style:italic;color:#fff}
 #stPanel button{display:block;width:100%;min-height:48px;margin:0 0 8px;padding:10px 12px;background:#000;color:#fff;border:2px solid #fff;border-radius:4px;font:700 15px system-ui;text-align:left;touch-action:manipulation}
 #stPanel button:active{background:#fff;color:#000}#stPanel button[disabled]{opacity:.4}#stPanel button.alt{border-style:dashed;color:#bbb}#stPanel small{display:block;color:#999;margin:-4px 0 8px}
+.stBubble{position:fixed;left:0;top:0;z-index:12;max-width:min(70vw,300px);padding:6px 10px;background:#000;color:#fff;border:2px solid #fff;border-radius:10px;font:800 14px/1.25 system-ui,sans-serif;pointer-events:none;text-align:center}body.indoors .stBubble{display:none!important}
 #stChip{position:fixed;z-index:12;right:calc(10px + env(safe-area-inset-right));top:calc(108px + env(safe-area-inset-top));display:none;padding:6px 10px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 12px system-ui;pointer-events:none}#stChip.show{display:block}body.indoors #stChip{display:none!important}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function onTap(el, fn) { if (window.__onTap) window.__onTap(el, fn); else el.addEventListener('click', fn); }
@@ -87,9 +110,9 @@ function ensureUI() {
   actBtn = document.createElement('button'); actBtn.id = 'stAct'; actBtn.type = 'button'; document.body.appendChild(actBtn);
   onTap(actBtn, () => { const a = act; if (a) try { a.fn(); } catch (e) { console.warn('street act', e); } });
   chip = document.createElement('div'); chip.id = 'stChip'; document.body.appendChild(chip);
-  addEventListener('keydown', e => { if (e.code === 'KeyY' && !e.repeat && act && actBtn.classList.contains('show') && !document.getElementById('turfAct')?.classList.contains('show') && /* v7.5.4: turf's Y wins when both show */ !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { e.preventDefault(); try { act.fn(); } catch (er) { console.warn(er); } } });
+  addEventListener('keydown', e => { if (e.code === 'Digit7' && !e.repeat && act && actBtn.classList.contains('show') && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) { e.preventDefault(); try { act.fn(); } catch (er) { console.warn(er); } } });
 }
-function showAct(a) { act = a; if (!actBtn) return; if (!a) { actBtn.classList.remove('show'); return; } const l = a.label + (PHONE ? '' : '  [Y]'); if (actBtn.textContent !== l) actBtn.textContent = l; actBtn.classList.add('show'); }
+function showAct(a) { act = a; if (!actBtn) return; if (!a) { actBtn.classList.remove('show'); return; } const l = a.label + (PHONE ? '' : '  [7]'); if (actBtn.textContent !== l) actBtn.textContent = l; actBtn.classList.add('show'); }
 function showChip(t) { if (!chip) return; if (!t) { chip.classList.remove('show'); return; } if (chip.textContent !== t) chip.textContent = t; chip.classList.add('show'); }
 
 // ---------- shared kit for the parts ----------
@@ -111,30 +134,39 @@ const K = {
   cred(n, why) { ST.cred = Math.max(0, ST.cred + n); save(); emit('cred', { cred: ST.cred, delta: n, why }); return ST.cred; },
   credTitle, // NPC budget: phones stay <= 12 people with world colonists (>= 4), security on foot, game humans and other reservations
   budget(want) {
+    return Math.max(0, Math.min(want, K.room() - (K.extra || 0) - (K.tweak || 0))); // Lou (extra) and an active rockhead (tweak) come first
+  },
+  room() { // street people allowed on screen right now, before Lou and the rockhead
     let others = 0, hum = 0, foot = 0;
     try { const b = X().city?.npcBudget?.() || world()?.npcBudget?.(); if (b?.reserved) for (const k in b.reserved) if (k !== 'street') others += b.reserved[k]; } catch (e) { /* */ }
     try { hum = game()?.humanCount?.() || 0; } catch (e) { /* */ }
     try { foot = (world()?.securityList?.() || []).filter(s => s.foot).length; } catch (e) { /* */ }
-    const ex = K.extra || 0; // Lou at the tow yard counter is always on while the district is loaded
-    return PHONE ? Math.max(0, Math.min(want, 5 - ex, 12 - 4 - others - hum - foot - ex)) : Math.max(0, Math.min(want, 16, 40 - 8 - others - hum - foot - ex));
+    return PHONE ? Math.min(5, 12 - 4 - others - hum - foot) : Math.min(16, 40 - 8 - others - hum - foot);
   },
+  tweak: 0, yell, slots: () => CROWDS.slots(), hittables: [], reselect: () => CROWDS.reselect(), get combat() { return COMBAT; }, get blood() { return BLOOD; },
+  collide(x, z, r = 0.45) { try { const w = world(); if (w?.collide) return w.collide(x, z, r); } catch (e) { /* */ } return COL.resolve(x, z, r); },
   reserve(n) { if (n === reserved) return; reserved = n; try { (X().city?.npcReserve || world()?.npcReserve)?.('street', n); } catch (e) { /* */ } },
   extra: 0,
   player: null // filled every frame: { x, z, y, driving, stolen, kind, speed, inside, rover, car, ctx }
 };
 
-const parts = [createTags(K), createCrowds(K), createTow(K)];
-const [TAGS, CROWDS, TOW] = parts;
+const parts = [createTags(K), createCrowds(K), createTow(K), createBlood(K), createCombat(K), createTweakers(K), createNight(K)];
+const [TAGS, CROWDS, TOW, BLOOD, COMBAT, TWEAK, NIGHT] = parts;
+K.hittables.push(() => CROWDS.slots().filter(s => s.on && s.h).map(s => COMBAT.hittable(s)), () => TWEAK.hittables());
+// outdoor colliders for our own props (SSX.colliders group 'street'); world.collide resolves them for the player, vehicles and NPCs
+function colliders(on) { try { COL.removeGroup('street'); if (on) for (const p of parts) for (const c of p.colliders?.() || []) COL.add({ ...c, group: 'street' }); } catch (e) { console.warn('street colliders', e); } }
 
 function findDistrict(w) { try { return (w?.districts?.() || []).find(d => d.id === DISTRICT) || null; } catch (e) { return null; } }
 function load(c) {
   const root = new THREE.Group(); root.name = 'streetLife'; root.userData.street = true; c.scene.add(root);
   live = { root, scene: c.scene, height: c.height, at: Date.now() }; ensureUI();
   for (const p of parts) { try { p.build(root); } catch (e) { console.warn('street build', e); } }
+  colliders(true);
   emit('load', { district: DISTRICT });
 }
 function unload() {
   if (!live) return; for (const p of parts) { try { p.dispose(); } catch (e) { console.warn('street dispose', e); } }
+  colliders(false); for (const b of bubbles.splice(0)) b.el.remove();
   const r = live.root; r.parent?.remove(r);
   r.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) if (!Object.values(K.mats).includes(m)) m.dispose?.(); });
   for (const k in K.mats) { K.mats[k].dispose(); delete K.mats[k]; }
@@ -164,6 +196,7 @@ function tick(dt, c) {
   showAct(inside || panel ? null : best);
   showChip(inside || d > 75 ? null : `\ud83c\udfa8 ${ST.cans} \u00b7 cred ${ST.cred}`);
   if ((markT -= dt) <= 0) { markT = 1.5; marks(); }
+  if (bubbles.length) bubbleTick(dt, c.camera);
 }
 (function hook() {
   let tries = 0; const t = setInterval(() => {
@@ -181,11 +214,14 @@ const API = {
   isNight: () => night(), setNight(v) { nightOv = v == null ? null : !!v; return night(); },
   tags: () => TAGS.list(), tag: id => TAGS.tagAt(id), rivalPaint: id => TAGS.rival(id),
   crowds: () => CROWDS.list(), npcs: () => CROWDS.npcs(), fight: i => CROWDS.fight(i),
+  challenge: (o) => TWEAK.challenge(o), rockhead: () => TWEAK.state(), // force a rockhead fight challenge / read its state
+  drops: () => COMBAT.drops(), blood: () => BLOOD.list(), night: () => NIGHT.debug(), colliders: () => COL.list('street'),
+  hurt(key, dmg = 1, how = 'shot') { const s = CROWDS.slots().find(x => x.key === key || x.name === key); if (!s?.on) return false; COMBAT.hurt(s, dmg, how, K.player); return true; },
   tow: { get impound() { return ST.impound ? { ...ST.impound } : null; }, hook: () => TOW.hook(true), pay: () => TOW.payImpound(), yard: () => TOW.yard(), quote: () => TOW.quote(), sell: () => TOW.sell(false), strip: () => TOW.sell(true), buyHot: kind => TOW.buyHot(kind), stock: () => TOW.stock() },
   stats: () => ({ ...ST.stats }), state: () => JSON.parse(JSON.stringify(ST)),
   on(fn) { const h = e => fn(e.detail); addEventListener('ssx:street', h); return () => removeEventListener('ssx:street', h); },
   reset() { const t = ST.tag; Object.assign(ST, S0(), { tag: t }); save(); TAGS.refresh?.(); return true; },
-  debug: { forceSeen(p) { if (p == null) delete ST.forceSeen; else ST.forceSeen = +p; return ST.forceSeen ?? null; }, act: () => act ? act.label : null, doAct: () => { if (act) { act.fn(); return true; } return false; }, budget: w => K.budget(w), reserved: () => reserved, panel: () => panel ? panel.textContent : null, tap: label => { const b = panel && [...panel.querySelectorAll('button')].find(x => x.textContent.startsWith(label)); if (!b) return false; b.click(); return true; }, close: () => closePanel(), local: (x, z) => D ? [x - D.x, z - D.z] : null, world: (lx, lz) => D ? K.L(lx, lz) : null, parts: () => ({ tags: TAGS.debug?.(), crowds: CROWDS.debug?.(), tow: TOW.debug?.() }) }
+  debug: { forceSeen(p) { if (p == null) delete ST.forceSeen; else ST.forceSeen = +p; return ST.forceSeen ?? null; }, act: () => act ? act.label : null, doAct: () => { if (act) { act.fn(); return true; } return false; }, budget: w => K.budget(w), reserved: () => reserved, panel: () => panel ? panel.textContent : null, tap: label => { const b = panel && [...panel.querySelectorAll('button')].find(x => x.textContent.startsWith(label)); if (!b) return false; b.click(); return true; }, close: () => closePanel(), local: (x, z) => D ? [x - D.x, z - D.z] : null, world: (lx, lz) => D ? K.L(lx, lz) : null, parts: () => ({ tags: TAGS.debug?.(), crowds: CROWDS.debug?.(), tow: TOW.debug?.(), blood: BLOOD.debug(), combat: COMBAT.debug(), rockheads: TWEAK.debug(), night: NIGHT.debug() }), ageBlood: s => BLOOD.age(s), hgt: (x, z) => K.hgt(x, z), yell: (text, lvl = 1) => { const P = K.player; return P ? yell({ x: P.x + 2, z: P.z }, 'Test', text, lvl) : null; } }
 };
 window.SSX = window.SSX || {};
 window.SSX.street = API;
