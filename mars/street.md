@@ -4,7 +4,7 @@ Grungy, M-rated street layer for the Flats (`mars-rough` district). It hooks in 
 
 | file | what |
 |---|---|
-| street.js | entry: state (localStorage `ssx.street.v1`), black/white UI (`#stAct` button at 50% left, key **Y**; `#stPanel`; `#stChip`), NPC budget, load/unload, `SSX.street` API |
+| street.js | entry: state (localStorage `ssx.street.v1`), black/white UI (`#stAct` button at 50% left, key **7** (was Y; Y is turf.js); `#stPanel`; `#stChip`), NPC budget, load/unload, `SSX.street` API |
 | street-tags.js | graffiti walls, spray cans, instanced tag decals, street cred, cop-seen wanted, rival crews painting over you |
 | street-crowds.js | night burn barrels (smoke/flames/glow), crowd barks and fist-fights, dealers (Needles, Sugar), junkies (Twitch, Lenny, Moth, Dez) |
 | street-tow.js | Hook & Crook Towing yard (Lou): stolen-ride drop-off / strip, hot no-plate rides, the tow truck that impounds your rover |
