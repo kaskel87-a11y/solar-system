@@ -629,7 +629,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     st: () => ({ name, cfg, driving, rover: driving ? car : rover, ownRover: rover, own: !driving || car === rover, dog, camDist, intro: state?.intro ?? 0, outro: state?.outro ?? 0, inside: indoor ? world.inside : null }),
     doorFor: q => world.doorFor(q), enterBuilding: () => enterBuilding(), leaveBuilding: () => leaveBuilding(),
     hitWorld: (p0, p1, b) => world.hitWorld(p0, p1, b), blastWorld: (c, R, d, emp) => world.blast(c, R, d, emp), worldTargets: () => world.targets(), meleeTarget: (x, z, y, r) => world.meleeTarget(x, z, y, r), meleeWorld: (...a) => world.meleeWorld(...a), solidAt: (x, y, z) => world.solidAt(x, y, z), allowFire: () => world.allowFire(),
-    colonyAt: p => world.colonyAt(p), nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
+    colonyAt: p => world.colonyAt(p), gateWorld: () => world, nearestVehicle: () => world.nearestVehicle(), vehicle: () => driving ? { kind: car.kind || 'rover', stolen: car !== rover } : null,
     wanted: () => world.wanted, setWanted: (n, why) => world.setWanted(n, why),
     coverNear: (x, z, px, pz, r) => world.coverNear?.(x, z, px, pz, r), collide: (x, z, r) => world.collide?.(x, z, r), freeSpot: (x, z, r) => world.freeSpot?.(x, z, r), civHits: () => world.civHits || 0, caseCamera: id => world.caseCamera?.(id), npcRefresh: () => world.npcRefresh?.(), // v7.5 city
     respawn(why) {
@@ -712,6 +712,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function readMove(input) {
     if (state.intro > 0 || state.outro > 0) return [0, 0];
     const k = input.keys;
+    if (input.kbOnly) return [(k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0) + input.joy.x, (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0) - input.joy.y]; // v7.5.3 Keyboard only: arrows turn the camera
     return [(k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + input.joy.x, (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - input.joy.y];
   }
   function walk(dt, input, g) {
@@ -1147,7 +1148,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!indoor) updateDog(dt, g);
     updateAstro(dt);
     updateCamera(dt);
-    if (globalThis.SSX_TICKS) for (const f of globalThis.SSX_TICKS) f(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name }); // add-on per-frame hooks (dealership.js)
+    if (globalThis.SSX_TICKS?.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name }; // add-on per-frame hooks (dealership.js)
+      for (const f of globalThis.SSX_TICKS) { try { f(dt, tc); } catch (e) { if (!f.__warned) { f.__warned = true; console.warn('SSX_TICKS hook failed', e); } } } } // v7.5.3: one bad hook can't freeze the frame
     raceTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });

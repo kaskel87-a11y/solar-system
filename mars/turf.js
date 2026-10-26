@@ -141,8 +141,8 @@ function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry
 function syncBeacons() { for (const bc of beacons) if (bc.kind === 'block') { const b = byId(bc.ref); restyle(bc.g, flagText(b), GANGS[S.owners[b.id]].col); } }
 
 // ---------- spawning engines (feature-detected) ----------
-function engine() {
-  if (typeof window.SSX?.raids?.start === 'function') return 'raids';
+function engine(noRaids) {
+  if (!noRaids && typeof window.SSX?.raids?.start === 'function') return 'raids';
   const g = window.SSX?.gang; if (g && (typeof g.spawn === 'function' || typeof g.spawnCrew === 'function')) return 'gang';
   if (typeof window.SSX?.city?.hostiles === 'function' || typeof game()?.hostiles === 'function') return 'core';
   return 'debug';
@@ -181,7 +181,9 @@ let fight = null; // { kind, block, gang, waves, wave, plan, phase, t, out, engi
 let counterT = COUNTER_MIN + Math.random() * (COUNTER_MAX - COUNTER_MIN);
 function plan(b, kind) { const base = 2 + b.tier; return kind === 'take' ? (b.tier >= 2 ? [base, base + 1, base + 2] : [base, base + 1]) : [base, base + 1]; }
 function startFight(kind, b, gang) {
-  const P = plan(b, kind), eng = engine();
+  // v7.5.3: SSX.raids only runs takeovers; defends (alert phase, own waves) use the next engine down
+  let eng = engine(); if (eng === 'raids' && kind !== 'take') eng = engine(true);
+  const P = plan(b, kind);
   fight = { kind, block: b.id, gang, waves: P.length, wave: 0, plan: P, phase: kind === 'defend' ? 'alert' : 'gap', t: kind === 'defend' ? ALERT_T : 2.5, out: 0, engine: eng, handles: [], pending: 0, kills: 0 };
   try { window.SSX?.city?.npcReserve?.('turf', Math.min(8, P[P.length - 1])); } catch (e) { /* optional */ }
   if (eng === 'raids' && kind === 'take') startRaid();
@@ -191,7 +193,7 @@ function startRaid() { // Steve's engine runs the waves, we keep score
   let r = null; try { r = window.SSX.raids.start({ id: 'turf-' + b.id, pos: [at[0], at[1]], radius: R_ZONE, attackers: 'gang', waves: f.plan.map(count => ({ count })), label: `${GANGS[f.gang].name} hold ${b.name}`,
     onWin: () => { if (fight === f) win(); }, onLose: info => { if (fight === f) lose(info?.why === 'down' ? 'down' : 'raid'); } }); } catch (e) { console.warn('turf raids', e); }
   if (r?.ok) { f.raidId = r.id; f.phase = 'raid'; try { f.unsub = window.SSX.raids.on?.('raid:wave', i => { if (fight === f && (!i?.id || i.id === r.id)) { f.wave = i.wave || f.wave + 1; emit('wave', { block: f.block, gang: f.gang, wave: f.wave, waves: f.waves }); } }); } catch (e) { /* optional */ } }
-  else f.engine = engine() === 'raids' ? (window.SSX?.gang ? 'gang' : 'core') : engine(); // raid refused (one at a time): run our own waves
+  else f.engine = engine(true); // raid refused (one at a time): run our own waves
 }
 function endFight() {
   const f = fight; if (!f) return; fight = null;
@@ -336,11 +338,22 @@ const isTouch = () => document.body.classList.contains('touch') || matchMedia('(
 // Phone hotkey dock, shared by the Marsmania add-ons (contraband B, jobs J, turf K, beltway …). Whichever loads first
 // creates #ssxDock on the right edge (between the top HUD and the Jump/Run column); each adds one 48px black button.
 // Shown only on touch devices on the surface, where there's no keyboard. Bound with window.__onTap.
+// v7.5.3: the dock sits at a fixed top, and the #surfBtns column (Race / Pet / Jump / Run, bottom-up) grows into it on
+// short phones - the dock covered 🏁 Race at a start line. When they overlap, the dock steps left of the column.
+function dockAvoid(d) {
+  const fix = () => { const sb = document.getElementById('surfBtns'), m = document.getElementById('roverMenu'); if (!d.isConnected || !sb) return;
+    d.style.visibility = m?.classList.contains('show') ? 'hidden' : ''; // the ☰ menu wins (no :has() on old WebKit)
+    d.style.right = ''; const a = d.getBoundingClientRect(), b = sb.getBoundingClientRect();
+    if (a.width && b.width && a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right) d.style.right = `${Math.round(innerWidth - b.left + 8)}px`; };
+  setInterval(fix, 300); addEventListener('resize', fix);
+  const m = document.getElementById('roverMenu'); if (m) try { new MutationObserver(fix).observe(m, { attributes: true, attributeFilter: ['class'] }); } catch (e) { /* interval only */ }
+}
 function dockButton(id, label, aria, order, fn) {
   if (!document.getElementById('ssxDockCss')) { const st = document.createElement('style'); st.id = 'ssxDockCss'; st.textContent = `#ssxDock{position:fixed;z-index:12;right:calc(8px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));display:none;flex-direction:column;gap:8px;pointer-events:none}
 body.surface.touch #ssxDock{display:flex} @media (pointer:coarse){body.surface #ssxDock{display:flex}}
+body.danger-standoff #ssxDock,body:has(#roverMenu.show) #ssxDock{display:none!important}
 #ssxDock button{pointer-events:auto;min-width:52px;min-height:48px;padding:3px 6px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 11px/1.15 system-ui,sans-serif;white-space:pre-line;touch-action:manipulation}`; document.head.appendChild(st); }
-  let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); }
+  let d = document.getElementById('ssxDock'); if (!d) { d = document.createElement('div'); d.id = 'ssxDock'; document.body.appendChild(d); dockAvoid(d); }
   let b = document.getElementById(id); if (b) return b;
   b = document.createElement('button'); b.id = id; b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.style.order = String(order); d.appendChild(b); tap(b, fn); return b;
 }

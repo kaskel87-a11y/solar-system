@@ -23,7 +23,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const roll = async () => { if (desk) await page.keyboard.press('KeyE'.replace('E', 'Q')); else await flick(); };
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    ok('version', await G(() => window.__app.version), (await G(() => window.__app.version)) === 'v7.4');
+    ok('version', await G(() => window.__app.version), (v => /^v7\.\d/.test(v) && (!process.env.VER || v === process.env.VER))(await G(() => window.__app.version))); // any v7.x release; VER=v7.5.3.1 pins it
     ok('modules', await G(() => !!window.__app.planets && window.__app.planets.list.join()), await G(() => window.__app.planets?.list.length === 5));
     // ---- Starship barrel roll in flight
     await G(() => { localStorage.clear(); });

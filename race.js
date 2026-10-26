@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
+import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
@@ -182,7 +183,9 @@ function disposeGroup(g) { if (!g) return; g.parent?.remove(g); g.traverse(o => 
 let questTracks = null;
 function allDefs() { questTracks ??= RC.questSprints(QUESTS); return [...RC.PRESETS, ...questTracks, ...data.tracks]; }
 function defsHere() { return allDefs().filter(d => d.world === planet); }
-function resolve(def) { return RC.resolveTrack(def, C?.world?.colony); }
+// gates never sit inside a dome or building: world.collide(x, z, r) is the same test the cars use
+function blockedFn() { const w = C?.world; return w?.collide ? (x, z, r) => !!w.collide(x, z, r) : null; }
+function resolve(def) { return RC.resolveTrack(def, C?.world?.colony, blockedFn()); }
 
 function setupPlanet() {
   disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
@@ -284,7 +287,7 @@ function updateRace(dt) {
   const pos = car ? { x: car.x, z: car.z } : { x: C.player.x, z: C.player.z };
   // ----- gates -----
   const g = t.gates[r.next];
-  if (car && RC.crossedGate(g, r.prev, pos)) {
+  if (car && (RC.crossedGate(g, r.prev, pos, RC.GATE_W, car.air ? 6 : 1.6) || segHit(r.prev, pos, g, 5))) { // v7.5.3: airborne gets wider slack; a jump through the gate's middle counts
     r.stall = 0; sfx('gate');
     if (t.loop) {
       if (r.next === 0) { // lap done
@@ -579,7 +582,7 @@ setInterval(() => {
 window.__race = {
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
-  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })), props: t.props, length: t.length, custom: !!d.custom }; }),
+  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
   start: (id, o) => startRace(id, o), quit: () => quitRace(null), openPanel, closePanel, openBuilder: (id, copy) => openBuilder(id ? allDefs().find(d => d.id === id) : null, copy),
   get builder() { return builder; }, reload() { data = RC.loadRace(LS); rebuildIdle(); },
   skipCountdown() { if (R && R.phase === 'grid') R.count = 0.001; },
@@ -589,5 +592,6 @@ window.__race = {
   setCarSpeed(v) { const c = myCar(); if (c) c.speed = v; },
   camBlocked, camBlockers: raceCamBlockers, // race fix (M1): surface.js's camera boom checks camBlocked each frame
   rivalPace(k) { if (R?.rival) R.rival.pace *= k; },
+  blocked: (x, z, r = 0) => !!blockedFn()?.(x, z, r),
   counts: () => ({ root: root?.children.length || 0, idle: idleG?.children.length || 0, race: raceG?.children.length || 0, ctx: ui?.ctx.style.display })
 };

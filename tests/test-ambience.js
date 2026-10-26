@@ -70,6 +70,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('captionNoInput', cap?.pe === 'none');
     await page.screenshot({ path: `${out}ambience-${tag}-bark.png` });
     R.rateLimited = await G(() => window.SSX.bark(null, 'street')) === null; ok('rateLimited', R.rateLimited);
+    // v7.5.3: caller keys show real lines, unknown snake_case keys are skipped, never the raw key as a caption
+    R.keyBark = await G(() => window.SSX.bark(null, 'activity_complete', { force: true })); ok('keyBarkReal', R.keyBark, !!R.keyBark && R.keyBark !== 'activity_complete');
+    R.keyBarkLine = await G(() => window.SSX.bark(null, 'warn', { force: true, line: "It doesn't take cars!" })); ok('keyBarkCallerLine', R.keyBarkLine, R.keyBarkLine === "It doesn't take cars!");
+    R.unknownKey = await G(() => window.SSX.bark(null, 'zz_not_a_bark', { force: true })); ok('unknownKeySkipped', R.unknownKey, R.unknownKey === null);
+    ok('noRawKeyCaption', await G(() => [...document.querySelectorAll('.ssxBark')].map(e => e.textContent).join(' | ')), await G(() => [...document.querySelectorAll('.ssxBark')].every(e => !/^[a-z0-9_]+$/.test(e.textContent.trim()))));
     // ---- radio while driving
     ok('roverIn', await enterRover());
     ok('radioOn', await wait(() => window.__app.marsAudio.state.radioOn, 4000));

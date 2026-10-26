@@ -39,12 +39,35 @@ export function questSprints(quests) {
 }
 
 // world-space copy of a track: gates [{x,z,yaw}], props [{t,x,z,yaw}]
-export function resolveTrack(def, colony) {
+// blocked(x, z, r) (optional, e.g. world.collide): a gate whose centre sits inside a building/dome footprint is moved to the
+// nearest clear spot, leaning to the inside of the turn (v7.5.3: Blue Lights' gate 4 was the centre of the Olympus Row dome)
+export function resolveTrack(def, colony, blocked) {
   const ox = def.anchor === 'colony' ? (colony?.x || 0) : 0, oz = def.anchor === 'colony' ? (colony?.z || 0) : 0;
   const g = def.gates.map(p => Array.isArray(p) ? { x: p[0] + ox, z: p[1] + oz } : { x: p.x + ox, z: p.z + oz });
+  if (blocked && !def.custom) clearGates(g, blocked, def.loop !== false);
   orientGates(g, def.loop !== false);
   const props = (def.props || []).map(p => ({ t: p.t, x: p.x + ox, z: p.z + oz, yaw: p.yaw || 0 }));
   return { ...def, loop: def.loop !== false, laps: def.loop === false ? 1 : clampI(def.laps || 2, 1, 9), gates: g, props, length: trackLength(g, def.loop !== false) };
+}
+export const GATE_CLEAR = 4;                      // a gate centre keeps this much room (m) from any solid footprint
+export function clearGates(g, blocked, loop = true, clear = GATE_CLEAR) {
+  const n = g.length, isB = (x, z) => !!blocked(x, z, clear);
+  for (let i = 0; i < n; i++) {
+    const p = g[i]; if (!isB(p.x, p.z)) continue;
+    const a = g[loop ? (i - 1 + n) % n : Math.max(0, i - 1)], b = g[loop ? (i + 1) % n : Math.min(n - 1, i + 1)];
+    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2; let best = null;
+    for (let r = 1; r <= 80 && !best; r += 1) for (let k = 0; k < 32; k++) {
+      const an = k / 32 * Math.PI * 2, x = p.x + Math.cos(an) * r, z = p.z + Math.sin(an) * r;
+      if (isB(x, z)) continue; const sc = Math.hypot(x - mx, z - mz);
+      if (!best || sc < best.sc) best = { x, z, sc };
+    }
+    if (best) { p.moved = { x: p.x, z: p.z }; p.x = Math.round(best.x * 10) / 10; p.z = Math.round(best.z * 10) / 10; }
+  }
+  return g;
+}
+// footprint predicate for tests / node: solids [{x,z,r}|{x,z,box:[hx,hz]}] like world.js builds them
+export function footprintBlocked(solids) {
+  return (x, z, r = 0) => solids.some(s => s.box ? Math.abs(x - s.x) < s.box[0] + r && Math.abs(z - s.z) < s.box[1] + r : Math.hypot(x - s.x, z - s.z) < s.r + r);
 }
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz);
 export function orientGates(g, loop) {
