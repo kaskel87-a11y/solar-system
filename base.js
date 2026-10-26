@@ -1,6 +1,6 @@
 // Mars base building (v7.5): buy a lot on Mars, place walls, gates, a garage, a stash and turrets on a 2 m grid, and it
 // all saves to localStorage (ssx.base.v1) and comes back on reload. Pure rules live in basecore.js; core access goes through
-// basehooks.js. Self-registers a per-frame tick in globalThis.SSX_TICKS (surface.js runs that list once per frame) and
+// basehooks.js. Registers its per-frame tick with SSX.registerSurfaceTick (README add-on API) and
 // publishes window.SSX.base once the app exists. No permanent HUD: ☰ 🏠 Mars base, plus one context button in #surfBtns
 // near your lot (Buy / Build / Stash / Rover home; Place / Remove in build mode) and a top toolbar only while building.
 //
@@ -164,12 +164,15 @@ function ensureTracers() {
 // ---------- UI ----------
 const CSS = `#baseBtn { display: none; height: 44px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(20,110,60,0.72) !important; border-color: rgba(60,255,138,0.6) !important; }
 body:not(.touch) #baseBtn { font-size: 0.8rem !important; }
-#baseBar { position: fixed; z-index: 14; top: calc(56px + env(safe-area-inset-top, 0px)); left: 8px; right: 8px; display: none; flex-direction: column; gap: 4px; pointer-events: none; }
+#baseBar { position: fixed; z-index: 14; top: calc(60px + env(safe-area-inset-top, 0px)); left: calc(108px + env(safe-area-inset-left, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
 body.basebuild #baseBar { display: flex; } body.basebuild #stackR { display: none; }
-#baseBar .tools { display: flex; gap: 5px; overflow-x: auto; pointer-events: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#baseBar .tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 100%; pointer-events: auto; } /* wraps (right of the minimap) so rotate/remove/Done never go off-screen */
+@media (max-width: 560px) { #baseBar button { width: 44px; padding: 0; font-size: 19px; } #baseBar button .nm { display: none; } } /* phones: icon-only, 2 rows; the hint names the piece */
+body:not(.touch) #baseBar { left: calc(140px + env(safe-area-inset-left, 0px)); } /* desktop minimap is larger */
+@media (max-height: 440px) { #baseBar { top: calc(50px + env(safe-area-inset-top, 0px)); left: calc(96px + env(safe-area-inset-left, 0px)); } }
 #baseBar button { flex: 0 0 auto; min-width: 44px; height: 44px; padding: 0 8px; border-radius: 11px; border: 1px solid rgba(255,255,255,.3); background: rgba(10,14,30,.82); color: #fff; font: 700 12px system-ui, sans-serif; touch-action: manipulation; }
 #baseBar button.on { background: rgba(30,140,80,.92); border-color: #3cff8a; } #baseBar button.x { background: rgba(120,30,30,.9); }
-#baseBar .hint { align-self: flex-start; max-width: 100%; padding: 3px 9px; border-radius: 8px; background: rgba(8,10,20,.7); color: #e8ecf4; font: 12px system-ui, sans-serif; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#baseBar .hint { align-self: flex-end; max-width: 100%; padding: 3px 9px; border-radius: 8px; background: rgba(8,10,20,.7); color: #e8ecf4; font: 12px system-ui, sans-serif; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #baseBar .hint.bad { color: #ff9a9a; }
 #basePanel { position: fixed; inset: 0; z-index: 55; display: none; align-items: flex-end; justify-content: center; background: rgba(4,6,12,.55); }
 #basePanel.on { display: flex; } #basePanel .wrap { width: min(94vw, 460px); max-height: 78vh; overflow: auto; margin-bottom: calc(10px + env(safe-area-inset-bottom)); background: rgba(12,15,26,.95); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 12px 14px; color: #e8ecf4; font: 13px system-ui, sans-serif; }
@@ -183,7 +186,7 @@ function ensureUi() {
   const sb = document.getElementById('surfBtns'); if (sb) sb.insertBefore(btn, sb.firstChild); else document.body.appendChild(btn);
   H.tap(btn, () => doAction());
   const bar = document.createElement('div'); bar.id = 'baseBar';
-  bar.innerHTML = `<div class="tools">${BC.PIECE_IDS.map(id => `<button data-t="${id}" id="baseT-${id}">${BC.PIECES[id].icon} ${BC.PIECES[id].name}</button>`).join('')}<button data-t="remove" id="baseT-remove">🗑️</button><button data-a="rot" id="baseRot">⟳</button><button data-a="done" id="baseDone" class="x">✕ Done</button></div><div class="hint" id="baseHint"></div>`;
+  bar.innerHTML = `<div class="tools">${BC.PIECE_IDS.map(id => `<button data-t="${id}" id="baseT-${id}" aria-label="${BC.PIECES[id].name}">${BC.PIECES[id].icon}<span class="nm"> ${BC.PIECES[id].name}</span></button>`).join('')}<button data-t="remove" id="baseT-remove" aria-label="Remove">🗑️</button><button data-a="rot" id="baseRot" aria-label="Rotate">⟳</button><button data-a="done" id="baseDone" class="x" aria-label="Done">✕<span class="nm"> Done</span></button></div><div class="hint" id="baseHint"></div>`;
   document.body.appendChild(bar);
   for (const b of bar.querySelectorAll('button')) H.tap(b, () => { if (!build) return; if (b.dataset.t) { build.tool = b.dataset.t === 'remove' ? 'remove' : 'place'; if (b.dataset.t !== 'remove') build.type = b.dataset.t; } else if (b.dataset.a === 'rot') build.r = (build.r + 1) & 3; else if (b.dataset.a === 'done') setBuild(false); refreshBar(); });
   const panel = document.createElement('div'); panel.id = 'basePanel'; panel.innerHTML = '<div class="wrap"></div>'; document.body.appendChild(panel);
@@ -256,7 +259,7 @@ function updateBuild() {
   } else {
     const T = BC.PIECES[build.type], sn = BC.snap(build.type, build.r, l.x, l.z), v = BC.canPlace(s, build.type, sn.i, sn.j, build.r, { credits: H.credits(C.game) });
     const blocked = v.ok && occupiedByYou(build.plotId, { type: build.type, i: sn.i, j: sn.j, r: build.r });
-    ok = v.ok && !blocked; why = blocked ? 'You\u2019re standing there' : v.why;
+    ok = v.ok && !blocked; why = blocked ? 'You\u2019re standing there' : v.why; if (why) why = `${T.icon} ${T.name}: ${why}`;
     const q = { type: build.type, i: sn.i, j: sn.j, r: build.r }, pc = BC.pieceCentre(q), wp = toWorldXZ(build.plotId, pc.x, pc.z), g = ghostFor(build.type, ok ? A.ghostOk : A.ghostBad);
     g.visible = true; g.position.set(wp.x, ok || v.why !== 'Off your lot' ? baseY(build.plotId, q) : C.height(wp.x, wp.z), wp.z); g.rotation.y = BC.yawOf(build.r);
     label = `✓ ${T.icon} ${T.cost}`; fn = ok ? async () => { const r = api.place(build.plotId, build.type, sn.i, sn.j, build.r); if (!r.ok) H.toast(r.why, 1800); } : async () => H.toast('🚫 ' + why, 1600);
@@ -390,7 +393,7 @@ const api = {
     credits = Math.max(0, credits | 0); medkits = Math.max(0, medkits | 0);
     if (medkits > H.medkits(C?.game)) return { ok: false, msg: 'Not enough medkits' };
     if (credits && !H.spend(C?.game, credits)) return { ok: false, msg: 'Not enough credits' };
-    if (medkits) H.addMedkits(C.game, -medkits); s.stash.credits += credits; s.stash.medkits += medkits; persist();
+    if (medkits) H.addMedkits(C?.game, -medkits); /* C is null until the first surface frame */ s.stash.credits += credits; s.stash.medkits += medkits; persist();
     emit('stash', { plotId: id, op: 'deposit', credits, medkits, stash: { ...s.stash } }); return { ok: true, stash: { ...s.stash } };
   },
   withdraw(id, { credits = 0, medkits = 0 } = {}) {
@@ -452,13 +455,13 @@ function subscribeRaids() { // the engine installs itself on its first tick, so 
 }
 
 function init() {
-  if (api.ready || typeof window === 'undefined') return; const app = window.__app; if (!app || !window.SSX) return;
+  if (api.ready || typeof window === 'undefined') return; const app = window.__app; if (!app || typeof window.SSX?.registerSurfaceTick !== 'function') return; // wait for the core add-on API
   api.ready = true; window.SSX.base = api; app.base = api;
+  try { window.SSX.registerSurfaceTick?.(baseTick); } catch (e) { console.warn('base tick', e); } // core runs it every surface frame (returns an unregister fn)
   for (const k of ['start', 'wave', 'end']) addEventListener('raid:' + k, e => onRaidEvent(k, e?.detail)); subscribeRaids();
   try { menuBtn = H.addMenuItem(app, { id: 'baseMenu', label: '🏠 Mars base', onTap: () => overview() }); if (menuBtn && C?.name !== WORLD) menuBtn.style.display = 'none'; } catch (e) { console.warn('base menu', e); }
   emit('load', { owned: api.owned() });
 }
 if (typeof window !== 'undefined') {
-  (globalThis.SSX_TICKS ||= []).includes(baseTick) || globalThis.SSX_TICKS.push(baseTick);
   let n = 0; const poll = () => { init(); if (!api.ready && n++ < 600) setTimeout(poll, 100); }; setTimeout(poll, 0);
 }

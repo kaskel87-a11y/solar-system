@@ -80,6 +80,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       return ['baseBtn'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });
     await act(); ok('building', await wait(() => !!window.SSX.base.building, 5000));
     ok('toolbar', await G(() => getComputedStyle(document.getElementById('baseBar')).display !== 'none'));
+    // every toolbar button fully on-screen, clear of the minimap and the HUD centre (review: 375/393 overflow)
+    const tb = await G(() => { const W = innerWidth, H = innerHeight, mm = document.getElementById('miniMap')?.getBoundingClientRect(), bad = [];
+      const hit = (a, b) => b && b.width && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      const btns = [...document.querySelectorAll('#baseBar button')];
+      for (const b of btns) { const r = b.getBoundingClientRect(), id = b.id;
+        if (!r.width || r.left < 0 || r.top < 0 || r.right > W + 0.5 || r.bottom > H + 0.5) bad.push(id + ':off');
+        if (hit(r, mm)) bad.push(id + ':minimap');
+        if (hit(r, { left: W * 0.3, right: W * 0.7, top: H * 0.3, bottom: H * 0.7, width: 1 })) bad.push(id + ':centre');
+        const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (e !== b && !b.contains(e)) bad.push(id + ':covered'); }
+      const h = document.getElementById('baseHint').getBoundingClientRect(); if (hit(h, mm)) bad.push('hint:minimap');
+      return { n: btns.length, bad, rows: new Set(btns.map(b => Math.round(b.getBoundingClientRect().top))).size }; });
+    ok('toolbarFits', JSON.stringify(tb), tb.n === 8 && tb.bad.length === 0);
+    await shot('toolbar');
     const clear2 = await G(() => { const W = innerWidth, H = innerHeight, c = { l: W * 0.3, r: W * 0.7, t: H * 0.3, b: H * 0.7 };
       return ['baseBtn', 'baseBar'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });
     ok('centerClear', [...clear, ...clear2].join() || 'clear', clear.length + clear2.length === 0);
