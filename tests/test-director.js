@@ -45,7 +45,7 @@ function measureHud() {
   const openPanel = async () => { await G(() => window.__app.toggleMenu(true)); await sleep(250); await tapAt('#dirMenuBtn'); return wait(() => document.getElementById('dirPanel')?.classList.contains('on'), 3000); };
   const closePanel = async () => { await tapAt('#dirPanel [data-a=close]'); await wait(() => !document.getElementById('dirPanel').classList.contains('on'), 2000); };
   const settle = async (gs = 0.25) => { const g0 = await G(() => window.__director.clock); await page.waitForFunction(([g0, gs]) => window.__director.clock - g0 >= gs, [g0, gs], { timeout: 20000 }).catch(() => {}); };
-  const D = () => G(() => { const d = window.__director; return { S: { ...d.S }, fog: d.fog, light: d.light, sky: d.sky, dust: d.dust, stars: d.stars, fade: d.stormFade, clock: d.clock, base: d.base, tag: document.getElementById('dirTag')?.classList.contains('on') }; });
+  const D = () => G(() => { const d = window.__director, T = window.SSX?.time, tt = window.__time; return { tod: T ? T.now() : d.S.tod, T: T ? T.state() : null, rt: performance.now() / 1000, S: { ...d.S }, fog: d.fog, light: d.light, sky: d.sky, dust: d.dust, stars: tt ? tt.stars : d.stars, fade: d.stormFade, clock: d.clock, base: d.base, tag: document.getElementById('dirTag')?.classList.contains('on') }; });
 
   try {
     await page.goto(base + '?t=' + Date.now());
@@ -54,6 +54,9 @@ function measureHud() {
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 60000); await sleep(1500);
     ok('installed', null, await wait(() => !!window.SSX?.director && !!document.getElementById('dirMenuBtn'), 15000));
+    // with the day/night cycle loaded (mars/time.js) Director drives SSX.time; pin it to noon so the baselines are daylight
+    R.sharedClock = await G(() => !!window.SSX?.time);
+    if (R.sharedClock) { await G(() => { window.SSX.time.set('noon'); window.SSX.time.freeze(true); }); await sleep(600); }
     const hud0 = await G(measureHud); R.hud0 = { overlaps: hud0.overlaps, off: hud0.off, n: hud0.n };
     const fps0 = await fps(); R.fpsBase = fps0;
     const d0 = await D(); R.base = { fog: d0.fog, light: d0.light, sky: d0.sky };
@@ -82,21 +85,22 @@ function measureHud() {
     // time of day presets, slider, freeze, scale
     await pick('tod', 'night'); await settle();
     const tN = await D(); R.nightInfo = { light: tN.light, stars: tN.stars, sky: tN.sky };
-    ok('night', null, Math.abs(tN.S.tod - 23) < 0.2 && tN.light.i < d0.light.i * 0.4 && tN.stars?.visible);
+    ok('night', null, Math.abs(tN.tod - 23) < 0.2 && tN.light.i < d0.light.i * 0.4 && tN.stars?.visible);
     await pick('storm', 'off'); await wait(() => window.__director.stormFade <= 0, 20000);
     await closePanel(); await sleep(400); await shot('night'); R.fpsNightHeavyOff = await fps(2000); await openPanel();
     for (const p of ['dawn', 'noon', 'dusk']) { await pick('tod', p); await settle(0.1); }
-    const tD = await D(); R.duskInfo = { tod: tD.S.tod, sky: tD.sky, light: tD.light };
-    ok('dusk', null, Math.abs(tD.S.tod - 18.3) < 0.2 && tD.light.i < d0.light.i);
+    const tD = await D(); R.duskInfo = { tod: tD.tod, sky: tD.sky, light: tD.light };
+    ok('dusk', null, Math.abs(tD.tod - 18.3) < 0.2 && tD.light.i < d0.light.i);
     await G(() => { const r = document.getElementById('dirTime'); r.value = '9'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); });
-    await pick('freeze', 'true'); const f0 = (await D()).S.tod; await sleep(1500); const f1 = (await D()).S.tod;
+    await pick('freeze', 'true'); const f0 = (await D()).tod; await sleep(1500); const f1 = (await D()).tod;
     ok('sliderAndFreeze', { f0, f1 }, Math.abs(f0 - 9) < 0.05 && Math.abs(f1 - f0) < 1e-6);
-    await pick('freeze', 'false'); await pick('timeScale', '16'); const ts0 = await D(); const c0 = ts0.S.tod, g0 = ts0.clock; await sleep(3000); const ts1 = await D(); const c1 = ts1.S.tod, g1 = ts1.clock;
+    await pick('freeze', 'false'); await pick('timeScale', '16'); const ts0 = await D(); const c0 = ts0.tod, g0 = R.sharedClock ? ts0.rt : ts0.clock; await sleep(3000); const ts1 = await D(); const c1 = ts1.tod, g1 = R.sharedClock ? ts1.rt : ts1.clock;
+    // SSX.time runs on real time; the fallback overlay on the director's own game clock
     // rate in in-game hours per game-minute (the engine clamps dt on slow headless frames, so measure against the director's own game clock)
     R.clock16 = { c0, c1, gameSec: Math.round((g1 - g0) * 100) / 100, rate: Math.round((c1 - c0) / ((g1 - g0) / 60) * 10) / 10 }; ok('timeScale', R.clock16, g1 - g0 > 0.3 && Math.abs(R.clock16.rate - 16) < 1.5);
     await pick('timeScale', '1');
     await pick('tod', 'game'); await settle(0.15);
-    const tG = await D(); ok('gameLightingRestored', { sky: tG.sky, light: tG.light }, tG.sky.top === d0.sky.top && tG.sky.horizon === d0.sky.horizon && Math.abs(tG.light.i - d0.light.i) < 1e-6);
+    const tG = await D(); if (R.sharedClock) ok('liveCycleResumed', tG.T, !tG.T.frozen && tG.T.scale === 1 && tG.S.tod == null); else ok('gameLightingRestored', { sky: tG.sky, light: tG.light }, tG.sky.top === d0.sky.top && tG.sky.horizon === d0.sky.horizon && Math.abs(tG.light.i - d0.light.i) < 1e-6);
 
     // no cops
     ok('noTagBeforeCheats', null, !(await D()).tag);
@@ -153,7 +157,7 @@ function measureHud() {
     // reset: everything back, tag stays (spawned vehicle is a session cheat), FPS check
     await openPanel(); await tapAt('#dirPanel [data-k=reset] button'); await sleep(400);
     const rs = await D(); R.reset = { S: rs.S, tag: rs.tag };
-    ok('reset', null, !rs.S.noCops && !rs.S.invincible && !rs.S.ammo && rs.S.storm === 'off' && rs.S.tod == null && rs.tag === true);
+    ok('reset', null, !rs.S.noCops && !rs.S.invincible && !rs.S.ammo && rs.S.storm === 'off' && rs.S.tod == null && rs.tag === true && (!rs.T || (!rs.T.frozen && rs.T.scale === 1)));
     await closePanel(); await sleep(300);
     const hud9 = await G(measureHud); if (hud9.overlaps.length || hud9.off.length) bad.push('hudEnd:' + hud9.overlaps.concat(hud9.off).join(','));
     // fresh session: payouts flow again without cheats

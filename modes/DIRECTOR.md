@@ -15,6 +15,8 @@ Open it from ☰ → **🎬 Director**. The panel is a full-height dialog with h
 
 Storms and time of day only apply on the Mars surface, never indoors. Fog near and far can only be pulled in, never pushed out. "game" brings back the planet's own lighting exactly.
 
+When the Mars day/night cycle is loaded (`mars/time.js`, `window.SSX.time`), it is the only clock. The Director time controls call `SSX.time.set()`, `setScale()` and `freeze()`. "Live" means `freeze(false)` plus `setScale(1)`. Reset sets the speed back to 1× and unfreezes the clock. The dust storm adds its look through `SSX.time.addLookFilter()` and doesn't write the lights or sky itself. Director falls back to its own `S.tod` overlay only when SSX.time isn't there. See `mars/TIME.md`.
+
 ## Rewards are blocked while cheats are on
 - `game.reward(xp, cr)` pays nothing.
 - On `game:quest` `{kind:'done'}`, the core quest payout is clawed back and a toast is shown.

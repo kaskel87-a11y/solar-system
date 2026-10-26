@@ -3,11 +3,15 @@
 // tag shows in the HUD stack and mission rewards are withheld (quest payouts are clawed back, game.reward pays nothing).
 // One hook: a <script type="module"> line in index.html. Everything else is feature-detected (SSX.registerSurfaceTick,
 // SSX.registerMenuItem, SSX.danger, SSX.garage, SSX.city.securityResponse). Rules live in ./directorcore.js.
+// Time of day: when the Mars day/night cycle is loaded (mars/time.js, window.SSX.time) it is the single source of truth.
+// The time controls here just call SSX.time.set / setScale / freeze, and the dust storm tints its look through
+// SSX.time.addLookFilter. Without SSX.time, Director falls back to its own time-of-day overlay (S.tod).
 import * as THREE from 'three';
 import { VEHICLES } from '../world.js';
 import * as D from './directorcore.js';
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => surf()?.game, world = () => surf()?.world;
+const TT = () => { const t = window.SSX?.time; return t && typeof t.set === 'function' && typeof t.now === 'function' ? t : null; };
 const isTouch = () => matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window;
 let S = load(); const session = { vehicle: false, clawed: 0, blocked: 0 };
 let C = null, clock = 0, mobile = false, warned = new Set();
@@ -76,7 +80,31 @@ function updateDust(dt, cam, p, fade) {
   }
   a.needsUpdate = true;
 }
+// with SSX.time: the clock and lighting are its job; we only tint its look for storms, pull the fog in and run the dust
+let filterOff = null;
+function stormFilter(L) {
+  if (stormFade <= 0 || C?.name !== 'Mars' || C?.world?.inside) return L;
+  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
+  const dustCol = D.mixHex(D.STORM_COLOR, 0x2a1a14, 1 - (L.day ?? 1));
+  return { ...L, top: D.mixHex(L.top, dustCol, mix), horizon: D.mixHex(L.horizon, dustCol, Math.min(1, mix * 1.15)), fog: D.mixHex(L.fog ?? L.horizon, dustCol, Math.min(1, mix * 1.15)),
+    light: L.light * (1 - 0.5 * mix), hemi: L.hemi * (1 - 0.25 * mix), sunVisible: L.sunVisible !== false && mix < 0.6, stars: (L.stars || 0) * (1 - mix), storm: mix };
+}
+function lookShared(dt, ctx, T) {
+  const scene = ctx.scene; if (!scene) return;
+  if (!filterOff) { try { filterOff = T.addLookFilter(stormFilter); } catch (e) { warnOnce('filter', e); } }
+  if (applied && base) restore(scene); // hand back anything the fallback overlay changed before SSX.time showed up
+  if (scene.fog !== baseFogObj || !base) capture(scene);
+  const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside, p = D.stormParams(onMars ? S.storm : 'off', mobile);
+  stormFade = D.clamp(stormFade + (p.count ? dt / 2.5 : -dt / 1.5), 0, 1);
+  if (stormFade <= 0) { if (dust) dust.visible = false; return; }
+  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
+  if (scene.fog && !scene.fog.isFogExp2 && !indoor && mix > 0) { scene.fog.near = Math.min(scene.fog.near, scene.fog.near + (sp.near - scene.fog.near) * stormFade); scene.fog.far = Math.min(scene.fog.far, scene.fog.far + (sp.far - scene.fog.far) * stormFade); }
+  else if (scene.fog?.isFogExp2 && !indoor && mix > 0) scene.fog.density = Math.max(scene.fog.density, 0.05 * mix);
+  if (S.storm !== 'off' && (!dust || dust.userData.level !== S.storm + (mobile ? ':m' : ''))) makeDust(scene, sp);
+  if (dust) { if (indoor) dust.visible = false; else updateDust(dt, ctx.camera, sp, stormFade); }
+}
 function look(dt, ctx) {
+  const T = TT(); if (T) return lookShared(dt, ctx, T);
   const scene = ctx.scene; if (!scene) return;
   if (scene.fog !== baseFogObj || !base) capture(scene);
   const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside;
@@ -210,12 +238,22 @@ function render() {
   if (!onMars) note('Weather and time of day only change Mars. Your settings are saved for when you land.', 'note');
   const ch = cheats(); note(ch.length ? `<span class="warn">Cheats on (${ch.join(', ')}): mission rewards are off.</span>` : 'No cheats on. Missions pay as normal.');
   h('Dust storm'); bd.appendChild(seg('storm', [['off', 'Off'], ['light', 'Light'], ['heavy', 'Heavy']], S.storm, v => { S.storm = v; save(); }, 'storm'));
-  h('Time of day');
-  bd.appendChild(seg('tod', [['game', 'Game'], ['dawn', 'Dawn'], ['noon', 'Noon'], ['dusk', 'Dusk'], ['night', 'Night']], S.tod == null ? 'game' : (Object.entries(D.PRESETS).find(([, v]) => Math.abs(v - S.tod) < 0.05)?.[0] || ''), v => { S.tod = v === 'game' ? null : D.PRESETS[v]; clock = 0; save(); }, 'tod'));
-  const sl = document.createElement('div'); sl.innerHTML = `<p class="note">Clock <span class="val" id="dirClock">${S.tod == null ? 'game lighting' : hh(S.tod)}</span></p><input id="dirTime" type="range" min="0" max="24" step="0.25" value="${S.tod ?? 12}" aria-label="Time of day">`; bd.appendChild(sl);
-  const rg = sl.querySelector('input'); rg.addEventListener('input', () => { S.tod = +rg.value % 24; document.getElementById('dirClock').textContent = hh(S.tod); }); rg.addEventListener('change', () => save());
-  bd.appendChild(seg('freeze', [[false, '▶ Running'], [true, '⏸ Frozen']], S.freeze, v => { S.freeze = v; save(); }, 'freeze'));
-  bd.appendChild(seg('scale', D.TIME_SCALES.map(v => [v, `${v}×`]), S.timeScale, v => { S.timeScale = +v; save(); }, 'timeScale'));
+  h('Time of day'); const T = TT();
+  if (T) {
+    const now = T.now(), cur = Object.entries(D.PRESETS).find(([, v]) => Math.abs(v - now) < 0.05)?.[0] || (!T.frozen && T.scale === 1 ? 'game' : '');
+    bd.appendChild(seg('tod', [['game', '▶ Live'], ['dawn', 'Dawn'], ['noon', 'Noon'], ['dusk', 'Dusk'], ['night', 'Night']], cur, v => { if (v === 'game') { T.freeze(false); T.setScale(1); } else T.set(D.PRESETS[v]); clock = 0; changed(); }, 'tod'));
+    const sl = document.createElement('div'); sl.innerHTML = `<p class="note">Mars clock <span class="val" id="dirClock">${hh(now)}</span> · ${T.phase()}</p><input id="dirTime" type="range" min="0" max="24" step="0.25" value="${now}" aria-label="Time of day">`; bd.appendChild(sl);
+    const rg = sl.querySelector('input'); rg.addEventListener('input', () => { T.set(+rg.value % 24); document.getElementById('dirClock').textContent = hh(T.now()); }); rg.addEventListener('change', () => changed());
+    bd.appendChild(seg('freeze', [[false, '▶ Running'], [true, '⏸ Frozen']], T.frozen, v => { T.freeze(v === true || v === 'true'); changed(); }, 'freeze'));
+    bd.appendChild(seg('scale', D.TIME_SCALES.map(v => [v, `${v}×`]), T.scale, v => { T.setScale(+v); changed(); }, 'timeScale'));
+    note('Same clock as the rest of the game (SSX.time): night brings more street crime and a thinner ColSec shift.');
+  } else {
+    bd.appendChild(seg('tod', [['game', 'Game'], ['dawn', 'Dawn'], ['noon', 'Noon'], ['dusk', 'Dusk'], ['night', 'Night']], S.tod == null ? 'game' : (Object.entries(D.PRESETS).find(([, v]) => Math.abs(v - S.tod) < 0.05)?.[0] || ''), v => { S.tod = v === 'game' ? null : D.PRESETS[v]; clock = 0; save(); }, 'tod'));
+    const sl = document.createElement('div'); sl.innerHTML = `<p class="note">Clock <span class="val" id="dirClock">${S.tod == null ? 'game lighting' : hh(S.tod)}</span></p><input id="dirTime" type="range" min="0" max="24" step="0.25" value="${S.tod ?? 12}" aria-label="Time of day">`; bd.appendChild(sl);
+    const rg = sl.querySelector('input'); rg.addEventListener('input', () => { S.tod = +rg.value % 24; document.getElementById('dirClock').textContent = hh(S.tod); }); rg.addEventListener('change', () => save());
+    bd.appendChild(seg('freeze', [[false, '▶ Running'], [true, '⏸ Frozen']], S.freeze, v => { S.freeze = v; save(); }, 'freeze'));
+    bd.appendChild(seg('scale', D.TIME_SCALES.map(v => [v, `${v}×`]), S.timeScale, v => { S.timeScale = +v; save(); }, 'timeScale'));
+  }
   note('Clock speed: 1× = one hour per real minute.');
   h('Cops'); bd.appendChild(seg('noCops', [[false, 'Normal'], [true, '🚫 No cops']], S.noCops, v => { S.noCops = v; if (v) { try { world()?.setWanted?.(0, 'director'); world()?.onRespawn?.(); } catch {} } save(); }, 'noCops'));
   h('Crowds'); bd.appendChild(seg('density', [['normal', 'Normal'], ['sparse', 'Sparse'], ['empty', 'Empty']], S.density, v => { S.density = v; save(); }, 'density'));
@@ -226,7 +264,7 @@ function render() {
   for (const v of vehicleList()) { const b = document.createElement('button'); b.textContent = v.name; b.dataset.v = v.id; b.disabled = !onMars || !canSpawn(v.id); tap(b, () => { if (b.disabled) return; const r = spawnVehicle(v.id); toast(r.ok ? `🎬 ${v.name} delivered. Rewards stay off until you reload.` : `🎬 ${r.why || 'Can\u2019t spawn that here.'}`, 2600); }); vr.appendChild(b); }
   bd.appendChild(vr);
   if (typeof window.SSX?.garage?.grantVehicle !== 'function') note('Only the rover is available until the garage add-on is installed.');
-  h('Reset'); bd.appendChild(seg('reset', [['all', 'Reset everything']], '', () => { const keep = S; S = D.sanitize(null); if (keep.invincible) { try { const H = game()?.debug?.H?.(); if (H) H.inv = 0; } catch {} } save(); }, 'reset'));
+  h('Reset'); bd.appendChild(seg('reset', [['all', 'Reset everything']], '', () => { const keep = S; S = D.sanitize(null); const T2 = TT(); if (T2) { T2.freeze(false); T2.setScale(1); } if (keep.invincible) { try { const H = game()?.debug?.H?.(); if (H) H.inv = 0; } catch {} } save(); }, 'reset'));
   bd.scrollTop = y;
 }
 function open() { if (!panel) ui(); panel.classList.add('on'); render(); try { app()?.toggleMenu?.(false); } catch {} }
@@ -235,14 +273,16 @@ function close() { panel?.classList.remove('on'); }
 // ---------- frame ----------
 function tick(dt, ctx) {
   C = ctx; mobile = !!ctx.isMobile;
-  if (S.tod != null && ctx.name === 'Mars') { const t0 = S.tod; S.tod = D.advanceClock(S.tod, dt, S); if (Math.floor(t0 * 4) !== Math.floor(S.tod * 4)) { const e = document.getElementById('dirClock'); if (e) e.textContent = hh(S.tod); if (Math.floor(t0) !== Math.floor(S.tod)) try { localStorage.setItem(D.SAVE_KEY, JSON.stringify(S)); } catch {} } }
+  const T = TT();
+  if (T) { const e = document.getElementById('dirClock'); if (e) { const v = hh(T.now()); if (e.textContent !== v) e.textContent = v; } }
+  else if (S.tod != null && ctx.name === 'Mars') { const t0 = S.tod; S.tod = D.advanceClock(S.tod, dt, S); if (Math.floor(t0 * 4) !== Math.floor(S.tod * 4)) { const e = document.getElementById('dirClock'); if (e) e.textContent = hh(S.tod); if (Math.floor(t0) !== Math.floor(S.tod)) try { localStorage.setItem(D.SAVE_KEY, JSON.stringify(S)); } catch {} } }
   clock += dt;
   try { look(dt, ctx); } catch (e) { warnOnce('look', e); }
   try { cheatTick(dt, ctx); } catch (e) { warnOnce('cheats', e); }
   if (tag && (tag.classList.contains('on') !== (cheats().length > 0))) updateTag();
 }
 
-const API = { version: 1, get state() { return { ...S }; }, set(k, v) { if (!(k in D.DEFAULTS)) return false; S = D.sanitize({ ...S, [k]: v }); save(); return true; },
+const API = { version: 1, get state() { const T = TT(); return T ? { ...S, time: T.state() } : { ...S }; }, set(k, v) { if (!(k in D.DEFAULTS)) return false; S = D.sanitize({ ...S, [k]: v }); save(); return true; },
   cheats, rewardsBlocked: blocked, open, close, spawnVehicle, vehicles: vehicleList, on: (fn) => window.SSX?.on?.('director:change', fn) };
 window.__director = { get S() { return S; }, get session() { return session; }, get base() { return base && { top: base.top, horizon: base.horizon, light: base.light }; }, get stormFade() { return stormFade; }, get clock() { return clock; },
   get dust() { return dust ? { n: dust.geometry.attributes.position.count, visible: dust.visible, opacity: dust.material.opacity } : null; }, get stars() { return stars ? { visible: stars.visible, opacity: stars.material.opacity } : null; },
