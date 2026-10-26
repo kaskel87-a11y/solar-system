@@ -126,6 +126,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('stillInvestigating', await G(() => window.SSX.heist.guards.list().some(g => g.state === 'investigate' || g.state === 'search' || g.state === 'engage')));
     await shot('investigating');
     await G(() => window.SSX.heist.guards.setOptions({ passive: false, fire: true })); // now they can see / shoot you
+    // test medic: the city's security response (hostile private guards) can down a player who stands still at 2 fps;
+    // keep health topped up so this run measures the guards' ladder, not hostile dice (guard:fire still proves they shoot)
+    await G(() => { const H = window.__app.surface.game.debug?.H; if (H) window.__medic = setInterval(() => { const h = H(); if (h && h.hp < 100) h.hp = 100; }, 250); });
     R.guardsInvestigating = await G(() => window.SSX.heist.guards.list().map(g => `${g.id}:${g.state}`).join(' '));
     // ---- backup: a guard reaches the spot (or sees you) and radios it in
     const wBefore = await G(() => window.__app.surface.world.wanted);
@@ -155,6 +158,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // ---- escape past the wider ring, lose the heat, cleanup
     await move(S.x + 45, S.z + 22); ok('escapeEvent', await wait(() => window.__hlog.some(e => e[0] === 'escape'), 20000));
     await G(() => window.__app.surface.world.setWanted(0, 'test: lost them'));
+    await G(() => clearInterval(window.__medic));
     ok('done', await wait(() => window.__hlog.some(e => e[0] === 'done' && e[1].success), 6000));
     const b2 = await budget();
     ok('cleanup', await G(() => !window.SSX.heist.active && window.SSX.heist.guards.list().length === 0 && window.SSX.heist.guards.reserved === 0 && !window.__app.surface.scene?.getObjectByName?.('heistGuards')) && (!b2 || !b2.res['heist-guards']));
@@ -176,6 +180,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     }
     ok('interiorCam', R.interiors.join(' '), R.interiors.every(s => /clear|no-entry/.test(s)));
   } catch (e) { errors.push('TEST ' + e.message); }
+  R.fail = await G(() => (window.__hlog || []).find(e => e[0] === 'fail')?.[1] || null).catch(() => null);
   R.events = await G(() => (window.__hlog || []).map(e => e[0]).filter((e, i, a) => e !== a[i - 1]).join(' > ')).catch(() => '');
   ok('noErrors', errors.join(' | ') || 'none', errors.length === 0);
   console.log(JSON.stringify(R, null, 1)); console.log(bad.length ? 'FAIL ' + bad.join(',') : 'PASS ' + tag);
