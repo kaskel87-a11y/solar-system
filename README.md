@@ -21,6 +21,29 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## v7.5.5: Mars dust storms (add-on: mars/storm.js)
+- Every 9 to 16 minutes of Mars time (the first one 6 to 10 minutes after you land) a dust storm rolls in. It takes about 30 s to build, holds for about a minute, then clears over about 30 s. Storms run on `SSX.time` when it's there (frozen time holds the storm, and the time scale is capped at 20×). Without it they use a real-time timer. Storms only run on the Mars surface and pause when you leave.
+- **Look:** fog closes in to about 38 m at the peak on med quality (30 m on low, 44 m on high). The sky, fog and sunlight turn rust red, the sun hides, and grit blows past the camera. The grit is one pooled `THREE.Points` draw call that wraps around the camera in the vertex shader: 160, 420 or 700 grains on phones for low, med and high quality. The storm layers on top of whatever set the look this frame (core zoom fog, v8 lighting, `SSX.time`, Director). It saves the look before each render and puts it back after, and it only ever pulls fog in, never pushes it out. With `SSX.time` the colours go through `SSX.time.addLookFilter`. Indoors nothing changes.
+- **Gameplay:** traffic drops to 55% speed at the peak. Core cars are slowed through the world API, and Beltway traffic too if it exposes `setSpeedScale`, `setSpeed` or `setDensity`. Crimes gain up to 50% less heat, so a 2★ crime at the peak costs 1★. Fractions carry over to your next crime. Indoor crimes aren't damped. Everything goes back to normal when the storm clears.
+- **HUD:** a short caption in the right-hand stack ("🌪️ Dust storm rolling in", "… low visibility · heat −50%", "🌤️ Storm clearing") shows for 6 s at each change. It never takes taps.
+- **URL:** `?storm=1` starts a storm 6 s after you land on Mars. `?storm=peak` starts one at full strength. `?storm=0` turns off periodic storms (handy for tests). `?stormq=low|med|high|ultra` overrides the grit and fog tier.
+
+`window.SSX.storm` (also `__app.storm`):
+
+| call | what it does |
+| --- | --- |
+| `active()` / `intensity()` / `phase()` | is a storm on; 0..1 strength; `clear` / `building` / `peak` / `clearing` |
+| `start({ build, peak, clear, intensity, instant })` | start a storm now (durations in seconds). Calling it during a storm extends the storm, and during clearing it builds back up without snapping |
+| `stop({ instant, clear })` | clear the storm (smoothly unless `instant`) |
+| `on(event, fn)` → unsubscribe / `off(event, fn)` | events: `start`, `peak`, `clearing`, `end`, `phase`, `shed` (heat was damped), `tier`; also `SSX.emit('storm:<event>')` |
+| `state()` / `next()` | phase, timer, tier, on Mars / indoor; seconds to the next periodic storm |
+| `setPeriodic(on)` / `periodic` | turn the schedule on or off |
+| `tier()` / `setTier(t)` | grit and fog tier (follows `SSX.look.tier()` unless set) |
+| `heatScale()` / `trafficScale()` / `visibility()` | current heat multiplier, traffic multiplier, fog far distance in metres |
+| `frameMs()` / `stats()` | the storm's own CPU cost per frame (EMA) |
+
+Core hook: `world.js` `setWanted` calls `SSX.heatFilter(from, to, why)` when it's set, and uses the result if it's a finite number. The call is guarded and wrapped in try/catch, so a broken filter can't stop crimes. The storm installs this filter only while a storm is on, and chains to any filter that was there before.
+
 ## v7.5.2: street life
 - **Fixed on iPhone:** ✅ Accept and Later on radio job offers (and every other in-game button: Log ▶ Start, duel, race and shop buttons, ☰, map, Land/Take off) now work while your thumb is on the joystick. iOS sends no click for a second finger's tap, so these now fire on the finger's own touch release.
 - Street danger: knife muggings with Pay / Fight / Run / Talk, street fights, gang and junkie car chases, the Red Tape Run highway set-piece, and ambient street vignettes. Toggle it from ☰ (🔪 Street danger).
