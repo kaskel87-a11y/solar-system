@@ -45,7 +45,7 @@ export const GRIME_CONFIG = {
   },
   baseGrade: { sat: 0.84, con: 1.07, lift: [0.02, 0.022, 0.025], hi: [1.0, 0.94, 0.86], vig: 0.36, grain: 0.045, crush: 0.01 },
   // corrugated shacks added to Red Tape Flats as real (collidable) blocks: [x, z, w, d, h] hub-local
-  shanties: [[-10, 44, 7, 4, 3.2], [44, -6, 4, 9, 3.6], [-20, -40, 10, 4, 3.4], [-30, 38, 8, 4, 3], [12, -42, 6, 5, 4]],
+  shanties: [[-10, 44, 7, 4, 3.2], [50, 18, 4, 9, 3.6], [-20, -40, 10, 4, 3.4], [-30, 38, 8, 4, 3], [12, -42, 6, 5, 4]],
   // broken neon, made-up brands; dead = letters that never light, flicker = letters that buzz
   neon: {
     'mars-rough': [['LIQUOR', 0xff3050, [1], [4]], ['PAWN & GUNS', 0x40e0ff, [], [0, 1]], ['MOTEL', 0xff60c0, [3], [0]], ['BAIL BONDS 24H', 0xffd040, [5, 6], [11]],

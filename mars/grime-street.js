@@ -191,9 +191,10 @@ export function createStreet(ctx) {
 
   // ---------- spawning / despawning the pool ----------
   // night: setNight() override > SSX.time.isNight() (game clock, when it exists) > the real clock
-  const gameTime = () => { const t = X().time; return t && typeof t.isNight === 'function' ? t : null; };
+  const gameTime = () => { const t = X().time; return typeof t?.isNight === 'function' ? t : null; };
+  const gameNight = () => { try { const n = X().time?.isNight?.(); return typeof n === 'boolean' ? n : null; } catch (e) { return null; } };
   function hour() { if (nightOverride != null) return nightOverride; const t = gameTime(); if (t) { try { const h = typeof t.hour === 'function' ? +t.hour() : NaN; if (isFinite(h)) return h; return t.isNight() ? 23 : 13; } catch (e) { /* fall through */ } } return new Date().getHours(); }
-  function timeMult() { if (nightOverride == null) { const t = gameTime(); if (t) { try { if (t.isNight()) return 1.8; } catch (e) { /* */ } } } const h = hour(); return h >= 21 || h < 5 ? 1.8 : h >= 18 || h < 7 ? 1.3 : 1; }
+  function timeMult() { if (nightOverride == null) { const n = gameNight(); if (n === true) return 1.8; } const h = hour(); return h >= 21 || h < 5 ? 1.8 : h >= 18 || h < 7 ? 1.3 : 1; }
   const nightSource = () => nightOverride != null ? 'override' : gameTime() ? 'SSX.time' : 'clock';
   // muggings belong to Chief of Staff's street danger (SSX.danger, PR #3): its director already rolls knife muggings by
   // district and hour, with Pay / Fight / Run / Talk, loot, heat and backup. While it is loaded we never run our own
