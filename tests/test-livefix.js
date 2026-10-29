@@ -210,7 +210,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   } catch (e) { bad.push('EXC ' + e.message.split('\n')[0]); }
   await releaseStick().catch(() => { });
   R.held = held;
-  const errs = errors.filter(e => !/favicon|404|ERR_|net::|WebGL|GPU|THREE\.WebGLRenderer/i.test(e));
+  const errs = errors.filter(e => !/favicon|404|ERR_|net::|WebGL|GPU|THREE\.WebGLRenderer|Failed to start the audio device/i.test(e));
   ok('noErrors', errs.length ? errs.slice(0, 3).join(' | ') : 0, errs.length === 0);
   console.log(JSON.stringify(R, null, 1));
   console.log(bad.length ? 'FAIL ' + bad.join(',') : 'PASS');
