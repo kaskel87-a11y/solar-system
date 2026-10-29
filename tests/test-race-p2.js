@@ -39,14 +39,16 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR, ID = 'q-v
     await G(() => window.__race.skipCountdown()); ok('running', await wait(() => window.__race.state?.phase === 'run', 8000));
     await G(() => { window.__p2turn = 0; });
     await page.keyboard.down('KeyW');
-    const t0 = Date.now(); let lastG = 0, last = -1, lastT = Date.now(), slow = 0, reverses = 0, sawP2 = false, npcMax = 0, npcCap = 12; const log = [];
+    let p2pos = null; const t0 = Date.now(); let lastG = 0, last = -1, lastT = Date.now(), slow = 0, reverses = 0, sawP2 = false, npcMax = 0, npcCap = 12; const log = [];
     while (Date.now() - t0 < 720000) {
       const s = await G(() => { const W = window.__app.surface.world, b = W.npcBudget ? W.npcBudget() : null; return { st: window.__race.state, car: window.__race.car(), chip: document.getElementById('raceChip')?.textContent || '', npc: b ? b.used : 0, cap: b ? b.cap : 12 }; });
       if (!s.st) break;
       if (/P2/.test(s.chip)) sawP2 = true; npcMax = Math.max(npcMax, +s.npc || 0); npcCap = s.cap;
       if (s.st.next !== last) { last = s.st.next; lastT = Date.now(); lastG = s.st.time; log.push(`gate ${s.st.next + 1} t=${s.st.time.toFixed(1)}`); }
       if (s.st.time - lastG > 45 || Date.now() - lastT > 240000) { R.stuckAt = `Gate ${s.st.next + 1}/8 car (${s.car?.x.toFixed(1)},${s.car?.z.toFixed(1)})`; await page.screenshot({ path: `${out}race-p2-STUCK-${tag}.png` }); break; }
-      slow = s.car && Math.abs(s.car.speed) < 1.2 ? slow + 1 : 0;
+      // stuck = slow OR not actually moving (wheels spin against a parked car / traffic: speed > 1.2 but position frozen)
+      const mv = s.car && p2pos ? Math.hypot(s.car.x - p2pos.x, s.car.z - p2pos.z) : 9; if (s.car) p2pos = { x: s.car.x, z: s.car.z };
+      slow = s.car && (Math.abs(s.car.speed) < 1.2 || mv < 0.05) ? slow + 1 : 0;
       if (slow > 25) { slow = 0; reverses++; await page.keyboard.up('KeyW'); await G(() => { window.__p2turn = (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random()); }); await page.keyboard.down('KeyS'); await sleep(900); await page.keyboard.up('KeyS'); await page.keyboard.down('KeyW'); await sleep(1200); await G(() => { window.__p2turn = 0; }); }
       await G(([id, n]) => { const g = window.__race.tracks().find(q => q.id === id).gates[n], c = window.__race.car(); if (!c || !g) return;
         window.__race.place(c.x, c.z, Math.atan2(-(g.x - c.x), -(g.z - c.z)) + (window.__p2turn || 0)); if (c.speed > 11) window.__race.setCarSpeed(11); }, [ID, last]);
