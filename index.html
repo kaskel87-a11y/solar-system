@@ -560,6 +560,12 @@
   "ssx/dimensions/pantry": "./dimensions/pantry.js?v=7.5.3.1",
   "./dimensions/waitroom.js": "./dimensions/waitroom.js?v=7.5.3.1",
   "ssx/dimensions/waitroom": "./dimensions/waitroom.js?v=7.5.3.1",
+  "./hud/hints.js": "./hud/hints.js?v=7.5.3.1",
+  "ssx/hud/hints": "./hud/hints.js?v=7.5.3.1",
+  "./hud/hudmap.js": "./hud/hudmap.js?v=7.5.3.1",
+  "ssx/hud/hudmap": "./hud/hudmap.js?v=7.5.3.1",
+  "./hud/hudx.js": "./hud/hudx.js?v=7.5.3.1",
+  "ssx/hud/hudx": "./hud/hudx.js?v=7.5.3.1",
   "./mars/contraband.js": "./mars/contraband.js?v=7.5.3.1",
   "ssx/mars/contraband": "./mars/contraband.js?v=7.5.3.1",
   "./mars/jobs.js": "./mars/jobs.js?v=7.5.3.1",
@@ -1171,10 +1177,21 @@
     tapOf(document.getElementById('radioLater')).fn = () => { radioOffer = null; radioEl.style.display = 'none'; toast('📜 Jobs stay in the Log (L).', 2500); };
     const hurtEl = document.getElementById('hurt'), downEl = document.getElementById('downMsg');
     let hurtTimer = 0;
+    // v7.5.5 HUD pass: one toast at a time, the rest queue (max 3, dupes dropped) and every toast is shorter (1.4-2.8 s).
+    // A queued toast cuts the current one short once it has been up 1 s, so nothing waits long and nothing stacks.
+    const toastQ = []; let toastAt = 0, toastNext = 0;
     function toast(msg, ms = 4000) {
-      if (!msg) return; toastEl.textContent = msg; toastEl.classList.add('on'); discPop.classList.remove('show', 'open'); shrinkRadio();
-      clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.classList.remove('on'); }, ms);
+      if (!msg) return; ms = Math.max(1400, Math.min(2800, ms * 0.65));
+      const up = toastEl.classList.contains('on'), age = performance.now() - toastAt;
+      if (up && toastEl.textContent === msg) return;
+      if (up && age < 1000) { if (!toastQ.some(t => t[0] === msg)) { toastQ.push([msg, ms]); if (toastQ.length > 3) toastQ.shift(); } clearTimeout(toastNext); toastNext = setTimeout(toastPop, 1000 - age); return; }
+      toastShow(msg, ms);
     }
+    function toastShow(msg, ms) {
+      toastEl.textContent = msg; toastEl.classList.add('on'); toastAt = performance.now(); discPop.classList.remove('show', 'open'); shrinkRadio();
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.classList.remove('on'); toastPop(); }, toastQ.length ? Math.min(ms, 1500) : ms);
+    }
+    function toastPop() { clearTimeout(toastNext); const n = toastQ.shift(); if (n) toastShow(n[0], n[1]); }
     function shrinkRadio() { if (radioEl.style.display === 'block') radioEl.classList.add('mini'); }
     const gameLog = [];
     function onSurfaceEvent(type, ev) {
@@ -1255,7 +1272,7 @@
     // ===== v7 radio + ambience =====
     const au7 = createAudio7(() => actx || audio());
     let djTimer = 0;
-    function stationToast(intro) { const S = au7.station; toast(S.id === 'off' ? '📻 Radio off' : `📻 ${S.name} · ${S.tag}${intro ? ' — ' + (au7.dj() || '') : ''}`, 3000); }
+    function stationToast(intro) { const S = au7.station; if (window.SSX?.hudx) { toast(S.id === 'off' ? '📻 Radio off' : `📻 ${S.name} · ${S.tag}`, 1800); return; } toast(S.id === 'off' ? '📻 Radio off' : `📻 ${S.name} · ${S.tag}${intro ? ' — ' + (au7.dj() || '') : ''}`, 3000); } // v7.5.5: one short line through the toast queue (the DJ line lives in the bottom radio strip)
     function onVehicle(ev) {
       if (ev.on) { document.body.classList.remove('entering'); void document.body.offsetWidth; document.body.classList.add('entering'); setTimeout(() => document.body.classList.remove('entering'), 400); try { navigator.vibrate?.(25); } catch (e) { /* */ } if (!ev.stolen) au7.fx.door(); }
       if (ev.on) { au7.setStation(surface.game.progress.settings.radio ?? 0, true); djTimer = 40; stationToast(true); sfxLog.push('radioOn'); }
@@ -1648,7 +1665,8 @@
       const mb = document.getElementById('meleeBtn'), mtxt = g.hasCleaver ? '🪓' : g.hasBlade ? '🗡️' : '👊'; if (mb.textContent !== mtxt) mb.textContent = mtxt; mb.classList.toggle('blade', !!g.hasBlade);
       if (g.quest) {
         questTrack.style.display = 'block';
-        questTrack.innerHTML = `<b>📜 ${esc(g.quest.title)}</b><br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`;
+        const qh = window.SSX?.hudx?.questHtml?.(g.quest) || `<b>📜 ${esc(g.quest.title)}</b><br>${esc(g.quest.text)}${g.quest.timer != null ? ` <span class="tm">⏱ ${Math.ceil(g.quest.timer)} s</span>` : ''}`; // v7.5.5: plain directions (hud/hints.js)
+        if (questTrack.dataset.h !== qh) { questTrack.dataset.h = qh; questTrack.innerHTML = qh; }
       } else questTrack.style.display = 'none';
       if (g.boss) { bossBar.style.display = 'block'; document.getElementById('bossName').textContent = `👑 ${g.boss.name}`; bossBar.querySelector('i').style.width = `${(100 * g.boss.hp / g.boss.max).toFixed(0)}%`; }
       else bossBar.style.display = 'none';
@@ -1671,6 +1689,7 @@
         if (L > max) { if (!clamp) return null; sx *= max / L; sz *= max / L; } return [R + sx, R + sz, L > max]; };
       const dot = (p, col, r) => { if (!p) return; c.beginPath(); c.arc(p[0], p[1], r * dpr, 0, Math.PI * 2); c.fillStyle = col; c.fill(); };
       const out = { aliens: 0 };
+      if (window.SSX?.hudx?.drawMini?.({ c, W, R, dpr, md, proj, out, marks: mapMarks, shopMark })) { mapLast = out; return; } // v7.5.5: lite minimap (hud/hudx.js)
       for (const a of md.aliens) { const p = proj(a.x, a.z, false); if (p) { dot(p, a.boss ? '#ff2d6a' : '#ff4b4b', a.boss ? 4.2 : 2.6); out.aliens++; } }
       if (md.dog) dot(proj(md.dog.x, md.dog.z, false), '#e8b06a', 2);
       for (const q of md.crates || []) { const p = proj(q.x, q.z, false); if (!p) continue; c.fillStyle = '#3cff6a'; c.fillRect(p[0] - 2 * dpr, p[1] - 2 * dpr, 4 * dpr, 4 * dpr); c.strokeStyle = '#0b3d18'; c.lineWidth = dpr; c.strokeRect(p[0] - 2 * dpr, p[1] - 2 * dpr, 4 * dpr, 4 * dpr); out.crates = (out.crates || 0) + 1; }
@@ -1743,7 +1762,8 @@
       if (logPanel.style.display === 'block' && logTab === 'tabSettings') renderLogTabs();
     }
     CTL.onMode(m => applyControlMode(m)); applyControlMode(CTL.getMode(), false);
-    tapOf(miniMap).fn = () => toggleMenu(); tapOf(document.getElementById('menuBtn')).fn = () => toggleMenu();
+    tapOf(miniMap).fn = () => (window.SSX?.hudx?.openMap ? window.SSX.hudx.openMap() : toggleMenu()); // v7.5.5: full-screen map (hud/hudmap.js)
+    tapOf(document.getElementById('menuBtn')).fn = () => toggleMenu();
     function setCinematic(on) { document.body.classList.toggle('cinematic', on); roverMenu.classList.remove('show'); }
     tapOf(document.getElementById('hideHudBtn')).fn = () => setCinematic(true);
     tapOf(document.getElementById('hudShow')).fn = () => setCinematic(false);
@@ -2254,6 +2274,7 @@
       get game() { return surface.game; }, gameLog, openLog, showTab, mouseAim, travel,
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
+    import('./hud/hudx.js').catch(e => console.warn('hudx', e)); // v7.5.5 HUD declutter: plain directions, ➤ waypoint, lite minimap + full map, one context button
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
   </script>
   <script type="module" src="./mars/contraband.js?v=7.5.3.1"></script> <!-- v7.5 Mars contraband economy (window.SSX.contraband) -->
