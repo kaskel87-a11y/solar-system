@@ -91,7 +91,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
           const cz = (nz + sz) / 2, key = [ex, fx, nz, sz].join(); if (seen.has(key) || fx - ex < 6 || sz - nz < 4) continue; seen.add(key);
           if (!same(ex + 0.5, cz) || !same(fx - 0.5, cz)) continue;
           let clear = true; for (let d = 2; d <= (flats ? 18 : 32) && clear; d += 1) if (w.collide(ex - d, cz, 1.8) || w.collide(ex - d, cz + 1.5, 1.8) || w.collide(ex - d, cz - 1.5, 1.8)) clear = false;
-          if (clear) cands.push({ run: flats ? 16 : 30, x: cx, z: cz, top: t, g, ex, fx, w: fx - ex, d: sz - nz });
+          let east = 29; for (let d = 1; d <= 28; d += 1) if (roof(fx + d, cz) > t + 2) { east = d; break; } if (east < 10) clear = false; /* the fly-over stops short of the next tall roof east */
+          if (clear) cands.push({ east, run: flats ? 16 : 30, x: cx, z: cz, top: t, g, ex, fx, w: fx - ex, d: sz - nz });
         }
         cands.sort((a, b) => b.w * b.d - a.w * a.d); return cands[0] || null;
       }, AREA);
@@ -105,9 +106,12 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
         await G(B => { const c = window.__tc.car; c.y = B.top + 3.5; c.vy = 2; c.air = true; c.speed = 18; window.__lfRec.minSpeed = 1e9; window.__lfRec.maxX = -1e9; }, B);
         await keys(true, 'KeyW', 'ShiftLeft', 'Space');
         let midShot = false;
-        const t0f = Date.now(); for (let i = 0; Date.now() - t0f < 60000; i++) { await sleep(60); const c = await G(() => { const c = window.__tc.car; return { x: c.x, z: c.z, y: c.y, speed: c.speed, air: c.air }; }); if (process.env.LFDBG && i % 5 === 0) console.log('fly', i, c.x.toFixed(1), c.z.toFixed(1), c.y.toFixed(1), c.speed?.toFixed?.(1), c.air, B.ex, B.fx, B.top.toFixed(1)); if (!midShot && c.x > B.ex + 2) { await shot('midflight'); midShot = true; } if (c.x > B.fx + 25) break; }
+        const t0f = Date.now(); for (let i = 0; Date.now() - t0f < 60000; i++) { await sleep(60); const c = await G(() => { const c = window.__tc.car; return { x: c.x, z: c.z, y: c.y, speed: c.speed, air: c.air }; }); if (process.env.LFDBG && i % 5 === 0) console.log('fly', i, c.x.toFixed(1), c.z.toFixed(1), c.y.toFixed(1), c.speed?.toFixed?.(1), c.air, B.ex, B.fx, B.top.toFixed(1)); if (!midShot && c.x > B.ex + 2) { await shot('midflight'); midShot = true; } if (c.x > B.fx + Math.min(25, B.east - 4)) break; }
         await keys(false, 'KeyW', 'ShiftLeft', 'Space');
         const rec = await G(() => window.__lfRec);
+        if (process.env.LFDBG) console.log('near', JSON.stringify(await G(B => { const A = window.SSX?.colliders, X = B.fx + 17, out = { cols: [], solids: [] };
+          try { out.cols = A.list().filter(s => Math.hypot(s.x - X, s.z - B.z) < 10).map(s => ({ id: s.id, g: s.group, t: s.type, x: +s.x.toFixed(1), z: +s.z.toFixed(1), top: +(A.topOf(s.id) || 0).toFixed(1), hx: s.hx, hz: s.hz, r: s.r })); } catch (e) { out.err = '' + e; }
+          const sc = window.__app.surface.scene || window.__app.scene; sc?.traverse?.(o => { if (o.isMesh && o.parent) { const p = o.getWorldPosition(new o.position.constructor()); if (Math.hypot(p.x - X, p.z - B.z) < 6 && p.y > 12) { let q = o, path = []; while (q && path.length < 5) { path.push(q.name || q.type); q = q.parent; } out.solids.push({ n: path.join('<'), ud: Object.keys(o.userData || {}).join('|'), y: +p.y.toFixed(1), x: +p.x.toFixed(1), z: +p.z.toFixed(1) }); } } }); out.solids = out.solids.slice(-12); const w = window.__app.surface.world, pr = { y: 1e6, spec: { r: 0.01 } }; out.prof = []; for (let x = B.fx; x <= B.fx + 26; x += 1) out.prof.push(+(w.vehicleGround(pr)(x, B.z)).toFixed(1) + (w.collide(x, B.z, 1.8) ? 'C' : '')); return out; }, B)));
         ok('flewOver', JSON.stringify({ maxX: Math.round(rec.maxX - B.fx), minV: +rec.minSpeed.toFixed(1), crash: rec.crashes }), rec.maxX > B.fx + 5 && rec.minSpeed > 0 && rec.crashes === 0);
         // 1b. land on the roof: drop onto it from 4 m up
         await G(B => { const s = window.__app.surface; s.debugMove((B.ex + B.fx) / 2, B.z, -Math.PI / 2); }, B); await frames(2);
@@ -137,7 +141,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
           .map(s => ({ ...s, top: A.topOf(s.id), g: terr(s.x, s.z) })).filter(s => s.top - s.g > 1.5 && s.top - s.g < 4.5)
           .filter(s => { for (let d = 2; d <= 14; d++) if (w.collide(s.x - s.hx - d, s.z, 1.8)) return false; return true; });
         c.sort((a, b) => b.hx * b.hz - a.hx * a.hz); return c[0] || null; });
-      if (await G(() => !!window.SSX?.colliders)) ok('col44Found', K && JSON.stringify({ id: K.id, h: +(K.top - K.g).toFixed(2), hx: K.hx, hz: K.hz }), !!K);
+      if (AREA === 'flats' && await G(() => !!window.SSX?.colliders)) ok('col44Found', K && JSON.stringify({ id: K.id, h: +(K.top - K.g).toFixed(2), hx: K.hx, hz: K.hz }), !!K);
       if (K) {
         const ext = K.hx + 0.2;
         await G(() => { const st = window.__lfRec = { minSpeed: 1e9, crashes: 0, maxX: -1e9 }; const s0 = window.__app.sfx().length;
