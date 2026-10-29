@@ -86,7 +86,7 @@ const hasPerk = id => run?.type === 'armored' && run.crew.includes(id);
 function isNight() { try { const f = window.SSX?.time?.isNight; if (typeof f === 'function') return !!f(); } catch (e) { /* fall back */ } return solT() >= DUSK; }
 function solT() { return (((Date.now() + S.solOff) % SOL_MS) + SOL_MS) % SOL_MS / SOL_MS; }
 function nightIn() { return isNight() ? 0 : Math.round((DUSK - solT()) * SOL_MS / 1000); }
-function waitForDark() { if (isNight()) return { ok: true, msg: 'It\u2019s already dark.' }; S.solOff += (DUSK - solT()) * SOL_MS + 2000; save(); emit('change', { what: 'night' }); return { ok: true, msg: '🌙 You kill the engine and wait for dark. The Beltway lights come on.' }; }
+function waitForDark() { if (isNight()) return { ok: true, msg: 'It\u2019s already dark.' }; const T = window.SSX?.time; if (typeof T?.isNight === 'function' && typeof T.set === 'function') { T.set(T.NIGHT_START ?? 21); emit('change', { what: 'night' }); return { ok: true, msg: '🌙 You kill the engine and wait for dark.' }; } /* v7.5.4: shared Mars clock */ S.solOff += (DUSK - solT()) * SOL_MS + 2000; save(); emit('change', { what: 'night' }); return { ok: true, msg: '🌙 You kill the engine and wait for dark. The Beltway lights come on.' }; }
 
 // ---------- ground height (raycast the terrain chunks; fallback: the player's feet) ----------
 const ray = new THREE.Raycaster(), V0 = new THREE.Vector3(), DOWN = new THREE.Vector3(0, -1, 0);
@@ -503,7 +503,7 @@ const API = {
     toCheckpoint(id) { const c = checkpoints().find(k => k.id === (id || run?.cp?.id)) || checkpoints()[0]; if (!c) return false; surf().debugMove(c.x + 4, c.z + 4, 0); return true; },
     finishCrack() { if (run?.phase !== 'crack') return false; loot(); return true; },
     clearHeat() { setWanted(0, 'debug'); return wanted(); },
-    setNight(v = true) { if (v && !isNight()) waitForDark(); else if (!v && isNight()) { S.solOff += (1 - solT()) * SOL_MS + 1000; save(); } return isNight(); },
+    setNight(v = true) { const T = window.SSX?.time; if (!v && isNight() && typeof T?.isNight === 'function' && typeof T.set === 'function') { T.set(12); return isNight(); } if (v && !isNight()) waitForDark(); else if (!v && isNight()) { S.solOff += (1 - solT()) * SOL_MS + 1000; save(); } return isNight(); },
     finishRace(won = true) { if (run?.type !== 'race') return false; raceDone(won, { time: Date.now() - run.started }); return true; },
     state: () => JSON.parse(JSON.stringify({ S, run: run && { ...run, target: run.target ? { x: run.target.x, z: run.target.z } : null } })),
     reset() { if (run) stop('quit'); S = fresh(); save(); emit('change', { what: 'reset' }); }

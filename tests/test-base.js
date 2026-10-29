@@ -135,11 +135,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     let gOk = false; for (const [ox, oz] of [[0, 3], [3, 0], [0, -3], [-3, 0]]) { await move(gp.x + ox, gp.z + oz, 0); if ((gOk = await gAct())) { R.garageSide = `${ox},${oz} r${gp.r}`; break; } }
     ok('roverHomeBtn', gOk);
     if ((await G(() => window.SSX.base.action)) === '🚙 Rover home') { await act(); await sleep(800); }
-    R.stubGarage = await G(() => { if (window.SSX.garage) return false; window.__gOpen = 0; window.SSX.garage = { openGarage() { window.__gOpen++; } }; return true; });
+    R.stubGarage = await G(() => { window.__gOpen = 0; const g = window.SSX.garage, k = g && ['open', 'openGarage', 'customize'].find(k => typeof g[k] === 'function'); if (k) { if (!g.__wrapped) { const f = g[k]; g[k] = function (...a) { window.__gOpen++; return f.apply(this, a); }; g.__wrapped = true; } return false; } // real garage ships on main
+      window.SSX.garage = { openGarage() { window.__gOpen++; } }; return true; });
     ok('customizeBtn', await wait(() => window.SSX.base.action === '🔧 Customize', 8000));
     await act(); ok('customizeOpens', await wait(() => window.__gOpen >= 1, 4000));
     if (R.stubGarage) await G(() => { delete window.SSX.garage; });
-    ok('customizeHidden', await wait(() => window.SSX.base.action !== '🔧 Customize', 6000));
+    if (R.stubGarage) ok('customizeHidden', await wait(() => window.SSX.base.action !== '🔧 Customize', 6000)); else { await page.keyboard.press('Escape').catch(() => {}); await G(() => document.querySelectorAll('.sheet .close, [data-close]').forEach(b => b.click())).catch(() => {}); await sleep(600); } // real garage: Customize stays (by design)
     // ---- turret: a raider target (addTargets) inside range, then real security while wanted
     const tp = await G(id => { const B = window.SSX.base, s = B.state(id).pieces.find(p => p.type === 'turret'), w = B.plots().find(p => p.id === id).world; return { x: w.x + (s.i + 0.5) * 2 - 10, z: w.z + (s.j + 0.5) * 2 - 10 }; }, PID);
     await move(c.x - 4, c.z + 16, Math.PI); await sleep(500);
