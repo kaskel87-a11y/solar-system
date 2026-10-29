@@ -43,9 +43,17 @@ away are dropped. All units are cheap buggy meshes, with NaN guards on every ste
   below and wait.
 
 ## API
-`heat() tier() units() seen() searching() hideouts() sprays() plate() roadblocks() lose(how) on([event,] fn) inPit() stats()`.
+`heat() tier() units() seen() searching() hideouts() sprays() plate() roadblocks() lose(how) on([event,] fn) inPit() stats() spike(amount, reason) addHeat(amount, reason) spikes()`.
 `lose('hideout'|'repaint'|'bribe')` returns `{ ok, msg }`. Events go to `on()`, to `window` `ssx:pursuit`, and to the SSX bus as
-`pursuit:<type>`: tier, dispatch, spotted, search, lost, hideout, repaint, ram, pit, boxed, roadblock, shot, busted, wasted, outcome.
+`pursuit:<type>`: tier, dispatch, spotted, search, lost, hideout, repaint, ram, pit, boxed, roadblock, shot, busted, wasted, outcome, spike.
+
+### `spike(amount, reason)` / `addHeat(amount, reason)`
+For other modules (Beltway convoys, carjacking and tolls in #49) that want to raise heat without their own wanted logic.
+- Raises stars by `amount` (rounded, default 1) through `world.setWanted(min(5, stars + amount), reason)`, so world.js is still the single source of heat and its dispatch and HUD react as usual. It bypasses `world.crime()`'s 2.5 s cooldown.
+- Clamped to 5. `amount <= 0`, off Mars or no player is a no-op: `{ ok: false, why: 'off' }`.
+- **No-op in the Rust Pit** (within 12 m): `{ ok: false, why: 'pit' }`, and heat doesn't change.
+- Returns `{ ok: true, amount, from, to, reason, t, stars }`, records the reason (last 20 in `spikes()`), and emits `spike` (`on()`, `ssx:pursuit`, `pursuit:spike`).
+- Guarded use: `window.SSX?.pursuit?.spike?.(1, 'toll evasion')`.
 
 `debug`: `setHeat(n)`, `los(true|false|null)`, `expire()`, `sync()`, `goto(id|'pit')`, `box()`, `volley(n, dmg)`, `float(h, sec)`, `state()`, `reset()`.
 

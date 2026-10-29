@@ -394,6 +394,21 @@ function renderHud(P) {
   if (a !== actKey) { actKey = a; act.textContent = a; act.classList.toggle('show', !!a); }
 }
 
+// ---------- spike (other modules raise heat through world.js, e.g. Beltway convoys / carjacking / tolls, PR #49) ----------
+let spikes = [];
+function spike(amount = 1, reason = 'spike') {
+  const w = world(), P = me(), from = heat(), why = String(reason || 'spike').slice(0, 80);
+  const n = Math.round(Number(amount));
+  if (!w || !onMars || !P || !Number.isFinite(n) || n <= 0) return { ok: false, why: 'off', stars: from };
+  if (inPit(P.x, P.z)) return { ok: false, why: 'pit', stars: from };
+  const to = clamp(from + n, 0, 5);
+  if (to > from) { try { w.setWanted(to, why); } catch (e) { console.warn('pursuit spike', e); return { ok: false, why: 'error', stars: from }; } }
+  const rec = { t: Math.round(tNow * 10) / 10, amount: n, from, to: heat(), reason: why };
+  spikes.push(rec); if (spikes.length > 20) spikes.shift();
+  emit('spike', rec);
+  return { ok: true, ...rec, stars: rec.to };
+}
+
 // ---------- API ----------
 function unitsPub() {
   const P = me(); const out = units.map(u => ({ id: u.id, kind: u.kind, x: u.x, y: u.y, z: u.z, own: true, mode: u.mode, seen: !!u.seen, d: P ? Math.hypot(u.x - P.x, u.z - P.z) : null }));
@@ -406,6 +421,7 @@ const API = {
   hideouts: () => sites.hide.map(h => ({ ...h })), sprays: () => sites.spray.map(s => ({ ...s, price: heat() > 0 ? sprayPrice() : 40 })), plate: () => S.plate,
   roadblocks: () => blocks.map(b => ({ id: b.id, x: b.x, z: b.z })), lose: how => lose(how), on, inPit: () => { const P = me(); return !!P && inPit(P.x, P.z); },
   stats: () => JSON.parse(JSON.stringify(stats)),
+  spike, addHeat: (amount, reason) => spike(amount, reason), spikes: () => spikes.map(r => ({ ...r })),
   debug: {
     setHeat(n) { try { world()?.setWanted?.(clamp(n | 0, 0, 5), 'debug'); } catch (e) { return false; } return heat(); },
     los(v) { forceLOS = v === true ? true : v === false ? false : null; losT = 0; return forceLOS; },
@@ -417,7 +433,7 @@ const API = {
     float(h = 30, sec = 8) { if (!T?.car) return false; floatHold = { h, t: sec }; return true; },
     pit: () => pitAt(), units: unitsPub, sites: () => ({ ...sites }),
     state: () => ({ stars: heat(), seen: seenNow, search: API.searching(), forceLOS, boxT, hideT, units: units.length, blocks: blocks.length, cones: cones.filter(c => c.beam.visible).length, float: !!floatHold, me: (() => { const P = me(); return P ? { x: P.x, z: P.z, y: P.y, gy: P.gy, floating: P.floating, driving: P.driving, speed: P.speed } : null; })(), nan: units.some(u => !fin(u.x) || !fin(u.z) || !fin(u.y) || !fin(u.yaw) || !fin(u.speed)), stats }),
-    reset() { clearUnits(); syncBlocks(0); search = null; forceLOS = null; floatHold = null; boxT = 0; hideT = 0; S = { v: 1, plate: newPlate(), resprays: 0 }; save(); stats = { rams: 0, pits: 0, shots: 0, busts: 0, wasted: 0, lost: {} }; return true; }
+    reset() { clearUnits(); syncBlocks(0); search = null; forceLOS = null; floatHold = null; boxT = 0; hideT = 0; S = { v: 1, plate: newPlate(), resprays: 0 }; save(); spikes = []; stats = { rams: 0, pits: 0, shots: 0, busts: 0, wasted: 0, lost: {} }; return true; }
   }
 };
 (function boot() {
