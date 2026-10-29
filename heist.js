@@ -78,7 +78,7 @@ function setAction(a) {
   const touch = document.body.classList.contains('touch');
   ui.btn.style.display = a ? 'block' : 'none'; if (a) ui.btn.textContent = a.label + (touch ? '' : ' (G)');
 }
-const STAGE_TEXT = { case: 'Sneak to the door without the cameras seeing you', breakin: 'Picking the lock…', crack: 'Find the safe inside and crack it', escape: 'Get away from the building', clean: 'Lose your wanted stars (hide or outrun them)' };
+const STAGE_TEXT = { case: 'Sneak to the door', breakin: 'Picking the lock…', crack: 'Find and crack the safe', escape: 'Run from the building', clean: 'Lose your wanted stars' };
 function renderChip(meter, dist) {
   if (!ui) return; const c = ui.chip;
   if (!run || run.stage === 'done' || run.stage === 'failed') { c.classList.remove('on'); return; }

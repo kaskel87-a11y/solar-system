@@ -117,7 +117,7 @@ function compileSteps(def) {
   if (!tpl.length && def.loop?.alley_pts_local) {
     const c = DISTRICTS[def.district]?.centre || [0, 0];
     const pts = def.loop.alley_pts_local.map(([x, z]) => [c[0] + x, c[1] + z]);
-    tpl = [{ type: 'take', text: 'Get in any vehicle' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Drive through every alley checkpoint before time runs out' }];
+    tpl = [{ type: 'take', text: 'Get in any vehicle' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Drive through every alley checkpoint' }];
   }
   // Resolve at_aj_from pools (taxi)
   const poolPick = (key, i) => {
