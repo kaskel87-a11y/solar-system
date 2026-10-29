@@ -1,7 +1,8 @@
 // Empire layer (empire.js / SSX.empire): offline income on load, buy a front at its door (context button -> sheet -> Buy), income
 // on the Mars clock (dangercore clock pinned with __danger.setClock), collect at the counter, extortion (pay / refuse), a raid
 // defended through SSX.raids (waves) and the fallback hold, a lost raid, a safehouse (buy, rest = save, stash, garage spot, wake),
-// npcBudget cap, HUD centre clear, sheet width at 375-430, per-frame cost and fps with the layer on vs off.
+// npcBudget cap, team UI rule (one context button only at a property, no chip / second button, ☰ entry only, one caption at a time,
+// plain-word directions), HUD centre clear, sheet width at 375-430, per-frame cost and fps with the layer on vs off.
 // Touch taps are pointerdown -> pointerup on the same pointerId with a second finger held on the joystick.
 // BASE=http://127.0.0.1:8893/ DEV=393x852 BR=webkit OUT=/workspace/pw-ben-empire/shots/ node tests/test-empire.js
 const { chromium, webkit, devices } = require('playwright');
@@ -29,13 +30,16 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   const tap = async sel => { if (!(await G(s => { const e = document.querySelector(s); return !!e && e.getBoundingClientRect().width > 0; }, sel))) return false;
     if (touch) { if (HELD) await P('#joy', 'pointerdown', 41); await P(sel, 'pointerdown', 42); await sleep(60); await P(sel, 'pointerup', 42); if (HELD) { await P('#joy', 'pointerup', 41); R.heldTaps = (R.heldTaps || 0) + 1; } return true; }
     await page.click(sel, { timeout: 10000 }); return true; };
-  const ctxBtn = async (n = 1) => { if (touch) return tap(n === 1 ? '#empBtn' : '#empBtn2'); if (n === 1) { await page.keyboard.press('Backslash'); return true; } return tap('#empBtn2'); };
+  const ctxBtn = async () => { if (touch) return tap('#empBtn'); await page.keyboard.press('Backslash'); return true; };
+  // ☰ -> 🏢 Empire (the only way into the sheet away from a door)
+  const viaMenu = async () => { await tap('#menuBtn'); await wait(() => document.getElementById('roverMenu')?.classList.contains('show'), 4000); await tap('#rmEmpire'); return wait(() => window.SSX.empire.isOpen, 6000); };
+  const toastOn = () => G(() => document.getElementById('toast')?.classList.contains('on'));
   const label = (id = 'empBtn') => G(id => { const b = document.getElementById(id); return b && getComputedStyle(b).display !== 'none' ? b.textContent : ''; }, id);
   const credits = () => G(() => window.__app.surface.game.info.credits);
   const E = (f, a) => G(([f, a]) => window.SSX.empire[f](...(a || [])), [f, a]);
   const go = (id, where) => G(([id, w]) => window.SSX.empire.debug.goto(id, w), [id, where || 'door']);
   const centreHits = () => G(() => { const W = innerWidth, H = innerHeight, c = { l: W * 0.3, r: W * 0.7, t: H * 0.3, b: H * 0.7 };
-    return ['empBtn', 'empBtn2', 'empChip'].map(id => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });
+    return ['empBtn'].map(id => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });
   const fpsFor = ms => G(ms => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < ms) requestAnimationFrame(f); else r(+(n * 1000 / (performance.now() - t0)).toFixed(1)); }; requestAnimationFrame(f); }), ms);
   const heal = () => G(() => { const s = window.__app.surface; s.world.setWanted?.(0, 'test'); s.game.restore?.(); });
   const sheetFits = () => G(() => { const w = document.querySelector('#empPanel .wrap'); if (!w) return null; const r = w.getBoundingClientRect(); const bs = [...w.querySelectorAll('button')].map(b => b.getBoundingClientRect());
@@ -55,10 +59,17 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await G(() => { window.__empEv = []; window.SSX.empire.on('*', e => window.__empEv.push(e)); window.SSX.empire.debug.force({ noThreats: true }); });
     await G(() => window.__app.surface.game.reward(0, 30000)); await G(() => window.__danger?.setClock?.(9));
     // ---- buy the laundromat at its door: context button -> sheet -> Buy
+    await sleep(800); ok('noBtnAway', await label() || 'hidden', !(await label()) && (await E('action')) === null);
+    ok('noExtraHud', null, await G(() => !document.getElementById('empBtn2') && !document.getElementById('empChip')));
+    ok('menuOpensSheet', null, await viaMenu()); await tap('#empPanel button[data-a="view"][data-id="fr-wash"]'); await sleep(300);
+    R.dirText = await G(() => document.querySelector('#empPanel .wrap')?.textContent || ''); ok('plainDirections', (/Go to the [^()]+\([^)]*\) and tap Buy\./.exec(R.dirText) || ['none'])[0], /Go to the Red Dust Wash & Fold \(\d+ m (north|south|east|west)[a-z-]*\) and tap Buy\./.test(R.dirText));
+    await tap('#empPanel button[data-a="back"]'); await sleep(200); await tap('#empPanel button[data-a="mark"][data-id="fr-wash"]'); await sleep(300);
+    ok('markNoteInSheet', null, !(await toastOn()) && await G(() => /yellow ring on the radar/.test(document.querySelector('#empPanel .note')?.textContent || '')));
+    await tap('#empPanel button[data-a="close"]'); await wait(() => !window.SSX.empire.isOpen, 4000);
     await go('fr-wash'); await sleep(1500);
     ok('buyBtn', await wait(() => window.SSX.empire.action() === 'buy', 15000) ? await label() : 'none', /Buy 2000/.test(await label()));
     ok('buyCentreClear', (await centreHits()).join() || 'clear', (await centreHits()).length === 0);
-    ok('noOnclick', null, await G(() => ['empBtn', 'empBtn2', 'empChip'].every(id => { const b = document.getElementById(id); return b && !b.onclick && !b.getAttribute('onclick'); })));
+    ok('noOnclick', null, await G(() => ['empBtn'].every(id => { const b = document.getElementById(id); return b && !b.onclick && !b.getAttribute('onclick'); })));
     if (touch) { await P('#empBtn', 'pointerdown', 43); await P('#empBtn', 'pointercancel', 43); await sleep(250); ok('cancelNoOpen', null, !(await G(() => window.SSX.empire.isOpen))); }
     await ctxBtn(1); ok('buySheet', null, await wait(() => window.SSX.empire.isOpen && !!document.querySelector('#empPanel button[data-a="buy"]:not([disabled])'), 8000));
     R.buySheetFit = await sheetFits(); ok('sheetFits', JSON.stringify(R.buySheetFit), R.buySheetFit?.fits && R.buySheetFit.btnsIn && R.buySheetFit.minBtnH >= 40);
@@ -77,11 +88,11 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     R.collected = (await credits()) - c1; ok('collected', R.collected, R.collected === want && (await E('prop', ['fr-wash'])).pending === 0); await shot('income-collect');
     // ---- extortion: pay
     await G(() => window.SSX.empire.debug.threat('fr-wash', 'extort'));
-    ok('extortChip', null, await wait(() => document.getElementById('empChip').classList.contains('on') && /want \d+ cr/.test(document.getElementById('empChip').textContent), 6000));
-    ok('chipCentreClear', (await centreHits()).join() || 'clear', (await centreHits()).length === 0);
-    await tap('#empChip'); ok('chipOpensSheet', null, await wait(() => window.SSX.empire.isOpen && !!document.querySelector('#empPanel button[data-a="pay"]'), 6000));
+    ok('extortTold', null, await wait(() => window.SSX.empire.threat()?.phase === 'demand' && !document.getElementById('empChip'), 6000));
+    ok('extortViaMenu', null, await viaMenu() && await wait(() => !!document.querySelector('#empPanel button[data-a="pay"]') && /tap Pay or Tell them no/.test(document.querySelector('#empPanel .warn')?.textContent || ''), 6000));
     const dem = (await E('threat')).demand, c2 = await credits(); await tap('#empPanel button[data-a="pay"]'); await sleep(300);
     ok('paid', `${dem} cr`, (await credits()) - c2 === -dem && (await E('threat')) === null && !!(await E('prop', ['fr-wash'])).protect);
+    ok('oneCaption', null, !(await toastOn()) && await G(() => /Paid \d+ cr/.test(document.querySelector('#empPanel .note')?.textContent || '')));
     // ---- extortion: refuse -> raid alert, and we're at the door -> the defense starts through SSX.raids
     await tap('#empPanel button[data-a="close"]'); await go('fr-wash', 'yard'); await sleep(500);
     await G(() => window.SSX.empire.debug.threat('fr-wash', 'extort')); await G(() => window.SSX.empire.open()); await wait(() => !!document.querySelector('#empPanel button[data-a="refuse"]'), 5000);
@@ -112,8 +123,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('restBtn', await wait(() => window.SSX.empire.action() === 'rest', 8000) ? await label() : await label() || 'none', /Rest/.test(await label()));
     await G(() => { window.__app.surface.game.progress.hp = 20; }); await ctxBtn(1); await sleep(400);
     ok('rested', null, await G(() => window.__empEv.includes('rest') && window.SSX.empire.home() === 'sh-rim'));
-    ok('stashBtn', await label('empBtn2') || 'none', /Stash/.test(await label('empBtn2')));
-    await ctxBtn(2); await wait(() => !!document.querySelector('#empPanel button[data-a="dep"]:not([disabled])'), 5000);
+    ok('oneCtxBtn', null, await G(() => document.querySelectorAll('#surfBtns [id^="empBtn"]').length === 1) && (await E('action2')) === null);
+    await viaMenu(); await tap('#empPanel button[data-a="view"][data-id="sh-rim"]'); await wait(() => !!document.querySelector('#empPanel button[data-a="dep"]:not([disabled])'), 5000);
     const c4 = await credits(); await tap('#empPanel button[data-a="dep"][data-n="100"]'); await sleep(300);
     ok('stashDeposit', JSON.stringify((await E('prop', ['sh-rim'])).stash), (await E('prop', ['sh-rim'])).stash.credits === 100 && (await credits()) - c4 === -100);
     await tap('#empPanel button[data-a="close"]');

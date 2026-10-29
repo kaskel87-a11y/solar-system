@@ -20,7 +20,8 @@ import { marsHour } from './dangercore.js';
 
 const W = () => (typeof window !== 'undefined' ? window : null), SSX = () => W()?.SSX, APP = () => W()?.__app;
 const surf = () => APP()?.surface, game = () => surf()?.game, wld = () => surf()?.world;
-const toast = (t, ms = 2800) => { try { APP()?.toast?.(t, ms); } catch (e) { /* hud not up */ } };
+// one pop-up or caption at a time: while the Empire sheet is open the message is a line in the sheet, not a toast over it
+const toast = (t, ms = 2800) => { if (S?.ui?.panel?.classList.contains('on')) { S.note = t; return; } try { APP()?.toast?.(t, ms); } catch (e) { /* hud not up */ } };
 const isTouch = () => typeof document !== 'undefined' && document.body.classList.contains('touch');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const listeners = {};
@@ -63,7 +64,7 @@ function clock() {
 // ---------- state ----------
 let D = load();
 function load() { let raw = null; try { raw = localStorage.getItem(EC.SAVE_KEY); } catch (e) { /* private mode */ } const s = EC.migrate(raw); return s; }
-const S = { ready: false, on: true, built: false, root: null, P: {}, ui: null, act: null, act2: null, frameMs: 0, saveT: 0, dirty: false, markT: 0, rollAcc: 0, defense: null,
+const S = { ready: false, on: true, built: false, root: null, P: {}, ui: null, act: null, note: null, frameMs: 0, saveT: 0, dirty: false, markT: 0, rollAcc: 0, defense: null,
   wake: null, wasDown: false, mobile: false, colKey: '', panelId: null, force: {}, beaconT: 0, offline: null };
 function save() { D.lastAt = Date.now(); try { localStorage.setItem(EC.SAVE_KEY, JSON.stringify(D)); } catch (e) { /* private mode */ } S.dirty = false; }
 const dirty = () => { S.dirty = true; };
@@ -140,7 +141,7 @@ function pushOut(tc) { // the storefronts are solid: keep the player and cars ou
 function ctxFor(p) { const turf = H.turfAt(p.aj), g = EC.gangFor(p, turf); return { rep: H.rep(g), turf, grudge: H.grudge(g), night: clock().night, mobile: S.mobile }; }
 function startThreat(t) {
   const p = EC.propById(t.prop), G = EC.GANGS[t.gang]; D.threat = t; D.lastThreatH = D.clockH; D.stats[t.kind === 'extort' ? 'extortions' : 'raids']++; dirty(); refreshLooks();
-  if (t.kind === 'extort') { H.radio(`Nice ${EC.KINDS[p.kind].label.toLowerCase()} you got there. ${t.demand} cr a week keeps the windows in. ☰ 🏢 Empire to pay or tell us no.`, G.name); log(`${G.name} want ${t.demand} cr from ${p.name}`); }
+  if (t.kind === 'extort') { H.radio(`Nice ${EC.KINDS[p.kind].label.toLowerCase()} you got there. ${t.demand} cr a week keeps the windows in.` + ` Open the ☰ menu, tap Empire, then tap Pay or Tell them no.`, G.name); log(`${G.name} want ${t.demand} cr from ${p.name}`); }
   else { H.radio(`${G.name} are smashing up ${p.name}. Get there before they clear it out.`, 'Your manager'); log(`${G.name} hit ${p.name}`); }
   emit(t.kind === 'extort' ? 'extort' : 'raid', { prop: p.id, gang: t.gang, demand: t.demand || 0, limit: t.limit });
 }
@@ -163,7 +164,7 @@ function defend() {
     const types = EC.GANGS[t.gang].types, free = H.budget()?.free ?? 3, n = Math.max(0, Math.min(3, free, types.length)); const made = n ? H.hostiles(types.slice(0, n), E.pl.x, E.pl.z, { r: 12, src: 'empire', faction: t.gang }) : 0;
     S.defense = { engine: 'hold', id, prop: p.id, hold: 0, need: 40, out: 0, spawned: made, why: r && !r.ok ? r.why : 'no SSX.raids' };
   }
-  toast(`🛡️ ${EC.GANGS[t.gang].name} at ${p.name}: ${plan.length} wave${plan.length > 1 ? 's' : ''}. Hold the place.`, 3000);
+  toast(`🛡️ ${EC.GANGS[t.gang].name} at ${p.name}: ${plan.length} wave${plan.length > 1 ? 's' : ''}. Stay near the door until they run.`, 3000);
   emit('defend:start', { prop: p.id, gang: t.gang, waves: plan.length, engine: S.defense.engine }); refreshLooks(); return { ok: true, engine: S.defense.engine, waves: plan.length };
 }
 function endDefense(result, info = {}) {
@@ -238,12 +239,11 @@ function wakeAtHome() {
   S.wake = null; toast(`🏠 Back at ${p.name}.`, 2000); emit('wake', { prop: id }); return { ok: true };
 }
 
-// ---------- HUD: up to two context buttons in #surfBtns, one threat chip in #stackR, a bottom sheet (393-wide friendly) ----------
-const CSS = `#empBtn, #empBtn2 { display: none; height: 48px !important; font-size: 0.72rem !important; touch-action: none !important; background: rgba(28,110,70,0.78) !important; border-color: rgba(120,255,170,0.55) !important; }
-#empBtn2 { background: rgba(40,48,70,0.78) !important; border-color: rgba(255,255,255,0.3) !important; } #empBtn.warn { background: rgba(170,40,30,0.8) !important; border-color: rgba(255,140,90,.7) !important; }
-body:not(.touch) #empBtn, body:not(.touch) #empBtn2 { font-size: 0.8rem !important; }
-#empChip { display: none; padding: 5px 10px; border-radius: 9px; font-size: 0.72rem; background: rgba(8,10,20,0.72); border: 1px solid rgba(255,90,60,0.65); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; touch-action: none; }
-#empChip.on { display: block; } #empChip.demand { border-color: rgba(255,200,60,.7); }
+// ---------- HUD (team UI rule): no permanent buttons. One context button in #surfBtns, shown only while standing at a property;
+// everything else lives in the ☰ → Empire sheet (393-wide friendly). Threats are told once in plain words, not with a standing chip. ----------
+const CSS = `#empBtn { display: none; height: 48px !important; font-size: 0.72rem !important; touch-action: none !important; background: rgba(28,110,70,0.78) !important; border-color: rgba(120,255,170,0.55) !important; }
+#empBtn.warn { background: rgba(170,40,30,0.8) !important; border-color: rgba(255,140,90,.7) !important; }
+body:not(.touch) #empBtn { font-size: 0.8rem !important; }
 #empPanel { position: fixed; inset: 0; z-index: 56; display: none; align-items: flex-end; justify-content: center; background: rgba(4,6,12,.5); }
 #empPanel.on { display: flex; } #empPanel .wrap { width: min(96vw, 460px); max-height: 76vh; overflow: auto; -webkit-overflow-scrolling: touch; margin-bottom: calc(8px + env(safe-area-inset-bottom)); background: rgba(12,15,26,.96); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 12px 12px 10px; color: #e8ecf4; font: 13px system-ui, sans-serif; box-sizing: border-box; }
 #empPanel h2 { margin: 2px 0 6px; font-size: 16px; } #empPanel .sum { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; } #empPanel .sum b { padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.07); font-weight: 600; font-size: 12px; }
@@ -251,7 +251,7 @@ body:not(.touch) #empBtn, body:not(.touch) #empBtn2 { font-size: 0.8rem !importa
 #empPanel small { opacity: .75; } #empPanel .warn { background: rgba(120,30,20,.55); border-radius: 10px; padding: 8px; border: 1px solid rgba(255,120,80,.5); margin-bottom: 6px; }
 #empPanel .btns { display: flex; gap: 6px; flex-wrap: wrap; } #empPanel button { min-height: 44px; min-width: 64px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: rgba(40,48,70,.95); color: #fff; font-weight: 700; font-size: 13px; touch-action: manipulation; }
 #empPanel button.go { background: rgba(28,120,72,.95); } #empPanel button.bad { background: rgba(140,36,30,.95); } #empPanel button[disabled] { opacity: .45; }
-#empPanel .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; } #empPanel .bar i { display: block; height: 100%; background: #3cff8a; }`;
+#empPanel .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; } #empPanel .bar i { display: block; height: 100%; background: #3cff8a; } #empPanel .note { padding: 6px 8px; border-radius: 8px; background: rgba(60,255,138,.1); margin-bottom: 6px; }`;
 // pointerdown -> pointerup on the same pointerId (never onclick); a moved finger (scroll) doesn't fire
 function tapEl(el, fn, sel = null) {
   let pid = null, btn = null, x = 0, y = 0;
@@ -264,51 +264,45 @@ function ensureUi() {
   if (S.ui || typeof document === 'undefined') return S.ui; const sb = document.getElementById('surfBtns'); if (!sb) return null;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const mk = id => { const b = document.createElement('button'); b.id = id; b.className = 'glass'; sb.insertBefore(b, sb.firstChild); return b; };
-  const b2 = mk('empBtn2'), b1 = mk('empBtn'); tapEl(b1, () => doAct(1)); tapEl(b2, () => doAct(2));
-  const chip = document.createElement('div'); chip.id = 'empChip'; (document.getElementById('stackR') || document.body).appendChild(chip); tapEl(chip, () => openPanel());
+  const b1 = mk('empBtn'); tapEl(b1, () => doAct());
   const panel = document.createElement('div'); panel.id = 'empPanel'; panel.innerHTML = '<div class="wrap"></div>'; document.body.appendChild(panel);
   tapEl(panel, (b, e) => { if (b === panel) { if (e.target === panel) closePanel(); return; } panelAct(b.dataset); }, 'button, #empPanel');
   addEventListener('keydown', e => { if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (e.code === 'Escape' && panel.classList.contains('on')) { closePanel(); return; }
-    if (e.code !== 'Backslash' || e.repeat) return; e.preventDefault(); if (panel.classList.contains('on')) closePanel(); else if (S.act) doAct(e.shiftKey && S.act2 ? 2 : 1); else openPanel(); });
-  S.ui = { b1, b2, chip, panel, wrap: panel.firstChild }; return S.ui;
+    if (e.code !== 'Backslash' || e.repeat) return; e.preventDefault(); if (panel.classList.contains('on')) closePanel(); else if (S.act) doAct(); else openPanel(); });
+  S.ui = { b1, panel, wrap: panel.firstChild }; return S.ui;
 }
-function setAct(a, a2) {
-  const U = ensureUi(); S.act = a; S.act2 = a2; if (!U) return; const kb = !isTouch();
-  const show = (b, x, hint) => { const l = x ? x.label + (hint && kb ? ' (\\)' : '') : null; b.style.display = l ? 'block' : 'none'; if (l && b.textContent !== l) b.textContent = l; };
-  show(U.b1, a, true); show(U.b2, a2, false); U.b1.classList.toggle('warn', a?.key === 'defend');
+function setAct(a) {
+  const U = ensureUi(); S.act = a; if (!U) return; const l = a ? a.label + (!isTouch() ? ' (\\)' : '') : null;
+  U.b1.style.display = l ? 'block' : 'none'; if (l && U.b1.textContent !== l) U.b1.textContent = l; U.b1.classList.toggle('warn', a?.key === 'defend');
 }
-function doAct(slot) {
-  const a = slot === 2 ? S.act2 : S.act; if (!a) return; const id = a.prop;
+function doAct() {
+  const a = S.act; if (!a) return; const id = a.prop;
   if (a.key === 'buy' || a.key === 'manage' || a.key === 'stash') return openPanel(id);
   if (a.key === 'collect') return collect(id); if (a.key === 'repair') return openPanel(id); if (a.key === 'rest') return rest(id);
   if (a.key === 'garage') return garage(id); if (a.key === 'roverHome') return garage(id, S.tc, true);
   if (a.key === 'chopRide') return chopRide(); if (a.key === 'defend') return defend(); if (a.key === 'wake') return wakeAtHome();
 }
-function updateChip(px, pz) {
-  const U = S.ui; if (!U) return; const t = D.threat; if (!t) { if (U.chip.classList.contains('on')) U.chip.classList.remove('on', 'demand'); return; }
-  const p = EC.propById(t.prop), E = S.P[t.prop], d = E ? Math.round(Math.hypot(px - E.pl.x, pz - E.pl.z)) : null, left = Math.max(0, Math.ceil(t.limit - t.t)), mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-  const txt = t.phase === 'demand' ? `💸 ${EC.GANGS[t.gang].name} want ${t.demand} cr · ${p.name} · ${mm}` : t.phase === 'alert' ? `⚠️ ${p.name} hit · ${d != null ? d + ' m · ' : ''}${mm}` : `🛡️ Defend ${p.name}${S.defense?.engine === 'hold' ? ` · ${Math.ceil(S.defense.need - S.defense.hold)} s` : ''}`;
-  U.chip.classList.add('on'); U.chip.classList.toggle('demand', t.phase === 'demand'); if (U.chip.textContent !== txt) U.chip.textContent = txt;
-}
-function openPanel(id = null) { const U = ensureUi(); if (!U) return; S.panelId = id; renderPanel(true); U.panel.classList.add('on'); try { document.getElementById('roverMenu')?.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { prop: id }); }
-function closePanel() { S.ui?.panel.classList.remove('on'); S.panelId = null; emit('close', {}); }
+function openPanel(id = null) { const U = ensureUi(); if (!U) return; S.panelId = id; S.note = null; renderPanel(true); U.panel.classList.add('on'); try { document.getElementById('roverMenu')?.classList.remove('show'); if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { prop: id }); }
+function closePanel() { S.ui?.panel.classList.remove('on'); S.panelId = null; S.note = null; emit('close', {}); }
 const panelOpen = () => !!S.ui?.panel.classList.contains('on');
-function compass(dx, dz) { const a = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360; return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(a / 45) % 8]; }
+function compass(dx, dz) { const a = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360; return ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(a / 45) % 8]; }
 function distTo(id) { const E = S.P[id], pl = surf()?.info; if (!E || !pl) return null; return { d: Math.round(Math.hypot(E.pl.door.x - pl.x, E.pl.door.z - pl.z)), dir: compass(E.pl.door.x - pl.x, E.pl.door.z - pl.z) }; }
+const way = (id, verb) => { const p = EC.propById(id), dd = distTo(id); return `Go to the ${p.name}${dd ? ` (${dd.d} m ${dd.dir})` : ''}${verb ? ` and tap ${verb}` : ''}.`; };
 function threatBox() {
   const t = D.threat; if (!t) return ''; const p = EC.propById(t.prop), G = EC.GANGS[t.gang], left = Math.max(0, Math.ceil(t.limit - t.t));
-  if (t.phase === 'demand') return `<div class="warn">💸 <b>${esc(G.name)}</b> want <b>${t.demand} cr</b> to leave <b>${esc(p.name)}</b> alone. ${left} s to answer.<div class="btns" style="margin-top:6px"><button class="go" data-a="pay" ${H.credits() < t.demand ? 'disabled' : ''}>Pay ${t.demand}</button><button class="bad" data-a="refuse">Tell them no</button></div></div>`;
-  if (t.phase === 'alert') { const dd = distTo(p.id); return `<div class="warn">⚠️ <b>${esc(G.name)}</b> are hitting <b>${esc(p.name)}</b>. ${left} s to get there${dd ? ` · ${dd.d} m ${dd.dir}` : ''}.<div class="btns" style="margin-top:6px"><button data-a="mark" data-id="${p.id}">📍 Mark it</button></div></div>`; }
+  if (t.phase === 'demand') return `<div class="warn">💸 <b>${esc(G.name)}</b> want <b>${t.demand} cr</b> to leave <b>${esc(p.name)}</b> alone. ${left} s to answer: tap Pay or Tell them no.<div class="btns" style="margin-top:6px"><button class="go" data-a="pay" ${H.credits() < t.demand ? 'disabled' : ''}>Pay ${t.demand}</button><button class="bad" data-a="refuse">Tell them no</button></div></div>`;
+  if (t.phase === 'alert') { return `<div class="warn">⚠️ <b>${esc(G.name)}</b> are hitting <b>${esc(p.name)}</b>. ${esc(way(p.id, 'Defend'))} You have ${left} s.<div class="btns" style="margin-top:6px"><button data-a="mark" data-id="${p.id}">📍 Mark it</button></div></div>`; }
   return `<div class="warn">🛡️ Defending <b>${esc(p.name)}</b> against ${esc(G.name)}.</div>`;
 }
 function renderPanel(force) {
   const U = S.ui; if (!U || (!force && !panelOpen())) return; const ck = clock(), cr = H.credits(), id = S.panelId;
-  if (id && EC.propById(id)) { U.wrap.innerHTML = propHtml(EC.propById(id), cr, ck); return; }
+  const note = S.note ? `<div class="note">${esc(S.note)}</div>` : '';
+  if (id && EC.propById(id)) { U.wrap.innerHTML = note + propHtml(EC.propById(id), cr, ck); return; }
   const owned = Object.keys(D.owned).length, pend = Math.floor(Object.values(D.owned).reduce((s, o) => s + o.pending, 0)), B = H.base(); let lots = 0; try { lots = B ? (B.owned() || []).length : 0; } catch (e) { lots = 0; }
   const rows = EC.PROPS.map(p => { const o = D.owned[p.id], K = EC.KINDS[p.kind], dd = distTo(p.id), st = !o ? `${p.price} cr` : o.closedH > 0 ? `🔨 shut ${Math.ceil(o.closedH)} h` : EC.isFront(p) ? `💵 ${Math.floor(o.pending)} / ${EC.capOf(p.kind)}` : `💰 ${o.stash.credits} cr${D.home === p.id ? ' · 🛏️ home' : ''}`;
     return `<div class="row"><div>${K.icon} <b>${esc(p.name)}</b>${o ? ' ✅' : ''}<br><small>${esc(p.dname)} · ${K.label}${dd ? ` · ${dd.d} m ${dd.dir}` : ''} · ${st}</small></div><div class="btns"><button data-a="mark" data-id="${p.id}">📍</button><button data-a="view" data-id="${p.id}">${o ? 'Manage' : 'Look'}</button></div></div>`; }).join('');
-  U.wrap.innerHTML = `<h2>🏢 Empire</h2><div class="sum"><b>🕒 ${ck.text}${ck.night ? ' 🌙' : ''}</b><b>${owned}/${EC.PROPS.length} owned</b><b>+${EC.perHour(D, ck.hour)} cr/h now</b><b>💵 ${pend} waiting</b>${lots ? `<b>🏠 ${lots} base lot${lots > 1 ? 's' : ''}</b>` : ''}</div>${threatBox()}
+  U.wrap.innerHTML = `${note}<h2>🏢 Empire</h2><div class="sum"><b>🕒 ${ck.text}${ck.night ? ' 🌙' : ''}</b><b>${owned}/${EC.PROPS.length} owned</b><b>+${EC.perHour(D, ck.hour)} cr/h now</b><b>💵 ${pend} waiting</b>${lots ? `<b>🏠 ${lots} base lot${lots > 1 ? 's' : ''}</b>` : ''}</div>${threatBox()}${S.wake && D.home && D.owned[D.home] ? `<div class="row"><div><small>Back on your feet. You can go straight home.</small></div><div class="btns"><button class="go" data-a="wake">🏠 Back to ${esc(EC.propById(D.home).name)}</button></div></div>` : ''}
 <small>Buy at the door. Fronts earn every game hour, faster at their busy time, and the till only holds so much: collect at the counter. Crews you've crossed come for them.</small>${rows}
 <div class="row"><div><small>You have ${cr} cr · earned ${Math.round(D.earned)} cr so far</small></div><div class="btns">${B && typeof B.overview === 'function' ? '<button data-a="base">🏠 Base lots</button>' : ''}<button data-a="close">Close</button></div></div>`;
 }
@@ -322,7 +316,8 @@ function propHtml(p, cr, ck) {
     btns += `<button class="go" data-a="rest" data-id="${p.id}" ${at ? '' : 'disabled'}>🛏️ Rest & save</button><button data-a="dep" data-n="100" data-id="${p.id}" ${at && cr >= 100 ? '' : 'disabled'}>+100</button><button data-a="dep" data-n="${cr}" data-id="${p.id}" ${at && cr > 0 ? '' : 'disabled'}>+All</button><button data-a="dep" data-n="-100" data-id="${p.id}" ${at && o.stash.credits > 0 ? '' : 'disabled'}>−100</button><button data-a="dep" data-n="${-o.stash.credits}" data-id="${p.id}" ${at && o.stash.credits > 0 ? '' : 'disabled'}>−All</button><button data-a="med" data-n="1" data-id="${p.id}" ${at && H.medkits() > 0 ? '' : 'disabled'}>🩹+1</button><button data-a="med" data-n="-1" data-id="${p.id}" ${at && o.stash.medkits > 0 ? '' : 'disabled'}>🩹−1</button>`; }
   if (!o) btns = `<button class="go" data-a="buy" data-id="${p.id}" ${at && cr >= p.price ? '' : 'disabled'}>🔑 Buy ${p.price} cr</button>` + btns;
   else if (!o.security) btns += `<button data-a="sec" data-id="${p.id}" ${cr < EC.securityCost(p) ? 'disabled' : ''}>🔒 Security ${EC.securityCost(p)}</button>`;
-  const note = !o ? (at ? (cr >= p.price ? '' : `<small>You have ${cr} cr.</small>`) : `<small>Buy it at the door${dd ? ` · ${dd.d} m ${dd.dir}` : ''}.</small>`) : (!at && (EC.isFront(p) || p.kind === 'safehouse') ? `<small>Collect, stash and rest at the door${dd ? ` · ${dd.d} m ${dd.dir}` : ''}.</small>` : '');
+  if (o && p.garage && H.garageOpen() && !S.tc?.car && at) btns += `<button data-a="roverHome" data-id="${p.id}">🚙 Park rover</button>`;
+  const note = !o ? (at ? (cr >= p.price ? '' : `<small>You have ${cr} cr.</small>`) : `<small>${esc(way(p.id, 'Buy'))}</small>`) : (!at && (EC.isFront(p) || p.kind === 'safehouse') ? `<small>${esc(way(p.id, EC.isFront(p) ? 'Collect' : 'Rest'))}</small>` : '');
   return `<h2>${K.icon} ${esc(p.name)}</h2><small>${esc(p.dname)} · ${K.label}${o ? ' · ✅ yours' : ` · ${p.price} cr`}${o?.security ? ' · 🔒' : ''}</small>${threatBox()}
 <div class="row"><div>${esc(p.blurb)}<br><small>Turf: ${esc(EC.GANGS[g].name)}${c.rep != null ? ` (rep ${c.rep})` : ''} · raid risk ${riskTxt}${o?.protect ? ` · protected ${Math.ceil(o.protect.h)} h` : ''}${p.garage ? ' · 🚗 garage spot' : ''}</small></div></div>${body}
 ${note}<div class="row btns">${btns}<button data-a="back">◀ All</button><button data-a="close">Close</button></div>`;
@@ -330,7 +325,8 @@ ${note}<div class="row btns">${btns}<button data-a="back">◀ All</button><butto
 function panelAct(ds) {
   const a = ds.a, id = ds.id; let r = null;
   if (a === 'close') return closePanel(); if (a === 'back') { S.panelId = null; return renderPanel(); } if (a === 'view') { S.panelId = id; return renderPanel(); }
-  if (a === 'mark') { const E = S.P[id]; if (E) { S.target = id; updateMarks(true); const dd = distTo(id); toast(`📍 ${E.p.name}: ${dd ? `${dd.d} m ${dd.dir}` : 'marked'}. Look for the ring on the radar.`, 2600); } return; }
+  if (a === 'mark') { const E = S.P[id]; if (E) { S.target = id; updateMarks(true); S.note = `📍 ${way(id)} It's the yellow ring on the radar.`; renderPanel(); } return; }
+  if (a === 'wake') { closePanel(); wakeAtHome(); return; } if (a === 'roverHome') { r = garage(id, S.tc, true); if (r && !r.ok && r.why) toast('❌ ' + r.why, 2200); renderPanel(); return; }
   if (a === 'base') { closePanel(); try { H.base()?.overview?.(); } catch (e) { /* */ } return; }
   if (a === 'pay') r = pay(); else if (a === 'refuse') r = refuse(); else if (a === 'buy') r = buy(id); else if (a === 'collect') r = collect(id); else if (a === 'sec') r = upgrade(id); else if (a === 'repair') r = repair(id);
   else if (a === 'rest') r = rest(id); else if (a === 'dep') r = stashMove(id, { credits: +ds.n }); else if (a === 'med') r = stashMove(id, { medkits: +ds.n });
@@ -346,7 +342,7 @@ function updateMarks(force) {
 function nearest(px, pz) { let best = null, bd = 1e9; for (const E of Object.values(S.P)) { const d = Math.hypot(px - E.pl.door.x, pz - E.pl.door.z); const gd = E.pl.garage ? Math.hypot(px - E.pl.garage.x, pz - E.pl.garage.z) : 1e9; const m = Math.min(d, gd, E.pl.chopBay ? Math.hypot(px - E.pl.chopBay.x, pz - E.pl.chopBay.z) : 1e9); if (m < bd) { bd = m; best = { E, d, gd, cd: E.pl.chopBay ? Math.hypot(px - E.pl.chopBay.x, pz - E.pl.chopBay.z) : 1e9 }; } } return best; }
 function empireTick(dt, tc) {
   const t0 = performance.now(); S.tc = tc; S.mobile = !!tc.isMobile;
-  if (!S.on || !/mars/i.test(tc.name || '')) { if (S.root) S.root.visible = false; if (S.act || S.act2) setAct(null); S.ui?.chip.classList.remove('on'); return; }
+  if (!S.on || !/mars/i.test(tc.name || '')) { if (S.root) S.root.visible = false; if (S.act) setAct(null); return; }
   if (!buildAll(tc)) return; S.root.visible = true;
   // clock -> income
   const ck = clock(); if (D.lastHour == null) D.lastHour = ck.hour; const hrs = EC.hoursBetween(D.lastHour, ck.hour); D.lastHour = ck.hour;
@@ -358,16 +354,14 @@ function empireTick(dt, tc) {
   for (const E of Object.values(S.P)) { const far = Math.hypot(px - E.pl.x, pz - E.pl.z) > 380; E.m.g.visible = !far; if (E.m.pad) E.m.pad.visible = !far && !!D.owned[E.p.id]; }
   if (D.threat && S.P[D.threat.prop]) { S.beaconT += dt; MAT.beacon.opacity = 0.22 + 0.18 * Math.sin(S.beaconT * 5); }
   // wake-at-home after a bust / med-evac
-  const down = !!game()?.isDown?.(); if (S.wasDown && !down && D.home && D.owned[D.home]) S.wake = { t: 30 }; S.wasDown = down; if (S.wake && (S.wake.t -= dt) <= 0) S.wake = null;
+  const down = !!game()?.isDown?.(); if (S.wasDown && !down && D.home && D.owned[D.home]) { S.wake = { t: 60 }; toast(`🏠 Back on your feet. To go home to the ${EC.propById(D.home).name}, open the ☰ menu, tap Empire, then tap Back.`, 4200); } S.wasDown = down; if (S.wake && (S.wake.t -= dt) <= 0) S.wake = null;
   // context
   const busy = tc.world?.inside || panelOpen() || !!document.getElementById('hsSafe') || !!SSX()?.base?.building || down;
-  let a = null, a2 = null; const n = nearest(px, pz), speed = Math.abs(tc.car?.speed || 0);
+  let a = null; const n = nearest(px, pz), speed = Math.abs(tc.car?.speed || 0);
   if (n && n.E && Math.min(n.d, n.gd, n.cd) < EC.RULES.defendR) { const p = n.E.p, o = D.owned[p.id];
     const c = EC.contextFor({ prop: p, d: p.kind === 'chop' && tc.car ? Math.min(n.d, n.cd) : n.d, garageD: n.gd, owned: o, threat: D.threat, driving: !!tc.car, stolen: !!tc.car && tc.car !== tc.rover, speed, busy, credits: H.credits(), garageOpen: !!H.garageOpen() });
-    if (c) { a = { ...c, prop: p.id }; if (c.key === 'rest' || c.key === 'collect' || c.key === 'manage' || c.key === 'repair') a2 = { key: c.key === 'rest' ? 'stash' : 'manage', label: c.key === 'rest' ? '💰 Stash' : '📋 Office', prop: p.id };
-      if (c.key === 'garage' && H.garageOpen() && !tc.car) a2 = { key: 'roverHome', label: '🚙 Park rover', prop: p.id }; if (c.key === 'manage') a2 = null; } }
-  if (!a && S.wake && !busy) a = { key: 'wake', label: '🏠 Safehouse', prop: D.home };
-  setAct(a, a2); updateChip(px, pz);
+    if (c) a = { ...c, prop: p.id }; }
+  setAct(a);
   if ((S.markT -= dt) <= 0) { S.markT = 1; updateMarks(); if (panelOpen()) renderPanel(); }
   if (S.dirty && (S.saveT -= dt) <= 0) { S.saveT = 5; save(); }
   S.frameMs += (performance.now() - t0 - S.frameMs) * 0.1;
@@ -384,7 +378,7 @@ export const empire = {
   garage: (id, o = {}) => garage(id, S.tc, !!o.park), chopRide: () => chopRide(), wake: () => wakeAtHome(), home: () => D.home,
   pending: () => Math.floor(Object.values(D.owned).reduce((s, o) => s + o.pending, 0)), perHour: () => EC.perHour(D, clock().hour), clock,
   threat: () => D.threat ? { ...D.threat, left: Math.max(0, Math.round(D.threat.limit - D.threat.t)), engine: S.defense?.engine || null } : null, pay, refuse, defend,
-  open: id => openPanel(id || null), close: closePanel, get isOpen() { return panelOpen(); }, action: () => S.act?.key || null, action2: () => S.act2?.key || null,
+  open: id => openPanel(id || null), close: closePanel, get isOpen() { return panelOpen(); }, action: () => S.act?.key || null, action2: () => null /* one context button only; second actions live in the sheet */,
   stats: () => ({ ...D.stats, earned: Math.round(D.earned) }), log: () => D.log.slice(), frameMs: () => +S.frameMs.toFixed(3), setEnabled(on) { S.on = !!on; return S.on; }, get enabled() { return S.on; },
   save, reload() { D = load(); S.built = false; refreshLooks(); return true; },
   on(evt, fn) { if (typeof fn !== 'function') throw new Error('SSX.empire.on(event, fn)'); (listeners[evt] ||= []).push(fn); return () => empire.off(evt, fn); },
@@ -408,7 +402,7 @@ export const empire = {
   if (typeof window === 'undefined') return;
   if (!window.SSX?.registerSurfaceTick || !window.__app) { setTimeout(boot, 250); return; }
   if (window.SSX.empire) return; window.SSX.empire = empire; window.__app.empire = empire;
-  S.offline = EC.offline(D); if (S.offline.total > 0) { save(); setTimeout(() => toast(`🏢 While you were away your fronts took in ${S.offline.total} cr. Collect at the counters.`, 3600), 4000); }
+  S.offline = EC.offline(D); if (S.offline.total > 0) { save(); setTimeout(() => toast(`🏢 While you were away your fronts took in ${S.offline.total} cr. Go to each one and tap Collect at the door.`, 3600), 4000); }
   try { window.SSX.registerMenuItem({ id: 'rmEmpire', label: '🏢 Empire', onTap: () => openPanel() }); } catch (e) { console.warn('empire menu', e); }
   window.SSX.registerSurfaceTick((dt, tc) => { try { empireTick(dt, tc); } catch (e) { console.warn('empire tick', e); } });
   addEventListener('pagehide', () => { try { save(); } catch (e) { /* */ } });
