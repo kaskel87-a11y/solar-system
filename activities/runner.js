@@ -5,7 +5,10 @@
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
 import { addMenuItem, tap, panelTap } from '../racehooks.js';
 import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
-import { prepTemplate, nudgeSteps, duelOutcome } from './deadends.js';
+import { prepTemplate, nudgeSteps } from './deadends.js';
+import { markTick, pub as markPub, debugTip as markTip } from './mark.js';
+import { newSeries, scoreRound, payout as seriesPay, seriesLine, roundOutcome, BREAK_S } from './pitseries.js';
+import { heistTipTick, tipState } from '../mars/heisttip.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
 import { toAJ, toWorld } from './coords.js'; // pack coords are colony-relative; player x/z are world
 
@@ -162,6 +165,7 @@ function compileSteps(def) {
     if (s.limit != null) out.limit = s.limit;
     if (s.item) out.item = s.item;
     if (s.keep) out.keep = true;
+    if (s.mark) out.mark = s.mark;
     if (s.n != null) out.n = s.n;
     if (s.building) out.building = s.building;
     // drop unsupported types quietly
@@ -295,9 +299,9 @@ function startActivity(def, opts = {}) {
     return { ok: true };
   }
   if (mode === 'duel_ladder') {
-    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, roundsLeft: def.loop.rounds || 1, wager: def.loop.wager_default || 100, duelWatch: C.world?.lastDuel, rearmAt: performance.now() + 4000 };
+    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, series: newSeries(), wager: 0, duelWatch: C.world?.lastDuel, rearmAt: performance.now() + 4000 }; // best of 3, purse at the end (pitseries.js)
     armDuel(def);
-    sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: wager ${active.wager} cr. Fists only.`);
+    sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: best of 3, fists only. Purse paid at the end.`);
     tryBark({ name: 'crowd', kind: 'colonist' }, 'pit_cheer');
     updateMenu();
     return { ok: true };
@@ -333,8 +337,7 @@ function abandonActivity(why) {
     setChip(null);
     return;
   }
-  try { C.game.abandon?.(); } catch (e) {}
-  resetMissionProgress(id);
+  if (active.mode !== 'duel_ladder') { try { C.game.abandon?.(); } catch (e) {} resetMissionProgress(id); } // the Pit holds no quest slot
   if (C.world?.inDuel) C.world.yieldDuel?.();
   toast(why || 'Side job dropped.');
   active = null;
@@ -367,15 +370,25 @@ function completeActivity(extra = {}) {
   // Mission accept already paid base via engine; top up scaling / market delta
   const baseCr = def.rewards?.base?.credits || 50;
   const top = Math.max(0, bonus.credits - baseCr);
-  if (top > 0) C.game.debug?.credits?.(top);
+  if (top > 0 && !extra.purse) C.game.debug?.credits?.(top); // the Pit pays its own purse
   setCooldown(def);
   const bark = def.bark?.complete || def.bark?.win;
-  sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
+  if (extra.purse) toast(extra.purse, 4000); else sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
   active = null;
   updateMenu();
   setChip(null);
   save();
 }
+
+function finishSeries() {
+  const S = active.series, pay = seriesPay(S);
+  if (S.result === 'forfeit') return failActivity('You walked out of the ring. No purse.');
+  if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
+  active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;
+  if (S.result === 'lose') return failActivity(`🥊 Lost the series ${S.me}–${S.them}. Marrow tosses you ${pay.credits} cr for the show.`);
+  completeActivity({ purse: `🥊 ${S.result === 'sweep' ? 'Clean sweep' : 'Series won'} ${S.me}–${S.them}. Purse +${pay.credits} cr.` });
+}
+let lastPit = null;
 
 function failActivity(why) {
   if (!active) return;
@@ -494,8 +507,7 @@ function updateChip() {
   const q = info?.quest;
   let line = esc(def.name);
   if (active.mode === 'duel_ladder') {
-    line += `<br>Rounds left ${active.roundsLeft} · wager ${active.wager}`;
-    if (C.world?.inDuel) line += ' · <b>DUEL</b>';
+    line += `<br>${esc(seriesLine(active.series, { inDuel: !!C.world?.inDuel, breakS: ((active.breakUntil || 0) - performance.now()) / 1000 }))}`;
   } else if (q && q.id === active.missionId) {
     line += `<br>${esc(q.text || q.title || '')}`;
   } else {
@@ -511,27 +523,22 @@ function watchActive() {
   const def = active.def;
   if (active.mode === 'poker') return; // modal owns the loop
 
-  // Duel ladder: watch world.lastDuel
+  // Duel ladder: best of 3 (pitseries.js). world.lastDuel tells us how each bout ended.
   if (active.mode === 'duel_ladder') {
     if (C.world?.inDuel) return;
-    const L = C.world?.lastDuel;
+    const L = C.world?.lastDuel, S = active.series, t = performance.now();
     if (L && active.duelWatch !== L) {
       active.duelWatch = L;
-      const o = duelOutcome(L);
-      if (o === 'win') {
-        active.roundsLeft--;
-        if (active.roundsLeft <= 0) completeActivity();
-        else { toast(`🥊 Round won. ${active.roundsLeft} left.`); armDuel(def); }
-      } else if (o === 'rearm') { toast('🥊 They bottled it. Next fighter.'); armDuel(def); }
-      else if (o === 'fail') failActivity(L.why === 'forfeit' ? 'You walked out of the ring.' : 'You lost the bout.');
-    } else if (!L || active.duelWatch === L) {
-      // No bout running (no fighter was free): keep trying instead of sitting on "Rounds left"
-      const t = performance.now();
-      if (t > (active.rearmAt || 0)) { active.rearmAt = t + 4000; armDuel(def); }
-    }
-    if (!active) return;
-    // Fail if wanted spikes hard or gun used — soft check
-    if ((C.world?.wanted || 0) >= 3) failActivity('You got 3 wanted stars, so the Pit shut the fight down.');
+      const o = roundOutcome(L);
+      if (o === 'rearm') { toast('🥊 They bottled it. Next fighter.'); active.breakUntil = t + 1500; }
+      else if (o) {
+        scoreRound(S, o);
+        if (S.over) return finishSeries();
+        active.breakUntil = t + BREAK_S * 1000;
+        toast(o === 'win' ? `🥊 Round to you, ${S.me}–${S.them}. Next bout in ${BREAK_S} s.` : `🥊 Round to them, ${S.me}–${S.them}. Shake it off. ${BREAK_S} s.`, 3000);
+      }
+    } else if (t > (active.breakUntil || 0) && t > (active.rearmAt || 0)) { active.rearmAt = t + 4000; armDuel(def); } // next round, or no fighter was free
+    if (active && (C.world?.wanted || 0) >= 3) failActivity('You got 3 wanted stars, so the Pit shut the fight down.');
     return;
   }
 
@@ -581,6 +588,7 @@ export function activityTick(dt, ctx) {
   }
   if (!registered) registerAll();
 
+  try { markTick(dt, ctx); heistTipTick(dt, ctx); } catch (e) { console.warn('[activities] mark/heist tip', e); }
   watchActive();
   updateChip();
 
@@ -623,6 +631,7 @@ setInterval(() => {
 
 // ---------- test / debug ----------
 window.__activities = {
+  get mark() { return markPub(); }, markTip: () => markTip(), get pit() { return active?.mode === 'duel_ladder' ? { ...active.series, breakUntil: active.breakUntil || 0 } : null; }, get pitPay() { return lastPit; }, get heistTip() { return tipState(); },
   get pack() { return pack; },
   get active() { return active ? { id: active.def.id, mode: active.mode, missionId: active.missionId } : null; },
   get data() { return data; },
