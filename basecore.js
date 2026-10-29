@@ -41,7 +41,7 @@ export function normPlot(def) {
   const at = Array.isArray(def.aj) ? def.aj : Array.isArray(def.at) ? def.at : (def.at && typeof def.at === 'object') ? [def.at.x, def.at.z] : null; // colony-relative [x, z]
   if (!at || !Number.isFinite(+at[0]) || !Number.isFinite(+at[1])) return { ok: false, why: `registerPlot(${id}): at / aj = [x, z] relative to the colony centre required` };
   return { ok: true, plot: { id, name: String(def.name || id), district: String(def.district || 'Mars'), aj: [+at[0], +at[1]], price: Math.max(0, Math.round(num(def.price, 0))),
-    blurb: String(def.blurb || ''), addon: true, owner: typeof def.owned === 'function' ? def.owned : null, pieces: Array.isArray(def.pieces) ? def.pieces.map(String) : null } };
+    blurb: String(def.blurb || ''), addon: true, owner: typeof def.owned === 'function' ? def.owned : null, build: def.build !== false, pieces: Array.isArray(def.pieces) ? def.pieces.map(String) : null } };
 }
 export function normPiece(def) {
   if (!def || typeof def !== 'object') return { ok: false, why: 'registerPiece(def): def must be an object' };
@@ -63,6 +63,8 @@ export function addPieceType(def) {
   const replaced = !!PIECES[n.piece.id]; PIECES[n.piece.id] = n.piece; if (!PIECE_IDS.includes(n.piece.id)) PIECE_IDS.push(n.piece.id); return { ok: true, id: n.piece.id, replaced, piece: n.piece };
 }
 // pieces allowed on a plot: built-ins everywhere unless the plot lists its own; add-on pieces where their def.plots allows
+// build:false lots have no base 🏗️ Build button / overview Build: the add-on drives place() itself
+export const canBuildUi = plotId => plotById(plotId)?.build !== false;
 export function piecesFor(plotId) { const pl = plotById(plotId); return PIECE_IDS.filter(t => { const T = PIECES[t]; if (pl?.pieces && !pl.pieces.includes(t)) return false; return !T.plots || T.plots.includes(plotId); }); }
 export const TURRET = { range: 32, rate: 0.9, dmg: 1 };
 

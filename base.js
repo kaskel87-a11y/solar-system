@@ -241,7 +241,7 @@ function overview() {
     const s = plotState(p.id), c = centres[p.id], d = c && P ? Math.hypot(c.x - P.x, c.z - P.z) : null, near = d != null && d < BC.HALF + NEAR + 2, sum = BC.summary(s);
     const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
     const where = d == null ? 'Mars' : near ? 'here' : `${Math.round(d)} m ${compass(c.x - P.x, c.z - P.z)}`;
-    const btn = s.owned ? (near ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
+    const btn = s.owned ? (near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
     return `<div class="row"><div><b>${s.owned ? '🏠' : '🏷️'} ${p.name}</b> <small>· ${p.district} · ${where}</small><br><small>${info}</small></div>${btn}</div>`;
   }).join('');
   panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, gates, a garage for your rover, a stash the cops can't fine and turrets that shoot back when you're wanted. You have ${cr} cr.</small>${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
@@ -258,9 +258,10 @@ function stashUi(id) {
 }
 
 // ---------- build mode ----------
-function setBuild(on, plotId) {
+function setBuild(on, plotId, force) {
   ensureUi();
-  if (on) { const id = plotId || inPlotId; if (!id || !plotState(id).owned) { H.toast('🏗️ Stand on a lot you own to build.', 2400); return false; }
+  if (on) { const id = plotId || inPlotId; syncOwners(); if (!id || !plotState(id)?.owned) { H.toast('🏗️ Stand on a lot you own to build.', 2400); return false; }
+    if (!force && !BC.canBuildUi(id)) return false; // build:false lot: only its add-on's own button
     const ids = BC.piecesFor(id); build = { plotId: id, type: ids.includes(build?.type) ? build.type : (ids[0] || 'wall'), r: build?.r || 0, tool: 'place' }; renderTools(); document.body.classList.add('basebuild'); closePanel(); if (C) rebuildGrid(); refreshBar(); emit('build:on', { plotId: id }); }
   else if (build) { const id = build.plotId; build = null; document.body.classList.remove('basebuild'); clearGroup(ghost); ghost = null; clearGroup(grid); grid = null; emit('build:off', { plotId: id }); }
   return true;
@@ -330,7 +331,7 @@ export function baseTick(dt, ctx) {
         if (cz && (parked || !ctx.rover)) act = { label: '🔧 Customize', fn: async () => { const f = customizer(); if (!f) return H.toast('🔧 No tuner in this build.', 1800); f(); emit('garage:customize', { plotId: near }); } };
         else if (ctx.rover) act = { label: '🚙 Rover home', fn: async () => roverHome(near, gr) };
       }
-      else if (inPlotId === near) act = { label: '🏗️ Build', fn: async () => setBuild(true, near) };
+      else if (inPlotId === near && BC.canBuildUi(near)) act = { label: '🏗️ Build', fn: async () => setBuild(true, near) };
     }
   }
   setAction(act);
@@ -400,6 +401,7 @@ const api = {
     return { ok: true, msg: `🏠 ${p.name} is yours. Stand on it and tap 🏗️ Build.` };
   },
   place(id, type, i, j, r = 0) {
+    if (BC.plotById(id)?.owner) syncOwners(); // add-on lot: same-frame ownership, no 'Buy the lot first' before the next tick
     const s = plotState(id); if (!s) return { ok: false, why: 'No such lot' };
     const v = BC.canPlace(s, type, i, j, r, { credits: H.credits(C?.game), plotId: id }); if (!v.ok) return v;
     if (!H.spend(C?.game, v.cost)) return { ok: false, why: 'Short on credits' };
@@ -427,7 +429,8 @@ const api = {
     s.stash.credits -= credits; s.stash.medkits -= medkits; persist(); if (credits) H.give(C?.game, credits); if (medkits) H.addMedkits(C?.game, medkits);
     emit('stash', { plotId: id, op: 'withdraw', credits, medkits, stash: { ...s.stash } }); return { ok: true, stash: { ...s.stash } };
   },
-  build: (on = true, id) => on ? setBuild(true, id) : setBuild(false),
+  build: (on = true, id, o = {}) => on ? setBuild(true, id, !!o.force) : setBuild(false), // o.force opens build mode on a build:false lot
+  refresh: () => { syncOwners(); return api.owned(); }, syncOwners: () => api.refresh(), // re-read every add-on lot's owned() now
   stashUi: id => stashUi(id || inPlotId), overview: () => overview(),
   // ---- raids (for Steve's SSX.raids or anyone else) ----
   raid(id, opts = {}) {
@@ -460,7 +463,10 @@ const api = {
 export const base = api;
 
 // ---------- Add-on lots and pieces ----------
-// SSX.base.registerPlot({ id, name, at: [x, z], district?, price?, blurb?, owned?: () => bool, pieces?: [typeIds] })
+// SSX.base.registerPlot({ id, name, at: [x, z], district?, price?, blurb?, owned?: () => bool, pieces?: [typeIds], build?: false })
+//   build: false hides the base's 🏗️ Build button (and the overview Build) at that lot; place()/remove() still work, and
+//   SSX.base.build(true, id, { force: true }) can still open build mode. Ownership is synced synchronously by registerPlot,
+//   by place() on an add-on lot, and by SSX.base.refresh() (alias syncOwners()), not only on the next frame.
 //   at (alias aj) is relative to the colony centre (Ares Junction), the same frame as the built-in lots, world.colonyAt and
 //   the other Mars add-ons (farm, runner, empire). Lots are SIZE x SIZE cells of CELL m (20 x 20 m) centred on at. With
 //   owned(), ownership follows your add-on (no Buy button here); without it the lot is bought here for price.

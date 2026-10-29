@@ -58,11 +58,25 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => document.querySelector('#baseT-farm-dome') && window.SSX.base.building && document.querySelector('#baseT-farm-dome').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, bubbles: true })) && document.querySelector('#baseT-farm-dome').dispatchEvent(new PointerEvent('pointerup', { pointerId: 9, bubbles: true })));
     await sleep(800); await page.screenshot({ path: `${out}${tag}-build.png`, timeout: 90000 }).catch(() => {});
     await G(() => window.SSX.base.build(false));
+    // build:false lot + same-frame ownership: register unowned, flip the add-on's flag, place() in the same frame
+    const sf = await G(() => { const b = window.SSX.base; window.__ownB = false;
+      const r = b.registerPlot({ id: 'farm-b', name: 'Farm B', at: [10, 226], owned: () => window.__ownB, build: false });
+      const before = b.place('farm-b', 'wall', 0, 0, 0); window.__ownB = true; const same = b.place('farm-b', 'wall', 1, 0, 0);
+      window.__ownB = false; const ref = b.refresh().includes('farm-b'); const ali = typeof b.syncOwners === 'function';
+      window.__ownB = true; const reg = b.registerPlot({ id: 'farm-b', name: 'Farm B', at: [10, 226], owned: () => window.__ownB, build: false }); const owned2 = b.state('farm-b').owned;
+      return { r: r.ok, before: before.why, same: same.ok, refreshUnowned: !ref, alias: ali, regSync: reg.ok && owned2 }; });
+    ok('sameFrame', sf, !!sf.r && /Buy/.test(sf.before || '') && sf.same && sf.refreshUnowned && sf.alias && sf.regSync);
+    const fb = await G(() => window.SSX.base.plots().find(p => p.id === 'farm-b').world);
+    await G(([x, z]) => window.__app.surface.debugMove(x, z, 0), [fb.x, fb.z + 6]); await sleep(1500);
+    ok('noBuildBtn', await G(() => window.SSX.base.inPlot), (await G(() => window.SSX.base.inPlot === 'farm-b' && window.SSX.base.action === null && document.getElementById('baseBtn').style.display === 'none')));
+    ok('noUiBuild', await G(() => window.SSX.base.build(true, 'farm-b') === false && window.SSX.base.build(true, 'farm-b', { force: true }) === true && (window.SSX.base.build(false), true)));
+    await page.screenshot({ path: `${out}${tag}-nobuild.png`, timeout: 90000 }).catch(() => {});
     // reload: the save keeps the dome even though the pieces register late
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 150000);
     ok('api2', await wait(() => !!window.SSX?.base?.ready, 20000));
     ok('parkedBeforeRegister', await G(() => (window.SSX.base.state('farm-home')?.later || []).some(q => q.type === 'farm-dome')));
     await regPieces();
+    ok('restored2', await G(() => (window.SSX.base.state('farm-b')?.pieces || []).length === 1));
     ok('restored', await G(() => window.SSX.base.state('farm-home').pieces.map(q => q.type).sort().join()), (await G(() => window.SSX.base.state('farm-home').pieces.map(q => q.type).sort().join())) === 'farm-dome,turret,wall');
   } catch (e) { bad.push('EXC ' + e.message.split('\n')[0]); }
   R.errors = errors.slice(0, 5); if (errors.some(e => !/audio device/i.test(e))) bad.push('pageerrors'); // headless WebKit has no audio device

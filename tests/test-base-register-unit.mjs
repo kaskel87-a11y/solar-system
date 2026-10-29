@@ -46,4 +46,14 @@ ok('fresh save includes add-on lots', !!B.freshSave().plots['farm-home']);
 // add-on lot whose add-on says "not owned" keeps its pieces through a migrate
 const s2 = JSON.parse(JSON.stringify(s)); s2.plots['farm-home'].owned = false;
 ok('owner-managed lot keeps pieces while unowned', B.migrate(s2).plots['farm-home'].pieces.length === 2);
+// build:false (farm runs its own button) + wiring for same-frame ownership
+ok('build defaults on', B.canBuildUi('farm-home') && B.canBuildUi('aj-north') && B.canBuildUi('nope'));
+ok('build:false lot', B.addPlot({ id: 'farm-homestead', at: [10, 226], owned: () => true, build: false }).ok && !B.canBuildUi('farm-homestead') && B.plotById('farm-homestead').build === false);
+ok('build:false lot still takes pieces', (() => { const t = B.emptyPlot(); t.owned = true; return B.canPlace(t, 'wall', 0, 0, 0, { plotId: 'farm-homestead' }).ok; })());
+ok('re-register without build:false turns Build back on', B.addPlot({ id: 'farm-homestead', at: [10, 226] }).replaced && B.canBuildUi('farm-homestead'));
+{ const src = (await import('fs')).readFileSync(new URL('../base.js', import.meta.url), 'utf8');
+  ok('refresh + syncOwners alias', /refresh: \(\) => \{ syncOwners\(\); return api\.owned\(\); \}, syncOwners: \(\) => api\.refresh\(\)/.test(src));
+  ok('place syncs add-on ownership first', /place\(id, type, i, j, r = 0\) \{\n\s*if \(BC\.plotById\(id\)\?\.owner\) syncOwners\(\);/.test(src));
+  ok('registerPlot syncs synchronously', /function refreshAfterRegister\(\) \{\n\s*S = BC\.migrate\([^\n]*syncOwners\(true\)/.test(src));
+  ok('Build button gated', src.includes("inPlotId === near && BC.canBuildUi(near)") && src.includes('near && BC.canBuildUi(p.id)')); }
 console.log(fails ? `FAIL ${fails}` : 'PASS register unit'); process.exit(fails ? 1 : 0);
