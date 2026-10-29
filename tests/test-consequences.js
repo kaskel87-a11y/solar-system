@@ -176,11 +176,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     else {
       await G(() => { window.__app.game.progress.credits = 6000; }); await home(); await bust(1); await sleep(300);
       if (await G(() => document.getElementById('cqPanel').classList.contains('show'))) await tapSel('#cqPanel button[data-a="close"]');
-      const dk = await center('#dockLegal'), fire = await center('#fireBtn') || await center('#touchFire') || null, hb = await center('#cqHudBtn');
+      const fold = await G(() => document.body.classList.contains('hxFold')); R.dockFold = fold; // v7.5.5: phones fold the dock into ☰ (hud/hudx.js), Legal is mirrored there
+      if (fold) { await tapSel('#menuBtn'); await sleep(400); await G(() => document.getElementById('hxm_dockLegal')?.scrollIntoView({ block: 'center' })); await sleep(300); }
+      const dk = await center(fold ? '#hxm_dockLegal' : '#dockLegal'), fire = await center('#fireBtn') || await center('#touchFire') || null, hb = await center('#cqHudBtn');
       const others = await G(() => [...document.querySelectorAll('#ssxDock button')].filter(b => b.offsetParent).map(b => b.id));
       const overlap = dk && fire ? !(dk.b <= fire.t || dk.t >= fire.b || dk.r <= fire.l || dk.l >= fire.r) : false;
-      ok('dock', { dk, fire, overlap, others, hb }, !!dk && dk.h >= 44 && !overlap && hb && hb.h >= 44);
-      await tapSel('#dockLegal'); ok('dockOpens', await G(() => document.getElementById('cqPanel').classList.contains('show')));
+      ok('dock', { dk, fire, overlap, others, hb }, !!dk && dk.h >= 44 && (fold || !overlap) && hb && hb.h >= 44);
+      await tapSel(fold ? '#hxm_dockLegal' : '#dockLegal'); ok('dockOpens', await G(() => document.getElementById('cqPanel').classList.contains('show')));
       await page.screenshot({ path: out + `consequences-dock-${tag}.png` });
       await G(() => window.SSX.consequences.serve());
     }

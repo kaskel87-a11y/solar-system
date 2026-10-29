@@ -97,16 +97,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (!desk) { await G(() => document.getElementById('farmPanel').querySelector('.wrap').scrollTop = 0); await page.screenshot({ path: out + `farm-panel-${tag}.png` }); }
     await tapSel('#farmPanel button[data-a="close"]');
     // ---- grow: own clock skip, then SSX.time ----
+    const realT = await G(() => typeof window.SSX.time?.hour === 'function'); R.realTime = realT; // v7.5.5 integration: mars/time.js is on main, so the farm runs on SSX.time from the start
     let k = await G(() => { const r = window.SSX.farm.skip(3); return { via: r.via, s: window.SSX.farm.status() }; });
-    ok('growOwn', { via: k.via, racks: k.s.racks, water: k.s.water }, k.via === 'own' && k.s.racks[0].growth > 0.25 && k.s.racks[0].growth < 0.35 && k.s.water < 100);
+    ok('growOwn', { via: k.via, racks: k.s.racks, water: k.s.water }, k.via === (realT ? 'SSX.time' : 'own') && k.s.racks[0].growth > 0.25 && k.s.racks[0].growth < 0.35 && k.s.water < 100);
+    const EMPH = await G(() => typeof window.SSX.empire?.on === 'function' && !!window.SSX.farm.status().empire);
+    if (!realT) {
     await G(() => { window.__fakeH = 9; window.SSX.time = { hour: () => window.__fakeH, set: h => { window.__fakeH = h; }, isNight: () => false }; }); await fr(4);
     await G(() => { window.__fakeH = 11; }); await fr(6);
-    const EMPH = await G(() => typeof window.SSX.empire?.on === 'function' && !!window.SSX.farm.status().empire);
     if (EMPH) await wait(() => window.SSX.farm.status().empire?.live, 6000); // SSX.empire (#52) re-baselines on SSX.time, then fires the 2 hours crossed
     k = await St(); ok('growTimeTick', { clock: k.clock, g: k.racks[0].growth, emp: k.empire }, EMPH ? (k.clock === 'SSX.empire.hour' && k.racks[0].growth > 0.35 && k.racks[0].growth < 0.65) : (k.clock === 'SSX.time' && k.racks[0].growth > 0.45 && k.racks[0].growth < 0.55));
+    }
     k = await G(() => { const r = window.SSX.farm.skip(8); return { via: r.via, h: window.__fakeH, s: window.SSX.farm.status() }; });
-    ok('growTimeSkip', { via: k.via, h: k.h, racks: k.s.racks }, k.via === 'SSX.time' && k.h === 19 && k.s.racks[0].ripe && !k.s.racks[1].ripe);
-    if (EMPH) { // one SSX.time hour -> exactly one empire 'hour' -> exactly one farm hour (no double tick); skip()'s 8 hour events were swallowed
+    ok('growTimeSkip', { via: k.via, h: k.h, racks: k.s.racks }, k.via === 'SSX.time' && (realT || k.h === 19) && k.s.racks[0].ripe && !k.s.racks[1].ripe);
+    if (EMPH && !realT) { // one SSX.time hour -> exactly one empire 'hour' -> exactly one farm hour (no double tick); skip()'s 8 hour events were swallowed
       await sleep(3200); const e0 = await St(); await G(() => { window.__fakeH = 20.05; }); await wait(n => window.SSX.farm.status().empire.hours > n, 6000, e0.empire.hours); await sleep(1500); const e1 = await St();
       ok('empireHour', { h0: e0.hours, h1: e1.hours, n0: e0.empire.hours, n1: e1.empire.hours }, Math.abs(e1.hours - e0.hours - 1) < 0.01 && e1.empire.hours === e0.empire.hours + 1);
     } else R.empireHour = 'no SSX.empire.on: own clock / SSX.time';
