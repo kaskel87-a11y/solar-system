@@ -1207,7 +1207,7 @@
     let actx = null; const sfxLog = [];
     function audio() {
       if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-      if (actx.state === 'suspended') actx.resume();
+      if (actx.state === 'suspended') actx.resume().catch(() => {}); // iOS/WebKit can reject (no audio device, interrupted session)
       return actx;
     }
     ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, () => audio(), { passive: true }));

@@ -537,7 +537,7 @@ function openBuilder(def = null, copy = false) {
 
 // ---------- tiny synth (WebAudio): countdown beeps, gate chimes, boost/jump ----------
 let ac = null;
-function unlockAudio() { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } }
+function unlockAudio() { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume().catch(() => {}); } catch (e) { ac = null; } }
 function sfx(kind) {
   if (!ac || ac.state !== 'running') return;
   const tone = (f, d, type = 'square', v = 0.06, f2) => { const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
