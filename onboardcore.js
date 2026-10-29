@@ -13,6 +13,8 @@ export const PROGRESS_KEY = 'ssx.progress.v1';
 const parse = s => { if (s == null || s === '') return null; try { return JSON.parse(s); } catch (e) { return null; } };
 const hasContent = v => v != null && (Array.isArray(v) ? v.length > 0 : typeof v === 'object' ? Object.keys(v).length > 0 : !!v);
 
+// The fight club writes its NPC ladder + next card on its first tick, before you've done anything: only your own bouts or bets count.
+const foughtOrBet = v => !!v && typeof v === 'object' && ((+v.you?.w || 0) + (+v.you?.l || 0) + (+v.you?.ko || 0) > 0 || (+v.stats?.bouts || 0) > 0 || (+v.stats?.bets || 0) > 0 || hasContent(v.bets));
 // get(key) -> raw string | null (localStorage.getItem). True when this save has real progress in it.
 export function isReturningPlayer(get) {
   const p = parse(get(PROGRESS_KEY));
@@ -20,7 +22,7 @@ export function isReturningPlayer(get) {
     if ((+p.xp || 0) > 0 || (+p.credits || 0) > 0 || (+p.level || 1) > 1) return true;
     if (hasContent(p.quests) || hasContent(p.done) || hasContent(p.badges) || hasContent(p.owned) || hasContent(p.flags)) return true;
   }
-  for (const k of PLAYED_KEYS) if (hasContent(parse(get(k)))) return true;
+  for (const k of PLAYED_KEYS) { const v = parse(get(k)); if (k === 'ssx.fight.v1' ? foughtOrBet(v) : hasContent(v)) return true; }
   return false;
 }
 
