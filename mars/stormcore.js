@@ -90,10 +90,10 @@ export function dampRise(from, to, k, carry = 0) {
 }
 export const visibility = (far, I, tier) => Math.round(fogFor(far * 0.3, far, I, tier).far); // metres the fog lets you see
 
-// ---- HUD caption (short, edge of screen) ----
+// ---- HUD caption (one short line, edge of screen, ~3 s) ----
 export function caption(phase, I, heatK) {
-  if (phase === 'building') return '🌪️ Dust storm rolling in';
-  if (phase === 'peak') return `🌪️ Dust storm · low visibility · heat −${Math.round((1 - heatK) * 100)}%`;
+  if (phase === 'building') return '🌪️ Dust storm coming';
+  if (phase === 'peak') return `🌪️ Dust storm · heat −${Math.round((1 - heatK) * 100)}%`;
   if (phase === 'clearing') return '🌤️ Storm clearing';
   return '';
 }

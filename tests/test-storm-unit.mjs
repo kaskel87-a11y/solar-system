@@ -52,8 +52,8 @@ const red = h => ((h >> 16) & 255) > ((h & 255) + 40); t('tint reddens sky + fog
 t('tint dims light, hides sun + stars', T.light < L.light && T.hemi < L.hemi && T.sunVisible === false && T.stars === 0 && T.storm === 1);
 t('tint keeps other fields', K.tintLook({ ...L, foo: 7 }, 0.5).foo === 7);
 // captions: short
-t('captions', K.caption('building', 0.3, 1).includes('rolling in') && K.caption('peak', 1, 0.5).includes('−50%') && K.caption('clear', 0, 1) === '');
-t('captions short', ['building', 'peak', 'clearing'].every(p => [...K.caption(p, 1, 0.5)].length <= 48));
+t('captions', K.caption('building', 0.3, 1).includes('Dust storm') && K.caption('peak', 1, 0.5).includes('−50%') && K.caption('clear', 0, 1) === '');
+t('captions short', ['building', 'peak', 'clearing'].every(p => [...K.caption(p, 1, 0.5)].length <= 28 && !/\n/.test(K.caption(p, 1, 0.5))));
 // wiring
 const rd = f => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 const idx = rd('index.html'), sw = rd('sw.js'), world = rd('world.js'), src = rd('mars/storm.js');

@@ -27,7 +27,7 @@ function emit(evt, d = {}) {
 const S = {
   cycle: K.createCycle({ periodic: Q !== '0' }), I: 0, eff: 0, onMars: false, indoor: false, tier: 'med', tierOverride: K.normTier(qs.get('stormq')), mobile: false,
   scene: null, pts: null, mat: null, n: 0, ref: { dl: null, hemi: null, sky: null, sun: null, kids: -1, t: 0 }, saved: null, applied: null,
-  timeFilterOff: null, prevHeat: null, carry: 0, trafT: 0, touched: new Set(), bwK: 1, bwMode: null, cap: null, capT: 0, capText: '',
+  timeFilterOff: null, prevHeat: null, carry: 0, trafT: 0, touched: new Set(), bwK: 1, bwMode: null, cap: null, capFade: 0, capHide: 0, capText: '',
   frameMs: 0, renderMs: 0, rendersThisFrame: 0, stats: { storms: 0, shed: 0, damped: 0, renders: 0 }, wind: { a: Math.random() * 6.28, v: 8 }, off: new THREE.Vector3(),
   gritOn: true, lastPhase: 'clear', booted: false, armed: Q === '1' || Q === 'peak'
 };
@@ -174,16 +174,22 @@ function syncTraffic(tc) {
 }
 function restoreTraffic() { for (const v of S.touched) { const t = v.traffic; if (t && t.__stormV0 != null) { t.vmax = t.__stormV0; delete t.__stormV0; } } S.touched.clear(); }
 
-// ---------- caption: one small pill in the right stack (never the screen centre), only on phase changes ----------
+// ---------- caption: one short single-line pill, bottom-left above the joystick (never the screen centre or the top-right
+// stack), only on phase changes, gone after ~3 s (wall clock, so a slow frame rate or leaving Mars can't strand it on the HUD) ----------
+const CAP_MS = 3000;
 function capEl() {
-  if (S.cap?.isConnected) return S.cap; const host = document.getElementById('stackR') || document.body;
+  if (S.cap?.isConnected) return S.cap;
   const d = document.createElement('div'); d.id = 'stormCap'; d.className = 'glass'; d.setAttribute('aria-live', 'polite');
-  d.style.cssText = 'display:none;padding:4px 9px;border-radius:9px;font-size:0.7rem;line-height:1.3;background:rgba(60,22,10,0.62);border:1px solid rgba(255,170,120,0.28);text-shadow:0 1px 2px rgba(0,0,0,0.8);pointer-events:none;transition:opacity .6s;white-space:nowrap;'
-    + (host === document.body ? 'position:fixed;top:calc(64px + env(safe-area-inset-top));right:8px;z-index:9;' : '');
-  host.appendChild(d); S.cap = d; return d;
+  d.style.cssText = 'display:none;position:fixed;left:calc(12px + env(safe-area-inset-left));bottom:calc(158px + env(safe-area-inset-bottom));z-index:9;max-width:min(60vw,300px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+    + 'padding:3px 9px;border-radius:9px;font-size:0.7rem;line-height:1.3;background:rgba(60,22,10,0.62);border:1px solid rgba(255,170,120,0.28);text-shadow:0 1px 2px rgba(0,0,0,0.8);pointer-events:none;transition:opacity .5s;';
+  document.body.appendChild(d); S.cap = d; return d;
 }
-function flashCap(text, ms = 6000) { if (!text) return; try { const d = capEl(); d.textContent = text; d.style.display = 'block'; d.style.opacity = '1'; S.capText = text; S.capT = ms / 1000; } catch (e) { warnOnce('cap', e); } }
-function capTick(dt) { if (S.capT <= 0) return; S.capT -= dt; if (S.capT <= 0.6 && S.cap) S.cap.style.opacity = '0'; if (S.capT <= 0 && S.cap) { S.cap.style.display = 'none'; S.capText = ''; } }
+function hideCap() { clearTimeout(S.capFade); clearTimeout(S.capHide); if (S.cap) { S.cap.style.opacity = '0'; S.cap.style.display = 'none'; } S.capText = ''; }
+function flashCap(text, ms = CAP_MS) {
+  if (!text || ms <= 0) { hideCap(); return; }
+  try { const d = capEl(); hideCap(); d.textContent = text; d.style.display = 'block'; d.style.opacity = '1'; S.capText = text;
+    S.capFade = setTimeout(() => { if (S.cap) S.cap.style.opacity = '0'; }, ms - 500); S.capHide = setTimeout(hideCap, ms); } catch (e) { warnOnce('cap', e); }
+}
 
 // ---------- per-frame ----------
 function tick(dt, tc) {
@@ -200,7 +206,6 @@ function tick(dt, tc) {
   updateGrit(dt, tc);
   syncHeat(S.cycle.phase !== 'clear' && onMars);
   if ((S.trafT -= dt) <= 0) { S.trafT = 0.5; try { syncTraffic(tc); } catch (e) { warnOnce('traffic', e); } }
-  capTick(dt);
   const ms = performance.now() - t0 + S.renderMs; S.renderMs = 0;
   S.frameMs += (ms - S.frameMs) * 0.1;
 }
@@ -208,7 +213,7 @@ function phaseChanged(from, to) {
   S.lastPhase = to; const d = { from, to, phase: to, I: +S.cycle.I.toFixed(3), manual: S.cycle.manual };
   if (to === 'building' && from === 'clear') { S.stats.storms++; emit('start', d); }
   if (to === 'peak') emit('peak', d); if (to === 'clearing') emit('clearing', d); if (to === 'clear') { emit('end', d); S.carry = 0; }
-  emit('phase', d); flashCap(K.caption(to, S.cycle.I, K.heatScale(1)), to === 'clear' ? 0 : 6000);
+  emit('phase', d); flashCap(K.caption(to, S.cycle.I, K.heatScale(1)), to === 'clear' ? 0 : CAP_MS);
 }
 
 // ---------- public API: window.SSX.storm (also __app.storm) ----------
