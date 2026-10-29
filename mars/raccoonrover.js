@@ -318,7 +318,7 @@ function setup() {
   const st = document.createElement('style'); st.id = 'rcnCss'; st.textContent = CSS; document.head.appendChild(st);
   dockButton();
   addEventListener('keydown', e => {
-    if (e.code !== RC.PICK_KEY || e.repeat || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    if (e.code !== RC.PICK_KEY || e.repeat || e.defaultPrevented || document.body.classList.contains('basebuild') /* v7.5.5: 5 is a base build tool in build mode */ || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (!app()?.state?.onSurface || window.__race?.builder?.open || document.body.classList.contains('danger-standoff')) return;
     if (!S.owned && !R.near) return; // nothing to do: leave the key alone
     e.preventDefault(); act();
