@@ -34,6 +34,7 @@ const PRECACHE = [
   `mars/gravity.js${q}`, `mars/gravitycore.js${q}`, // Pumpkin: gravity modes for Mars vehicles
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
   ...['onboard', 'onboardcore'].map(n => `${n}.js${q}`), // First Day on Mars tour + How to play codex (Ben)
+  ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)

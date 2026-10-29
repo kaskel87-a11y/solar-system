@@ -597,6 +597,7 @@ export function createWorld(ctx) {
   // ----- wanted level -----
   const distC = () => { if (!C) return 1e9; const h = sites.length ? hubAt(player.x, player.z) : null; return h ? h.d : Math.hypot(player.x - cx, player.z - cz); }; // v7.5: distance to the nearest hub (colony or district)
   function setWanted(n, why) {
+    if (n > wanted && typeof globalThis.SSX?.heatFilter === 'function') { try { const f = globalThis.SSX.heatFilter(wanted, n, why); if (Number.isFinite(f)) n = f; } catch (e) { console.warn('heatFilter', e); } } // v7.5.5 add-on heat filter (mars/storm.js: dust storms cut heat gain)
     n = Math.max(0, Math.min(5, Math.round(n)));
     if (n === wanted) return;
     const up = n > wanted; wanted = n; evade = 0;
