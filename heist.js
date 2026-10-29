@@ -209,8 +209,10 @@ export const heist = {
     const d = HEISTS.get(heistId); if (!d) return null;
     const tips = TIPS.get(heistId) || {}; const t = applyTipTo(tips, tip); if (!t) return null; TIPS.set(heistId, tips);
     const out = { id: heistId, type: t.type };
-    if (t.type === 'cameras') out.cameras = d.cameras.map((c, i) => ({ id: c.id || `${d.id}-cam${i}`, x: c.x, z: c.z, yaw: c.yaw || 0, fov: c.fov || 70, range: c.range || 14, rel: d.rel }));
-    if (t.type === 'patrol') out.guards = (d.guards || []).map(g => ({ x: g.x, z: g.z, rel: d.rel }));
+    // minimap marks are world coords: resolve rel:'colony' points now (falls back to the def coords + rel before landing)
+    const W = ctxL?.world || window.__app?.surface?.world, at = p => { const w = toWorld(W, p, d.rel); return w ? { x: w.x, z: w.z, rel: 'world' } : { x: p.x, z: p.z, rel: d.rel }; };
+    if (t.type === 'cameras') out.cameras = d.cameras.map((c, i) => ({ id: c.id || `${d.id}-cam${i}`, ...at(c), yaw: c.yaw || 0, fov: c.fov || 70, range: c.range || 14 }));
+    if (t.type === 'patrol') out.guards = (d.guards || []).map(g => at(g));
     if (t.type === 'safe') out.ease = tips.safeEase;
     emit('tip', out); return out;
   },
