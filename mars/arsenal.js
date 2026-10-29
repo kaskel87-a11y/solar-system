@@ -26,7 +26,7 @@ import { initGunsmith } from './gunsmith.js';
  *  gunsmith           -> { open(), close(), at(), catalog(), trade(id, pay:'stash'|'cash'|'favor') } (mars/gunsmith.js)
  *  debug              -> test helpers (see bottom)
  * Keys (free across main + PRs #41/#43/#44; tests/test-keys-unit.mjs guards it): hold Q = wheel on foot (tap Q still cycles; in a
- *   vehicle Q stays the game's/zero-G roll), I reload, ' (Quote) ammo type, right mouse = scope (hold, or click to toggle), \ (Backslash)
+ *   vehicle Q stays the game's/zero-G roll), I reload, 0 ammo type, right mouse = scope (hold, or click to toggle), Shift+0
  *   scope fallback. Phone: long-press the 🔫 HUD chip or the 🎯 dock button; the chip shows mag/reserve for arsenal guns.
  * Persistence: localStorage 'ssx.arsenal.v1' (owned, mags, ammo boxes, ammo choice, mods). The equipped weapon and the
  * game's own ammo (rounds, shells) stay in the game save.
@@ -45,7 +45,7 @@ export const TYPES = {
   slug: { name: 'Coil slug', short: 'SLUG', dmg: 1 }
 };
 export const CALS = { light: { name: 'Light rounds', types: ['std', 'hollow', 'ap'], core: 'rounds' }, shell: { name: 'Shells', types: ['std', 'ap'], core: 'shells' }, heavy: { name: 'Heavy rounds', types: ['std', 'hollow', 'ap'] }, rail: { name: 'Coil slugs', types: ['slug'] } };
-export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Quote', scope: 'Backslash' }; // + right mouse for scope. v7.5.5: . is the Beltway panel, , is base build
+export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Digit0', scope: 'Digit0' }; /* v7.5.5: 0 ammo type, Shift+0 scope; ' is the legal panel, \ the empire panel, Shift+I the texts */ // + right mouse for scope. v7.5.5: . is the Beltway panel, , is base build
 export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No "discharging a weapon" crime, quieter shots, -8% damage.' }, extmag: { name: 'Extended mag', icon: '➕', blurb: '+50% magazine, slightly slower reload.' }, scope: { name: 'Scope', icon: '🔭', blurb: 'Zoom (right mouse / , / 🔭) and half the bloom while scoped.' } };
 // core = the game.js WEAPONS id this gun fires through. smg + shotgun are the game's own guns (Ozzie's / colony shop).
 export const ARS = {
@@ -381,9 +381,9 @@ function keys() {
     if (e.code === KEYS.wheel) { if (!onFoot() || !game()) return; /* vehicles: core Q / zero-G roll */ e.stopImmediatePropagation(); e.preventDefault(); if (e.repeat || qT) return; qLong = false; qT = setTimeout(() => { qLong = true; openWheel(); }, 220); return; }
     if (e.repeat) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.code === KEYS.reload) { const a = curArs(); if (a && onFoot()) startReload(a); }
-    else if (e.code === KEYS.scope) { if (onFoot()) scope(); }
-    else if (e.code === KEYS.ammo) { if (onFoot() && curArs()?.kind === 'gun') { const r = setAmmo(); toast(r.msg, 1500); } }
+    if (e.code === KEYS.reload && !e.shiftKey) { const a = curArs(); if (a && onFoot()) startReload(a); }
+    else if (e.code === KEYS.scope && e.shiftKey) { if (onFoot()) scope(); }
+    else if (e.code === KEYS.ammo && !e.shiftKey) { if (onFoot() && curArs()?.kind === 'gun') { const r = setAmmo(); toast(r.msg, 1500); } }
     else if (e.code === 'Escape' && wheel?.classList.contains('open')) closeWheel();
   }, true);
   window.addEventListener('keyup', e => { if (e.code !== KEYS.wheel || !qT && !qLong) return; e.stopImmediatePropagation(); clearTimeout(qT); qT = null; if (qLong) { qLong = false; closeWheel(true); } else cycle(); }, true);

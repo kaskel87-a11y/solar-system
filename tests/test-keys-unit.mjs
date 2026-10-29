@@ -17,7 +17,10 @@ const KNOWN = {
   KeyA: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'], KeyD: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'],
   KeyR: ['index.html', 'trackbuilder.js'], KeyZ: ['airroll.js', 'mars/gravity.js', 'trackbuilder.js'], // builder has its own keymap; Z airborne roll vs ground gravity toggle
   KeyF: ['index.html', 'controlmode.js'], KeyM: ['index.html', 'controlmode.js'], // keyboard-only fire mode reuses the game's keys
-  KeyG: ['heist.js', 'mars/jobs.js'], KeyY: ['mars/turf.js', 'mars/street.js'], // context action buttons; jobs defers to heist
+  KeyI: ['mars/arsenal.js', 'phonetexts.js'], // I reload (no Shift) | Shift+I texts
+  KeyX: ['index.html', 'mars/smugglecore.js'], KeyB: ['mars/contraband.js', 'mars/smugglecore.js'], // smuggling dump / bribe in space only; medkit / stash on the surface
+  Digit8: ['mars/beltway.js', 'mars/smugglecore.js'], // beltway action only while its button shows; smuggle run at the pad
+  KeyG: ['heist.js', 'mars/jobs.js', 'mars/barcontact.js'], KeyY: ['mars/turf.js', 'mars/street.js'], // context action buttons; jobs defers to heist
   Digit2: ['base.js', 'danger.js', 'mars/gravity.js'], // standoff "fight" vs gravity cycle (gravity skips during a standoff); base build tool 2 only in build mode
   // v7.5.4: base build tools (build mode only, and they yield to a standoff / street-event choice) vs danger's 1-4 choices; K = base action at your plot, turf panel elsewhere
   Digit1: ['base.js', 'danger.js'], Digit3: ['base.js', 'danger.js'], Digit4: ['base.js', 'danger.js'], KeyK: ['base.js', 'mars/turf.js']

@@ -1,6 +1,6 @@
 // v3 phone texts: once you have Danny's number (privateshow.js tips -> 'ssx.contacts'), a few short, flirty but
 // non-explicit texts arrive later in play. Stored on the device (localStorage 'ssx.texts'); a toast on arrival, a
-// 💬 dock button on phones (and the I key / a small pill on desktop) opens a simple message list. All buttons use
+// 💬 dock button on phones (and Shift+I / a small pill on desktop) opens a simple message list. All buttons use
 // window.__onTap (one finger per button on iOS). No network, no timers while the tab is hidden.
 import { DANNY_NAME } from './clubdancers.js';
 const DF = DANNY_NAME.split(' ')[0];
@@ -39,7 +39,7 @@ export function phoneTexts({ toast = () => {}, onTap = null, playing = () => tru
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const panel = document.createElement('div'); panel.id = 'ssxTexts'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Messages');
   panel.innerHTML = `<div class="w"><div class="hd">📱 <span>${esc(DANNY_NAME)} <small>555-0142</small></span><button type="button" id="ssxTextsClose">Close</button></div><div class="ls" id="ssxTextsList"></div></div>`;
-  const pill = document.createElement('button'); pill.id = 'ssxTextsPill'; pill.type = 'button'; pill.setAttribute('aria-label', 'Messages (I)');
+  const pill = document.createElement('button'); pill.id = 'ssxTextsPill'; pill.type = 'button'; pill.setAttribute('aria-label', 'Messages (Shift+I)');
   document.body.append(panel, pill);
   const list = panel.querySelector('#ssxTextsList');
   let S = load(), dockBtn = null;
@@ -59,7 +59,7 @@ export function phoneTexts({ toast = () => {}, onTap = null, playing = () => tru
   panel.addEventListener('pointerup', e => { if (e.target === panel) close(); });
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
-    if (e.code === 'KeyI' && S.msgs.length && !document.body.classList.contains('pshow')) { panel.classList.contains('show') ? close() : open(); }
+    if (e.code === 'KeyI' && e.shiftKey && S.msgs.length && !document.body.classList.contains('pshow')) { panel.classList.contains('show') ? close() : open(); }
     else if (e.code === 'Escape' && panel.classList.contains('show')) close();
   });
   // the shared phone dock (mars/turf.js owns #ssxDock); attach when it appears

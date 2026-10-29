@@ -134,7 +134,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       await page.mouse.move(683, 300); await page.mouse.down({ button: 'right' });
       R.scope.rmbZoom = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await sleep(500); await page.mouse.up({ button: 'right' });
       R.scope.rmbRelease = await wait(() => window.__app.surface.camera.zoom === 1, 10000);
-      await page.keyboard.press('Backslash'); R.scope.comma = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await page.keyboard.press('Backslash');
+      await page.keyboard.press('Shift+Digit0'); R.scope.comma = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await page.keyboard.press('Shift+Digit0');
       R.scope.commaOff = await wait(() => window.__app.surface.camera.zoom === 1, 10000);
     } else { await tapSel('#arScope'); R.scope.btn = await wait(() => window.__app.surface.camera.zoom > 2, 10000); await G(() => window.SSX.arsenal.scope(false)); }
     R.scope.zoom = await G(() => window.__app.surface.camera.zoom); await G(() => window.SSX.arsenal.scope(false));
@@ -142,12 +142,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (desk) { // I reloads, . cycles ammo type; B / Z stay with their owners (stash, gravity/roll)
       await G(() => { const A = window.SSX.arsenal; A.equip('pistol'); A.debug.setMag(4); }); await page.keyboard.press('KeyI');
       const rl = await G(() => !!window.SSX.arsenal.current().reloading); await G(() => window.SSX.arsenal.debug.reloadNow()); await wait(() => !window.SSX.arsenal.current().reloading, 15000);
-      const t0 = await G(() => window.SSX.arsenal.current().sel); await page.keyboard.press('Quote'); await sleep(300); const t1 = await G(() => window.SSX.arsenal.current().sel);
+      const t0 = await G(() => window.SSX.arsenal.current().sel); await page.keyboard.press('Digit0'); await sleep(300); const t1 = await G(() => window.SSX.arsenal.current().sel);
       await G(() => { window.SSX.arsenal.setAmmo('std'); window.SSX.arsenal.debug.reloadNow(); }); await wait(() => !window.SSX.arsenal.current().reloading, 15000);
       await G(() => window.SSX.arsenal.debug.setMag(4)); await page.keyboard.press('KeyZ'); await sleep(200); await page.keyboard.press('KeyB'); await sleep(300);
       const other = await G(() => ({ scoped: window.SSX.arsenal.current().scoped, reloading: window.SSX.arsenal.current().reloading, keys: window.SSX.arsenal.keys(), stashOpen: getComputedStyle(document.getElementById('cbPanel') || document.body).display }));
       await G(() => { window.SSX.arsenal.debug.reloadNow(); document.getElementById('cbPanel') && (document.getElementById('cbPanel').style.display = 'none'); });
-      ok('keys', { rl, t0, t1, other }, rl && t0 !== t1 && !other.scoped && !other.reloading && other.keys.reload === 'KeyI' && other.keys.ammo === 'Quote' && other.keys.scope === 'Backslash');
+      ok('keys', { rl, t0, t1, other }, rl && t0 !== t1 && !other.scoped && !other.reloading && other.keys.reload === 'KeyI' && other.keys.ammo === 'Digit0' && other.keys.scope === 'Digit0');
     }
     // suppressor: the discharge crime check is skipped
     await G(() => { window.SSX.arsenal.equip('pistol'); window.__q0 = window.__aev.filter(e => e.type === 'quiet').length; });
