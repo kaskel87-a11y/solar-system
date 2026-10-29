@@ -29,6 +29,8 @@ body.hudx #questTrack{white-space:normal;max-width:min(300px,100%);text-overflow
 body.hudx #questTrack .hxQh{display:flex;gap:6px;align-items:center;white-space:nowrap} body.hudx #questTrack .hxQh>b{overflow:hidden;text-overflow:ellipsis;min-width:0}
 body.hudx #questTrack .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} body.hudx #questTrack .hxQw:empty{display:none}
 body.hudx #questTrack .hxQw .ar{width:15px;height:15px;display:block} body.hudx #questTrack .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
+/* v7.6: the First Day tour card sits above the flight pad + joystick while flying, never on Up/Boost */
+body.hudx.touch.flying #obLine.ob-space{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 /* v7.6: toasts stay inside the viewport minus safe areas, long words wrap, 3 lines before the clamp */
 body.hudx #toast{max-width:min(100%,calc(100vw - 16px - var(--sal,0px) - var(--sar,0px)));overflow-wrap:anywhere;-webkit-line-clamp:3}
 body.hudx #questTrack :is(.hxTx,.hxHow){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} /* every hint: 2 lines max (hud/hints.js copy is sized to fit 390 px) */
