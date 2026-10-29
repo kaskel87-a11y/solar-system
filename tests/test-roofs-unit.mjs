@@ -82,7 +82,7 @@ let API; try { API = (await import('../mars/colliders.js')).default; console.log
     list: g => [...by.values()].filter(s => g == null || s.group === g).map(pub), query: (x, z, r = 1) => [...by.values()].filter(s => Math.hypot(x - s.x, z - s.z) < r + ext(s)).map(pub),
     resolve: (x, z, r = 0.45) => { let hit = false; for (const s of by.values()) { if (s.type !== 'box') continue; const dx = x - s.x, dz = z - s.z; if (Math.abs(dx) < s.hx + r && Math.abs(dz) < s.hz + r) { hit = true; if (s.hx + r - Math.abs(dx) < s.hz + r - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * (s.hx + r); else z = s.z + Math.sign(dz || 1) * (s.hz + r); } } return hit ? { x, z } : null; } };
 }
-const G = { SSX: { colliders: API } };
+const G = { SSX: { colliders: API } }; globalThis.SSX = G.SSX; // the merged collide() reads globalThis.SSX
 // one collider registered BEFORE attach (falls back to the default height), the rest after
 API.clear?.(); const early = API.add({ type: 'box', x: 200, z: 0, hx: 3, hz: 3, group: 'street' });
 ok('attachColliders wraps #44', ROOF.attachColliders(G) === API && API.__roofs === true && ROOF.attachColliders(G) === API);
