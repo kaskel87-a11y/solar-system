@@ -74,7 +74,7 @@ export const MISSIONS = [
       alt: { touch: 'Tap ☰, then 🚩 Turf to see which gang owns each block.', desk: 'Press K to see which gang owns each block.' } },
     { kind: 'do', check: 'panelsClosed', text: 'Walk up to a gang’s 🚩 flag to attack it. Hold it and it pays you cash. Close to go on.' },
     { kind: 'go', target: 'pit', r: 12, label: 'The Pit', variant: true,
-      text: { touch: 'Walk to The Pit fight ring (under the water tower, west Red Tape Flats). Tap 📋 The Pit to fight for cash.', desk: 'Walk to The Pit fight ring (under the water tower, west Red Tape Flats). Click 📋 The Pit to fight for cash.' },
+      text: { touch: 'Walk to The Pit (under the water tower, west Red Tape Flats). Tap 📋 to fight.', desk: 'Walk to The Pit (under the water tower, west Red Tape Flats). Click 📋 to fight.' },
       fight: { touch: 'Walk to the Rust Pit cage. Tap 🥊 there to fight for cash.', desk: 'Walk to the Rust Pit cage. Press ] there to fight for cash.' } },
     { kind: 'tell', ms: 6000, text: 'Fists only in the Pit. Win rounds for cash; you can come back any time.' }
   ] },
