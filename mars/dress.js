@@ -51,11 +51,13 @@ function load(id) {
     const parts = [];
     const compat = gs => { // v7.5.4: mergeGeometries needs the same attributes (and all-or-none indexed): fill a missing uv (0) / color (white), drop other odd ones
       const fill = { uv: [2, 0], color: [3, 1] }, all = new Set(gs.flatMap(g => Object.keys(g.attributes)));
-      const out = gs.map(g => { const h = g.index && !gs.every(q => q.index) ? g.toNonIndexed() : g;
+      const out = gs.map(g => { const h = g.index && !gs.every(q => q.index) ? g.toNonIndexed() : g.clone();
         for (const k of all) if (!h.attributes[k] && fill[k]) { const [n, v] = fill[k]; h.setAttribute(k, new THREE.BufferAttribute(new Float32Array(h.attributes.position.count * n).fill(v), n)); }
         return h; });
       const keys = [...all].filter(k => out.every(g => g.attributes[k] && g.attributes[k].itemSize === out[0].attributes[k].itemSize));
       for (const h of out) for (const k of Object.keys(h.attributes)) if (!keys.includes(k)) h.deleteAttribute(k);
+      for (const k of keys) { const A = out.map(h => h.attributes[k]); if (A.some(a => a.array.constructor !== A[0].array.constructor || a.normalized !== A[0].normalized)) // quantized + float: make all float
+        for (const h of out) { const a = h.attributes[k], f = new Float32Array(a.count * a.itemSize); for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) f[i * a.itemSize + c] = a.getComponent ? a.getComponent(i, c) : [a.getX, a.getY, a.getZ, a.getW][c].call(a, i); h.setAttribute(k, new THREE.BufferAttribute(f, a.itemSize)); } }
       return out; };
     for (const [mat, gs0] of byMat) { const gs = gs0.length > 1 ? (compat(gs0) || gs0) : gs0; const mg = gs.length > 1 ? mergeGeometries(gs, false) : gs[0]; if (mg) parts.push({ mat, geo: mg }); else for (const g of gs) parts.push({ mat, geo: g }); }
     return { parts, box, tris, id };
@@ -106,7 +108,9 @@ async function build(site, D) {
   built[site.id] = rec; scene.add(rec.group);
   const W = worldRef, doors = W.doorList?.() || [], lots = W.lots?.() || [];
   const clear = (x, z, r) => !W.collide?.(x, z, r) && !doors.some(d => Math.hypot(d.x - x, d.z - z) < r + 2.6) && !lots.some(l => Math.hypot(l.x - x, l.z - z) < (l.r || 8) + r + 1);
-  const want = plan(D).map(p => ({ ...p, x: site.x + p.x, z: site.z + p.z })).filter(p => clear(p.x, p.z, p.r || 0.7));
+  const nudge = p => { if (clear(p.x, p.z, p.r || 0.7)) return p; if (p.sign == null) return null; // v7.5.4: a blocked sign/billboard slides to the nearest clear spot (newer buildings took some slots)
+    for (const d of [4, 7, 10, 14]) for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, x = p.x + Math.cos(a) * d, z = p.z + Math.sin(a) * d; if (clear(x, z, p.r || 0.7)) return { ...p, x, z }; } return null; };
+  const want = plan(D).map(p => nudge({ ...p, x: site.x + p.x, z: site.z + p.z })).filter(Boolean);
   const ids = [...new Set(want.map(p => p.id))], P = {};
   await Promise.all(ids.map(async id => { try { P[id] = await load(id); } catch (e) { console.warn('dress:', id, e?.message || e); } }));
   if (built[site.id] !== rec) return rec; // streamed out while loading

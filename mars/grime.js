@@ -428,6 +428,7 @@ function blendLook(dt) {
   if (sc.fog && sc.fog.isFog) { if (!fogOrig || fogOrig.scene !== sc || fogOrig.fog !== sc.fog) fogOrig = { scene: sc, fog: sc.fog, color: sc.fog.color.clone(), near: sc.fog.near, far: sc.fog.far };
     const w = fog && cfg.enabled ? fog.w : 0, a = Math.min(1, dt * 1.2), tc = new THREE.Color(fog ? fog.color : fogOrig.color);
     const col = fogOrig.color.clone().lerp(tc, w); sc.fog.color.lerp(col, a); sc.fog.near = lerp(sc.fog.near, lerp(fogOrig.near, fog ? fog.near : fogOrig.near, w), a); sc.fog.far = lerp(sc.fog.far, lerp(fogOrig.far, fog ? fog.far : fogOrig.far, w), a);
+    window.__director?.pullFog?.(sc.fog); // keep a dust storm's fog pull-in (director)
     if (sc.background?.isColor) sc.background.copy(sc.fog.color); }
 }
 function restoreFog() { if (fogOrig?.scene?.fog === fogOrig.fog) { fogOrig.fog.color.copy(fogOrig.color); fogOrig.fog.near = fogOrig.near; fogOrig.fog.far = fogOrig.far; } }
