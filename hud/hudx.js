@@ -120,7 +120,7 @@ export function drawMini(o) {
   for (const a of md.aliens || []) { const p = proj(a.x, a.z, false); if (p) { dot(p, a.boss ? '#ff2d6a' : '#ff4b4b', a.boss ? 4.2 : 2.8); out.aliens++; } }
   for (const q of md.crates || []) { const p = proj(q.x, q.z, false); if (p) { c.fillStyle = '#3cff6a'; c.fillRect(p[0] - 2.5 * dpr, p[1] - 2.5 * dpr, 5 * dpr, 5 * dpr); out.crates = (out.crates || 0) + 1; } }
   const blink = (now / 250 | 0) % 2; for (const q of md.world?.security || []) { const p = proj(q.x, q.z, true); dot(p, blink ? '#ef4444' : '#3b82f6', 2.8); out.security = (out.security || 0) + 1; }
-  for (const [, ms] of o.marks || []) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (p) dot(p, m.color || '#f59e0b', m.r || 2.6); }
+  for (const [, ms] of o.marks || []) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (p) { dot(p, m.color || '#f59e0b', m.r || 2.6); out.marks = (out.marks || 0) + 1; } }
   // your rides (clamped): the rover when on foot, the Starship always (small, they are how you get home)
   if (md.ship) { const p = proj(md.ship.x, md.ship.z, true); c.save(); c.translate(p[0], p[1]); c.beginPath(); c.moveTo(0, -4 * dpr); c.lineTo(3.5 * dpr, 3.5 * dpr); c.lineTo(-3.5 * dpr, 3.5 * dpr); c.closePath(); c.fillStyle = '#ff8a3c'; c.fill(); c.restore(); out.ship = true; }
   if (md.rover && !md.driving) { const p = proj(md.rover.x, md.rover.z, true); c.fillStyle = '#4fa8ff'; c.fillRect(p[0] - 3 * dpr, p[1] - 3 * dpr, 6 * dpr, 6 * dpr); out.rover = true; }
