@@ -50,20 +50,43 @@ export function resolveTrack(def, colony, blocked) {
   return { ...def, loop: def.loop !== false, laps: def.loop === false ? 1 : clampI(def.laps || 2, 1, 9), gates: g, props, length: trackLength(g, def.loop !== false) };
 }
 export const GATE_CLEAR = 4;                      // a gate centre keeps this much room (m) from any solid footprint
-export function clearGates(g, blocked, loop = true, clear = GATE_CLEAR) {
-  const n = g.length, isB = (x, z) => !!blocked(x, z, clear);
+export const GATE_ROOM = GATE_W / 2;              // v7.5.4: a MOVED gate wants its whole opening clear (Blue Lights P2 was still stuck at
+                                                  // Gate 4/8: the 4 m nudge parked it in a pocket between two domes and a kiosk)
+export function clearGates(g, blocked, loop = true, clear = GATE_CLEAR, room = GATE_ROOM) {
+  const n = g.length;
   for (let i = 0; i < n; i++) {
-    const p = g[i]; if (!isB(p.x, p.z)) continue;
+    const p = g[i]; if (!blocked(p.x, p.z, clear)) continue;
     const a = g[loop ? (i - 1 + n) % n : Math.max(0, i - 1)], b = g[loop ? (i + 1) % n : Math.min(n - 1, i + 1)];
-    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2; let best = null;
-    for (let r = 1; r <= 80 && !best; r += 1) for (let k = 0; k < 32; k++) {
-      const an = k / 32 * Math.PI * 2, x = p.x + Math.cos(an) * r, z = p.z + Math.sin(an) * r;
-      if (isB(x, z)) continue; const sc = Math.hypot(x - mx, z - mz);
-      if (!best || sc < best.sc) best = { x, z, sc };
-    }
+    // v7.5.4 (Collin, P2 stuck at Gate 4/8 again): the old "nearest free ring" pick parked gate 4 in a pocket between two domes,
+    // one arch leg inside the Olympus Row dome, behind a building - drive at the arrow and you hit a wall. Now: free spots with the
+    // whole opening clear (GATE_ROOM) come first, ranked by how little they bend the line a -> spot -> b, and the first one with a
+    // straight drivable run from the gate before AND to the gate after wins. Old 4 m rule as the fallback.
+    const best = pickSpot(p, a, b, blocked, room > clear ? [room, clear] : [clear]);
     if (best) { p.moved = { x: p.x, z: p.z }; p.x = Math.round(best.x * 10) / 10; p.z = Math.round(best.z * 10) / 10; }
   }
   return g;
+}
+// a straight run a -> b a car (radius LANE_R) can drive without touching a footprint
+export const LANE_R = 2.5;
+export function laneClear(a, b, blocked, r = LANE_R) {
+  const L = Math.hypot(b.x - a.x, b.z - a.z), n = Math.max(1, Math.ceil(L / 2));
+  for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, r)) return false; }
+  return true;
+}
+function pickSpot(p, a, b, blocked, needs, maxR = 60) {
+  for (const need of needs) {
+    const c = [];
+    for (let r = 1; r <= maxR; r += 1) for (let k = 0; k < 32; k++) {
+      const an = k / 32 * Math.PI * 2, x = p.x + Math.cos(an) * r, z = p.z + Math.sin(an) * r;
+      if (blocked(x, z, need)) continue;
+      c.push({ x, z, sc: Math.hypot(x - a.x, z - a.z) + Math.hypot(b.x - x, b.z - z) + 0.25 * r });
+    }
+    if (!c.length) continue;
+    c.sort((u, v) => u.sc - v.sc);
+    for (let i = 0; i < Math.min(c.length, 400); i++) { const q = c[i]; if ((a === p || laneClear(a, q, blocked)) && (b === p || laneClear(q, b, blocked))) return q; }
+    return c[0];
+  }
+  return null;
 }
 // footprint predicate for tests / node: solids [{x,z,r}|{x,z,box:[hx,hz]}] like world.js builds them
 export function footprintBlocked(solids) {

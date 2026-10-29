@@ -70,7 +70,20 @@ ok('fmt', RC.fmtTime(83456) === '1:23.45' && RC.fmtTime(NaN) === '--:--.--');
   const raw = RC.resolveTrack(bl, col); ok('before: gate 4 inside Olympus Row dome', blocked(raw.gates[3].x, raw.gates[3].z));
   for (const q of qs) { const t = RC.resolveTrack(q, col, blocked);
     ok(`${q.id} every gate clear of footprints`, t.gates.every(g => !blocked(g.x, g.z, RC.GATE_CLEAR - 0.01)), JSON.stringify(t.gates.map(g => [g.x, g.z])));
-    ok(`${q.id} moved gates stay close`, t.gates.every(g => !g.moved || Math.hypot(g.x - g.moved.x, g.z - g.moved.z) < 40)); }
+    ok(`${q.id} moved gates stay close`, t.gates.every(g => !g.moved || Math.hypot(g.x - g.moved.x, g.z - g.moved.z) < 60)); }
+  // v7.5.4 (Blue Lights P2 stuck at Gate 4/8 on v7.5.3.1): gate 4 was nudged only 4 m clear, into a pocket between two domes
+  // with an arch leg inside the Olympus Row dome and no straight run in or out. Moved gates now keep the whole 14 m opening
+  // clear and a car-wide straight lane from the gate before and to the gate after.
+  for (const q of qs) { const t = RC.resolveTrack(q, col, blocked), g = t.gates, bad = [];
+    g.forEach((p, i) => { if (!p.moved) return; const lx = Math.cos(p.yaw), lz = -Math.sin(p.yaw);
+      if (blocked(p.x, p.z, RC.GATE_ROOM - 0.01)) bad.push(`${i + 1}:room`);
+      if (blocked(p.x + lx * 7, p.z + lz * 7) || blocked(p.x - lx * 7, p.z - lz * 7)) bad.push(`${i + 1}:arch`);
+      if (i > 0 && !RC.laneClear(g[i - 1], p, blocked)) bad.push(`${i}->${i + 1}:lane`);
+      if (i < g.length - 1 && !RC.laneClear(p, g[i + 1], blocked)) bad.push(`${i + 1}->${i + 2}:lane`); });
+    ok(`${q.id} moved gates roomy, arch clear, straight lanes`, !bad.length, bad.join(' ')); }
+  { const t = RC.resolveTrack(bl, col, blocked), g = t.gates;
+    ok('blue lights gate 3 -> 4 -> 5 drivable straight', RC.laneClear(g[2], g[3], blocked) && RC.laneClear(g[3], g[4], blocked), JSON.stringify(g[3])); }
+  ok('laneClear sees a dome', !RC.laneClear({ x: -40, z: -630 }, { x: 40, z: -630 }, blocked) && RC.laneClear({ x: -40, z: -560 }, { x: 40, z: -560 }, blocked));
   const fixed = RC.resolveTrack(bl, col, blocked); ok('blue lights gate 4 nudged to the inside of the turn', fixed.gates[3].moved && fixed.gates[3].x > 0 && fixed.gates[3].z > raw.gates[3].z, JSON.stringify(fixed.gates[3]));
   ok('clear gates untouched', fixed.gates[1].x === raw.gates[1].x && fixed.gates[1].z === raw.gates[1].z);
   // gate passing is 2D: the same move counts whatever the car's height (airborne off a ramp)
