@@ -33,7 +33,7 @@ export const PROPS = [
   { id: 'sh-loft', kind: 'safehouse', name: 'Meridian Loft', district: 'mars-downtown', dname: 'Olympus Row', aj: [45, -460], yaw: -1.4, price: 3000, garage: [7, 2], blurb: 'Glass, steel, a doorman who forgets faces for a tip. Downtown views.' },
   // fronts: passive income on the Mars clock, collected at the counter; rival crews raid or extort them
   { id: 'fr-wash', kind: 'laundromat', name: 'Red Dust Wash & Fold', district: 'aj', dname: 'Ares Junction', aj: [-60, 20], yaw: 1.2, price: 2000, blurb: 'Coin dryers out front, a counting room in back. Busy all day.' },
-  { id: 'fr-bar', kind: 'bar', name: 'The Thin Air', district: 'mars-downtown', dname: 'Olympus Row', aj: [40, -400], yaw: 2.6, price: 3500, blurb: 'Oxygen cocktails and a back booth for quiet deals. Prints money after dark.' },
+  { id: 'fr-bar', kind: 'bar', name: 'The Thin Air', district: 'mars-downtown', dname: 'Olympus Row', aj: [-14, -410], yaw: 2.6, price: 3500, blurb: 'Oxygen cocktails and a back booth for quiet deals. Prints money after dark.' },
   { id: 'fr-chop', kind: 'chop', name: 'Rustbucket Parts', district: 'mars-rough', dname: 'Red Tape Flats', aj: [-300, -85], yaw: 0.2, price: 2500, blurb: 'Parts in, VINs out. Drive a stolen ride into the bay to strip it for cash.' },
   { id: 'fr-disp', kind: 'dispensary', name: 'Greenhouse Nine', district: 'mars-gated', dname: 'Helios Heights', aj: [360, 130], yaw: -2.2, price: 5000, blurb: 'Hydroponic "wellness" for the Helios crowd. Licensed, mostly.' }
 ];
