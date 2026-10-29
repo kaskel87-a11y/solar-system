@@ -117,7 +117,7 @@ function compileSteps(def) {
   if (!tpl.length && def.loop?.alley_pts_local) {
     const c = DISTRICTS[def.district]?.centre || [0, 0];
     const pts = def.loop.alley_pts_local.map(([x, z]) => [c[0] + x, c[1] + z]);
-    tpl = [{ type: 'take', text: 'Grab a ride' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Run the alley' }];
+    tpl = [{ type: 'take', text: 'Get in any vehicle' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Drive through every alley checkpoint' }];
   }
   // Resolve at_aj_from pools (taxi)
   const poolPick = (key, i) => {
@@ -130,13 +130,13 @@ function compileSteps(def) {
     if (s.type === 'duel') {
       // Handled by runner (v7.4 challenge); emit a goto stand-in so registerMission stays valid
       const at = s.at || def.location?.at_aj || [0, 0];
-      steps.push({ type: 'goto', at, r: 5, text: s.text || 'Win the bout (duel)' });
+      steps.push({ type: 'goto', at, r: 5, text: s.text || 'Win the fist fight' });
       continue;
     }
     if (s.type === 'enter') {
       // District buildings aren't in the live colony yet — clock-in is a goto at the activity start
       const at = def.location?.at_aj || s.at || [0, 0];
-      steps.push({ type: 'goto', at, r: 5, text: s.text || `Clock in (${s.building || 'spot'})` });
+      steps.push({ type: 'goto', at, r: 5, text: s.text || `Go to ${s.building || 'the job spot'} to clock in` });
       continue;
     }
     const out = { type: s.type, text: s.text };
@@ -515,7 +515,7 @@ function watchActive() {
       }
     }
     // Fail if wanted spikes hard or gun used — soft check
-    if ((C.world?.wanted || 0) >= 3) failActivity('Stars. Pit closed.');
+    if ((C.world?.wanted || 0) >= 3) failActivity('You got 3 wanted stars, so the Pit shut the fight down.');
     return;
   }
 
@@ -545,7 +545,7 @@ function watchActive() {
 
   // Fail conditions from def.fail (wanted)
   if ((C.world?.wanted || 0) >= 3 && (def.fail || []).some(f => /wanted/i.test(f))) {
-    failActivity('Wanted 3+. Job blown.');
+    failActivity('You got 3 wanted stars. Job failed.');
   }
 }
 

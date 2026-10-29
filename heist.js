@@ -96,7 +96,7 @@ function setAction(a) {
   const touch = document.body.classList.contains('touch');
   ui.btn.style.display = a ? 'block' : 'none'; if (a) ui.btn.textContent = a.label + (touch ? '' : ' (G)');
 }
-const STAGE_TEXT = { case: 'Case it · reach the door', breakin: 'Picking the lock…', crack: 'Crack the safe', escape: 'Get clear of the site', clean: 'Lose the heat' };
+const STAGE_TEXT = { case: 'Sneak to the door', breakin: 'Picking the lock…', crack: 'Find and crack the safe', escape: 'Run from the building', clean: 'Lose your wanted stars' };
 function renderChip(meter, dist) {
   if (!ui) return; const c = ui.chip;
   if (!run || run.stage === 'done' || run.stage === 'failed') { c.classList.remove('on'); return; }
@@ -128,7 +128,7 @@ function crackFlow() {
   return heist.safeCrack({ tier: d.safe.tier, ...tipSafeOpts(d.safe.tier, d.safe.time, TIPS.get(d.id)), title: d.title + ' safe', seed: d.safe.seed }).then(res => {
     if (!run || run.def !== d) return res;
     emit('safe:result', { id: d.id, ...res });
-    if (res.success) { run.loot = { ...d.loot }; emit('loot', { id: d.id, loot: run.loot }); run.advance('escape'); emitStage(); toast(`💰 Safe's open. ${d.loot.credits ? d.loot.credits + ' cr in the bag. ' : ''}Get clear.`, 3000); }
+    if (res.success) { run.loot = { ...d.loot }; emit('loot', { id: d.id, loot: run.loot }); run.advance('escape'); emitStage(); toast(`💰 Safe's open. ${d.loot.credits ? d.loot.credits + ' cr in the bag. ' : ''}Get away from the building.`, 3000); }
     else if (res.reason === 'noise' || res.reason === 'timeout') { heist.alarm(d.alarm.wanted, res.reason === 'noise' ? `${d.title}: safe alarm` : `${d.title}: safe timer tripped`); toast('🚨 The safe screamed. Try again or run.', 3000); }
     return res;
   });
@@ -168,7 +168,7 @@ export function heistTick(dt, ctx) {
     goal = w.door;
     if (onFoot && dist(w.door) < 2.4 && !act) act = { label: '🔓 Break in', fn: async () => {
       run.advance('breakin'); run.tBreak = run.t; emitStage(); await new Promise(r => setTimeout(r, (d.breakinMs ?? 1200) * guards.breakinMul)); // lockdown: the door is barred, picking takes longer
-      if (run && run.stage === 'breakin') { if (dist(w.door) > 4) { run.stage = 'case'; toast('🔓 You walked off the lock.', 2000); return; } run.advance('crack'); emitStage(); toast('🔓 In. Find the safe.', 2000); }
+      if (run && run.stage === 'breakin') { if (dist(w.door) > 4) { run.stage = 'case'; toast('🔓 You walked away from the lock. Go back to the door.', 2000); return; } run.advance('crack'); emitStage(); toast('🔓 You\u2019re in. Find the safe and crack it.', 2000); }
     } };
   } else if (run.stage === 'crack') {
     goal = w.safe;
@@ -251,7 +251,7 @@ export const heist = {
     ensureUi(); run = createRun(d); run.w = null;
     for (const c of d.cameras) cams.add({ world: d.world, rel: d.rel, ...c, heistId: d.id });
     guards.start(d);
-    emit('start', { id: d.id, title: d.title }); emitStage(); toast(`🕵️ ${d.title}: case the cameras, then the door.`, 3000);
+    emit('start', { id: d.id, title: d.title }); emitStage(); toast(`🕵️ ${d.title}: sneak to the door. Dodge the cameras or cut them up close.`, 3000);
     return new Promise(r => { runDone = r; });
   },
   abortHeist(why = 'abandoned') { if (run) finish(false, why); },
