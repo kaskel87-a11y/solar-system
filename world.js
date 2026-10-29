@@ -4,6 +4,7 @@
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
+import * as ROOF from './roofs.js';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -354,17 +355,32 @@ export function createWorld(ctx) {
   }
 
   // ----- collisions: circles for domes/vehicles, boxes for blocks -----
-  function collide(x, z, r, skip) {
+  function collide(x, z, r, skip, yb) {
+    // live fix (roofs.js): height-aware for vehicles. A driven vehicle passes itself as `skip`, so its bottom (skip.y) is
+    // known; solids and parked cars it is above (minus ROOF.CLEAR) don't block it, so flying over a building no longer
+    // crashes. Callers without a vehicle (people, NPC buggies, the 0.45 m exit probe) keep the old 2-D behaviour.
+    if (yb === undefined && skip && skip.spec && Number.isFinite(skip.y) && r > 0.6) yb = skip.y;
     let hit = false;
     for (const s of solids) {
+      if (yb !== undefined && ROOF.overlaps(s, x, z, r) && ROOF.clears(s, x, z, r, yb, height)) continue;
       if (s.box) { const dx = x - s.x, dz = z - s.z, ex = s.box[0] + r, ez = s.box[1] + r;
         if (Math.abs(dx) < ex && Math.abs(dz) < ez) { hit = true; if (ex - Math.abs(dx) < ez - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * ex; else z = s.z + Math.sign(dz || 1) * ez; } continue; }
       const dx = x - s.x, dz = z - s.z, d = Math.hypot(dx, dz), m = s.r + r;
       if (d < m) { hit = true; const k = m / (d || 1); x = s.x + dx * k; z = s.z + dz * k; }
     }
-    for (const v of vehicles) { if (v === skip || !v.parked) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
-    const xc = globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js)
+    for (const v of vehicles) { if (v === skip || !v.parked || (yb !== undefined && ROOF.clearsCar(v, yb, height))) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
+    const xc = (yb !== undefined && yb > height(x, z) + 4) ? null : globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); no heights yet, so only an airborne car well above prop height skips them
     return hit ? { x, z } : null;
+  }
+  function roofGround(car) {
+    if (!C || !car) return height;
+    const r = (car.spec?.r || 2) * 0.75;
+    return (x, z) => {
+      const { g, src } = ROOF.groundUnder(solids, x, z, r, car.y, height, vehicles, car);
+      // stepping on/off a roof: reset updateRover's ground-velocity history so the height jump doesn't launch the car
+      if (x === car.x && z === car.z && src !== car.roofSrc) { car.roofSrc = src; if (car.prevG != null) car.prevG = g; }
+      return g;
+    };
   }
   function solidAt(x, y, z) {
     if (!C) return false;
@@ -996,6 +1012,9 @@ export function createWorld(ctx) {
   function wareList() { return inside ? inside.room.wares.map(w => ({ id: w.id, x: w.spot.x + inside.ax, z: w.spot.z + inside.az })) : []; }
 
   return {
+    // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
+    // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
+    vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,

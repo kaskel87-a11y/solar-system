@@ -366,6 +366,8 @@ function propPhysics(props, dt) {
     const dx = ent.x - p.x, dz = ent.z - p.z; if (dx * dx + dz * dz > 144) continue;
     const along = dx * fx + dz * fz, lat = dx * lx + dz * lz, key = p, cd = (R?.cool || propCool).get(key) || 0;
     if (p.t === 'barrier') { // race fix (BUGS-v7.4 M2): slide along the barrier instead of bouncing back into it and pinning
+      // live fix (#63): a car whose physics bottom (car.y, not the mesh) clears the 1.1 m barrier flies over it
+      if (car && Number.isFinite(car.y) && car.y > H(p.x, p.z) + 1.0) continue;
       const s = RC.barrierSlide(car ? { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed } : { x: ent.x, z: ent.z }, p, r);
       if (s) {
         ent.x = s.x; ent.z = s.z;

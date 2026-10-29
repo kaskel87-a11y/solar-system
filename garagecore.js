@@ -2,6 +2,7 @@
 // Prices, upgrade stat maths, rep scoring, the colony night clock, drag-race pacing and the save-data migration.
 // Runtime lives in dealership.js (lot, dealer + garage UI, your active ride) and carmeet.js (night meets, drag races).
 
+import { cleanPark } from './ridepark.js';
 export const SAVE_VERSION = 1;
 // Placement (colony-relative metres, x east, z south, same as world.js). Anchored to Ares Junction on v7.4 Mars;
 // move it later (v7.5 Olympus Row) with SSX.configureDealer({ world, dealer: [x, z], ... }) or by editing this table.
@@ -123,10 +124,23 @@ export function migrateGarage(g) {
   const d = freshGarage();
   if (!g || typeof g !== 'object') return d;
   const out = { ...d, ...g, v: SAVE_VERSION };
-  const rides = Array.isArray(g.rides) ? g.rides.filter(r => r && typeof r === 'object' && typeof r.kind === 'string' && r.id != null) : [];
-  out.rides = rides.map(r => { const n = newRide(String(r.id), r.kind); const o = { ...n, ...r, id: String(r.id), up: { ...n.up, ...(r.up || {}) }, owned: { ...n.owned } };
+  // live fix: never silently drop a ride. Entries missing `kind` but carrying model/type/vehicle are recovered, entries
+  // missing an id get a fresh one; anything still unusable is kept verbatim in g.lost (not shown, never deleted).
+  const lost = Array.isArray(g.lost) ? [...g.lost] : [], raw = Array.isArray(g.rides) ? g.rides : [], ids = new Set();
+  let fresh = 1 + Math.max(0, ...raw.map(r => +String(r?.id ?? '').replace(/\D/g, '') || 0), +g.nextId || 0);
+  const rides = [];
+  for (const r0 of raw) {
+    if (!r0 || typeof r0 !== 'object') { if (r0 != null) lost.push(r0); continue; }
+    const kind = typeof r0.kind === 'string' && r0.kind ? r0.kind : [r0.model, r0.type, r0.vehicle].find(k => typeof k === 'string' && k);
+    if (!kind) { lost.push(r0); continue; }
+    let id = r0.id != null && r0.id !== '' ? String(r0.id) : null; if (id == null || ids.has(id)) id = 'r' + fresh++;
+    ids.add(id); rides.push({ ...r0, id, kind });
+  }
+  out.rides = rides.map(r => { const n = newRide(r.id, r.kind); const o = { ...n, ...r, id: String(r.id), up: { ...n.up, ...(r.up || {}) }, owned: { ...n.owned } };
     for (const k of Object.keys(n.owned)) o.owned[k] = [...new Set([...(n.owned[k]), ...(Array.isArray(r.owned?.[k]) ? r.owned[k] : []), o[k]])];
-    for (const k of Object.keys(o.up)) o.up[k] = Math.max(0, Math.min(MAX_LVL, o.up[k] | 0)); o.spent = +o.spent || 0; return o; });
+    for (const k of Object.keys(o.up)) o.up[k] = Math.max(0, Math.min(MAX_LVL, o.up[k] | 0)); o.spent = +o.spent || 0;
+    const pk = cleanPark(r.park); if (pk) o.park = pk; else delete o.park; return o; });
+  if (lost.length) out.lost = lost.slice(-20); else delete out.lost;
   if (!out.rides.some(r => r.id === 'stock')) out.rides.unshift(newRide('stock', 'rover'));
   if (!out.rides.some(r => r.id === out.active)) out.active = 'stock';
   out.rep = Math.max(0, +out.rep || 0); out.clock = +out.clock || 0; out.wins = +out.wins || 0; out.races = +out.races || 0;
