@@ -192,6 +192,9 @@ SSX.empire.props();               // [{ id, kind, name, district, price, owned, 
 SSX.empire.buy('fr-bar');         // at the door: { ok, prop, price } | { ok:false, why }
 SSX.empire.collect('fr-bar');     // at the counter: { ok, amount }
 SSX.empire.pending(); SSX.empire.perHour(); SSX.empire.clock(); // { hour, band, night, source: 'SSX.time'|'real', text }
+SSX.empire.on('hour', ({ hour, prev, at, catchUp, source, night, band, fronts }) => {}); // every whole game hour, fronts or not, in space too; returns off()
+// queue before the empire loads: (window.SSX_pending ||= {}).empire = [['hour', fn]] (or SSX._pendingEmpire). A clock jump fires each hour crossed
+// (all but the last flagged catchUp); SSX.time appearing re-baselines without a burst. '*' listeners don't get 'hour'. Income is unchanged.
 SSX.empire.threat();              // { prop, gang, kind: 'extort'|'raid', phase: 'demand'|'alert'|'defend', demand, left, engine } | null
 SSX.empire.pay(); SSX.empire.refuse(); SSX.empire.defend();
 SSX.empire.rest('sh-rim'); SSX.empire.deposit('sh-rim', { credits: 500, medkits: 1 }); SSX.empire.withdraw('sh-rim', { credits: 200 });

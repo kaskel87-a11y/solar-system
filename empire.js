@@ -27,7 +27,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const listeners = {};
 function emit(evt, d = {}) {
   for (const f of [...(listeners[evt] || [])]) { try { f(d); } catch (e) { console.warn('empire listener', e); } }
-  for (const f of [...(listeners['*'] || [])]) { try { f(evt, d); } catch (e) { console.warn('empire listener', e); } }
+  if (evt !== 'hour') for (const f of [...(listeners['*'] || [])]) { try { f(evt, d); } catch (e) { console.warn('empire listener', e); } } // '*' stays as before: no hourly noise
   try { SSX()?.emit?.('empire:' + evt, d); } catch (e) { /* bus not up */ }
   try { W()?.dispatchEvent(new CustomEvent('empire:' + evt, { detail: d })); } catch (e) { /* no window */ }
 }
@@ -332,6 +332,8 @@ function panelAct(ds) {
   else if (a === 'rest') r = rest(id); else if (a === 'dep') r = stashMove(id, { credits: +ds.n }); else if (a === 'med') r = stashMove(id, { medkits: +ds.n });
   if (r && !r.ok && r.why) toast('❌ ' + r.why, 2200); renderPanel();
 }
+// every whole game hour, fronts or not (income is separate and unchanged): SSX.empire.on('hour', ({ hour, prev, at, catchUp, source, night, band, fronts }) => …)
+const hourTicker = EC.makeHourTicker(clock, d => emit('hour', { ...d, fronts: Object.keys(D?.owned || {}).filter(id => EC.isFront(EC.propById(id) || {})).length }));
 function updateMarks(force) {
   const mk = []; for (const { p, pl } of Object.values(S.P)) { const o = D.owned[p.id], hot = D.threat?.prop === p.id; if (!o && S.target !== p.id) continue;
     mk.push({ x: pl.x, z: pl.z, color: hot ? '#ff3030' : o ? '#3cff8a' : '#ffd040', r: hot || S.target === p.id ? 3.4 : 2.4 }); }
@@ -341,7 +343,7 @@ function updateMarks(force) {
 // ---------- per frame ----------
 function nearest(px, pz) { let best = null, bd = 1e9; for (const E of Object.values(S.P)) { const d = Math.hypot(px - E.pl.door.x, pz - E.pl.door.z); const gd = E.pl.garage ? Math.hypot(px - E.pl.garage.x, pz - E.pl.garage.z) : 1e9; const m = Math.min(d, gd, E.pl.chopBay ? Math.hypot(px - E.pl.chopBay.x, pz - E.pl.chopBay.z) : 1e9); if (m < bd) { bd = m; best = { E, d, gd, cd: E.pl.chopBay ? Math.hypot(px - E.pl.chopBay.x, pz - E.pl.chopBay.z) : 1e9 }; } } return best; }
 function empireTick(dt, tc) {
-  const t0 = performance.now(); S.tc = tc; S.mobile = !!tc.isMobile;
+  const t0 = performance.now(); S.tc = tc; S.mobile = !!tc.isMobile; hourTicker.pump(); // any world, before the Mars-only early return
   if (!S.on || !/mars/i.test(tc.name || '')) { if (S.root) S.root.visible = false; if (S.act) setAct(null); return; }
   if (!buildAll(tc)) return; S.root.visible = true;
   // clock -> income
@@ -382,6 +384,7 @@ export const empire = {
   stats: () => ({ ...D.stats, earned: Math.round(D.earned) }), log: () => D.log.slice(), frameMs: () => +S.frameMs.toFixed(3), setEnabled(on) { S.on = !!on; return S.on; }, get enabled() { return S.on; },
   save, reload() { D = load(); S.built = false; refreshLooks(); return true; },
   on(evt, fn) { if (typeof fn !== 'function') throw new Error('SSX.empire.on(event, fn)'); (listeners[evt] ||= []).push(fn); return () => empire.off(evt, fn); },
+  hour: () => ({ last: hourTicker.last, fired: hourTicker.fired }),
   off(evt, fn) { const L = listeners[evt]; if (L) { const i = L.indexOf(fn); if (i >= 0) L.splice(i, 1); } },
   debug: {
     goto(id, where = 'door') { const E = S.P[id], sf = surf(); if (!E || !sf) return false; const q = where === 'garage' ? E.pl.garage : where === 'chop' ? E.pl.chopBay : where === 'near' ? E.pl.at(0, E.pl.d / 2 + 14) : where === 'yard' ? E.pl.at(-5, E.pl.d / 2 + 19) : E.pl.door; if (!q) return false; sf.debugMove(q.x, q.z, E.pl.yaw); return { x: q.x, z: q.z }; },
@@ -390,6 +393,7 @@ export const empire = {
       const c = ctxFor(p), g = gang || EC.gangFor(p, c.turf); startThreat({ prop: id, gang: g, kind, demand: kind === 'extort' ? EC.demand(p, D.owned[id]) : 0, t: 0, phase: kind === 'extort' ? 'demand' : 'alert', limit: kind === 'extort' ? EC.RULES.replyS : (S.mobile ? EC.RULES.arriveSPhone : EC.RULES.arriveS) }); return empire.threat(); },
     expire() { if (D.threat) D.threat.t = D.threat.limit + 1; return true; },
     win() { const df = S.defense; if (!D.threat) return false; if (df?.engine === 'raids') { S.defense = { ...df, id: '__done' }; try { H.raids()?.stop?.(df.id, 'debug'); } catch (e) { /* */ } S.defense = df; } endDefense('win', { kills: 0 }); return true; },
+    hourPump: () => hourTicker.pump(),
     force(o = {}) { Object.assign(S.force, o); return { ...S.force }; }, grant(id) { if (!EC.propById(id) || D.owned[id]) return false; EC.buy(D, id); D.owned[id].graceH = 0; save(); refreshLooks(); return true; },
     setPending(id, n) { const o = D.owned[id]; if (!o) return false; o.pending = n; return true; }, reset() { D = EC.fresh(); save(); refreshLooks(); updateMarks(true); return true; },
     state: () => JSON.parse(JSON.stringify(D)), defense: () => S.defense ? { ...S.defense } : null, roll: (rng) => { const th = EC.rollThreat(D, ctxFor, rng); if (th) startThreat(th); return th; },
@@ -402,6 +406,10 @@ export const empire = {
   if (typeof window === 'undefined') return;
   if (!window.SSX?.registerSurfaceTick || !window.__app) { setTimeout(boot, 250); return; }
   if (window.SSX.empire) return; window.SSX.empire = empire; window.__app.empire = empire;
+  // listeners queued before this loaded: (SSX._pendingEmpire ||= []).push(['hour', fn]) or window.SSX_pending.empire (survives the
+  // core replacing window.SSX at boot). Drained once here; after boot just call SSX.empire.on.
+  for (const q of [window.SSX._pendingEmpire, window.SSX_pending?.empire]) while (Array.isArray(q) && q.length) { const [evt, fn] = q.shift() || []; try { if (typeof evt === 'string' && typeof fn === 'function') empire.on(evt, fn); } catch (e) { /* never throws */ } }
+  hourTicker.pump(); setInterval(() => { try { hourTicker.pump(); } catch (e) { /* */ } }, 1000); // off Mars and in space too
   S.offline = EC.offline(D); if (S.offline.total > 0) { save(); setTimeout(() => toast(`🏢 While you were away your fronts took in ${S.offline.total} cr. Go to each one and tap Collect at the door.`, 3600), 4000); }
   try { window.SSX.registerMenuItem({ id: 'rmEmpire', label: '🏢 Empire', onTap: () => openPanel() }); } catch (e) { console.warn('empire menu', e); }
   window.SSX.registerSurfaceTick((dt, tc) => { try { empireTick(dt, tc); } catch (e) { console.warn('empire tick', e); } });

@@ -178,3 +178,29 @@ export function contextFor({ prop, d = 1e9, garageD = 1e9, owned = null, threat 
   return { key: 'rest', label: '🛏️ Rest' };
 }
 export const fmtClock = h => { const hh = Math.floor(((h % 24) + 24) % 24), mm = Math.floor((h - Math.floor(h)) * 60); return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
+
+// ---------- SSX.empire.on('hour', fn): one tick per whole game hour, owned fronts or not ----------
+// Whole hours crossed going from float hour `last` to `h` on a 24 h clock (forward only; a jump such as sleeping to morning
+// crosses several). Returns the new whole hours in order, at most `max` (a wrap or set() backwards counts as a day ahead).
+export function hourCrossings(last, h, max = 24) {
+  if (!Number.isFinite(last) || !Number.isFinite(h)) return [];
+  const d = ((h - last) % 24 + 24) % 24; if (d < 1e-9) return [];
+  const n = Math.min(max, Math.floor(last + d) - Math.floor(last)), out = [];
+  for (let k = 1; k <= n; k++) out.push(((Math.floor(last) + k) % 24 + 24) % 24);
+  return out;
+}
+// Pumped from a timer and the surface tick (idempotent: the same clock reading never fires twice). getClock() -> { hour, ... };
+// fire(detail) gets { hour, prev, at, catchUp, source, night, band } per whole hour crossed.
+export function makeHourTicker(getClock, fire) {
+  let last = null, fired = 0, src;
+  return {
+    pump() {
+      let ck; try { ck = getClock(); } catch (e) { return 0; } const h = ck?.hour; if (!Number.isFinite(h)) return 0;
+      if (last == null || (ck.source || null) !== src) { last = h; src = ck.source || null; return 0; } // first read, or SSX.time showed up: new baseline, no burst
+      const hs = hourCrossings(last, h), prev = last; last = h;
+      hs.forEach((hr, k) => { fired++; try { fire({ hour: hr, prev: k ? hs[k - 1] : Math.floor(prev), at: h, catchUp: k < hs.length - 1, source: ck.source || null, night: ck.night ?? null, band: ck.band || null }); } catch (e) { /* listener errors are the caller's */ } });
+      return hs.length;
+    },
+    get last() { return last; }, get fired() { return fired; }, reset() { last = null; }
+  };
+}
