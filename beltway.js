@@ -327,7 +327,7 @@ async function crackConvoy() {
       const cr = BC.convoyLoot(Math.random()); try { game()?.bonus?.(cr); } catch (e) { /* */ }
       C.state = 'looted'; C.loot = cr; S.stats.convoyLoot += cr; heat(3, 'looted an armored truck');
       const t = C.truck; burst(t.x + Math.sin(t.yaw) * 3.4, t.y + 1.4, t.z + Math.cos(t.yaw) * 3.4, 10, 0.4); bag(t);
-      toast(`💰 ${cr} cr out of the truck. Now lose the heat.`, 3000); emit('convoyLoot', { id: C.id, credits: cr, wanted: wld()?.wanted | 0 }); return true;
+      toast(`💰 ${cr} cr out of the truck. Now lose your wanted stars.`, 3000); emit('convoyLoot', { id: C.id, credits: cr, wanted: wld()?.wanted | 0 }); return true;
     }
     heat(Math.min(5, (wld()?.wanted | 0) + 1), 'armored truck alarm'); toast(res?.reason === 'abort' ? '🔒 You backed off the doors.' : '🚨 The truck\u2019s alarm is screaming. Try again or run.', 2600);
     emit('crackFail', { id: C.id, reason: res?.reason }); return false;
