@@ -154,11 +154,17 @@ function pay() {
   const d = { prop: p.id, gang: t.gang, paid: t.demand }; D.threat = null; dirty(); refreshLooks(); toast(`🤝 Paid ${d.paid} cr. ${EC.GANGS[d.gang].name} leave ${p.name} alone for ${EC.RULES.protectHours} game hours.`, 3200); emit('pay', d); renderPanel(); return { ok: true, ...d };
 }
 function refuse() { const t = D.threat; if (!t || t.phase !== 'demand') return { ok: false }; toAlert('refused'); renderPanel(); return { ok: true }; }
+function slot() { try { return EC.raidSlot(H.raids()?.active?.()); } catch (e) { return 'free'; } }
+// Another add-on wants the single SSX.raids slot: hand ours over and keep the fight going as a 'hold' defense.
+function yieldRaid(why = 'yield') { const df = S.defense; if (df?.engine !== 'raids') return false;
+  S.defense = { engine: 'hold', id: df.id + ':held', prop: df.prop, hold: 0, need: 40, out: 0, spawned: 0, why: 'yielded: ' + why, yielded: true }; // swap first so onWin/onLose ignore the stop
+  try { H.raids()?.stop?.(df.id, 'empire:yield'); } catch (e) { /* */ }
+  emit('yield', { prop: df.prop, id: df.id, why }); return true; }
 function defend() {
   const t = D.threat; if (!t || t.phase !== 'alert') return { ok: false, why: 'Nothing to defend.' }; const p = EC.propById(t.prop), E = S.P[p.id]; if (!E) return { ok: false, why: 'Not on Mars.' };
   const o = D.owned[p.id], plan = EC.wavePlan(p, { rep: H.rep(t.gang), mobile: S.mobile, security: !!o?.security }), id = 'empire-' + p.id; t.phase = 'defend'; t.t = 0; t.waves = plan.length; dirty();
   const R = S.force.noRaids ? null : H.raids(); let r = null;
-  if (R) { try { r = R.start({ id, pos: { x: E.pl.x, z: E.pl.z }, radius: 26, attackers: 'gang', waves: plan, label: `${EC.GANGS[t.gang].name} · ${p.name}`, integrity: 100, onWin: i => { if (S.defense?.id === i?.id) endDefense('win', i); }, onLose: i => { if (S.defense?.id === i?.id) endDefense('lose', i); } }); } catch (e) { r = null; } }
+  if (R && slot() === 'other') r = { ok: false, why: 'raid slot busy' }; else if (R) { try { r = R.start({ id, pos: { x: E.pl.x, z: E.pl.z }, radius: 26, attackers: 'gang', waves: plan, label: `${EC.GANGS[t.gang].name} · ${p.name}`, integrity: 100, onWin: i => { if (S.defense?.id === i?.id) endDefense('win', i); }, onLose: i => { if (S.defense?.id === i?.id) endDefense('lose', i); } }); } catch (e) { r = null; } }
   if (r?.ok) { S.defense = { engine: 'raids', id: r.id || id, prop: p.id }; }
   else { // fallback: hold the line for 40 s inside the radius while the crew comes at you
     const types = EC.GANGS[t.gang].types, free = H.budget()?.free ?? 3, n = Math.max(0, Math.min(3, free, types.length)); const made = n ? H.hostiles(types.slice(0, n), E.pl.x, E.pl.z, { r: 12, src: 'empire', faction: t.gang }) : 0;
@@ -349,7 +355,7 @@ function empireTick(dt, tc) {
   // clock -> income
   const ck = clock(); if (D.lastHour == null) D.lastHour = ck.hour; const hrs = EC.hoursBetween(D.lastHour, ck.hour); D.lastHour = ck.hour;
   if (hrs > 0) { const got = EC.accrue(D, (ck.hour - hrs + 24) % 24, hrs); if (got > 0) { dirty(); S.incomeAcc = (S.incomeAcc || 0) + got; } S.rollAcc += hrs;
-    while (S.rollAcc >= 1) { S.rollAcc -= 1; if (!S.force.noThreats) { const th = EC.rollThreat(D, ctxFor); if (th) startThreat(th); else rollBaseRaid(); } if (S.incomeAcc >= 1) { emit('income', { amount: Math.round(S.incomeAcc), perHour: EC.perHour(D, ck.hour), hour: ck.hour }); S.incomeAcc = 0; } } }
+    while (S.rollAcc >= 1) { S.rollAcc -= 1; if (!S.force.noThreats && slot() !== 'other') { const th = EC.rollThreat(D, ctxFor); if (th) startThreat(th); else rollBaseRaid(); } if (S.incomeAcc >= 1) { emit('income', { amount: Math.round(S.incomeAcc), perHour: EC.perHour(D, ck.hour), hour: ck.hour }); S.incomeAcc = 0; } } }
   const px = tc.car ? tc.car.x : tc.player.x, pz = tc.car ? tc.car.z : tc.player.z;
   threatTick(dt, tc, px, pz); pushOut(tc);
   // cull + beacon pulse
@@ -385,6 +391,7 @@ export const empire = {
   save, reload() { D = load(); S.built = false; refreshLooks(); return true; },
   on(evt, fn) { if (typeof fn !== 'function') throw new Error('SSX.empire.on(event, fn)'); (listeners[evt] ||= []).push(fn); return () => empire.off(evt, fn); },
   hour: () => ({ last: hourTicker.last, fired: hourTicker.fired }),
+  yieldRaid: (why) => yieldRaid(why || 'api'), raidSlot: () => slot(),
   off(evt, fn) { const L = listeners[evt]; if (L) { const i = L.indexOf(fn); if (i >= 0) L.splice(i, 1); } },
   debug: {
     goto(id, where = 'door') { const E = S.P[id], sf = surf(); if (!E || !sf) return false; const q = where === 'garage' ? E.pl.garage : where === 'chop' ? E.pl.chopBay : where === 'near' ? E.pl.at(0, E.pl.d / 2 + 14) : where === 'yard' ? E.pl.at(-5, E.pl.d / 2 + 19) : E.pl.door; if (!q) return false; sf.debugMove(q.x, q.z, E.pl.yaw); return { x: q.x, z: q.z }; },
@@ -413,6 +420,8 @@ export const empire = {
   S.offline = EC.offline(D); if (S.offline.total > 0) { save(); setTimeout(() => toast(`🏢 While you were away your fronts took in ${S.offline.total} cr. Go to each one and tap Collect at the door.`, 3600), 4000); }
   try { window.SSX.registerMenuItem({ id: 'rmEmpire', label: '🏢 Empire', onTap: () => openPanel() }); } catch (e) { console.warn('empire menu', e); }
   window.SSX.registerSurfaceTick((dt, tc) => { try { empireTick(dt, tc); } catch (e) { console.warn('empire tick', e); } });
+  // add-ons can ask for the slot before SSX.raids.start: dispatchEvent(new CustomEvent('raid:request', { detail: { id } }))
+  addEventListener('raid:request', e => { try { if (!String(e?.detail?.id || '').startsWith('empire-')) yieldRaid(e?.detail?.id || 'request'); } catch (er) { /* */ } });
   addEventListener('pagehide', () => { try { save(); } catch (e) { /* */ } });
   S.ready = true; emit('ready', { owned: Object.keys(D.owned).length });
 })();

@@ -204,3 +204,6 @@ export function makeHourTicker(getClock, fire) {
     get last() { return last; }, get fired() { return fired; }, reset() { last = null; }
   };
 }
+
+// SSX.raids has one slot. Who holds it: 'free' | 'ours' (an empire-* rival raid) | 'other' (someone else's add-on)
+export function raidSlot(active, prefix = 'empire-') { const id = typeof active === 'string' ? active : active?.id; return !id ? 'free' : String(id).startsWith(prefix) ? 'ours' : 'other'; }

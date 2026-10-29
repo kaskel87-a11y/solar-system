@@ -29,4 +29,12 @@ ok('timer pump (off Mars / in space)', /setInterval\(\(\) => \{ try \{ hourTicke
 ok('pending queue drained', src2.includes('SSX._pendingEmpire') && src2.includes('SSX_pending?.empire'));
 ok("'*' listeners don't get hour", src2.includes("if (evt !== 'hour') for (const f of [...(listeners['*']"));
 ok('income code unchanged', src2.includes("const ck = clock(); if (D.lastHour == null) D.lastHour = ck.hour; const hrs = EC.hoursBetween(D.lastHour, ck.hour); D.lastHour = ck.hour;"));
+// raid slot sharing
+ok('raidSlot free', E.raidSlot(null) === 'free' && E.raidSlot(undefined) === 'free' && E.raidSlot({}) === 'free');
+ok('raidSlot ours', E.raidSlot({ id: 'empire-den' }) === 'ours' && E.raidSlot('empire-x') === 'ours');
+ok('raidSlot other', E.raidSlot({ id: 'farm-raid-3' }) === 'other' && E.raidSlot('base-aj') === 'other');
+ok('yield swaps defense before stop', /S\.defense = \{ engine: 'hold'[^\n]*yielded: true \};[^\n]*\n\s*try \{ H\.raids\(\)\?\.stop\?\.\(df\.id, 'empire:yield'\)/.test(src2));
+ok('hourly roll skipped while another raid runs', src2.includes("if (!S.force.noThreats && slot() !== 'other')"));
+ok('defend goes to hold when slot busy', src2.includes("if (R && slot() === 'other') r = { ok: false, why: 'raid slot busy' }"));
+ok('raid:request listener', src2.includes("addEventListener('raid:request'"));
 console.log(fails ? `FAIL ${fails}` : 'PASS hour unit'); process.exit(fails ? 1 : 0);

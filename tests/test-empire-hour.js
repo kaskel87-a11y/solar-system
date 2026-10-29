@@ -39,6 +39,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { window.__fakeH = 4.05; }); ok('timeTick', await wait(n2 => window.__hours.length === n2 + 1 && window.__hours.at(-1).source === 'SSX.time' && window.__hours.at(-1).hour === 4, 5000, n2));
     ok('incomeUnchanged', (await G(() => window.SSX.empire.pending())) === inc0 && inc0 === 0);
     ok('lateOn', await G(() => { let got = 0; const off = window.SSX.empire.on('hour', () => got++); window.__fakeH = 5.2; window.SSX.empire.debug.hourPump(); off(); return got === 1; }));
+    // raid slot: our rival raid yields to another add-on's raid:request, then the hourly roll / defend stay off the busy slot
+    R.slot = await G(() => { const e = window.SSX.empire, out = {};
+      localStorage.setItem('ssx.empire.v1', JSON.stringify({ v: 1, owned: { 'fr-disp': { pending: 0 } }, lastAt: Date.now(), lastHour: null, clockH: 0, lastThreatH: -99, threat: null, earned: 0, log: [], stats: {}, home: null }));
+      e.reload(); e.debug.threat('fr-disp', 'raid'); out.def = e.defend(); out.eng0 = e.debug.defense()?.engine; out.slot0 = e.raidSlot();
+      let y = 0; const off = e.on('yield', () => y++);
+      dispatchEvent(new CustomEvent('raid:request', { detail: { id: 'farm-raid-t' } })); off();
+      const d = e.debug.defense(); out.eng1 = d?.engine; out.yielded = !!d?.yielded; out.y = y; out.threatKept = !!e.threat();
+      out.other = window.SSX.raids.start({ id: 'farm-raid-t', pos: { x: window.__app.surface.player?.position?.x ?? 0, z: window.__app.surface.player?.position?.z ?? 0 }, radius: 24, attackers: 'gang', waves: 1 }).ok;
+      out.slot1 = e.raidSlot(); out.again = e.yieldRaid() === false;
+      window.SSX.raids.stop('farm-raid-t'); e.debug.win(); out.slot2 = e.raidSlot(); return out; });
+    ok('raidYield', R.slot.def?.ok && R.slot.eng0 === 'raids' && R.slot.slot0 === 'ours' && R.slot.eng1 === 'hold' && R.slot.yielded && R.slot.y === 1 && R.slot.threatKept && R.slot.other && R.slot.slot1 === 'other' && R.slot.again && R.slot.slot2 === 'free');
     await page.screenshot({ path: `${out}${tag}.png`, timeout: 90000 }).catch(() => {});
   } catch (e) { bad.push('EXC ' + e.message.split('\n')[0]); }
   R.errors = errors.slice(0, 5); if (errors.some(e => !/audio device/i.test(e))) bad.push('pageerrors'); // headless WebKit has no audio device
