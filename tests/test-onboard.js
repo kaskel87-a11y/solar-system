@@ -88,8 +88,12 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('m1Done', null, await at(1, 0, 20000));
     ok('flash', null, await wait(() => /Find your feet · \+25 cr/.test(document.getElementById('obLine')?.textContent || ''), 3000));
     // ---- mission 2: rover + taxi stand
+    // Snuffles' SSX.hudx waypoint (stubbed here): when it's there the tour hands it the target and draws no arrow / beam of its own
+    await G(() => { window.SSX.hudx = { setWaypoint(p) { window.__hw = p; }, waypoint() { return window.__hw || null; } }; });
     await wait(() => /rover/.test(document.getElementById('obLine')?.textContent || ''), 6000);
     o = await ob(); ok('roverText', o.text, touch ? /🚙 Drive/.test(o.text) : /press E/.test(o.text));
+    ok('hudxWay', o.way?.via, o.way?.via === 'hudx' && await G(() => window.__hw?.label === 'Your rover' && !window.__app.surface.scene.getObjectByName('onboard-marker')?.visible && !window.SSX.minimap.list().includes('onboard')) && !/\d+ m/.test(o.text));
+    await G(() => { delete window.SSX.hudx; });
     await G(() => { const i = window.__app.surface.info; window.__app.surface.debugMove(i.roverX + 2, i.roverZ + 1, 0); }); await sleep(900);
     if (touch) { await wait(() => /Drive/.test(document.getElementById('driveBtn')?.textContent || ''), 5000); R.tapDrive = await tapEl('#driveBtn'); } else await key('KeyE');
     ok('driving', null, await wait(() => window.__app.surface.info.driving, 8000)); ok('m2s1', null, await at(1, 1));
