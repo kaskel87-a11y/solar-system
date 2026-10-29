@@ -15,7 +15,7 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
   const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : named || { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
   const touch = DEV !== 'desktop';
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
-  const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('CE ' + m.text().slice(0, 200)); });
+  const errors = []; page.on('pageerror', e => { if (!/Failed to start the audio device/.test(e.message)) errors.push('PE ' + e.message); }); /* headless box: no audio sink */ page.on('console', m => { if (m.type() === 'error') errors.push('CE ' + m.text().slice(0, 200)); });
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 60 }); return true; } catch (e) { return false; } };
@@ -97,6 +97,14 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     const h1 = await G(() => window.__gravity.state().alt); await sleep(1500); const h2 = await G(() => window.__gravity.state().alt);
     ok('floatingZeroG', await G(() => window.SSX.gravity.floating === true));
     ok('zeroHovers', `${h1.toFixed(1)} -> ${h2.toFixed(1)}`, h2 > h1 - 1.0 && h2 > 3);
+    { // PR #63 world.vehicleGround(car) -> (x, z) => max(terrain, roof): stub a 2 m roof under the car; ZERO-G altitude follows it
+      const had = await G(() => typeof window.__app.surface.world.vehicleGround === 'function');
+      await G(() => { const w = window.__app.surface.world, c = window.__gravity.car(); window.__vgOrig = w.vehicleGround; window.__vgBase = c.y - window.__gravity.state().alt; w.vehicleGround = () => () => window.__vgBase + 2; });
+      await sleep(600);
+      const m = await G(() => { const c = window.__gravity.car(), s = window.__gravity.state(); return { alt: s.alt, want: c.y - (window.__vgBase + 2), src: c.ground }; });
+      await G(() => { const w = window.__app.surface.world; if (window.__vgOrig) w.vehicleGround = window.__vgOrig; else delete w.vehicleGround; });
+      ok('vehicleGroundUsed', `${had ? 'native' : 'stub'} ${m.src}: alt ${m.alt.toFixed(2)} vs y - roof ${m.want.toFixed(2)}`, m.src === 'vehicleGround' && Math.abs(m.alt - m.want) < 0.3);
+    }
     // forward thrust: W / ⚡ Boost on phones
     const p0 = await G(() => window.__gravity.state().p);
     if (touch) await P('pointerdown', '#runBtn', 44); else await page.keyboard.down('KeyW');
