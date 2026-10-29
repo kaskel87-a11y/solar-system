@@ -29,6 +29,8 @@ body.hudx #questTrack{white-space:normal;max-width:min(300px,100%);text-overflow
 body.hudx #questTrack .hxQh{display:flex;gap:6px;align-items:center;white-space:nowrap} body.hudx #questTrack .hxQh>b{overflow:hidden;text-overflow:ellipsis;min-width:0}
 body.hudx #questTrack .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} body.hudx #questTrack .hxQw:empty{display:none}
 body.hudx #questTrack .hxQw .ar{width:15px;height:15px;display:block} body.hudx #questTrack .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
+/* v7.6: toasts stay inside the viewport minus safe areas, long words wrap, 3 lines before the clamp */
+body.hudx #toast{max-width:min(100%,calc(100vw - 16px - var(--sal,0px) - var(--sar,0px)));overflow-wrap:anywhere;-webkit-line-clamp:3}
 body.hudx #questTrack :is(.hxTx,.hxHow){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} /* every hint: 2 lines max (hud/hints.js copy is sized to fit 390 px) */
 body.hudx #questTrack .hxHow{color:#9fe8ff;font-weight:600} #hxCard #hxJob.on~#questTrack .hxHow{display:none} /* a running job: keep the card tight */
 body.hudx #stackR:has(#questTrack[style*="block"]) > #actChip,body.hxCardOn #actChip{display:none!important}
@@ -103,9 +105,12 @@ export function pois(force) {
 // ---------- 📜 card: plain words ----------
 // the "how" line (what to actually do) shows for HOW_MS after each new step, then the card shrinks back to 2 lines
 const HOW_MS = 8000; let howKey = '', howAt = 0;
+// v7.6: phones have no keyboard, so drop "(E)" / "(T)" style key hints on touch (index.html's toast does the same)
+export const KEY_HINT = /\s*\((?:[A-Z0-9]|Esc|Space|Tab|Shift|Enter)\)/g;
+export const noKeys = s => (typeof document !== 'undefined' && document.body?.classList.contains('touch') ? String(s).replace(KEY_HINT, '') : s);
 export function questHtml(q) {
   if (!q) return '';
-  const p = plainStep(q.text, q.type), key = `${q.title}|${String(q.text).replace(/\s*\([^)]*\d[^)]*\)\s*$/, '')}`, now = performance.now();
+  const p0 = plainStep(q.text, q.type), p = { ...p0, text: noKeys(p0.text), how: p0.how && noKeys(p0.how) }, key = `${q.title}|${String(q.text).replace(/\s*\([^)]*\d[^)]*\)\s*$/, '')}`, now = performance.now();
   if (key !== howKey) { howKey = key; howAt = now; }
   const how = p.how && now - howAt < HOW_MS;
   return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx">${esc(p.text)}</span>${how ? `<span class="hxHow">${esc(p.how)}</span>` : ''}`;
