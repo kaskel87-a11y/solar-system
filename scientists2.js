@@ -71,7 +71,7 @@ function RAW(P) {
       brief: "Twenty years ago Silas pawned his liver. The good one. The ticket expires tonight and Mr. Lien collects with interest. Get the ticket, the jar and the receipt, in that order.",
       steps: [
         step({ type: 'portal', dim: 'pawn', at: P, r: 2, text: 'Portal to Lien & Sons Organ Pawn: ticket, jar, receipt' }),
-        step({ type: 'clean', wanted: 2, getaway: true, text: "Lien's repo men tipped ColSec. Lose the heat" }),
+        step({ type: 'clean', wanted: 2, getaway: true, text: "Lien tipped off ColSec. Lose your wanted stars" }),
         step({ type: 'rdrive', at: BACK_LOT, r: 6, text: 'Stash the jar at the back lot in the Raccoon Mobile. Nobody checks a trunk there' }),
         step({ type: 'enter', building: 'junkyard lab', text: 'Tell Silas his liver is safe. Safer than in him' })
       ], reward: { xp: 380, credits: 800 }, done: '"My liver. Floating there like a little brown moon. I\'ll visit. I won\'t drink in front of it."' },
