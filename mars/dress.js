@@ -49,10 +49,14 @@ function load(id) {
     });
     const { mergeGeometries } = await import('../vendor/three/addons/utils/BufferGeometryUtils.js');
     const parts = [];
-    const compat = gs => { // v7.5.4: mergeGeometries needs the same attributes (and all-or-none indexed); keep the shared set, no console error
-      const keys = Object.keys(gs[0].attributes).filter(k => gs.every(g => g.attributes[k] && g.attributes[k].itemSize === gs[0].attributes[k].itemSize));
-      const out = gs.map(g => { const h = g.index && !gs.every(q => q.index) ? g.toNonIndexed() : g; for (const k of Object.keys(h.attributes)) if (!keys.includes(k)) h.deleteAttribute(k); return h; });
-      return keys.includes('position') ? out : null; };
+    const compat = gs => { // v7.5.4: mergeGeometries needs the same attributes (and all-or-none indexed): fill a missing uv (0) / color (white), drop other odd ones
+      const fill = { uv: [2, 0], color: [3, 1] }, all = new Set(gs.flatMap(g => Object.keys(g.attributes)));
+      const out = gs.map(g => { const h = g.index && !gs.every(q => q.index) ? g.toNonIndexed() : g;
+        for (const k of all) if (!h.attributes[k] && fill[k]) { const [n, v] = fill[k]; h.setAttribute(k, new THREE.BufferAttribute(new Float32Array(h.attributes.position.count * n).fill(v), n)); }
+        return h; });
+      const keys = [...all].filter(k => out.every(g => g.attributes[k] && g.attributes[k].itemSize === out[0].attributes[k].itemSize));
+      for (const h of out) for (const k of Object.keys(h.attributes)) if (!keys.includes(k)) h.deleteAttribute(k);
+      return out; };
     for (const [mat, gs0] of byMat) { const gs = gs0.length > 1 ? (compat(gs0) || gs0) : gs0; const mg = gs.length > 1 ? mergeGeometries(gs, false) : gs[0]; if (mg) parts.push({ mat, geo: mg }); else for (const g of gs) parts.push({ mat, geo: g }); }
     return { parts, box, tris, id };
   })();
