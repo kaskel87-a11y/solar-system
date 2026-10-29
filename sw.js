@@ -1,5 +1,5 @@
 // Solar System Explorer service worker (v7.3+).
-// The version comes from the registration URL (sw.js?v=7.5.1), the same number as the ?v cache bust on the modules,
+// The version comes from the registration URL (sw.js?v=7.5.4), the same number as the ?v cache bust on the modules,
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
 // BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
