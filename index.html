@@ -473,6 +473,10 @@
   "ssx/basecore": "./basecore.js?v=7.5.4",
   "./basehooks.js": "./basehooks.js?v=7.5.4",
   "ssx/basehooks": "./basehooks.js?v=7.5.4",
+  "./brightness.js": "./brightness.js?v=7.5.4",
+  "ssx/brightness": "./brightness.js?v=7.5.4",
+  "./brightnesscore.js": "./brightnesscore.js?v=7.5.4",
+  "ssx/brightnesscore": "./brightnesscore.js?v=7.5.4",
   "./cameras.js": "./cameras.js?v=7.5.4",
   "ssx/cameras": "./cameras.js?v=7.5.4",
   "./carmeet.js": "./carmeet.js?v=7.5.4",
@@ -2406,6 +2410,7 @@
   <script type="module" src="./mars/time.js?v=7.5.4"></script> <!-- v7.5.4 Mars day/night cycle (window.SSX.time, PR #30) -->
   <script type="module" src="./mars/fightclub.js?v=7.5.4"></script> <!-- v7.5.4 the Rust Pit fight club (window.SSX.fight, PR #34) -->
   <script type="module" src="./mars/gravity.js?v=7.5.4"></script> <!-- Pumpkin: gravity modes for Mars vehicles, Z / dock 🌍 (window.SSX.gravity) -->
+  <script type="module" src="./brightness.js?v=7.5.4"></script> <!-- Steve: ☰ → ☀️ Brightness (Low/Normal/High/Max) + a readable night floor, classic and v8 looks (window.SSX.brightness) -->
 <script>
   // v7.2 PWA: service worker caches the app shell + textures (versioned with ?v) so it launches like an app and works offline
   if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => navigator.serviceWorker.register('sw.js?v=7.5.4').catch(() => {}));
