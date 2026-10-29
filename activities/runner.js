@@ -5,6 +5,7 @@
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
 import { addMenuItem, tap, panelTap } from '../racehooks.js';
 import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
+import { prepTemplate, nudgeSteps, duelOutcome } from './deadends.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
 
 const LS = 'ssx.mars.act.v1';
@@ -126,6 +127,7 @@ function compileSteps(def) {
     return pool[i % pool.length];
   };
   let poolIdx = 0;
+  tpl = prepTemplate(def, tpl, DISTRICTS[def.district]?.centre);
   for (const s of tpl) {
     if (s.type === 'duel') {
       // Handled by runner (v7.4 challenge); emit a goto stand-in so registerMission stays valid
@@ -179,17 +181,22 @@ function compileSteps(def) {
     steps.push({ type: 'goto', at, r: 8, text: 'Pick up the fare' });
     steps.push({ type: 'goto', at: [at[0] + 40, at[1] - 80], r: 8, text: 'Drop them off' });
   }
-  return steps;
+  return nudgeSteps(steps, C);
 }
 
 function missionId(def) { return `act-${def.id}`; }
 
 function registerAll() {
   if (registered || !pack || !C?.game?.registerMission) return;
-  for (const def of pack.activities || []) {
-    if (DEFERRED.has(def.id)) continue;
+  for (const def of pack.activities || []) registerOne(def);
+  registered = true;
+}
+
+function registerOne(def) {
+  {
+    if (DEFERRED.has(def.id)) return;
     const steps = compileSteps(def);
-    if (!steps.length) continue;
+    if (!steps.length) return;
     try {
       C.game.registerMission({
         id: missionId(def),
@@ -207,7 +214,6 @@ function registerAll() {
       });
     } catch (e) { console.warn('[activities] register', def.id, e.message); }
   }
-  registered = true;
 }
 
 function clears(id) { return (data.clears ||= {})[id] || 0; }
@@ -286,7 +292,7 @@ function startActivity(def, opts = {}) {
     return { ok: true };
   }
   if (mode === 'duel_ladder') {
-    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, roundsLeft: def.loop.rounds || 1, wager: def.loop.wager_default || 100 };
+    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, roundsLeft: def.loop.rounds || 1, wager: def.loop.wager_default || 100, duelWatch: C.world?.lastDuel, rearmAt: performance.now() + 4000 };
     armDuel(def);
     sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: wager ${active.wager} cr. Fists only.`);
     tryBark({ name: 'crowd', kind: 'colonist' }, 'pit_cheer');
@@ -294,6 +300,7 @@ function startActivity(def, opts = {}) {
     return { ok: true };
   }
 
+  registerOne(def); // recompile now the colony is up so markers get nudged out of buildings
   const ok = C.game.accept(mid);
   if (!ok) return { ok: false, why: 'Could not start job (engine refused).' };
   active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: false };
@@ -506,14 +513,19 @@ function watchActive() {
     const L = C.world?.lastDuel;
     if (L && active.duelWatch !== L) {
       active.duelWatch = L;
-      if (L.win || L.why === 'win' || L.credits > 0 && /win/i.test(L.why || '')) {
+      const o = duelOutcome(L);
+      if (o === 'win') {
         active.roundsLeft--;
         if (active.roundsLeft <= 0) completeActivity();
         else { toast(`🥊 Round won. ${active.roundsLeft} left.`); armDuel(def); }
-      } else if (L.why && /yield|lose|fail/i.test(L.why)) {
-        failActivity('You lost the bout.');
-      }
+      } else if (o === 'rearm') { toast('🥊 They bottled it. Next fighter.'); armDuel(def); }
+      else if (o === 'fail') failActivity(L.why === 'forfeit' ? 'You walked out of the ring.' : 'You lost the bout.');
+    } else if (!L || active.duelWatch === L) {
+      // No bout running (no fighter was free): keep trying instead of sitting on "Rounds left"
+      const t = performance.now();
+      if (t > (active.rearmAt || 0)) { active.rearmAt = t + 4000; armDuel(def); }
     }
+    if (!active) return;
     // Fail if wanted spikes hard or gun used — soft check
     if ((C.world?.wanted || 0) >= 3) failActivity('Stars. Pit closed.');
     return;
