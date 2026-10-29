@@ -33,7 +33,6 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   const ctxBtn = async () => { if (touch) return tap('#empBtn'); await page.keyboard.press('Backslash'); return true; };
   // ☰ -> 🏢 Empire (the only way into the sheet away from a door)
   const viaMenu = async () => { await tap('#menuBtn'); await wait(() => document.getElementById('roverMenu')?.classList.contains('show'), 4000); await tap('#rmEmpire'); return wait(() => window.SSX.empire.isOpen, 6000); };
-  const toastOn = () => G(() => document.getElementById('toast')?.classList.contains('on'));
   const label = (id = 'empBtn') => G(id => { const b = document.getElementById(id); return b && getComputedStyle(b).display !== 'none' ? b.textContent : ''; }, id);
   const credits = () => G(() => window.__app.surface.game.info.credits);
   const E = (f, a) => G(([f, a]) => window.SSX.empire[f](...(a || [])), [f, a]);
@@ -64,7 +63,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('menuOpensSheet', null, await viaMenu()); await tap('#empPanel button[data-a="view"][data-id="fr-wash"]'); await sleep(300);
     R.dirText = await G(() => document.querySelector('#empPanel .wrap')?.textContent || ''); ok('plainDirections', (/Go to the [^()]+\([^)]*\) and tap Buy\./.exec(R.dirText) || ['none'])[0], /Go to the Red Dust Wash & Fold \(\d+ m (north|south|east|west)[a-z-]*\) and tap Buy\./.test(R.dirText));
     await tap('#empPanel button[data-a="back"]'); await sleep(200); await tap('#empPanel button[data-a="mark"][data-id="fr-wash"]'); await sleep(300);
-    ok('markNoteInSheet', null, !(await toastOn()) && await G(() => /yellow ring on the radar/.test(document.querySelector('#empPanel .note')?.textContent || '')));
+    await wait(() => /yellow ring/.test(document.querySelector('#empPanel .note')?.textContent || ''), 3000);
+    R.markDbg = await G(() => ({ toast: document.getElementById('toast')?.classList.contains('on') ? document.getElementById('toast').textContent : '', note: document.querySelector('#empPanel .note')?.textContent || '', open: window.SSX.empire.isOpen }));
+    ok('markNoteInSheet', JSON.stringify(R.markDbg), !/yellow ring/.test(R.markDbg.toast) && /yellow ring on the radar/.test(R.markDbg.note));
     await tap('#empPanel button[data-a="close"]'); await wait(() => !window.SSX.empire.isOpen, 4000);
     await go('fr-wash'); await sleep(1500);
     ok('buyBtn', await wait(() => window.SSX.empire.action() === 'buy', 15000) ? await label() : 'none', /Buy 2000/.test(await label()));
@@ -92,7 +93,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('extortViaMenu', null, await viaMenu() && await wait(() => !!document.querySelector('#empPanel button[data-a="pay"]') && /tap Pay or Tell them no/.test(document.querySelector('#empPanel .warn')?.textContent || ''), 6000));
     const dem = (await E('threat')).demand, c2 = await credits(); await tap('#empPanel button[data-a="pay"]'); await sleep(300);
     ok('paid', `${dem} cr`, (await credits()) - c2 === -dem && (await E('threat')) === null && !!(await E('prop', ['fr-wash'])).protect);
-    ok('oneCaption', null, !(await toastOn()) && await G(() => /Paid \d+ cr/.test(document.querySelector('#empPanel .note')?.textContent || '')));
+    ok('oneCaption', null, await G(() => !/Paid \d+ cr/.test(document.getElementById('toast')?.classList.contains('on') ? document.getElementById('toast').textContent : '') && /Paid \d+ cr/.test(document.querySelector('#empPanel .note')?.textContent || '')));
     // ---- extortion: refuse -> raid alert, and we're at the door -> the defense starts through SSX.raids
     await tap('#empPanel button[data-a="close"]'); await go('fr-wash', 'yard'); await sleep(500);
     await G(() => window.SSX.empire.debug.threat('fr-wash', 'extort')); await G(() => window.SSX.empire.open()); await wait(() => !!document.querySelector('#empPanel button[data-a="refuse"]'), 5000);
