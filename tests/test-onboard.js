@@ -123,7 +123,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('turfOpen', null, await wait(() => document.getElementById('turfPanel')?.classList.contains('show'), 6000));
     ok('m5s2', null, await at(4, 2, 5000)); await closePanels(); ok('m5s3', null, await at(4, 3));
     o = await ob(); R.pitTarget = o.cur?.target; ok('pitText', o.text, /The Pit/.test(o.text) && !/Drop into/.test(o.text));
-    await goTo(0, 2); await sleep(1500);
+    await goTo(0, 2); await wait(() => { const b = document.getElementById('actCtxBtn'); return !!window.SSX.fight || !!b && b.getBoundingClientRect().width > 0 && /The Pit/.test(b.textContent); }, 10000);
+    R.pitDiag = await G(() => { const i = window.__app.surface.info, b = document.getElementById('actCtxBtn'); return { x: Math.round(i.x), z: Math.round(i.z), driving: !!i.driving, inside: !!i.inside, btn: b?.textContent, disp: b?.style.display, dist: window.__activities?.district?.id, act: window.__activities?.active, race: !!window.__race?.state, down: window.__app.surface.game.isDown?.() }; });
     ok('pitButton', await G(() => document.getElementById('actCtxBtn')?.textContent), await G(() => { const b = document.getElementById('actCtxBtn'); return !!b && b.getBoundingClientRect().width > 0 && /The Pit/.test(b.textContent); }) || await G(() => !!window.SSX.fight));
     ok('m5Done', null, await at(5, 0, 20000));
     // ---- mission 6: the club
