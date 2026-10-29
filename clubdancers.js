@@ -78,7 +78,7 @@ const OUTFITS = {
   crop: ['SSX string top', 'SSX string bottom', 'SSX crop top', 'SSX shorts', 'SSX cardigan'] // private dance: pink ribbed two-piece (+ cardigan)
 };
 /** Danny's display name: the ONE place it is set (nameplate/sign, spots, captions, contacts and toasts all read it). */
-export const DANNY_NAME = 'Danny Alvarez';
+export const DANNY_NAME = 'Danny Nova';
 export const DANCERS = {
   danny: { file: 'dancer_danny', name: DANNY_NAME, sheen: 0.55 }, // long straight wet-look black hair
   rhea: { file: 'dancer_rhea', name: 'Rhea', sheen: 0.18 },

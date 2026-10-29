@@ -1,4 +1,4 @@
-// v7.5.4 test: Danny Alvarez's private show (privateshow.js). Talk to her in the VIP room, 18+ gate, offer panel,
+// v7.5.4 test: Danny Nova's private show (privateshow.js). Talk to her in the VIP room, 18+ gate, offer panel,
 // pay 150, upstairs booth (cinematic camera, HUD hidden), three tips unlock her number, touching gets you thrown out.
 // Also renders FRONT / SIDE / PRIVATE SHOW screenshots and reports draw calls, textures, frame time and browser PSS.
 // BASE=http://localhost:8765/ BR=chromium DEV=desktop node tests/test-danny.js   (DEV="iPhone 14" BR=webkit for touch)
@@ -67,7 +67,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     for (let i = 0; i < 3; i++) { if (desk) await page.keyboard.press('KeyT'); else await tapSel('#pshowTip'); await sleep(350); }
     ok('tips', await G(() => window.__pshow.state.tips), await G(c => window.__pshow.state.tips === 3 && window.__app.game.progress.credits === c - 60, c1));
     ok('tipBonus', await G(l => +(window.__pshow.state.left - l).toFixed(1), left0), await G(l => window.__pshow.state.left > l + 10, left0));
-    ok('number', await G(() => localStorage.getItem('ssx.contacts')), await G(() => /Danny Alvarez/.test(localStorage.getItem('ssx.contacts') || '') && /contacts/.test(document.getElementById('pshowCap').textContent)));
+    ok('number', await G(() => localStorage.getItem('ssx.contacts')), await G(() => /Danny Nova/.test(localStorage.getItem('ssx.contacts') || '') && /contacts/.test(document.getElementById('pshowCap').textContent)));
     await page.screenshot({ path: `${out}danny-${tag}-number.png` });
     // FRONT / SIDE views of her in the booth light
     await G(() => window.__pshow.debugView('front')); await sleep(1500); await page.screenshot({ path: `${out}danny-${tag}-front.png` });
