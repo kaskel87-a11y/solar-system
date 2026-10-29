@@ -188,8 +188,12 @@
     @media (max-width: 699px) { #tbBars { flex-basis: 98px; gap: 2px; } .tbL { width: 30px; font-size: 0; display: flex; align-items: center; height: 12px; } .tbL b { display: inline-block; font-size: 7px; line-height: 9px; padding: 0 2px; border-radius: 2px; background: #000; color: #fff; letter-spacing: 0.03em; } }
     /* v7.5.5: ☰ never leaves the screen. The bar is clamped to the safe-area width, ☰ never shrinks, the middle items give way (heat row first) */
     #topBar { max-width: calc(100vw - 16px - var(--sal) - var(--sar)); }
-    #menuBtn { flex-shrink: 0 !important; margin-left: auto; } #tbBars, #gearChip { flex-shrink: 0; }
-    #topBar #heatRow { flex: 0 1 74px; min-width: 26px; } #topBar #heatRow .bar { min-width: 6px; }
+    #menuBtn { flex-shrink: 0 !important; margin-left: auto; } #tbBars { flex-shrink: 0; }
+    #topBar #gearChip { flex: 0 0 auto; overflow: hidden; text-overflow: clip; } body.wanted #topBar #gearChip { flex-shrink: 1; } body.wanted.driving #surfInfo { min-width: 3.2em; }
+    /* hard guarantee: ☰ is pinned to the bar's right edge (inside the safe area), the row ends before it, so nothing can push it off-screen */
+    #topBar { padding-right: 54px; } #topBar #menuBtn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); margin: 0; z-index: 1; }
+    @media (max-width: 699px) { #topBar #tbBars { flex: 0 1 98px; min-width: 66px; } } /* tight bar (wanted + big credits + driving): the meters narrow before ☰ moves */
+    #topBar #heatRow { flex: 0 1 74px; min-width: 40px; } body.wanted #topBar #heatRow { min-width: 26px; } #topBar #surfInfo { flex-shrink: 8; } #topBar #heatRow .bar { min-width: 6px; }
     @media (max-width: 430px) { #topBar { gap: 6px; } #topBar #heatRow { gap: 2px; } }
     #rankLine { flex: 0 0 auto; white-space: nowrap; opacity: 0.9; } body.wanted #rankLine .xp, body.driving #rankLine .xp, body.turret #rankLine .xp { display: none; } body.wanted #surfInfo .gv, body.driving #surfInfo .gv { display: none; }
     @media (max-width: 380px) { #rankLine .xp { display: none; } }
