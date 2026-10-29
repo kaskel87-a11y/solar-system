@@ -462,11 +462,11 @@ export function createWorld(ctx) {
       const p = H.pts[i], ok = !inCore(p.x, p.z), rx = -p.fz, rz = p.fx;
       const lx = p.x - rx * W, lz = p.z - rz * W, qx = p.x + rx * W, qz = p.z + rz * W;
       pos.push(lx, height(lx, lz) + 0.07, lz, qx, height(qx, qz) + 0.07, qz);
-      if (ok && prevOk) { const a = (n - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      if (ok && prevOk) { const a = (n - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } // v7.5.5 buildRoad fix: counter-clockwise from above, so FrontSide shows the road (was culled from above)
       n++; prevOk = ok;
       if (ok && i % 2 === 0 && i + 1 < H.pts.length) { const q2 = H.pts[i + 1], k = spos.length / 3, sw = 0.11;
         for (const [px, pz] of [[p.x - rx * sw, p.z - rz * sw], [p.x + rx * sw, p.z + rz * sw], [q2.x - rx * sw, q2.z - rz * sw], [q2.x + rx * sw, q2.z + rz * sw]]) spos.push(px, height(px, pz) + 0.1, pz);
-        sidx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+        sidx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
     }
     const mk = (P, I, m, part) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setIndex(I); geo.computeVertexNormals(); const me = new THREE.Mesh(geo, m); me.userData.v8 = { site: 'highway', part }; me.userData.slot = part === 'road' ? 'asphalt' : 'stripe'; g.add(me); return me; };
     mk(pos, idx, R.asphalt, 'road'); if (sidx.length) mk(spos, sidx, R.stripe, 'stripe');
