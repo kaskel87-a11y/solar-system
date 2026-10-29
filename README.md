@@ -21,6 +21,13 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## First Day on Mars and 📖 How to play (add-on: onboard.js)
+- **First Day on Mars:** new players get a short guided tour with 6 missions: on foot, your rover and the 🚕 Taxi stand, the phone dock and 💼 Jobs, Blue in Red Tape Flats, 🚩 Turf and The Pit, and a night out at the Velvet Airlock. Each mission pays a little cash (315 cr in all). One plain line at a time sits top right, with an arrow and distance, and a light beam with a label marks the spot. Phones see button names and keyboards see keys.
+- **Skipping:** tap ✕ on the line, then Skip. ☰ → 📖 How to play can start, resume or restart the tour. If your browser already has a save (xp, credits, quests, turf, jobs and so on), the tour skips itself.
+- **📖 How to play** (☰): one or two sentences on each system: moving, driving, fights, the phone dock, radio, barrel rolls, wanted stars, jobs, contraband, turf, The Pit, races, rides, the club and getting around. Systems from add-ons show up only when that add-on is loaded, tagged "if available".
+- Saves to `ssx.onboard.v1`. `?onboard=1` starts the tour, `?onboard=0` keeps it off for that visit. `window.SSX.onboard`: `state`, `missions()`, `current()`, `start()`, `resume()`, `skip()`, `openCodex()`, `closeCodex()`, `waypoint`. Fires `SSX.on('onboard:step', d => …)`.
+- Waypoints: if `SSX.hudx.setWaypoint` is there, the tour uses it. If not, it draws its own beam, minimap dot and arrow. It spawns no NPCs and changes nothing in the HUD.
+
 ## v7.5.2: street life
 - **Fixed on iPhone:** ✅ Accept and Later on radio job offers (and every other in-game button: Log ▶ Start, duel, race and shop buttons, ☰, map, Land/Take off) now work while your thumb is on the joystick. iOS sends no click for a second finger's tap, so these now fire on the finger's own touch release.
 - Street danger: knife muggings with Pay / Fight / Run / Talk, street fights, gang and junkie car chases, the Red Tape Run highway set-piece, and ambient street vignettes. Toggle it from ☰ (🔪 Street danger).
