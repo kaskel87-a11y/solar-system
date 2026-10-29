@@ -1,6 +1,7 @@
 // Runtime for the first real heist (logic + data: mars/heisttipcore.js). Ticked from activities/runner.js.
 import { heist } from '../heist.js';
 import { CITY_MISSIONS } from '../citydata.js';
+import { villaTick } from './villa.js';
 import { KEY, VILLA, INFORMANT, TIP_TEXT, loadState, cityDone, decide } from './heisttipcore.js';
 
 const IDS = CITY_MISSIONS.map(m => m.id);
@@ -8,7 +9,9 @@ let st = null, reg = false, tT = 0;
 const read = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch {} };
 
+let vWarn = false;
 export function heistTipTick(dt, ctx) {
+  if (reg) { try { villaTick(dt, ctx); } catch (e) { if (!vWarn) { vWarn = true; console.warn('[villa]', e); } } }
   tT -= dt; if (tT > 0) return; tT = 1;
   if (!st) { st = loadState(read()); save(); } // writes the migrated v1 shape back
   const P = ctx?.game?.progress; if (!P) return;
