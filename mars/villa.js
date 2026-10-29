@@ -49,7 +49,8 @@ function mats() {
   M.power = new THREE.MeshStandardMaterial({ color: 0x8a6a20, roughness: 0.6 });
   M.uni = new THREE.MeshStandardMaterial({ color: 0x1d2a3a, roughness: 0.8 });
   M.skin = new THREE.MeshStandardMaterial({ color: 0xb98a68, roughness: 0.8 });
-  M.beam = new THREE.MeshBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.18, depthWrite: false });
+  M.beam = new THREE.MeshBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.1, depthWrite: false });
+  M.glass = new THREE.MeshStandardMaterial({ color: 0x223a52, metalness: 0.4, roughness: 0.2, emissive: 0x0d1a26 });
   for (const m of Object.values(M)) m.userData.shared = true;
   return M;
 }
@@ -61,7 +62,7 @@ function guardFigure() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), m.skin); head.position.y = 1.66; g.add(head);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.09, 12), m.uni); cap.position.y = 1.8; g.add(cap);
   for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.7, 8), m.trim); leg.position.set(0.12 * s, 0.35, 0); g.add(leg); }
-  const beam = new THREE.Mesh(new THREE.ConeGeometry(1.1, 4, 14, 1, true), m.beam); beam.rotation.x = -Math.PI / 2; beam.position.set(0.2, 1.25, -2.2); g.add(beam); // flashlight, local -z = facing
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(0.7, 3, 14, 1, true), m.beam); beam.rotation.x = -Math.PI / 2; beam.position.set(0.2, 1.25, -1.7); g.add(beam); // flashlight, local -z = facing
   g.name = 'villaGuard'; return g;
 }
 function build(ctx) {
@@ -82,6 +83,9 @@ function build(ctx) {
     const D = { def: d, box, mesh, open: 0, shut: true }; V.doors.push(D); addBox(box);
   }
   block(g, -1.1, y0 + FLOOR_H - 0.4, 6, 0.3, 0.3, 0.5, m.trim); // porch lamp
+  for (const x of [-6.5, -2.6, 2.8, 6.5]) block(g, x, y0 + 1.1, HALF.z + 0.17, 1.6, 1.3, 0.06, m.glass);   // street-side windows
+  for (const z of [-3, 3]) for (const sx of [-1, 1]) block(g, sx * (HALF.x + 0.17), y0 + 1.1, z, 0.06, 1.3, 1.6, m.glass);
+  for (const x of [-1.05, 1.05]) block(g, x, y0, HALF.z + 0.12, 0.25, FLOOR_H - 0.2, 0.25, m.trim);        // door frame
   // furniture (looks only)
   block(g, -6.5, y0, 4.5, 2.2, 0.55, 1.6, m.cloth); block(g, -6.5, y0, 5.5, 2.2, 0.9, 0.3, m.wood);      // bed + headboard (bedroom)
   block(g, 3, y0, 4.8, 3, 0.7, 0.9, m.cloth);                                                             // couch (hall)
