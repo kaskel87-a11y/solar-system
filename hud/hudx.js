@@ -29,8 +29,8 @@ body.hudx #questTrack{white-space:normal;max-width:min(300px,100%);text-overflow
 body.hudx #questTrack .hxQh{display:flex;gap:6px;align-items:center;white-space:nowrap} body.hudx #questTrack .hxQh>b{overflow:hidden;text-overflow:ellipsis;min-width:0}
 body.hudx #questTrack .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} body.hudx #questTrack .hxQw:empty{display:none}
 body.hudx #questTrack .hxQw .ar{width:15px;height:15px;display:block} body.hudx #questTrack .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
-body.hudx #questTrack .hxTx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} body.hudx #questTrack .hxTx.how{-webkit-line-clamp:3}
-body.hudx #questTrack .hxHow{color:#9fe8ff;font-weight:600}
+body.hudx #questTrack :is(.hxTx,.hxHow){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} /* every hint: 2 lines max (hud/hints.js copy is sized to fit 390 px) */
+body.hudx #questTrack .hxHow{color:#9fe8ff;font-weight:600} #hxCard #hxJob.on~#questTrack .hxHow{display:none} /* a running job: keep the card tight */
 body.hudx #stackR:has(#questTrack[style*="block"]) > #actChip,body.hxCardOn #actChip{display:none!important}
 body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!important}
 #hxCard{display:none;align-items:flex-start;gap:4px;max-width:min(300px,100%);box-sizing:border-box} #hxCard.on{display:flex} #hxCard .hxCol{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px;align-items:stretch}
@@ -38,7 +38,7 @@ body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!impo
 #hxCard.box #questTrack{background:none;border:0;padding:0;border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none;max-width:100%}
 #hxCard.box #hxJob.on+#questTrack[style*="block"]{border-top:1px solid rgba(255,255,255,.18);padding-top:2px}
 #hxJob{display:none;font-size:.7rem;line-height:1.3;color:#fff} #hxJob.on{display:block}
-#hxJob .hxJh{display:flex;gap:5px;align-items:center;white-space:nowrap} #hxJob .l1{font-weight:800;color:#7dd3fc;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#hxJob .hxJh{display:flex;gap:5px;align-items:center;white-space:nowrap} #hxJob .l1{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #hxJob .tm{flex:none;padding:0 5px;border-radius:6px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.6);font-weight:800;font-variant-numeric:tabular-nums} #hxJob .tm:empty{display:none} #hxJob .tm.warn{color:#ffd400;border-color:#ffd400}
 #hxJob .l2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #hxJob .l2:empty{display:none}
 #hxJob .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} #hxJob .hxQw:empty{display:none} #hxJob .hxQw .ar{width:15px;height:15px;display:block} #hxJob .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
@@ -108,7 +108,7 @@ export function questHtml(q) {
   const p = plainStep(q.text, q.type), key = `${q.title}|${String(q.text).replace(/\s*\([^)]*\d[^)]*\)\s*$/, '')}`, now = performance.now();
   if (key !== howKey) { howKey = key; howAt = now; }
   const how = p.how && now - howAt < HOW_MS;
-  return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx${how ? ' how' : ''}">${esc(p.text)}${how ? ` <span class="hxHow">${esc(p.how)}</span>` : ''}</span>`;
+  return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx">${esc(p.text)}</span>${how ? `<span class="hxHow">${esc(p.how)}</span>` : ''}`;
 }
 
 // ---------- lite minimap (index.html drawMiniMap calls this first; true = drawn) ----------
@@ -207,10 +207,15 @@ function updCard(md) {
     const grab = t => t.replace(/\s*·?\s*(⏱\s*\+?[\d:]+)\s*·?\s*/, (m, x) => { tm = x; return ' · '; }).replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
     l1 = grab(l1); if (!tm) l2 = grab(l2);
     let ob = null; try { ob = md ? objective(md) : null; } catch (e) { /* none */ }
-    if (ob?.kind === jobKind) l2 = l2.replace(/\s*·\s*\d+\s*m\s+[NSEW]{1,2}\s*$/, ''); // the ➤ arrow + distance show it
-    else { const w = jobEl.querySelector('.hxQw'); if (w.innerHTML) { w.innerHTML = ''; w.dataset.v = ''; } } // arrow belongs to the 📜 quest now
+    // one line: icon + step + pay (no "TAXI · L1", no second distance: only the step the ➤ points at shows one, in this row's arrow)
+    l2 = l2.replace(/\s*·\s*\d+\s*m\s+[NSEW]{1,2}\s*$/, '');
+    if (jobKind === 'job') { const parts = l1.split(' · '), head = parts[0] || '', icon = head.split(' ')[0] || '', extra = parts.slice(1).filter(x => !/^L\d+$/.test(x.trim()));
+      l1 = `${icon} ${l2 || head.slice(icon.length).trim()}${extra.length ? ' · ' + extra.join(' · ') : ''}`; }
+    else if (l2) l1 = `${l1} · ${l2}`;
+    l2 = '';
+    if (ob?.kind !== jobKind) { const w = jobEl.querySelector('.hxQw'); if (w.innerHTML) { w.innerHTML = ''; w.dataset.v = ''; } } // the ➤ belongs to the 📜 step
     const key = `${l1}|${l2}|${tm}|${warn}`;
-    if (key !== cardKey) { cardKey = key; jobEl.querySelector('.l1').textContent = l1; jobEl.querySelector('.l2').textContent = l2; const t = jobEl.querySelector('.tm'); t.textContent = tm; t.classList.toggle('warn', warn); }
+    if (key !== cardKey) { cardKey = key; jobEl.querySelector('.l1').textContent = l1; jobEl.title = l1; jobEl.querySelector('.l2').textContent = l2; const t = jobEl.querySelector('.tm'); t.textContent = tm; t.classList.toggle('warn', warn); }
   } else if (cardKey) { cardKey = ''; const w = jobEl.querySelector('.hxQw'); w.innerHTML = ''; w.dataset.v = ''; }
   jobEl.classList.toggle('on', !!src);
   const on = qtOn || !!src, quit = on && (!!src || actOn);
