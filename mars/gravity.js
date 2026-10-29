@@ -184,7 +184,7 @@ function ui() {
   addEventListener('keydown', e => {
     if ((e.code !== 'KeyZ' && e.code !== 'Digit2') || e.repeat || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (!app()?.state?.onSurface || window.__race?.builder?.open) return;
-    if (e.code === 'Digit2') { if (document.body.classList.contains('danger-standoff')) return; } // 2 = Fight in a danger standoff
+    if (e.code === 'Digit2') { if (document.body.classList.contains('danger-standoff') || document.body.classList.contains('basebuild') || document.getElementById('dzEvChoices')?.classList.contains('on')) return; } // 2 = Fight in a danger standoff, a street-event choice, or the base gate tool (v7.5.4)
     else { const ar = window.SSX?.airRoll; if (ar && (ar.canRoll?.() || ar.isRolling?.())) return; } // airborne: Z is SSX.airRoll's barrel roll (PR #41); 2 always works
     e.preventDefault(); cycle(); // cycle() still refuses during races / jobs / indoors / on foot
   });
