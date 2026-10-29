@@ -12,7 +12,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR, ID = 'q-v
 (async () => {
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
   const m = /^(\d+)x(\d+)$/.exec(DEV), { defaultBrowserType: _d, ...iph } = devices['iPhone 14'];
-  const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
+  const named = devices[DEV] && (({ defaultBrowserType: _n, ...d }) => d)(devices[DEV]);
+  const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : named ? named : { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
