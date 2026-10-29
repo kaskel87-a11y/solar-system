@@ -65,8 +65,10 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('m1', null, await wait(() => { const l = document.getElementById('obLine'); return l && !l.hidden && /blue marker/.test(l.textContent); }, 20000));
     o = await placement('m1'); R.m1Text = o.text;
     ok('m1Controls', o.text, touch ? /left stick/.test(o.text) && /Run/.test(o.text) : /W A S D/.test(o.text) && /Shift/.test(o.text));
-    ok('ownMarker', o.way?.via, o.way?.via === 'own' && await G(() => !!window.__app.surface.scene.getObjectByName('onboard-marker')?.visible && window.SSX.minimap.list().includes('onboard')));
-    ok('distShown', o.text, /\d+ m/.test(o.text));
+    // v7.5.5 integration: with #66 (SSX.hudx) installed the tour hands its waypoint to the ➤ chip (#hxWay), which shows the distance + direction instead of the line
+    const HX = o.way?.via === 'hudx'; R.via = o.way?.via; const hxw = () => G(() => { const w = document.getElementById('hxWay'); return w && w.offsetWidth > 0 ? w.textContent : ''; });
+    ok('ownMarker', o.way?.via, HX ? await G(() => window.SSX.hudx.objective()?.kind === 'waypoint') : o.way?.via === 'own' && await G(() => !!window.__app.surface.scene.getObjectByName('onboard-marker')?.visible && window.SSX.minimap.list().includes('onboard')));
+    { const t = HX ? await hxw() : o.text; ok('distShown', t, /\d+ m/.test(t)); }
     // skip confirm with a joystick finger held (phones), then keep going
     if (touch) await joy('pointerdown');
     const t1 = await tapEl('#obLine .ob-x'); ok('tapX', t1, t1 === true);
@@ -77,9 +79,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('kept', null, await wait(() => window.SSX.onboard.state.status === 'active' && /blue marker/.test(document.getElementById('obLine')?.textContent || ''), 4000));
     // arrow: stand 30 m "south" of the marker facing -z (yaw 0) -> straight ahead
     await G(() => { const t = window.SSX.onboard.current().target; window.__app.surface.debugMove(t.x, t.z + 30, 0); }); await sleep(900);
-    o = await ob(); ok('arrowAhead', o.text.match(/[⬆↗➡↘⬇↙⬅↖]\s*\d+ m/)?.[0], /⬆\s*(2[6-9]|3[0-4]) m/.test(o.text));
+    o = await ob(); if (HX) { const t = await hxw(); ok('arrowAhead', t, /(2[6-9]|3[0-4]) m/.test(t) && /ahead/.test(t) && !/left|right/.test(t)); } else ok('arrowAhead', o.text.match(/[⬆↗➡↘⬇↙⬅↖]\s*\d+ m/)?.[0], /⬆\s*(2[6-9]|3[0-4]) m/.test(o.text));
     await G(() => { const t = window.SSX.onboard.current().target; window.__app.surface.debugMove(t.x + 30, t.z, 0); }); await sleep(900);
-    o = await ob(); ok('arrowLeft', o.text.match(/[⬆↗➡↘⬇↙⬅↖]/)?.[0], /⬅/.test(o.text));
+    o = await ob(); if (HX) { const t = await hxw(); ok('arrowLeft', t, /left/.test(t)); } else ok('arrowLeft', o.text.match(/[⬆↗➡↘⬇↙⬅↖]/)?.[0], /⬅/.test(o.text));
     const cr0 = await credits(); R.cr0 = cr0; await G(() => { window.__obPaid = 0; window.SSX.on('onboard:step', d => { window.__obPaid += d?.paid || 0; }); });
     await goTo(0, 1.5); ok('walkDone', null, await at(0, 1));
     o = await ob(); ok('jumpText', o.text, touch ? /tap Jump/.test(o.text) : /press Space/.test(o.text));
@@ -122,7 +124,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     if (touch) { const fold = o.text.includes('☰'); R.tapTurf = await tapEl(fold ? '#menuBtn' : '#dockTurf'); if (fold) { await sleep(400); await tapEl('#rmTurf'); } } else await key('KeyK');
     ok('turfOpen', null, await wait(() => document.getElementById('turfPanel')?.classList.contains('show'), 6000));
     ok('m5s2', null, await at(4, 2, 5000)); await closePanels(); ok('m5s3', null, await at(4, 3));
-    o = await ob(); R.pitTarget = o.cur?.target; ok('pitText', o.text, /The Pit/.test(o.text) && !/Drop into/.test(o.text));
+    o = await ob(); R.pitTarget = o.cur?.target; ok('pitText', o.text, /The Pit|the Rust Pit cage/.test(o.text) && !/Drop into/.test(o.text)); // the Rust Pit fight-club variant when SSX.fightclub is on
     await goTo(0, 2); await wait(() => { const b = document.getElementById('actCtxBtn'); return !!window.SSX.fight || !!b && b.getBoundingClientRect().width > 0 && /The Pit/.test(b.textContent); }, 10000);
     R.pitDiag = await G(() => { const i = window.__app.surface.info, b = document.getElementById('actCtxBtn'); return { x: Math.round(i.x), z: Math.round(i.z), driving: !!i.driving, inside: !!i.inside, btn: b?.textContent, disp: b?.style.display, dist: window.__activities?.district?.id, act: window.__activities?.active, race: !!window.__race?.state, down: window.__app.surface.game.isDown?.() }; });
     ok('pitButton', await G(() => document.getElementById('actCtxBtn')?.textContent), await G(() => { const b = document.getElementById('actCtxBtn'); return !!b && b.getBoundingClientRect().width > 0 && /The Pit/.test(b.textContent); }) || await G(() => !!window.SSX.fight));
