@@ -49,7 +49,11 @@ function load(id) {
     });
     const { mergeGeometries } = await import('../vendor/three/addons/utils/BufferGeometryUtils.js');
     const parts = [];
-    for (const [mat, gs] of byMat) { const mg = gs.length > 1 ? mergeGeometries(gs, false) : gs[0]; if (mg) parts.push({ mat, geo: mg }); else for (const g of gs) parts.push({ mat, geo: g }); }
+    const compat = gs => { // v7.5.4: mergeGeometries needs the same attributes (and all-or-none indexed); keep the shared set, no console error
+      const keys = Object.keys(gs[0].attributes).filter(k => gs.every(g => g.attributes[k] && g.attributes[k].itemSize === gs[0].attributes[k].itemSize));
+      const out = gs.map(g => { const h = g.index && !gs.every(q => q.index) ? g.toNonIndexed() : g; for (const k of Object.keys(h.attributes)) if (!keys.includes(k)) h.deleteAttribute(k); return h; });
+      return keys.includes('position') ? out : null; };
+    for (const [mat, gs0] of byMat) { const gs = gs0.length > 1 ? (compat(gs0) || gs0) : gs0; const mg = gs.length > 1 ? mergeGeometries(gs, false) : gs[0]; if (mg) parts.push({ mat, geo: mg }); else for (const g of gs) parts.push({ mat, geo: g }); }
     return { parts, box, tris, id };
   })();
 }
