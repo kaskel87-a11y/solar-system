@@ -18,7 +18,7 @@ function figure() {
 function drop(ctx) {
   if (!S) return;
   if (S.g) { S.g.parent?.remove(S.g); S.g.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); }
-  try { if (S.reserved) ctx?.world?.npcReserve?.('valeMark', 0); } catch {}
+  try { if (S.reserved) { const SL = globalThis.SSX?.npcSlots; if (SL?.release) SL.release('valeMark'); else ctx?.world?.npcReserve?.('valeMark', 0); } } catch {}
   S = null;
 }
 // returns the public state (tests read it via window.__activities.mark)
@@ -43,8 +43,9 @@ export function markTick(dt, ctx) {
   S.wx = w.x; S.wz = w.z;
   // NPC budget: one slot while she's around; if the phone is full she waits (logic keeps running, no body)
   if (!S.g) {
-    const b = W.npcBudget?.(); if (!b || b.free >= 1 || b.reserved?.valeMark) {
-      try { W.npcReserve?.('valeMark', 1); S.reserved = true; } catch {}
+    const SL = globalThis.SSX?.npcSlots, b = W.npcBudget?.(); if (SL?.reserve || !b || b.free >= 1 || b.reserved?.valeMark) {
+      const me = S; // critical slot: she always shows on a phone; the watchdog lets it go if the quest ends without drop()
+      try { if (SL?.reserve) SL.reserve('valeMark', 1, { critical: true, active: () => S === me }); else W.npcReserve?.('valeMark', 1); S.reserved = true; } catch {}
       S.g = figure(); ctx.scene.add(S.g);
     }
   }

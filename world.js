@@ -447,7 +447,7 @@ export function createWorld(ctx) {
     }
     const foot = security.filter(s => s.foot).length, hum = ctx.game()?.humanCount?.() || 0;
     const resv = Object.values(npcReserved).reduce((a, b) => a + b, 0);
-    const cap = isMobile ? Math.max(4, 12 - foot - hum - resv) : 40 - resv;
+    const cap = isMobile ? Math.max(globalThis.SSX?.npcSlots?.floor?.() ?? 4, 12 - foot - hum - resv) : 40 - resv; // floor 0 while mission NPCs hold slots (mars/npcslots.js)
     const live = people.filter(p => p.zone === actZone).sort((a, b) => (a.kind === 'contact' ? -1e4 : 0) + Math.hypot(a.x - player.x, a.z - player.z) - (b.kind === 'contact' ? -1e4 : 0) - Math.hypot(b.x - player.x, b.z - player.z));
     const on = new Set(live.slice(0, cap)); if (duel) on.add(duel.p);
     for (const p of people) { const v = on.has(p); if (p.on !== v) { p.on = v; p.group.visible = v; } }

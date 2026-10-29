@@ -19,7 +19,7 @@ const PRECACHE = [
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, `activities/coords.js${q}`, `activities/deadends.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['hud/hudx', 'hud/hudmap', 'hud/hints'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
-  ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa
+  ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
   ...['sci2core', 'scientists2', 'dimensions/index2', 'dimensions/orchard', 'dimensions/hum', 'dimensions/pawn', 'dimensions/rehearsal', 'dimensions/gut'].map(n => `${n}.js${q}`), // junkyard lab part 2 (sci-06..10)
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),

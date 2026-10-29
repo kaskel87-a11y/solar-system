@@ -9,7 +9,8 @@ import { FLOOR_H, CAP, HALF, DOOR_W, WALL_T, DOORS, SPOTS, GUARDS, GUARD, wallBo
 import { VILLA, VILLA_AT } from './heisttipcore.js';
 
 const BUILD_R = 260, DROP_R = 320, GUARD_R = 150;
-let V = null, blind = false, wrappedWorld = null;
+let V = null, blind = false, freeze = false, // freeze: tests pin guards for a photo
+    wrappedWorld = null;
 
 const heistApi = () => globalThis.SSX?.heist || null;
 function stageNow() { const a = heistApi()?.active; return a && a.id === VILLA.id ? a.stage : null; }
@@ -101,21 +102,40 @@ function teardown(ctx) {
   for (const b of V.walls) removeBox(b); for (const d of V.doors) if (d.shut) removeBox(d.box);
   if (V.mode === 'colliders') { try { globalThis.SSX?.colliders?.removeGroup?.('villa'); } catch (e) {} }
   for (const gd of V.guards) { gd.g.parent?.remove(gd.g); gd.g.traverse(o => { if (o.isMesh && o.geometry !== BOX) o.geometry.dispose(); }); }
-  if (V.guards.length) { try { (ctx?.world || V.world)?.npcReserve?.('villaGuards', 0); } catch (e) {} }
+  if (V.guards.length) { const S = slots(); if (S?.release) S.release('villaGuards'); else { try { (ctx?.world || V.world)?.npcReserve?.('villaGuards', 0); } catch (e) {} } }
   V.g.parent?.remove(V.g); V = null;
 }
 
 // ---------- guards ----------
-function spawnGuards(ctx) {
-  const B = ctx.world.npcBudget?.(); let n = GUARDS.length;
-  if (B && Number.isFinite(B.free)) n = Math.max(0, Math.min(n, B.free + (B.reserved?.villaGuards || 0)));
-  if (!n) return; try { ctx.world.npcReserve?.('villaGuards', n); } catch (e) {}
-  for (let i = 0; i < n; i++) { const def = GUARDS[i], g = guardFigure(); V.g.add(g); V.guards.push({ def, g, t: i * 7.3, p: null }); }
+// guards: both always come out during the villa job (critical slots via SSX.npcSlots); otherwise the normal budget
+const slots = () => globalThis.SSX?.npcSlots;
+function reserveGuards(ctx, n, critical) {
+  const S = slots();
+  if (S?.reserve) S.reserve('villaGuards', n, critical ? { critical: true, keep: true, active: () => !!V && stageNow() != null } : {});
+  else { try { ctx.world.npcReserve?.('villaGuards', n); } catch (e) {} }
+}
+function syncGuards(ctx) {
+  const critical = stageNow() != null, B = ctx.world.npcBudget?.();
+  const want = slots()?.reserve ? slots().grant?.('villaGuards', GUARDS.length, critical) ?? GUARDS.length
+    : (B && Number.isFinite(B.free) ? Math.max(0, Math.min(GUARDS.length, B.free + (B.reserved?.villaGuards || 0))) : GUARDS.length);
+  const have = V.guards.length;
+  if (V.critical && !critical) V.calmAt = V.t; // job over: guards go back on the normal budget a few seconds later (zone toast)
+  V.critical = critical;
+  if (want < have && V.t - (V.calmAt ?? -1e9) < 5) return;
+  if (want === have && (V.resvCrit ?? null) === critical) return;
+  V.resvCrit = critical;
+  if (want > have) for (let i = have; i < want; i++) { const def = GUARDS[i], g = guardFigure(); V.g.add(g); V.guards.push({ def, g, t: i * 7.3, p: null }); }
+  else while (V.guards.length > want) { const gd = V.guards.pop(); gd.g.parent?.remove(gd.g); }
+  reserveGuards(ctx, V.guards.length, critical);
+}
+function dropGuards(ctx) {
+  for (const gd of V.guards) gd.g.parent?.remove(gd.g); V.guards = []; V.critical = false; V.resvCrit = null;
+  const S = slots(); if (S?.release) S.release('villaGuards'); else { try { ctx.world.npcReserve?.('villaGuards', 0); } catch (e) {} }
 }
 function tickGuards(dt, ctx, lp, stage) {
   const hot = stage && ['case', 'breakin', 'crack', 'escape'].includes(stage) && !ctx.car;
   for (const G of V.guards) {
-    G.t += dt; const p = guardPos(G.def, G.t); G.p = p;
+    if (!freeze) G.t += dt; const p = guardPos(G.def, G.t); G.p = p;
     G.g.position.set(p.x, ctx.height(V.o[0] + p.x, V.o[1] + p.z), p.z); G.g.rotation.y = yawTo(p.fx, p.fz);
     const sees = hot && !blind && guardSees(p, lp.x, lp.z, solidNow(), V.o);
     V.seen[G.def.id] = sees ? (V.seen[G.def.id] || 0) + dt : Math.max(0, (V.seen[G.def.id] || 0) - dt);
@@ -145,8 +165,8 @@ export function villaTick(dt, ctx) {
     const s = D.open > 0.5; if (s === !D.shut) { /* unchanged */ } else if (s) { D.shut = false; removeBox(D.box); } else { D.shut = true; addBox(D.box); }
     const off = D.open * (DOOR_W - 0.1); if (D.def.axis === 'x') D.mesh.position.x = D.def.x + off; else D.mesh.position.z = D.def.z + off;
   }
-  if (!V.guards.length && d < GUARD_R) spawnGuards(ctx);
-  else if (V.guards.length && d > GUARD_R + 20) { for (const gd of V.guards) gd.g.parent?.remove(gd.g); V.guards = []; try { ctx.world.npcReserve?.('villaGuards', 0); } catch (e) {} }
+  if (d < GUARD_R) { V.syncT = (V.syncT || 0) - dt; if (V.syncT <= 0 || (stageNow() != null) !== !!V.critical) { V.syncT = 0.5; syncGuards(ctx); } }
+  else if (V.guards.length && d > GUARD_R + 20) dropGuards(ctx);
   tickGuards(dt, ctx, lp, stage);
   // cutaway: inside, drop the roof and ghost the walls so the chase camera can see you
   const inside = !ctx.car && insideHouse(lp.x, lp.z);
@@ -162,6 +182,6 @@ export function villaPub() {
 }
 if (typeof window !== 'undefined') window.__villa = {
   get state() { return villaPub(); }, boxes: () => solidNow().map(b => ({ id: b.id, x: b.x, z: b.z, hx: b.hx, hz: b.hz, top: b.top })),
-  blind: b => { blind = !!b; return blind; }, local: (x, z) => V ? { x: x - V.o[0], z: z - V.o[1], room: roomAt(x - V.o[0], z - V.o[1]) } : null,
+  blind: b => { blind = !!b; return blind; }, freeze: b => { freeze = !!b; return freeze; }, local: (x, z) => V ? { x: x - V.o[0], z: z - V.o[1], room: roomAt(x - V.o[0], z - V.o[1]) } : null,
   guardAt: (id, t) => { const G = V?.guards.find(q => q.def.id === id); if (G && Number.isFinite(t)) G.t = t; return G ? G.t : null; },
 };
