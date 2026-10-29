@@ -6,6 +6,10 @@
 //  - phones: the Stash / Jobs / Turf dock (#ssxDock) is hidden; those items live in the ☰ menu (mirrored if a module didn't add one); #stackR stays out of the middle of the screen
 //  - the radio is NOT touched here (Pumpkin's pumpkin/radio-hud-declutter owns it). We keep a slot free for its one-line strip:
 //    bottom-left, above the joystick (SSX.hudx.radioSlot(), CSS var --hx-radio-bottom). Nothing in this file goes there.
+//  - ONE mission card (#hxCard, top right): the 📜 quest + any running Mars job (mars/jobs.js taxi / medic / bounty) or turf fight
+//    (mars/turf.js) as one compact line with a ⏱ chip, the step text, the ➤ arrow + distance, and ONE 🏳️ quit control for all of
+//    them (also quits a 📋 side job). Their old full-width mid-screen bars (#jobHud, #turfHud) and the duplicate 📋 Job chip are
+//    hidden; those modules still render them (we read their text), so nothing in jobs.js / turf.js / runner.js changes.
 // Window API: SSX.hudx = { mini(mode?), openMap(), closeMap(), objective(), setWaypoint(p|null), pois(), questHtml(q), drawMini(o), radioSlot() }
 import { plainStep } from './hints.js';
 import { openMap, closeMap, mapOpen } from './hudmap.js';
@@ -27,7 +31,19 @@ body.hudx #questTrack .hxQw{margin-left:auto;flex:none;display:flex;align-items:
 body.hudx #questTrack .hxQw .ar{width:15px;height:15px;display:block} body.hudx #questTrack .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
 body.hudx #questTrack .hxTx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} body.hudx #questTrack .hxTx.how{-webkit-line-clamp:3}
 body.hudx #questTrack .hxHow{color:#9fe8ff;font-weight:600}
-body.hudx #stackR:has(> #questTrack[style*="block"]) > #actChip{display:none!important}
+body.hudx #stackR:has(#questTrack[style*="block"]) > #actChip,body.hxCardOn #actChip{display:none!important}
+body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!important}
+#hxCard{display:none;align-items:flex-start;gap:4px;max-width:min(300px,100%);box-sizing:border-box} #hxCard.on{display:flex} #hxCard .hxCol{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px;align-items:stretch}
+#hxCard.box{padding:4px 4px 4px 9px;border-radius:9px;background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(80,200,255,.45);text-shadow:0 1px 2px rgba(0,0,0,.8)}
+#hxCard.box #questTrack{background:none;border:0;padding:0;border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none;max-width:100%}
+#hxCard.box #hxJob.on+#questTrack[style*="block"]{border-top:1px solid rgba(255,255,255,.18);padding-top:2px}
+#hxJob{display:none;font-size:.7rem;line-height:1.3;color:#fff} #hxJob.on{display:block}
+#hxJob .hxJh{display:flex;gap:5px;align-items:center;white-space:nowrap} #hxJob .l1{font-weight:800;color:#7dd3fc;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#hxJob .tm{flex:none;padding:0 5px;border-radius:6px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.6);font-weight:800;font-variant-numeric:tabular-nums} #hxJob .tm:empty{display:none} #hxJob .tm.warn{color:#ffd400;border-color:#ffd400}
+#hxJob .l2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #hxJob .l2:empty{display:none}
+#hxJob .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} #hxJob .hxQw:empty{display:none} #hxJob .hxQw .ar{width:15px;height:15px;display:block} #hxJob .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
+#hxQuit{display:none;flex:none;min-width:44px;min-height:44px;padding:2px 3px;border-radius:9px;background:#000;color:#fff;border:2px solid #fff;font:800 10px/1.1 system-ui,sans-serif;touch-action:manipulation;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+#hxQuit.on{display:flex} #hxQuit .i{font-size:16px;line-height:18px}
 #hxWay{display:none;pointer-events:none;align-items:center;gap:6px;padding:3px 9px 3px 4px;border-radius:10px;background:rgba(0,0,0,.78);border:1px solid #38e1ff;color:#fff;font:700 .74rem system-ui,sans-serif;max-width:100%}
 #hxWay.on{display:flex} body.indoors #hxWay{display:none!important}
 #hxWay .ar{width:26px;height:26px;flex:none;display:block;transition:transform .15s linear}
@@ -135,11 +151,18 @@ function districtName(x, z) { try { const ds = mapData()?.world?.districts || []
 function updWay(md) {
   if (!way) { way = document.createElement('div'); way.id = 'hxWay'; way.setAttribute('aria-live', 'off'); way.innerHTML = `${ARROW}<span class="t"></span>`; }
   const stack = document.getElementById('stackR'), qt = document.getElementById('questTrack');
-  if (way.parentNode !== stack && stack) qt && qt.parentNode === stack ? qt.after(way) : stack.prepend(way);
+  const anchor = card && card.parentNode === stack ? card : qt && qt.parentNode === stack ? qt : null;
+  if (stack && (way.parentNode !== stack || (anchor && way.previousElementSibling !== anchor))) anchor ? anchor.after(way) : stack.prepend(way);
   const ob = app()?.state?.onSurface ? objective(md) : null, qw = qt?.style.display === 'block' ? qt.querySelector('.hxQw') : null;
   if (!ob) { way.classList.remove('on'); if (qw && qw.innerHTML) { qw.innerHTML = ''; qw.dataset.v = ''; } return; }
   const dx = ob.x - md.x, dz = ob.z - md.z, cy = Math.cos(md.yaw), sy = Math.sin(md.yaw), sx = dx * cy - dz * sy, sz = dx * sy + dz * cy, ang = Math.atan2(sx, -sz), d = Math.hypot(dx, dz);
-  // a mission: the arrow + distance ride in the 📜 card's title row (no extra chip); other targets get the chip
+  // a mission: the arrow + distance ride in the 📜 card's title row (no extra chip); a running job / turf fight: in its card line
+  const jw = (ob.kind === 'job' || ob.kind === 'turf') && jobKind === ob.kind ? card?.querySelector('#hxJob.on .hxQw') : null;
+  if (jw) {
+    way.classList.remove('on');
+    const v = d < 12 ? 'here' : fmtD(d); if (jw.dataset.v !== v || !jw.firstChild) { jw.dataset.v = v; jw.innerHTML = `${ARROW}<span>${v}</span>`; }
+    jw.querySelector('.ar').style.transform = `rotate(${(ang * 180 / Math.PI).toFixed(0)}deg)`; jw.title = dirWord(ang); if (qw && qw.innerHTML) { qw.innerHTML = ''; qw.dataset.v = ''; } return;
+  }
   if (ob.kind === 'quest' && qw) {
     way.classList.remove('on');
     const v = d < 12 ? 'here' : fmtD(d); if (qw.dataset.v !== v || !qw.firstChild) { qw.dataset.v = v; qw.innerHTML = `${ARROW}<span>${v}</span>`; }
@@ -150,6 +173,51 @@ function updWay(md) {
   const txt = `<b>${fmtD(d)}</b> <span class="d">${d < 12 ? 'you are here' : dirWord(ang)}</span>${esc(lab)}${dn ? ` · ${esc(dn)}` : ''}`;
   const t = way.querySelector('.t'); if (t.dataset.v !== txt) { t.dataset.v = txt; t.innerHTML = txt; }
   way.classList.add('on'); way.dataset.kind = ob.kind;
+}
+// ---------- one mission card: 📜 quest + running job / turf fight + one 🏳️ quit ----------
+// The jobs / turf modules keep rendering their own bars (#jobHud .l1/.l2, #turfHud .l1/.l2, hidden by our CSS); we fold that text
+// into the card. If this file never loads, their bars simply show as before.
+let card, jobEl, quitBtn, jobKind = '', cardKey = '';
+const shown = id => { const e = document.getElementById(id); return e && e.classList.contains('show') ? e : null; };
+function quitNow() {
+  const T = window.SSX?.turf, J = window.SSX?.jobs, A = window.__activities;
+  try { if (T?.fight?.()) { T.retreat(); tick(true); return; } } catch (e) { /* no turf */ }
+  try { if (J?.active?.()) J.stop(); } catch (e) { /* no jobs */ }
+  try { const a = A?.active; if (a && a.mode !== 'poker') document.getElementById('actCtxBtn')?.click(); } catch (e) { /* no side jobs */ } // its own quit handler
+  tick(true);
+}
+function ensureCard() {
+  const stack = document.getElementById('stackR'), qt = document.getElementById('questTrack'); if (!stack || !qt) return null;
+  if (!card) {
+    card = document.createElement('div'); card.id = 'hxCard';
+    card.innerHTML = '<div class="hxCol"><div id="hxJob" aria-live="off"><div class="hxJh"><span class="l1"></span><span class="tm"></span><span class="hxQw"></span></div><div class="l2"></div></div></div><button id="hxQuit" type="button" aria-label="Quit job"><span class="i">🏳️</span><span class="w">Quit</span></button>';
+    jobEl = card.querySelector('#hxJob'); quitBtn = card.querySelector('#hxQuit'); onTap(quitBtn, quitNow);
+  }
+  if (qt.parentNode !== card.firstChild) { qt.before(card); card.firstChild.append(qt); } // the 📜 card moves inside (same node, index.html keeps driving it)
+  return card;
+}
+function updCard(md) {
+  if (!ensureCard()) return;
+  const turf = shown('turfHud'), job = shown('jobHud'), src = turf || job, qtOn = document.getElementById('questTrack').style.display === 'block';
+  let actOn = false; try { const a = window.__activities?.active; actOn = !!a && a.mode !== 'poker'; } catch (e) { /* none */ }
+  jobKind = turf ? 'turf' : job ? 'job' : '';
+  if (src) {
+    const tx = c => src.querySelector(c)?.textContent || '', warn = !!src.querySelector('.l1.warn');
+    let l1 = tx('.l1'), l2 = tx('.l2'), tm = '';
+    const grab = t => t.replace(/\s*·?\s*(⏱\s*\+?[\d:]+)\s*·?\s*/, (m, x) => { tm = x; return ' · '; }).replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
+    l1 = grab(l1); if (!tm) l2 = grab(l2);
+    let ob = null; try { ob = md ? objective(md) : null; } catch (e) { /* none */ }
+    if (ob?.kind === jobKind) l2 = l2.replace(/\s*·\s*\d+\s*m\s+[NSEW]{1,2}\s*$/, ''); // the ➤ arrow + distance show it
+    else { const w = jobEl.querySelector('.hxQw'); if (w.innerHTML) { w.innerHTML = ''; w.dataset.v = ''; } } // arrow belongs to the 📜 quest now
+    const key = `${l1}|${l2}|${tm}|${warn}`;
+    if (key !== cardKey) { cardKey = key; jobEl.querySelector('.l1').textContent = l1; jobEl.querySelector('.l2').textContent = l2; const t = jobEl.querySelector('.tm'); t.textContent = tm; t.classList.toggle('warn', warn); }
+  } else if (cardKey) { cardKey = ''; const w = jobEl.querySelector('.hxQw'); w.innerHTML = ''; w.dataset.v = ''; }
+  jobEl.classList.toggle('on', !!src);
+  const on = qtOn || !!src, quit = on && (!!src || actOn);
+  card.classList.toggle('on', on); card.classList.toggle('box', !!src || quit); quitBtn.classList.toggle('on', quit);
+  const ql = turf ? (document.getElementById('turfRetreat')?.textContent || 'Retreat') : 'Quit';
+  if (quitBtn.lastChild.textContent !== ql) { quitBtn.lastChild.textContent = ql; quitBtn.setAttribute('aria-label', turf ? ql : 'Quit job'); }
+  document.body.classList.toggle('hxCardOn', on); document.body.classList.toggle('hxQuitAct', quit && actOn);
 }
 // one context button: the three left-side action buttons (contraband deal, turf action, taxi/medic/bounty duty) all move to one
 // slot above the right-hand cluster; only the top-priority one that wants to show is visible, ⇅ n cycles when several do.
@@ -195,6 +263,7 @@ function tick(force) {
   const now = performance.now(); if (!force && now - lastT < 140) return; lastT = now;
   if (!app()?.state) return;
   const md = app().state.onSurface ? mapData() : null;
+  try { updCard(md); } catch (e) { /* card is optional */ }
   if (md) updWay(md); else way?.classList.remove('on');
   updCtx(); if (!force) updDock();
 }

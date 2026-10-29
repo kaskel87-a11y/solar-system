@@ -67,7 +67,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('yShows', await wait(() => /Take Hab Stacks/.test(document.getElementById('turfAct').textContent) && getComputedStyle(document.getElementById('turfAct')).display !== 'none', 8000));
       await checkBtn('yBtn', '#turfAct'); await shot('y');
       await tapSel('#turfAct'); ok('yTapWorks', await G(() => window.SSX.turf.fight()?.kind === 'take'));
-      await checkBtn('retreatBtn', '#turfRetreat'); await tapSel('#turfRetreat'); ok('retreated', await G(() => !window.SSX.turf.fight()));
+      const RT = await G(() => document.body.classList.contains('hudx') ? '#hxQuit' : '#turfRetreat'); await checkBtn('retreatBtn', RT); await tapSel(RT); // v7.5.5: Retreat lives in the mission card ok('retreated', await G(() => !window.SSX.turf.fight()));
     }
   } catch (e) { R.exception = String(e && e.stack || e); bad.push('exception'); }
   R.errors = errors.slice(0, 8); if (errors.length) bad.push('consoleErrors'); R.bad = bad; R.pass = !bad.length;
