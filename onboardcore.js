@@ -74,7 +74,7 @@ export const MISSIONS = [
       alt: { touch: 'Tap ☰, then 🚩 Turf to see which gang owns each block.', desk: 'Press K to see which gang owns each block.' } },
     { kind: 'do', check: 'panelsClosed', text: 'Walk up to a gang’s 🚩 flag to attack it. Hold it and it pays you cash. Close to go on.' },
     { kind: 'go', target: 'pit', r: 12, label: 'The Pit', variant: true,
-      text: { touch: 'Walk to The Pit, the fight ring. Tap 📋 The Pit there to fight for cash.', desk: 'Walk to The Pit, the fight ring. Click 📋 The Pit there to fight for cash.' },
+      text: { touch: 'Walk to The Pit fight ring (under the water tower, west Red Tape Flats). Tap 📋 The Pit to fight for cash.', desk: 'Walk to The Pit fight ring (under the water tower, west Red Tape Flats). Click 📋 The Pit to fight for cash.' },
       fight: { touch: 'Walk to the Rust Pit cage. Tap 🥊 there to fight for cash.', desk: 'Walk to the Rust Pit cage. Press ] there to fight for cash.' } },
     { kind: 'tell', ms: 6000, text: 'Fists only in the Pit. Win rounds for cash; you can come back any time.' }
   ] },
@@ -145,7 +145,7 @@ export const CODEX = [
     { id: 'jobs', t: '💼 Jobs', d: { touch: 'Taxi, Paramedic and Vigilante shifts pay cash. Tap 💼 Jobs, or walk to a 🚕 stand or clinic and tap the start button.', desk: 'Taxi, Paramedic and Vigilante shifts pay cash. Press J, or walk to a 🚕 stand or clinic and press G.' } },
     { id: 'blue', t: '💊 Contraband', d: { touch: 'Buy from Blue in Red Tape Flats, then sell to buyers for more. Tap 🎒 Stash to see what you carry.', desk: 'Buy from Blue in Red Tape Flats, then sell to buyers for more. Press B for your stash.' } },
     { id: 'turf', t: '🚩 Turf', d: 'Gangs own the blocks of Red Tape Flats. Take a block at its 🚩 flag, survive the waves, and it pays you every minute.' },
-    { id: 'pit', t: '🥊 The Pit', d: { touch: 'The Pit is a fist-fight ring. Walk up and tap 📋 The Pit to fight rounds for cash.', desk: 'The Pit is a fist-fight ring. Walk up and click 📋 The Pit to fight rounds for cash.' } },
+    { id: 'pit', t: '🥊 The Pit', d: { touch: 'The Pit is a fist-fight ring under the water tower, west Red Tape Flats. Walk up and tap 📋 The Pit to fight rounds for cash.', desk: 'The Pit is a fist-fight ring under the water tower, west Red Tape Flats. Walk up and click 📋 The Pit to fight rounds for cash.' } },
     { id: 'side', t: '📋 Side jobs', d: 'Tap ☰, then 📋 Mars side jobs for small gigs around the colony. Walk to one to see its button.' },
     { id: 'races', t: '🏁 Street races', d: 'Tap ☰, then 🏁 Street races to find a start line. Drive through the gates; 🛠 Track builder makes your own.' },
     { id: 'rides', t: '🚗 Rides & meets', d: 'Buy, tune and show off cars: tap ☰, then 🚗 Rides & meets.' },
