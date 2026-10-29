@@ -184,6 +184,13 @@
     .tbRow { display: flex; align-items: center; gap: 4px; height: 12px; } .tbL { flex: 0 0 auto; width: 13px; text-align: center; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 800; letter-spacing: 0.02em; } .tbL b { display: none; } .tbV { display: none; }
     #thRow { display: none; } body.canthrust #thRow { display: flex; } #thBar i { background: linear-gradient(90deg, #38bdf8, #a5f3fc); } #thBar.low i { background: #f97316; }
     @media (min-width: 700px) { #tbBars { flex-basis: 170px; } .tbL { width: 62px; } .tbL b { display: inline; } .tbV { display: block; flex: 0 0 24px; text-align: right; font-size: 9px; line-height: 12px; color: #eef2ff; font-weight: 700; font-variant-numeric: tabular-nums; } }
+    /* v7.5.5: tiny word labels on phones too (Shield / Health / Fuel, white on black); Fuel = rover / hover-bike thrust fuel, only while you can thrust */
+    @media (max-width: 699px) { #tbBars { flex-basis: 98px; gap: 2px; } .tbL { width: 30px; font-size: 0; display: flex; align-items: center; height: 12px; } .tbL b { display: inline-block; font-size: 7px; line-height: 9px; padding: 0 2px; border-radius: 2px; background: #000; color: #fff; letter-spacing: 0.03em; } }
+    /* v7.5.5: ☰ never leaves the screen. The bar is clamped to the safe-area width, ☰ never shrinks, the middle items give way (heat row first) */
+    #topBar { max-width: calc(100vw - 16px - var(--sal) - var(--sar)); }
+    #menuBtn { flex-shrink: 0 !important; margin-left: auto; } #tbBars, #gearChip { flex-shrink: 0; }
+    #topBar #heatRow { flex: 0 1 74px; min-width: 26px; } #topBar #heatRow .bar { min-width: 6px; }
+    @media (max-width: 430px) { #topBar { gap: 6px; } #topBar #heatRow { gap: 2px; } }
     #rankLine { flex: 0 0 auto; white-space: nowrap; opacity: 0.9; } body.wanted #rankLine .xp, body.driving #rankLine .xp, body.turret #rankLine .xp { display: none; } body.wanted #surfInfo .gv, body.driving #surfInfo .gv { display: none; }
     @media (max-width: 380px) { #rankLine .xp { display: none; } }
     #menuBtn { flex: 0 0 auto; width: 46px; height: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
@@ -392,7 +399,7 @@
     <div id="lockChip">🖱 Esc frees mouse · M menu</div>
   <div id="topBar">
       <div id="surfInfo"></div>
-      <div id="tbBars" title="Shield · health · thrust fuel. Tap to use a medkit."><div class="tbRow"><span class="tbL" aria-label="Shield">🛡<b> SHIELD</b></span><div class="bar" id="shBar"><i></i></div><span class="tbV" id="shVal"></span></div><div class="tbRow"><span class="tbL" aria-label="Health">❤<b> HEALTH</b></span><div class="bar" id="hpBar"><i></i></div><span class="tbV" id="hpVal"></span></div><div class="tbRow" id="thRow"><span class="tbL" aria-label="Thrust fuel">🚀<b> THRUST</b></span><div class="bar" id="thBar"><i></i></div><span class="tbV" id="thVal"></span></div></div>
+      <div id="tbBars" title="Shield · health · thrust fuel. Tap to use a medkit."><div class="tbRow"><span class="tbL" aria-label="Shield">🛡<b> SHIELD</b></span><div class="bar" id="shBar"><i></i></div><span class="tbV" id="shVal"></span></div><div class="tbRow"><span class="tbL" aria-label="Health">❤<b> HEALTH</b></span><div class="bar" id="hpBar"><i></i></div><span class="tbV" id="hpVal"></span></div><div class="tbRow" id="thRow"><span class="tbL" aria-label="Thrust fuel">🚀<b> FUEL</b></span><div class="bar" id="thBar"><i></i></div><span class="tbV" id="thVal"></span></div></div>
       <div id="wantedStars" title="Wanted level"></div>
       <div id="rankLine"></div>
       <button id="gearChip" aria-label="Weapon and medkits: tap to switch weapon" title="Weapon · ammo (∞ = blaster, never runs dry) · ✚ medkits. Tap to switch.">🔫</button>
