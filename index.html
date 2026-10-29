@@ -2211,7 +2211,7 @@
         }
         const fireHeld = !!(keys['KeyF'] || touchBtns.fire || mouseAim.held);
         const runHeld = !!(keys['ShiftLeft'] || keys['ShiftRight'] || touchBtns.run); document.body.classList.toggle('boosting', runHeld && document.body.classList.contains('driving'));
-        const roll = rollReq && performance.now() - rollReqT < 700 ? rollReq : 0; // consumed by the next frame; 700 ms covers slow frames rollReq = 0;
+        const roll = rollReq && performance.now() - rollReqT < 700 ? rollReq : 0; rollReq = 0; // consumed by the next frame; 700 ms covers slow frames
         surface.update(realDt, { keys, joy, roll, jump: keys['Space'] || touchBtns.jump, run: runHeld,
           fire: fireHeld, kbOnly: kbo, fireAim: fireHeld && !touchBtns.fire && !isTouch && !kbo && mouseAim.has ? { x: mouseAim.x, y: mouseAim.y } : null });
         renderer.render(surface.scene, surface.camera);
