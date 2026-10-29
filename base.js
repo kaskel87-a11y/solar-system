@@ -8,6 +8,8 @@
 //   SSX.base.deposit(id, { credits, medkits }) / withdraw(id, { credits, medkits }) / build(on, id)
 //   SSX.base.raid(id, opts) / endRaid(id, result) / damage(id, pieceId, n) / addTargets(fn)
 //   SSX.base.on(evt, fn) / off(evt, fn); every event is also a window CustomEvent `base:<evt>` (base:raid, base:place, …)
+//   SSX.base.registerPlot(def) / registerPiece(def): add-on lots and buildable pieces (see "Add-on lots and pieces" below).
+//   Calls made before this module is up can be queued: (SSX._pendingPlots ||= []).push(def), (SSX._pendingPieces ||= []).push(def).
 // Raids: if Steve's SSX.raids exists, raid() starts one through SSX.raids.start and window raid:start / raid:wave /
 // raid:end events whose pos falls inside a lot arm that lot's turrets. Otherwise raid() emits base:raid on its own.
 import * as THREE from 'three';
@@ -70,6 +72,17 @@ function assets() {
   A.flashG = sh(new THREE.SphereGeometry(0.28, 8, 6));
   return A;
 }
+// parts for a piece type: built-ins from A.parts, add-on pieces from def.parts ([[geometry, material, role?]] or a
+// function (THREE, kit) returning that), else one box of the footprint (def.h tall, def.color). Cached; marked shared.
+function partsFor(type) {
+  assets(); if (A.parts[type]) return A.parts[type]; const T = BC.PIECES[type]; if (!T) return [];
+  let parts = null; const kit = { box: (w, h, d, x = 0, y = 0, z = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g; }, std: (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1, ...o }), A };
+  try { parts = typeof T.parts === 'function' ? T.parts(THREE, kit) : T.parts; } catch (e) { console.warn('base piece parts', type, e); }
+  parts = Array.isArray(parts) ? parts.filter(q => Array.isArray(q) && q[0]?.isBufferGeometry && q[1]?.isMaterial) : [];
+  if (!parts.length) { const [w, d] = T.fp; parts = [[kit.box(w * BC.CELL * 0.96, T.h + 1.4, d * BC.CELL * 0.96, 0, (T.h - 1.4) / 2, 0), kit.std(T.color)]]; }
+  for (const q of parts) { sh(q[0]); sh(q[1]); }
+  return (A.parts[type] = parts);
+}
 function labelTex(text, color = '#ffd040') {
   const c = document.createElement('canvas'); c.width = 512; c.height = 96; const g = c.getContext('2d');
   g.fillStyle = 'rgba(8,10,20,0.72)'; g.beginPath(); g.roundRect?.(4, 4, 504, 88, 22); if (!g.roundRect) g.rect(4, 4, 504, 88); g.fill();
@@ -91,12 +104,12 @@ function plotUnder(x, z, margin = 0) { for (const p of BC.PLOTS) { const l = toL
 // ---------- rendering ----------
 function ensureRoot(ctx) {
   if (root && sceneRef === ctx.scene && root.parent === ctx.scene) return false;
-  assets(); sceneRef = ctx.scene; centres = {};
-  for (const p of BC.PLOTS) { const w = H.colonyAt(ctx.world, p.aj); if (w) centres[p.id] = w; }
+  assets(); sceneRef = ctx.scene; layout(ctx);
   if (!Object.keys(centres).length) return false; // colony not laid out yet
   if (!root) { root = new THREE.Group(); root.name = 'marsBase'; }
   ctx.scene.add(root); rebuildAll(); return true;
 }
+function layout(ctx) { centres = {}; for (const p of BC.PLOTS) { const w = H.colonyAt(ctx?.world, p.aj); if (w) centres[p.id] = w; } } // aj = colony-relative [x, z]
 function clearGroup(g) { if (!g) return; g.parent?.remove(g); g.traverse(o => { if (o.isInstancedMesh) o.dispose(); if (o.material?.map && !o.material.userData?.shared) { o.material.map.dispose(); o.material.dispose(); } if (o.geometry && !o.isSprite && !o.geometry.userData?.shared) o.geometry.dispose(); }); }
 function rebuildAll() { rebuildMarkers(); rebuildPieces(); if (build) rebuildGrid(); }
 function rebuildPieces() {
@@ -104,7 +117,7 @@ function rebuildPieces() {
   const byType = {}; for (const p of BC.PLOTS) if (centres[p.id] && plotState(p.id).owned) for (const q of plotState(p.id).pieces) (byType[q.type] ||= []).push([p.id, q]);
   const m = new THREE.Matrix4(), qt = new THREE.Quaternion(), one = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
   for (const [type, list] of Object.entries(byType)) {
-    A.parts[type].forEach(([geo, mat, role], k) => {
+    partsFor(type).forEach(([geo, mat, role], k) => {
       const im = new THREE.InstancedMesh(geo, mat, list.length); im.frustumCulled = false; im.castShadow = false;
       list.forEach(([pid, q], n) => {
         const c = BC.pieceCentre(q), w = toWorldXZ(pid, c.x, c.z), y = baseY(pid, q);
@@ -150,7 +163,7 @@ function ghostFor(type, tint) {
   if (ghost && ghost.userData.type === type) { ghost.traverse(o => { if (o.isMesh) o.material = tint; }); return ghost; }
   clearGroup(ghost); ghost = new THREE.Group(); ghost.userData.type = type; ghost.name = 'baseGhost';
   if (type === 'remove') { const m = new THREE.Mesh(sh(new THREE.BoxGeometry(1, 1, 1)), tint); ghost.add(m); }
-  else for (const [geo] of A.parts[type]) ghost.add(new THREE.Mesh(geo, tint));
+  else for (const [geo] of partsFor(type)) ghost.add(new THREE.Mesh(geo, tint));
   root.add(ghost); return ghost;
 }
 function ensureTracers() {
@@ -166,7 +179,7 @@ const CSS = `#baseBtn { display: none; height: 44px !important; font-size: 0.72r
 body:not(.touch) #baseBtn { font-size: 0.8rem !important; }
 #baseBar { position: fixed; z-index: 14; top: calc(60px + env(safe-area-inset-top, 0px)); left: calc(108px + env(safe-area-inset-left, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
 body.basebuild #baseBar { display: flex; } body.basebuild #stackR { display: none; }
-#baseBar .tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 100%; pointer-events: auto; } /* wraps (right of the minimap) so rotate/remove/Done never go off-screen */
+#baseBar .tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 100%; max-height: 98px; overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; } /* wraps (right of the minimap) so rotate/remove/Done never go off-screen */
 @media (max-width: 560px) { #baseBar button { width: 44px; padding: 0; font-size: 19px; } #baseBar button .nm { display: none; } } /* phones: icon-only, 2 rows; the hint names the piece */
 body:not(.touch) #baseBar { left: calc(140px + env(safe-area-inset-left, 0px)); } /* desktop minimap is larger */
 @media (max-height: 440px) { #baseBar { top: calc(50px + env(safe-area-inset-top, 0px)); left: calc(96px + env(safe-area-inset-left, 0px)); } }
@@ -186,9 +199,8 @@ function ensureUi() {
   const sb = document.getElementById('surfBtns'); if (sb) sb.insertBefore(btn, sb.firstChild); else document.body.appendChild(btn);
   H.tap(btn, () => doAction());
   const bar = document.createElement('div'); bar.id = 'baseBar';
-  bar.innerHTML = `<div class="tools">${BC.PIECE_IDS.map(id => `<button data-t="${id}" id="baseT-${id}" aria-label="${BC.PIECES[id].name}">${BC.PIECES[id].icon}<span class="nm"> ${BC.PIECES[id].name}</span></button>`).join('')}<button data-t="remove" id="baseT-remove" aria-label="Remove">🗑️</button><button data-a="rot" id="baseRot" aria-label="Rotate">⟳</button><button data-a="done" id="baseDone" class="x" aria-label="Done">✕<span class="nm"> Done</span></button></div><div class="hint" id="baseHint"></div>`;
+  bar.innerHTML = `<div class="tools"></div><div class="hint" id="baseHint"></div>`;
   document.body.appendChild(bar);
-  for (const b of bar.querySelectorAll('button')) H.tap(b, () => { if (!build) return; if (b.dataset.t) { build.tool = b.dataset.t === 'remove' ? 'remove' : 'place'; if (b.dataset.t !== 'remove') build.type = b.dataset.t; } else if (b.dataset.a === 'rot') build.r = (build.r + 1) & 3; else if (b.dataset.a === 'done') setBuild(false); refreshBar(); });
   const panel = document.createElement('div'); panel.id = 'basePanel'; panel.innerHTML = '<div class="wrap"></div>'; document.body.appendChild(panel);
   { let bp = null; panel.addEventListener('pointerdown', e => { bp = e.target === panel ? e.pointerId : null; });
     panel.addEventListener('pointerup', e => { if (e.target === panel && e.pointerId === bp) panel.classList.remove('on'); bp = null; }); panel.addEventListener('pointercancel', () => { bp = null; }); }
@@ -196,12 +208,22 @@ function ensureUi() {
     if (e.repeat || /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
     if (e.code === 'KeyK' && actNow) { e.preventDefault(); doAction(); return; }
     if (!build) return;
-    if (/^Digit[1-4]$/.test(e.code) && (document.body.classList.contains('danger-standoff') || document.getElementById('dzEvChoices')?.classList.contains('on'))) return; // v7.5.4: a mugging / street event's 1-4 choices win over build tools
-    const k = { Digit1: 'wall', Digit2: 'gate', Digit3: 'garage', Digit4: 'stash', Digit5: 'turret', Digit6: 'remove' }[e.code];
+    if (/^Digit[1-9]$/.test(e.code) && (document.body.classList.contains('danger-standoff') || document.getElementById('dzEvChoices')?.classList.contains('on'))) return; // v7.5.4: a mugging / street event's 1-4 choices win over build tools
+    const ids = toolIds(), n = /^Digit([1-9])$/.exec(e.code)?.[1], k = n ? (+n <= ids.length ? ids[n - 1] : +n === ids.length + 1 ? 'remove' : null) : null; // 1..N pieces, N+1 remove
     if (k) { build.tool = k === 'remove' ? 'remove' : 'place'; if (k !== 'remove') build.type = k; refreshBar(); e.preventDefault(); }
     else if (e.code === 'Comma') { build.r = (build.r + 1) & 3; e.preventDefault(); } else if (e.code === 'Escape') setBuild(false);
   });
-  ui = { btn, bar, panel, hint: bar.querySelector('#baseHint') }; return ui;
+  ui = { btn, bar, panel, hint: bar.querySelector('#baseHint'), tools: bar.querySelector('.tools'), toolsKey: '' }; renderTools(); return ui;
+}
+const toolIds = () => BC.piecesFor(build?.plotId || null);
+// the build toolbar, rebuilt when pieces register or you start building on a lot with a different piece list (it wraps;
+// past 2 rows on a phone it scrolls, so add-on pieces never push Rotate / Done off-screen and nothing is added to the HUD)
+function renderTools() {
+  if (!ui) return; const ids = toolIds(), key = ids.map(t => t + ':' + BC.PIECES[t].icon + BC.PIECES[t].name).join('|'); if (key === ui.toolsKey) return; ui.toolsKey = key;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  ui.tools.innerHTML = `${ids.map(id => `<button data-t="${esc(id)}" id="baseT-${esc(id)}" aria-label="${esc(BC.PIECES[id].name)}">${esc(BC.PIECES[id].icon)}<span class="nm"> ${esc(BC.PIECES[id].name)}</span></button>`).join('')}<button data-t="remove" id="baseT-remove" aria-label="Remove">🗑️</button><button data-a="rot" id="baseRot" aria-label="Rotate">⟳</button><button data-a="done" id="baseDone" class="x" aria-label="Done">✕<span class="nm"> Done</span></button>`;
+  for (const b of ui.tools.querySelectorAll('button')) H.tap(b, () => { if (!build) return; if (b.dataset.t) { build.tool = b.dataset.t === 'remove' ? 'remove' : 'place'; if (b.dataset.t !== 'remove') build.type = b.dataset.t; } else if (b.dataset.a === 'rot') build.r = (build.r + 1) & 3; else if (b.dataset.a === 'done') setBuild(false); refreshBar(); });
+  refreshBar();
 }
 let busy = false;
 // re-aim at tap time: on a slow frame the last tick's target can be stale
@@ -218,9 +240,9 @@ function overview() {
   const P = C?.player, cr = H.credits(C?.game);
   const rows = BC.PLOTS.map(p => {
     const s = plotState(p.id), c = centres[p.id], d = c && P ? Math.hypot(c.x - P.x, c.z - P.z) : null, near = d != null && d < BC.HALF + NEAR + 2, sum = BC.summary(s);
-    const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''} · stash ${s.stash.credits} cr` : `${p.price} cr · ${p.blurb}`;
+    const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
     const where = d == null ? 'Mars' : near ? 'here' : `${Math.round(d)} m ${compass(c.x - P.x, c.z - P.z)}`;
-    const btn = s.owned ? (near ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
+    const btn = s.owned ? (near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
     return `<div class="row"><div><b>${s.owned ? '🏠' : '🏷️'} ${p.name}</b> <small>· ${p.district} · ${where}</small><br><small>${info}</small></div>${btn}</div>`;
   }).join('');
   panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, gates, a garage for your rover, a stash the cops can't fine and turrets that shoot back when you're wanted. You have ${cr} cr.</small>${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
@@ -237,10 +259,11 @@ function stashUi(id) {
 }
 
 // ---------- build mode ----------
-function setBuild(on, plotId) {
+function setBuild(on, plotId, force) {
   ensureUi();
-  if (on) { const id = plotId || inPlotId; if (!id || !plotState(id).owned) { H.toast('🏗️ Stand on a lot you own to build.', 2400); return false; }
-    build = { plotId: id, type: build?.type || 'wall', r: build?.r || 0, tool: 'place' }; document.body.classList.add('basebuild'); closePanel(); if (C) rebuildGrid(); refreshBar(); emit('build:on', { plotId: id }); }
+  if (on) { const id = plotId || inPlotId; syncOwners(); if (!id || !plotState(id)?.owned) { H.toast('🏗️ Stand on a lot you own to build.', 2400); return false; }
+    if (!force && !BC.canBuildUi(id)) return false; // build:false lot: only its add-on's own button
+    const ids = BC.piecesFor(id); build = { plotId: id, type: ids.includes(build?.type) ? build.type : (ids[0] || 'wall'), r: build?.r || 0, tool: 'place' }; renderTools(); document.body.classList.add('basebuild'); closePanel(); if (C) rebuildGrid(); refreshBar(); emit('build:on', { plotId: id }); }
   else if (build) { const id = build.plotId; build = null; document.body.classList.remove('basebuild'); clearGroup(ghost); ghost = null; clearGroup(grid); grid = null; emit('build:off', { plotId: id }); }
   return true;
 }
@@ -258,7 +281,7 @@ function updateBuild() {
     label = p ? `🗑️ Remove +${BC.refundOf(p)}` : null; why = p ? `${BC.PIECES[p.type].name}: refunds ${BC.refundOf(p)} cr` : 'Aim at a piece to remove it';
     fn = p ? async () => { const r = api.remove(build.plotId, p.id); H.toast(r.msg, 1600); } : null;
   } else {
-    const T = BC.PIECES[build.type], sn = BC.snap(build.type, build.r, l.x, l.z), v = BC.canPlace(s, build.type, sn.i, sn.j, build.r, { credits: H.credits(C.game) });
+    const T = BC.PIECES[build.type], sn = BC.snap(build.type, build.r, l.x, l.z), v = BC.canPlace(s, build.type, sn.i, sn.j, build.r, { credits: H.credits(C.game), plotId: build.plotId });
     const blocked = v.ok && occupiedByYou(build.plotId, { type: build.type, i: sn.i, j: sn.j, r: build.r });
     ok = v.ok && !blocked; why = blocked ? 'You\u2019re standing there' : v.why; if (why) why = `${T.icon} ${T.name}: ${why}`;
     const q = { type: build.type, i: sn.i, j: sn.j, r: build.r }, pc = BC.pieceCentre(q), wp = toWorldXZ(build.plotId, pc.x, pc.z), g = ghostFor(build.type, ok ? A.ghostOk : A.ghostBad);
@@ -275,7 +298,7 @@ function occupiedByYou(id, q) { const l = toLocal(id, C.player.x, C.player.z); r
 // ---------- per-frame ----------
 export function baseTick(dt, ctx) {
   C = ctx; clock += dt;
-  if (!api.ready) init();
+  if (!api.ready) init(); drainPending(); syncOwners();
   if (ctx.name !== WORLD) { if (root?.parent) root.parent.remove(root); if (build) setBuild(false); setAction(null); if (menuBtn) menuBtn.style.display = 'none'; inPlotId = null; return; }
   if (menuBtn) menuBtn.style.display = '';
   ensureRoot(ctx); if (!root?.parent) return; ensureUi();
@@ -298,7 +321,8 @@ export function baseTick(dt, ctx) {
   if (build) act = updateBuild();
   else if (!indoor && !car && !ctx.game?.isDown?.()) {
     const near = plotUnder(P.x, P.z, NEAR);
-    if (near && !plotState(near).owned) { const p = BC.plotById(near); act = { label: `🏷️ Buy lot ${p.price}`, fn: async () => { const r = api.buy(near); H.toast(r.msg, 2600); } }; }
+    if (near && !plotState(near).owned && BC.plotById(near).owner) act = null; // add-on lot sold by its own add-on
+    else if (near && !plotState(near).owned) { const p = BC.plotById(near); act = { label: `🏷️ Buy lot ${p.price}`, fn: async () => { const r = api.buy(near); H.toast(r.msg, 2600); } }; }
     else if (near) {
       const s = plotState(near), l = toLocal(near, P.x, P.z), close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (t === 'garage' ? 4 : 2.2); })());
       const st = close('stash'), gr = close('garage');
@@ -308,7 +332,7 @@ export function baseTick(dt, ctx) {
         if (cz && (parked || !ctx.rover)) act = { label: '🔧 Customize', fn: async () => { const f = customizer(); if (!f) return H.toast('🔧 No tuner in this build.', 1800); f(); emit('garage:customize', { plotId: near }); } };
         else if (ctx.rover) act = { label: '🚙 Rover home', fn: async () => roverHome(near, gr) };
       }
-      else if (inPlotId === near) act = { label: '🏗️ Build', fn: async () => setBuild(true, near) };
+      else if (inPlotId === near && BC.canBuildUi(near)) act = { label: '🏗️ Build', fn: async () => setBuild(true, near) };
     }
   }
   setAction(act);
@@ -360,7 +384,7 @@ function updateTurrets(dt, ctx) {
 }
 
 // ---------- public API ----------
-function plotInfo(p) { const s = plotState(p.id), c = centres[p.id]; return { id: p.id, name: p.name, district: p.district, aj: [...p.aj], price: p.price, owned: s.owned, pieces: s.pieces.length, world: c ? { x: c.x, z: c.z } : null, half: BC.HALF }; }
+function plotInfo(p) { const s = plotState(p.id), c = centres[p.id]; return { id: p.id, name: p.name, district: p.district, aj: [...p.aj], price: p.price, owned: s.owned, addon: !!p.addon, pieces: s.pieces.length, world: c ? { x: c.x, z: c.z } : null, half: BC.HALF }; }
 const api = {
   ready: false, log: [], PIECES: BC.PIECES, CELL: BC.CELL, SIZE: BC.SIZE,
   plots: () => BC.PLOTS.map(plotInfo),
@@ -372,15 +396,18 @@ const api = {
   buy(id) {
     const p = BC.plotById(id); if (!p) return { ok: false, msg: 'No such lot' }; const s = plotState(id);
     if (s.owned) return { ok: false, msg: 'You already own it' };
+    if (p.owner) return { ok: false, msg: `🏷️ ${p.name} is sold at its own sign, not here.` };
     if (!H.spend(C?.game, p.price)) return { ok: false, msg: `🏷️ ${p.name} is ${p.price} cr. You're short ${p.price - H.credits(C?.game)}.` };
     s.owned = true; s.boughtAt = Date.now(); persist(); if (root?.parent) rebuildMarkers(); emit('buy', { plotId: id, price: p.price });
     return { ok: true, msg: `🏠 ${p.name} is yours. Stand on it and tap 🏗️ Build.` };
   },
   place(id, type, i, j, r = 0) {
+    if (BC.plotById(id)?.owner) syncOwners(); // add-on lot: same-frame ownership, no 'Buy the lot first' before the next tick
     const s = plotState(id); if (!s) return { ok: false, why: 'No such lot' };
-    const v = BC.canPlace(s, type, i, j, r, { credits: H.credits(C?.game) }); if (!v.ok) return v;
+    const v = BC.canPlace(s, type, i, j, r, { credits: H.credits(C?.game), plotId: id }); if (!v.ok) return v;
     if (!H.spend(C?.game, v.cost)) return { ok: false, why: 'Short on credits' };
     const p = BC.addPiece(s, type, i, j, r); persist(); if (root?.parent) rebuildPieces(); emit('place', { plotId: id, type, piece: { ...p } });
+    try { BC.PIECES[type].onPlace?.({ plotId: id, piece: { ...p } }); } catch (e) { console.warn('base onPlace', type, e); }
     return { ok: true, why: '', piece: { ...p } };
   },
   remove(id, pieceId) {
@@ -403,7 +430,8 @@ const api = {
     s.stash.credits -= credits; s.stash.medkits -= medkits; persist(); if (credits) H.give(C?.game, credits); if (medkits) H.addMedkits(C?.game, medkits);
     emit('stash', { plotId: id, op: 'withdraw', credits, medkits, stash: { ...s.stash } }); return { ok: true, stash: { ...s.stash } };
   },
-  build: (on = true, id) => on ? setBuild(true, id) : setBuild(false),
+  build: (on = true, id, o = {}) => on ? setBuild(true, id, !!o.force) : setBuild(false), // o.force opens build mode on a build:false lot
+  refresh: () => { syncOwners(); return api.owned(); }, syncOwners: () => api.refresh(), // re-read every add-on lot's owned() now
   stashUi: id => stashUi(id || inPlotId), overview: () => overview(),
   // ---- raids (for Steve's SSX.raids or anyone else) ----
   raid(id, opts = {}) {
@@ -426,6 +454,7 @@ const api = {
     if (p.hp <= 0) { BC.removePiece(s, pieceId); turretSt.delete(id + ':' + pieceId); if (p.type === 'stash') { const lost = { ...s.stash }; s.stash = { credits: 0, medkits: 0 }; emit('stash:looted', { plotId: id, lost }); } persist(); if (root?.parent) rebuildPieces(); emit('destroyed', { plotId: id, type: p.type, pieceId }); return { destroyed: true }; }
     persist(); emit('damaged', { plotId: id, type: p.type, pieceId, hp: p.hp }); return { destroyed: false, hp: p.hp };
   },
+  registerPlot: def => registerPlot(def), registerPiece: def => registerPiece(def), pieceIds: plotId => BC.piecesFor(plotId || null),
   addTargets(fn) { targetSources.add(fn); return () => targetSources.delete(fn); },
   on(evt, fn) { (listeners[evt] ||= []).push(fn); return () => api.off(evt, fn); },
   off(evt, fn) { listeners[evt] = (listeners[evt] || []).filter(f => f !== fn); },
@@ -433,6 +462,51 @@ const api = {
   debug: { instances: 0, shots: 0, ghost: null, centres: () => ({ ...centres }), cursor: () => build && C ? cursorLocal() : null, raids: () => [...raids.entries()].map(([k, v]) => ({ plotId: k, ...v, armed: v.until > clock })) }
 };
 export const base = api;
+
+// ---------- Add-on lots and pieces ----------
+// SSX.base.registerPlot({ id, name, at: [x, z], district?, price?, blurb?, owned?: () => bool, pieces?: [typeIds], build?: false })
+//   build: false hides the base's 🏗️ Build button (and the overview Build) at that lot; place()/remove() still work, and
+//   SSX.base.build(true, id, { force: true }) can still open build mode. Ownership is synced synchronously by registerPlot,
+//   by place() on an add-on lot, and by SSX.base.refresh() (alias syncOwners()), not only on the next frame.
+//   at (alias aj) is relative to the colony centre (Ares Junction), the same frame as the built-in lots, world.colonyAt and
+//   the other Mars add-ons (farm, runner, empire). Lots are SIZE x SIZE cells of CELL m (20 x 20 m) centred on at. With
+//   owned(), ownership follows your add-on (no Buy button here); without it the lot is bought here for price.
+//   pieces limits what can be built there (default: every piece). Walls, gates and turrets work like any lot: turrets fire
+//   when you're wanted or a raid (SSX.raids or base.raid) lands inside it.
+// SSX.base.registerPiece({ id, name, icon, cost, hp?, fp: [w, d] cells, max?, h?, color?, colliders?, solid?, blurb?,
+//   plots?: [plotIds], parts?: [[geometry, material]] | (THREE, kit) => parts, onPlace?: ({ plotId, piece }) => {} })
+//   It shows in the build toolbar (wraps / scrolls, no new HUD button) on the lots it's allowed on.
+// Both return { ok, id, replaced } or { ok: false, why }. A duplicate id replaces the old def (built-in ids are refused);
+// they never throw. Saved data for a lot or piece type that isn't registered yet is kept and comes back when it registers.
+function refreshAfterRegister() {
+  S = BC.migrate(JSON.parse(JSON.stringify(S))); syncOwners(true); persist();
+  if (root?.parent && C) { layout(C); rebuildAll(); } if (ui) renderTools();
+}
+export function registerPlot(def) {
+  let r; try { r = BC.addPlot(def); } catch (e) { r = { ok: false, why: String(e?.message || e) }; }
+  if (!r.ok) { console.warn('SSX.base.registerPlot:', r.why); return { ok: false, why: r.why }; }
+  refreshAfterRegister(); emit('plot:register', { plotId: r.id, replaced: r.replaced }); return { ok: true, id: r.id, replaced: r.replaced };
+}
+export function registerPiece(def) {
+  let r; try { r = BC.addPieceType(def); } catch (e) { r = { ok: false, why: String(e?.message || e) }; }
+  if (!r.ok) { console.warn('SSX.base.registerPiece:', r.why); return { ok: false, why: r.why }; }
+  if (A.parts?.[r.id] && r.replaced) delete A.parts[r.id]; // new look on replace
+  if (ghost?.userData.type === r.id) { clearGroup(ghost); ghost = null; }
+  refreshAfterRegister(); emit('piece:register', { type: r.id, replaced: r.replaced }); return { ok: true, id: r.id, replaced: r.replaced };
+}
+// queued calls from add-ons that loaded first: SSX._pendingPlots / SSX._pendingPieces (or window.SSX_pending.{plots,pieces},
+// which survives the core replacing window.SSX at boot). Drained at init and on every surface frame (cheap when empty).
+function drainPending() {
+  if (typeof window === 'undefined') return;
+  const qs = [[window.SSX?._pendingPieces, registerPiece], [window.SSX_pending?.pieces, registerPiece], [window.SSX?._pendingPlots, registerPlot], [window.SSX_pending?.plots, registerPlot]];
+  for (const [q, fn] of qs) while (Array.isArray(q) && q.length) { try { fn(q.shift()); } catch (e) { /* never throws */ } }
+}
+function syncOwners(quiet) {
+  let changed = false;
+  for (const p of BC.PLOTS) { if (!p.owner) continue; let o = false; try { o = !!p.owner(); } catch (e) { continue; } const s = plotState(p.id); if (!s || s.owned === o) continue;
+    s.owned = o; if (o && !s.boughtAt) s.boughtAt = Date.now(); changed = true; if (!quiet) emit(o ? 'buy' : 'lost', { plotId: p.id, price: 0, via: 'addon' }); }
+  if (changed) { if (!quiet) persist(); if (root?.parent) rebuildAll(); }
+}
 
 // raid:* from Steve's SSX.raids (modes/raids.js): its events come through SSX.raids.on() (and the SSX.emit bus), not window.
 // A raid whose pos is inside one of your lots arms that lot's turrets; raid:wave / raid:end carry only the id, so match on it.
@@ -457,7 +531,7 @@ function subscribeRaids() { // the engine installs itself on its first tick, so 
 
 function init() {
   if (api.ready || typeof window === 'undefined') return; const app = window.__app; if (!app || typeof window.SSX?.registerSurfaceTick !== 'function') return; // wait for the core add-on API
-  api.ready = true; window.SSX.base = api; app.base = api;
+  api.ready = true; window.SSX.base = api; app.base = api; drainPending();
   try { window.SSX.registerSurfaceTick?.(baseTick); } catch (e) { console.warn('base tick', e); } // core runs it every surface frame (returns an unregister fn)
   for (const k of ['start', 'wave', 'end']) addEventListener('raid:' + k, e => onRaidEvent(k, e?.detail)); subscribeRaids();
   try { menuBtn = H.addMenuItem(app, { id: 'baseMenu', label: '🏠 Mars base', onTap: () => overview() }); if (menuBtn && C?.name !== WORLD) menuBtn.style.display = 'none'; } catch (e) { console.warn('base menu', e); }
