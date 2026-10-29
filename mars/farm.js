@@ -13,8 +13,8 @@
  *   SSX.raids (main)  start({ id, pos, radius, attackers, waves, onWin, onLose, label }). Win = bounty, lose = raiders
  *                     take 60% of the silo. Else a small timer raid (be at the farm when it ends).
  *   SSX.contraband    add('glowdust', n) for ripe lichen, add('voidhoney') for an Oru trade. Else it stays in the silo.
- *   SSX.base (#24) / SSX.empire (#52)  see FARM.md "Hooks wanted": no registerPlot / registerPiece yet, so the homestead
- *                     and its dome are ours, not base pieces.
+ *   SSX.base (#24)    registerPlot (build:false) + registerPiece (dome, racks); refresh()/syncOwners() after Buy. Guarded.
+ *   SSX.empire (#52)  on('hour') drives the clock; yieldRaid('farm') / 'raid:request' + raidSlot() before a raid. Guarded.
  * UI (team HUD rules): ☰ → 🌱 Farm, plus ONE context button (#farmAct) only while you stand at the homestead or the
  *   trading post. No permanent chips. Plain-word directions. One message at a time (in the open sheet, else one toast).
  *   Black/white, 48px buttons, __onTap. Safe in the Rust Pit (nothing shows or starts there) and in floating cars
@@ -112,7 +112,7 @@ function pieceDefs() {
     { id: 'farm-rack', name: 'Hydro rack', icon: '🪴', cost: F.PRICES.rack, fp: F.LOT.rackFp, max: F.LIMITS.racks, hp: 100, h: 2.4, plots: [PLOT], parts: rackParts, colliders: [[0, 0, 0.8, 1.7]], onPlace: e => onBasePlace(e) }
   ];
 }
-function plotDef() { return { id: PLOT, name: F.SITES.farm.name, district: 'Mars outskirts', at: SITE_LOCAL(), price: F.PRICES.plot, owned: () => !!S.owned,
+function plotDef() { return { id: PLOT, name: F.SITES.farm.name, district: 'Mars outskirts', at: SITE_LOCAL(), price: F.PRICES.plot, owned: () => !!S.owned, build: false, // build:false (#24): no base 🏗️ Build button here, the farm's one button drives place()
   blurb: 'Flat, cheap, and far from the patrols. Grow potatoes, sell to the aliens.' }; }
 function hookBase() {
   if (baseHook === 'api' || baseHook === 'old') { if (!baseSub && baseLot()) subBase(); return; }
@@ -144,15 +144,27 @@ function syncBase() {
   } finally { adopting = false; }
   rackIds = sortedRackIds(); save(); rebuildFarm(true);
 }
+// base syncs owned() every frame; make it now: SSX.base.refresh() / syncOwners() when present, else re-register the plot (old base)
+function reRegister(b) { try { b.registerPlot(plotDef()); } catch (e) { /* */ } }
+function syncLot(b = B()) {
+  if (!b || !S.owned || !baseLot()) return;
+  const f = typeof b.refresh === 'function' ? 'refresh' : typeof b.syncOwners === 'function' ? 'syncOwners' : null;
+  if (f) { try { b[f](); lotSync = f; return; } catch (e) { /* fall through */ } }
+  let st; try { st = b.state?.(PLOT); } catch (e) { /* */ } if (st && st.owned !== false) return;
+  lotSync = 'reregister'; reRegister(b);
+}
+let lotSync = null;
 // place at the layout spot first, then anywhere free on the lot
 function basePlace(type) {
   const b = B(); if (!b?.place) return { ok: false, why: 'The base builder is not ready.' };
   const fp = type === F.LOT.dome.type ? F.LOT.dome.fp : F.LOT.rackFp, tries = [];
   if (type === F.LOT.dome.type) tries.push([F.LOT.dome.i, F.LOT.dome.j, 0]); else tries.push(...F.LOT.rackSlots.map(([i, j]) => [i, j, 0]));
   for (let j = 0; j <= F.LOT.size - fp[1]; j++) for (let i = 0; i <= F.LOT.size - fp[0]; i++) tries.push([i, j, 0]);
-  try { if (S.owned && b.state?.(PLOT)?.owned === false) b.registerPlot(plotDef()); } catch (e) { /* ownership follows owned() every base frame; this syncs it now */ }
-  let why = 'No room left on the lot.';
-  for (const [i, j, r] of tries) { let o; try { o = b.place(PLOT, type, i, j, r); } catch (e) { o = { ok: false, why: String(e?.message || e) }; } if (o?.ok) { rackIds = sortedRackIds(); return { ok: true, piece: o.piece }; } if (o?.why && !/already there|off your lot|overlap|occupied/i.test(o.why)) { why = o.why; break; } }
+  syncLot(b);
+  let why = 'No room left on the lot.', retried = false;
+  for (const [i, j, r] of tries) { let o; const put = () => { try { return b.place(PLOT, type, i, j, r); } catch (e) { return { ok: false, why: String(e?.message || e) }; } };
+    o = put(); if (!o?.ok && !retried && S.owned && /buy the lot/i.test(o?.why || '')) { retried = true; reRegister(b); o = put(); } // fallback: old base without refresh()
+    if (o?.ok) { rackIds = sortedRackIds(); return { ok: true, piece: o.piece }; } if (o?.why && !/already there|off your lot|overlap|occupied/i.test(o.why)) { why = o.why; break; } }
   return { ok: false, why };
 }
 function onBasePlace(e) {
@@ -215,7 +227,7 @@ function skip(hours) {
 // ---------- actions ----------
 function res(ok, msg, extra = {}) { if (msg) say(msg); refresh(true); guideTick(); return { ok, msg, ...extra }; }
 function buy() { const n = need('farm'); if (n) return res(false, n); const v = F.canBuy(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
-  S.owned = true; S.water = 40; S.power = 40; save(); rebuildFarm(); emit('buy', { price: v.cost }); return res(true, `🏡 ${F.SITES.farm.name} is yours. Build the greenhouse dome next.`, { cost: v.cost }); }
+  S.owned = true; S.water = 40; S.power = 40; save(); syncLot(); rebuildFarm(); emit('buy', { price: v.cost }); return res(true, `🏡 ${F.SITES.farm.name} is yours. Build the greenhouse dome next.`, { cost: v.cost }); }
 function buildDome() { const n = need('farm'); if (n) return res(false, n); const v = F.canDome(S, credits()); if (!v.ok) return res(false, v.why);
   if (baseLot()) { const p = basePlace(F.LOT.dome.type); if (!p.ok) return res(false, p.why); if (!S.dome) { S.dome = true; S.domeHp = 100; } save(); rebuildFarm(true); emit('dome', { price: v.cost, via: 'base' }); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: v.cost, via: 'base' }); }
   if (!spend(v.cost)) return res(false, 'Short on credits.');
@@ -280,11 +292,17 @@ function raid_(opts = {}) {
   let waves = opts.waves ?? 2; const wk = S.favors.indexOf('watch'); let watched = false; if (wk >= 0 && waves > 1) { S.favors.splice(wk, 1); waves--; watched = true; }
   const p = W(F.SITES.farm.at), id = 'farm-raid-' + Date.now().toString(36); S.lastRaidH = S.hours; S.stats.raids++; save();
   raid = { id, via: 'own', t: 0, len: opts.len ?? 60, why: opts.why || 'raiders' };
-  const R = RAIDS();
-  if (R?.start && p) { try { const r = R.start({ id, pos: { x: p.x, z: p.z }, radius: 24, attackers: 'gang', waves, label: 'Dust raiders', onWin: info => endRaid('win', info), onLose: info => endRaid('lose', info) }); if (r && r.ok !== false) raid.via = 'SSX.raids'; else raid.engineWhy = r?.why || 'refused'; } catch (e) { console.warn('farm raid engine', e); } }
+  const R = RAIDS(); let slot = 'free';
+  if (R?.start && p) { // one SSX.raids slot: ask the empire (#52) to hand over its rival-crew raid first
+    const E = EMP();
+    try { if (typeof E?.yieldRaid === 'function') { E.yieldRaid('farm'); raid.asked = 'yieldRaid'; } else { dispatchEvent(new CustomEvent('raid:request', { detail: { id } })); raid.asked = 'raid:request'; } } catch (e) { /* */ }
+    try { if (typeof E?.raidSlot === 'function') slot = E.raidSlot() || 'free'; } catch (e) { /* */ }
+    raid.slot = slot; if (slot === 'other') raid.engineWhy = 'raid slot held by another add-on';
+  }
+  if (R?.start && p && slot !== 'other') { try { const r = R.start({ id, pos: { x: p.x, z: p.z }, radius: 24, attackers: 'gang', waves, label: 'Dust raiders', onWin: info => endRaid('win', info), onLose: info => endRaid('lose', info) }); if (r && r.ok !== false) raid.via = 'SSX.raids'; else raid.engineWhy = r?.why || 'refused'; } catch (e) { console.warn('farm raid engine', e); } }
   emit('raid', { id, via: raid.via, waves, watched, silo: F.siloCount(S) });
   say(`🚨 Dust raiders are hitting ${F.SITES.farm.name}. ${at('farm') ? 'Fight them off!' : directions('farm').replace('tap Farm', 'fight them off')}`);
-  refresh(true); return { ok: true, id, via: raid.via, waves, watched, engineWhy: raid.engineWhy || null };
+  refresh(true); return { ok: true, id, via: raid.via, waves, watched, engineWhy: raid.engineWhy || null, slot: raid.slot || null, asked: raid.asked || null };
 }
 function endRaid(result, info = {}) {
   if (!raid) return false; const r = raid; raid = null; let st = { took: {}, n: 0 };
@@ -520,8 +538,8 @@ function tick(dt, tc) {
 }
 function status() {
   return { owned: S.owned, dome: S.dome, domeHp: Math.round(S.domeHp), racks: S.racks.map(r => ({ crop: r.crop, growth: Math.round(r.growth * 1000) / 1000, health: Math.round(r.health * 10) / 10, ripe: !!r.crop && r.growth >= 1 })),
-    water: S.water, power: S.power, silo: { ...S.silo }, siloCount: F.siloCount(S), favors: [...S.favors], hours: Math.round(S.hours * 100) / 100, day: F.day(S), clock: empOn ? 'SSX.empire.hour' : src, base: baseLot() ? { plot: PLOT, pieces: basePieces().map(p => ({ id: p.id, type: p.type, i: p.i, j: p.j, r: p.r })) } : (baseHook || null), empire: empHook ? { hook: empHook, live: empOn, hours: empHours } : null, hooks: { base: baseHook, baseRegistered: !!baseLot(), empire: empHook, empireLive: empOn },
-    raid: raid ? { id: raid.id, via: raid.via, engineWhy: raid.engineWhy || null } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats } };
+    water: S.water, power: S.power, silo: { ...S.silo }, siloCount: F.siloCount(S), favors: [...S.favors], hours: Math.round(S.hours * 100) / 100, day: F.day(S), clock: empOn ? 'SSX.empire.hour' : src, base: baseLot() ? { plot: PLOT, pieces: basePieces().map(p => ({ id: p.id, type: p.type, i: p.i, j: p.j, r: p.r })) } : (baseHook || null), empire: empHook ? { hook: empHook, live: empOn, hours: empHours } : null, hooks: { base: baseHook, baseRegistered: !!baseLot(), lotSync, empire: empHook, empireLive: empOn, yieldRaid: typeof EMP()?.yieldRaid === "function", raidSlot: (() => { try { return EMP()?.raidSlot?.() ?? null; } catch (e) { return null; } })() },
+    raid: raid ? { id: raid.id, via: raid.via, engineWhy: raid.engineWhy || null, slot: raid.slot || null, asked: raid.asked || null } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats } };
 }
 const API = {
   status, buy, buildDome, addRack, plant, harvest, refill, patch, sell, useFavor, raid: raid_, skip,

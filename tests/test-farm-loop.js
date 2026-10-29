@@ -17,7 +17,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const center = sel => G(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height, w: r.width, t: r.top, b: r.bottom, l: r.left, r: r.right }; }, sel);
-  const tapSel = async sel => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
+  // tapSel: let the sheet settle first (a re-render after a base event can shift buttons under a touch)
+  const tapSel = async sel => { await fr(2, 5000); await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
   const fr = async (n = 4, ms = 60000) => { const f0 = await G(() => window.__frames | 0); return wait(t => (window.__frames | 0) >= t, ms, f0 + n); };
   const St = () => G(() => window.SSX.farm.status());
   const cr = () => G(() => window.__app.game.progress.credits);
@@ -84,6 +85,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     g = await GS(); ok('done', { g, paid: m1 - m0, ev: await G(() => window.__gev) }, g.done && !g.shown && !g.waypoint && g.step === null && m1 > m0 && await G(() => window.__gev.includes('done:sale')));
     ok('beaconGone', await G(() => !window.__app.surface.scene.getObjectByName('farm-beacon')?.visible));
     await shot('done');
+    await go('farm', 9); await fr(6); // back in the owned lot: one context button, no base 🏗️ Build (build:false)
+    R.oneBtn = await G(() => { const vis = el => { if (!el) return false; const cs = getComputedStyle(el), r = el.getBoundingClientRect(); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 && r.width > 0 && r.height > 0; };
+      return { ctx: ['farmAct', 'baseBtn', 'empBtn'].map(id => document.getElementById(id)).filter(vis).map(b => b.id), build: [...document.querySelectorAll('button')].filter(b => vis(b) && /🏗️/.test(b.textContent)).length }; });
+    ok('oneContextButton', R.oneBtn, R.oneBtn.ctx.length === 1 && R.oneBtn.ctx[0] === 'farmAct' && R.oneBtn.build === 0);
     R.hooks = await G(() => window.SSX.farm.status().hooks); // which of Ben's hooks were live (api / queued / none)
     // stays done after another reload
     await page.reload(); await wait(() => window.__frames > 3 && !!window.SSX?.farm?.guide, 120000);

@@ -72,10 +72,14 @@ at the farm when the timer ends. `?farmraids=0` turns off random raids, and `rai
   `window.SSX_pending.empire` (one path only). Without the hook, the farm takes hour deltas from `SSX.time` (#30), else `SSX.empire.clock().hour`, else its own clock (2 real minutes per game hour).
   `skip(h)` calls `SSX.time.set()` when present, so the world clock moves too. The empire hour events that this jump causes are swallowed (a skip debt, which expires after 3 s), so a skip isn't counted twice.
 - **Storm**: `SSX.storm` (#50) `active()` / `intensity()`, plus captions on `start` / `peak` / `end`. Without it there's no storm damage (`debug.storm(i)` for tests).
-- **Raids**: `SSX.raids.start/stop` (main), else the own timer. SSX.raids runs one raid at a time, so if another add-on's raid is active (e.g. #52's empire crew raids) the farm falls back to its own timer. `status().raid.engineWhy` says why.
+- **Raids**: SSX.raids runs one raid at a time, so before `SSX.raids.start` the farm asks for the slot:
+  - It calls `SSX.empire.yieldRaid('farm')` when present (#52), else it dispatches `window` event `raid:request` `{ detail: { id } }`. The empire then hands over its rival-crew raid and keeps that fight going as a 40 s hold.
+  - Then it reads `SSX.empire.raidSlot()` (`'free'|'ours'|'other'`). If the slot is `'free'` or `'ours'`, the raid goes through `SSX.raids.start`. Only if it's still `'other'` (a third add-on's raid) does the farm use its own 60 s timer.
+  - `status().raid` shows `{ via, slot, asked, engineWhy }`. Without SSX.raids, or if start refuses, the farm uses its own timer.
 - **Contraband**: `SSX.contraband.add('glowdust')` for lichen and `add('voidhoney')` for Oru trades.
 - **Base (#24)**: the homestead is registered as a lot: `SSX.base.registerPlot({ id: 'farm-homestead', at: [10, 226], owned: () => farm owned, price, blurb })`.
-  - Its ownership follows the farm's own Buy, so the lot has no base Buy button. Walls, gates and turrets from base's own Build flow can go on it.
+  - Its ownership follows the farm's own Buy, so the lot has no base Buy button. It's registered with `build: false`, so base's 🏗️ Build button (context and overview) stays hidden there and 🌱 Farm is the one context button.
+  - Right after Buy, and before each place, the farm calls `SSX.base.refresh()` (or `syncOwners()`) when present, so ownership is synced in the same frame. On an older base it re-registers the plot, and if `place()` still says "Buy the lot first" it retries once after re-registering.
   - `registerPiece` adds `farm-dome` (6 × 6, solid: false so you can walk in, max 1, 900 cr) and `farm-rack` (1 × 2, max 6, 300 cr), both limited to that lot,
     with their own parts, so base draws them.
   - In base mode, the farm's Build dome and Add rack buttons call `SSX.base.place` at the layout spot, or any free cell if that spot is taken.
@@ -95,7 +99,7 @@ at the farm when the timer ends. `?farmraids=0` turns off random raids, and `rai
 ## API
 ```
 SSX.farm.status()  -> { owned, dome, domeHp, racks:[{crop,growth,health,ripe}], water, power, silo, siloCount, favors, hours, day, clock, base, empire, hooks, raid, at, storm, stats }
-  hooks: { base:'api'|'queued'|'old'|null, baseRegistered, empire:'api'|'queued'|'old'|null, empireLive }; clock: 'SSX.empire.hour'|'SSX.time'|'SSX.empire'|'own'; base: { plot, pieces } | 'queued'|'old'|null; empire: { hook:'api'|'queued'|'old', live, hours } | null
+  hooks: { base:'api'|'queued'|'old'|null, baseRegistered, lotSync:'refresh'|'syncOwners'|'reregister'|null, empire:'api'|'queued'|'old'|null, empireLive, yieldRaid, raidSlot }; clock: 'SSX.empire.hour'|'SSX.time'|'SSX.empire'|'own'; base: { plot, pieces } | 'queued'|'old'|null; empire: { hook:'api'|'queued'|'old', live, hours } | null
 guide.status() guide.start() guide.hide() guide.show()
 buy() buildDome() addRack() plant(i, crop) harvest('all'|i) refill('water'|'power') patch()
 sell(buyerId, crop, qty) useFavor('cool') raid({waves}) skip(hours) -> { ok, via:'SSX.time'|'own' }
@@ -110,11 +114,11 @@ favor, storm (phase start/peak/end/damage), raid, raid:end, guide, base, clock.
 2. `SSX.base.registerPiece` (#24): `farm-dome` and `farm-rack`.
 3. `SSX.empire.on('hour', fn)` (#52): drives growth and upkeep.
 
-Notes for Ben:
-- On a registered lot, base shows its own 🏗️ Build button, so there are two context buttons at the homestead (🌱 Farm and 🏗️ Build).
-  A per-plot option to hide base's button (e.g. `build: false` or `button: false` on registerPlot) would keep the one-context-button rule.
-- `place()` refuses with "Buy the lot first" until base's next frame syncs `owned()`. The farm re-registers the plot right after its own Buy to sync it at once.
-  A `syncOwners()` / `refresh()` call on SSX.base would be cleaner.
+4. `build: false` on registerPlot (#24, 47e433a): there's no base 🏗️ Build button at the lot.
+5. `SSX.base.refresh()` / `syncOwners()` (#24, 47e433a): ownership syncs in the same frame. The re-register and retry stay as the fallback.
+6. `SSX.empire.yieldRaid('farm')`, or the `raid:request` event, plus `raidSlot()` (#52, a6df4a3): these share the one SSX.raids slot.
+
+Earlier notes for Ben (two context buttons, "Buy the lot first", the busy raid slot) are all covered by 47e433a and a6df4a3.
 
 ## Tests
 `node tests/test-farm-unit.mjs`. For the e2e, serve the worktree and run
@@ -124,6 +128,9 @@ Notes for Ben:
   - the pieces are at the layout cells, and the dome isn't drawn twice
   - scrapping or placing in base's flow syncs the farm
   - one SSX.time hour gives exactly one farm hour
+  - inside the owned lot there's exactly one context button (🌱 Farm) and no visible 🏗️ Build
+  - `lotSync` is `'refresh'` when SSX.base.refresh exists
+  - raid slot: an empire raid yields via `yieldRaid` (and via `raid:request` when yieldRaid is absent), the farm raid runs on SSX.raids, and a third add-on's raid keeps the farm on its own timer
   Without those APIs, it checks the farm's own drawing and clocks.
-- `tests/test-farm-loop.js` plays the first loop through the guide (buy → dome → rack + plant → grow → harvest → sell), including dismiss, re-enable, a reload mid-loop and done after the sale.
+- `tests/test-farm-loop.js` plays the first loop through the guide (buy → dome → rack + plant → grow → harvest → sell), including dismiss, re-enable, a reload mid-loop and done after the sale, then checks for one context button in the lot.
   It saves phone screenshots `farm-loop-<n>-<step>-<device>-<browser>.png`.

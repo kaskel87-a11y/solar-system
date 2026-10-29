@@ -17,7 +17,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const center = sel => G(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height, w: r.width, t: r.top, b: r.bottom, l: r.left, r: r.right }; }, sel);
-  const tapSel = async sel => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
+  // tapSel: let the sheet settle first (a re-render after a base event can shift buttons under a touch)
+  const tapSel = async sel => { await fr(2, 5000); await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
   const fr = async (n = 4, ms = 60000) => { const f0 = await G(() => window.__frames | 0); return wait(t => (window.__frames | 0) >= t, ms, f0 + n); };
   const St = () => G(() => window.SSX.farm.status());
   const cr = () => G(() => window.__app.game.progress.credits);
@@ -69,6 +70,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       // a rack scrapped in base's own flow leaves the farm too (refund from base), and a rack placed there joins it
       const rm = await G(() => { const b = window.SSX.base, p = b.state('farm-homestead').pieces.filter(q => q.type === 'farm-rack').at(-1); const r = b.remove('farm-homestead', p.id); const n1 = window.SSX.farm.status().racks.length; const r2 = b.place('farm-homestead', 'farm-rack', 2, 7, 0); window.SSX.farm.plant(2, 'glowberry'); return { r: r.ok, n1, r2: r2.ok, n2: window.SSX.farm.status().racks.length }; });
       ok('baseSync', rm, rm.r && rm.n1 === 2 && rm.r2 && rm.n2 === 3);
+      R.lotSync = await G(() => ({ hooks: window.SSX.farm.status().hooks, refresh: typeof window.SSX.base.refresh === 'function' }));
+      ok('lotSync', R.lotSync, R.lotSync.refresh ? R.lotSync.hooks.lotSync === 'refresh' : R.lotSync.hooks.lotSync !== 'refresh');
     } else R.base = 'no SSX.base.registerPlot: farm draws its own dome + racks';
     // upkeep: top up through the sheet
     const c2 = await cr(); await tapSel('#farmPanel button[data-a="water"]'); await tapSel('#farmPanel button[data-a="power"]');
@@ -116,6 +119,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('sale', { p0, p1: k.silo.potato, got: m1 - m0 }, !k.silo.potato && m1 > m0 && await G(() => window.__fev.some(e => e.type === 'sale')));
     if (!desk) await page.screenshot({ path: out + `farm-post-${tag}.png` });
     await tapSel('#farmPanel button[data-a="close"]');
+    // ---- one context button inside the owned lot (base's 🏗️ Build stays hidden: build:false) ----
+    await go('farm', 9); await fr(6);
+    R.oneBtn = await G(() => { const vis = el => { if (!el) return false; const cs = getComputedStyle(el), r = el.getBoundingClientRect(); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 && r.width > 0 && r.height > 0; };
+      const ctx = ['farmAct', 'baseBtn', 'empBtn'].map(id => document.getElementById(id)).filter(vis).map(b => b.id + ':' + b.textContent.trim());
+      const build = [...document.querySelectorAll('button')].filter(b => vis(b) && /🏗️/.test(b.textContent)).map(b => b.id || b.textContent.trim());
+      return { ctx, build, inLot: window.SSX.base?.state?.('farm-homestead')?.owned ?? null }; });
+    ok('oneContextButton', R.oneBtn, R.oneBtn.ctx.length === 1 && /^farmAct:/.test(R.oneBtn.ctx[0]) && R.oneBtn.build.length === 0);
     // ---- raids (SSX.raids on main): one won, one lost ----
     await go('farm', 6);
     R.raidsBusy = await G(() => { const st = window.__raids?.state; if (st?.id && !/^farm-raid/.test(st.id)) { window.SSX.raids.stop(st.id, 'test'); return st.id; } return null; }); // another add-on's raid (e.g. empire crew raids, #52) holds the one SSX.raids slot
@@ -128,6 +138,24 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     k = await G(() => { const r = window.SSX.farm.raid({ waves: 1 }); window.SSX.raids?.stop?.(r.id, 'test'); return { r, s: window.SSX.farm.status() }; });
     ok('raidLose', { r: k.r, sil0, sil1: k.s.siloCount }, k.r.ok && sil0 > 0 && k.s.siloCount < sil0 && await G(() => window.__fev.some(e => e.type === 'raid:end' && e.result === 'lose' && e.stolen > 0)));
     await G(() => window.__app.game.restore?.());
+    // ---- shared raid slot (#52): the empire yields its rival raid to the farm; a third add-on's raid keeps the farm on its own timer ----
+    if (await G(() => typeof window.SSX.empire?.yieldRaid === 'function' && typeof window.SSX.empire?.raidSlot === 'function')) {
+      R.yield = await G(() => { const e = window.SSX.empire, F = window.SSX.farm, out = {}; e.debug.grant('fr-disp'); e.debug.threat('fr-disp', 'raid'); out.def = e.defend(); out.slot0 = e.raidSlot();
+        const r = F.raid({ waves: 1 }); out.r = r; out.emp = e.debug.defense()?.engine; out.slot1 = e.raidSlot();
+        window.SSX.raids.stop(r.id, 'test'); e.debug.win(); out.slot2 = e.raidSlot(); return out; });
+      ok('raidYield', R.yield, R.yield.def?.ok && R.yield.slot0 === 'ours' && R.yield.r.ok && R.yield.r.asked === 'yieldRaid' && R.yield.r.via === 'SSX.raids' && R.yield.emp === 'hold' && R.yield.slot1 === 'other' && R.yield.slot2 === 'free');
+      await G(() => window.__app.game.restore?.());
+      // no yieldRaid (an older empire): the farm dispatches 'raid:request' instead and the empire's listener yields
+      R.request = await G(() => { const e = window.SSX.empire, F = window.SSX.farm, y = e.yieldRaid, out = {}; e.debug.threat('fr-disp', 'raid'); out.def = e.defend(); out.slot0 = e.raidSlot();
+        e.yieldRaid = undefined; let r; try { r = F.raid({ waves: 1 }); } finally { e.yieldRaid = y; } out.r = r; out.emp = e.debug.defense()?.engine;
+        window.SSX.raids.stop(r.id, 'test'); e.debug.win(); out.slot2 = e.raidSlot(); return out; });
+      ok('raidRequest', R.request, R.request.def?.ok && R.request.slot0 === 'ours' && R.request.r.ok && R.request.r.asked === 'raid:request' && R.request.r.via === 'SSX.raids' && R.request.emp === 'hold' && R.request.slot2 === 'free');
+      await G(() => window.__app.game.restore?.());
+      R.other = await G(() => { const F = window.SSX.farm, pl = F.places()[0]; const o = window.SSX.raids.start({ id: 'other-addon-t', pos: { x: pl.x + 400, z: pl.z }, radius: 10, attackers: 'gang', waves: 1 });
+        const r = F.raid({ waves: 1 }); const out = { o: o.ok, r, slot: window.SSX.empire.raidSlot() }; F.debug.raidEnd('win'); window.SSX.raids.stop('other-addon-t', 'test'); out.free = window.SSX.empire.raidSlot(); return out; });
+      ok('raidSlotOther', R.other, R.other.o && R.other.r.ok && R.other.r.slot === 'other' && R.other.r.via === 'own' && R.other.free === 'free');
+      await G(() => { window.__app.game.restore?.(); window.__app.game.debug?.clear?.(); });
+    } else R.yield = 'no SSX.empire.yieldRaid: farm raids go straight to SSX.raids (own timer if refused)';
     // ---- floating car: no context button, actions say land first ----
     await G(() => { const p = window.SSX.farm.places()[0]; window.__app.surface.debugMove(p.x, p.z + 13, 0); }); await fr(3);
     // the lost raid's raiders still roam: clear them so the rover can come
