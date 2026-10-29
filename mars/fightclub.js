@@ -395,7 +395,7 @@ function render() {
 }
 function doChallenge(id, fix) {
   const r = challenge(id, { style: pick.style, stake: pick.stake, fix });
-  if (r.offer) { pendingOffer = r.offer; say(r.msg); render(); return; }
+  if (r.offer) { pendingOffer = r.offer; say(r.msg); render(); document.querySelector('#fcPanel .offer')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); return; } // the offer renders at the top: bring it into view (on a phone you tapped a fighter far below it)
   say(r.msg); if (r.ok) { close(); toast('⚔️ ' + r.msg, 2800); } else render();
 }
 function renderHud() {

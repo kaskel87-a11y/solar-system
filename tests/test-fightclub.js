@@ -51,6 +51,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const c0 = await G(() => window.__app.game.progress.credits);
     await G(() => document.querySelector('#fcPanel [data-ch="wetsock"]').scrollIntoView({ block: 'center' })); await sleep(200);
     await tapSel('#fcPanel [data-ch="wetsock"]');
+    if (await G(() => !!document.querySelector('#fcPanel [data-fix="refuse"]'))) { R.fixOfferOnPanel = true; await G(() => document.querySelector('#fcPanel [data-fix="refuse"]').scrollIntoView({ block: 'center' })); await sleep(200); await tapSel('#fcPanel [data-fix="refuse"]'); } // a fixer's word is a 30% roll once rep exists: fight straight
     R.b1start = await G(() => ({ duel: window.__app.surface.world.duel, bout: window.SSX.fight.status().bout, panel: document.getElementById('fcPanel').classList.contains('show') }));
     ok('boutStarts', R.b1start, R.b1start.duel?.name === 'Wet Sock' && R.b1start.duel?.label === 'Fists' && R.b1start.bout?.stake === 50 && !R.b1start.panel);
     R.b1maxWanted = await brawl();
