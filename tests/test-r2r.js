@@ -82,6 +82,7 @@ function measureHud() {
 
     // ☰ → New Game: Rags to Riches
     await G(() => window.__app.toggleMenu(true)); await sleep(300);
+    await G(() => document.getElementById('r2rMenuBtn')?.scrollIntoView({ block: 'center' })); await sleep(300); /* the v7.5.4 menu is taller than a phone screen */
     await tapAt('#r2rMenuBtn');
     ok('introPanel', null, await wait(() => document.getElementById('r2rPanel')?.classList.contains('on'), 4000));
     await shot('intro');
@@ -179,6 +180,7 @@ function measureHud() {
 
     // progress panel from ☰
     await G(() => window.__app.toggleMenu(true)); await sleep(300);
+    await G(() => document.getElementById('r2rMenuBtn')?.scrollIntoView({ block: 'center' })); await sleep(300); /* the v7.5.4 menu is taller than a phone screen */
     await tapAt('#r2rMenuBtn');
     ok('progressPanel', null, await wait(() => /Net worth/.test(document.getElementById('r2rPanel').textContent), 3000));
     await shot('progress');

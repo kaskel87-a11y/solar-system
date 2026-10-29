@@ -215,8 +215,10 @@ export function createStreet(ctx) {
     let x = Math.random() * tot; for (const [k, w] of e) if ((x -= w) <= 0) return k; return null; }
   const NAMES = { panhandler: ['Coughing Teo', 'Old Brine', 'Wheezer', 'Ma Dusty'], hustler: ['Slick Orrin', 'Two-Tank Vic', 'Lungs Malloy'], yeller: ['Preacher Rust', 'Loud Ansel'], shover: ['Big Kettle', 'Knuckles Dray'], pickpocket: ['Fingers', 'Quiet Nim'], mugger: ['Shiv', 'Razor Pell', 'Knife Odo'] };
   const LABEL = { panhandler: 'Panhandler', hustler: 'Hustler', yeller: 'Street preacher', shover: 'Some asshole', pickpocket: 'Stranger', mugger: 'Mugger' };
+  const raidHeld = () => { try { return (X().city?.npcBudget?.()?.reserved?.raids || 0) > 0; } catch (e) { return false; } }; /* v7.5.4: yield the phone NPC cap to raiders */
+  addEventListener('ssx:npcbudget', e => { if (e?.detail?.by === 'raids' && actors.length) clear(); });
   function spawn(type, i) {
-    const sc = ctx.scene(); if (!sc) return null;
+    const sc = ctx.scene(); if (!sc || raidHeld()) return null;
     const yaw = i.viewYaw ?? i.faceYaw ?? 0; let x = 0, z = 0, ok = false;
     for (let k = 0; k < 8 && !ok; k++) { const a = yaw + Math.PI * (0.35 + Math.random() * 1.3) * (Math.random() < 0.5 ? 1 : -1), d = SPAWN_R * (0.65 + Math.random() * 0.35); x = i.x + Math.sin(a) * d; z = i.z + Math.cos(a) * d;
       try { const f = X().city?.freeSpot?.(x, z, 0.8); if (f) { x = f.x; z = f.z; } } catch (e) { /* */ } ok = !solid(x, z); }

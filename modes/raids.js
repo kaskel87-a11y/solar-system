@@ -56,7 +56,7 @@ function allowedAttackers() {
   const W = C?.world;
   if (typeof W?.npcBudget === 'function') {
     try {
-      const b = W.npcBudget(), res = b.reserved || {}, others = Object.entries(res).reduce((a, [k, v]) => a + (k === 'raids' || k === 'street' ? 0 : v), 0); // v7.5.4: the Flats street crowd (#44) yields to raiders (its room() counts our reservation)
+      const b = W.npcBudget(), res = b.reserved || {}, others = Object.entries(res).reduce((a, [k, v]) => a + (k === 'raids' || k === 'street' || k === 'grime-street' ? 0 : v), 0); // v7.5.4: the Flats street crowd (#44) yields to raiders (its room() counts our reservation)
       let footNow = 0; try { footNow = (W.securityList?.() || []).filter(s => s.kind === 'officer' || s.kind === 'heavy').length; } catch {}
       const foot = Math.max(footNow, expectedSecurity(W.wanted || 0).foot), hum = C.game?.humanCount?.() || 0;
       const room = (b.cap || npcCap()) - (mobile ? 4 : 0) - foot - hum - others;
