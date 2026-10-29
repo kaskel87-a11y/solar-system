@@ -27,7 +27,43 @@ export const PIECES = {
   stash:  { id: 'stash',  name: 'Stash',  icon: '💰', cost: 300,  hp: 150, fp: [1, 1], max: 1,  colliders: [[0, 0, 0.65, 0.5]], blurb: 'Credits and medkits in here don\u2019t get fined when you\u2019re busted.' },
   turret: { id: 'turret', name: 'Turret', icon: '🔫', cost: 1000, hp: 200, fp: [1, 1], max: 4,  colliders: [[0, 0, 0.45, 0.45]], blurb: 'Auto-fires at security and raiders inside 32 m.', range: 32, rate: 0.9, dmg: 1 }
 };
-export const PIECE_IDS = Object.keys(PIECES);
+export const PIECE_IDS = Object.keys(PIECES);        // kept in sync (in place) by registerPiece
+export const BUILTIN_PLOTS = PLOTS.map(p => p.id), BUILTIN_PIECES = PIECE_IDS.slice();
+
+// ---------- add-on registry (SSX.base.registerPlot / registerPiece) ----------
+// Pure: validates and normalises a def, then adds or replaces it by id (a duplicate id replaces, never throws). Built-in ids
+// can't be replaced. Returns { ok, id, replaced } or { ok: false, why }. base.js wraps these, re-reads the save and redraws.
+const num = (v, d) => Number.isFinite(+v) ? +v : d;
+const clampI = (v, lo, hi, d) => Math.max(lo, Math.min(hi, Math.round(num(v, d))));
+export function normPlot(def) {
+  if (!def || typeof def !== 'object') return { ok: false, why: 'registerPlot(def): def must be an object' };
+  const id = typeof def.id === 'string' && def.id.trim() ? def.id.trim() : null; if (!id) return { ok: false, why: 'registerPlot: id (string) required' };
+  const at = Array.isArray(def.aj) ? def.aj : Array.isArray(def.at) ? def.at : (def.at && typeof def.at === 'object') ? [def.at.x, def.at.z] : null; // colony-relative [x, z]
+  if (!at || !Number.isFinite(+at[0]) || !Number.isFinite(+at[1])) return { ok: false, why: `registerPlot(${id}): at / aj = [x, z] relative to the colony centre required` };
+  return { ok: true, plot: { id, name: String(def.name || id), district: String(def.district || 'Mars'), aj: [+at[0], +at[1]], price: Math.max(0, Math.round(num(def.price, 0))),
+    blurb: String(def.blurb || ''), addon: true, owner: typeof def.owned === 'function' ? def.owned : null, pieces: Array.isArray(def.pieces) ? def.pieces.map(String) : null } };
+}
+export function normPiece(def) {
+  if (!def || typeof def !== 'object') return { ok: false, why: 'registerPiece(def): def must be an object' };
+  const id = typeof def.id === 'string' && /^[a-z0-9_-]+$/i.test(def.id) ? def.id : null; if (!id) return { ok: false, why: 'registerPiece: id (letters, digits, - or _) required' };
+  const fp = [clampI(def.fp?.[0] ?? def.w, 1, SIZE, 1), clampI(def.fp?.[1] ?? def.d, 1, SIZE, 1)];
+  const hw = fp[0] * CELL / 2, hd = fp[1] * CELL / 2;
+  const colliders = Array.isArray(def.colliders) ? def.colliders.filter(c => Array.isArray(c) && c.length === 4 && c.every(v => Number.isFinite(+v))).map(c => c.map(Number))
+    : def.solid === false ? [] : [[0, 0, hw * 0.9, hd * 0.9]];
+  return { ok: true, piece: { id, name: String(def.name || id), icon: String(def.icon || '📦'), cost: Math.max(0, Math.round(num(def.cost, 100))), hp: Math.max(1, Math.round(num(def.hp, 100))),
+    fp, max: clampI(def.max, 1, SIZE * SIZE, 4), colliders, blurb: String(def.blurb || ''), addon: true, plots: Array.isArray(def.plots) ? def.plots.map(String) : null,
+    h: Math.max(0.2, num(def.h ?? def.height, 2.4)), color: Number.isFinite(+def.color) ? +def.color : 0x8a96a8, parts: def.parts ?? null, onPlace: typeof def.onPlace === 'function' ? def.onPlace : null } };
+}
+export function addPlot(def) {
+  const n = normPlot(def); if (!n.ok) return n; if (BUILTIN_PLOTS.includes(n.plot.id)) return { ok: false, why: `registerPlot: ${n.plot.id} is a built-in lot` };
+  const k = PLOTS.findIndex(p => p.id === n.plot.id); if (k >= 0) PLOTS[k] = n.plot; else PLOTS.push(n.plot); return { ok: true, id: n.plot.id, replaced: k >= 0, plot: n.plot };
+}
+export function addPieceType(def) {
+  const n = normPiece(def); if (!n.ok) return n; if (BUILTIN_PIECES.includes(n.piece.id)) return { ok: false, why: `registerPiece: ${n.piece.id} is a built-in piece` };
+  const replaced = !!PIECES[n.piece.id]; PIECES[n.piece.id] = n.piece; if (!PIECE_IDS.includes(n.piece.id)) PIECE_IDS.push(n.piece.id); return { ok: true, id: n.piece.id, replaced, piece: n.piece };
+}
+// pieces allowed on a plot: built-ins everywhere unless the plot lists its own; add-on pieces where their def.plots allows
+export function piecesFor(plotId) { const pl = plotById(plotId); return PIECE_IDS.filter(t => { const T = PIECES[t]; if (pl?.pieces && !pl.pieces.includes(t)) return false; return !T.plots || T.plots.includes(plotId); }); }
 export const TURRET = { range: 32, rate: 0.9, dmg: 1 };
 
 export const plotById = id => PLOTS.find(p => p.id === id) || null;
@@ -54,21 +90,26 @@ export function pieceAt(state, i, j) { for (const p of state.pieces) for (const 
 export const emptyPlot = () => ({ owned: false, pieces: [], stash: { credits: 0, medkits: 0 }, nextId: 1, boughtAt: 0 });
 export function freshSave() { const s = { v: 1, plots: {} }; for (const p of PLOTS) s.plots[p.id] = emptyPlot(); return s; }
 // repairs partial / corrupt / older data; never throws
+// Unknown plot ids and piece types are kept verbatim (s.plots[id] / plot.later) so an add-on that registers after the save
+// loads gets its data back: base.js re-runs migrate on its own state after every register call.
 export function migrate(raw) {
   const s = freshSave(); if (!raw || typeof raw !== 'object') return s;
+  for (const [id, o] of Object.entries(raw.plots && typeof raw.plots === 'object' ? raw.plots : {})) if (!plotById(id) && o && typeof o === 'object' && /^[\w-]{1,40}$/.test(id) && (o.owned || o.pieces?.length)) s.plots[id] = JSON.parse(JSON.stringify(o));
   for (const p of PLOTS) {
     const o = raw.plots?.[p.id]; if (!o || typeof o !== 'object') continue; const t = s.plots[p.id];
     t.owned = !!o.owned; t.boughtAt = +o.boughtAt || 0;
     t.stash = { credits: Math.max(0, Math.floor(+o.stash?.credits || 0)), medkits: Math.max(0, Math.floor(+o.stash?.medkits || 0)) };
-    let maxId = 0;
-    for (const q of Array.isArray(o.pieces) ? o.pieces : []) {
+    let maxId = 0; const later = [];
+    for (const q of [...(Array.isArray(o.pieces) ? o.pieces : []), ...(Array.isArray(o.later) ? o.later : [])]) {
+      if (q && typeof q.type === 'string' && !PIECES[q.type] && later.length < PIECE_CAP) { later.push({ ...q }); maxId = Math.max(maxId, +q.id || 0); continue; }
       if (!q || !PIECES[q.type]) continue;
       const pc = { id: Number.isFinite(+q.id) && +q.id > 0 ? +q.id : 0, type: q.type, i: q.i | 0, j: q.j | 0, r: (q.r | 0) & 3, hp: Number.isFinite(+q.hp) ? Math.max(1, Math.min(PIECES[q.type].hp, +q.hp)) : PIECES[q.type].hp };
-      if (!t.owned || !canPlace(t, pc.type, pc.i, pc.j, pc.r, { free: true }).ok) continue; // drop overlaps / out-of-grid
+      if ((!t.owned && !p.owner) || !canPlace({ ...t, owned: true }, pc.type, pc.i, pc.j, pc.r, { free: true }).ok) continue; // drop overlaps / out-of-grid (add-on lots keep theirs while unowned)
       if (!pc.id || t.pieces.some(x => x.id === pc.id)) pc.id = 0;
       t.pieces.push(pc); maxId = Math.max(maxId, pc.id);
     }
     for (const pc of t.pieces) if (!pc.id) pc.id = ++maxId;
+    if (later.length) t.later = later; // piece types whose add-on hasn't registered (yet)
     t.nextId = Math.max(+o.nextId || 1, maxId + 1);
   }
   return s;
@@ -79,6 +120,7 @@ export function save(ls, s) { try { ls.setItem(SAVE_KEY, JSON.stringify(s)); ret
 // placement check. opts: { credits (number, omit = don't check), free (skip cost + caps) }
 export function canPlace(state, type, i, j, r, opts = {}) {
   const T = PIECES[type]; if (!T) return { ok: false, why: 'Unknown piece' };
+  if (opts.plotId && !piecesFor(opts.plotId).includes(type)) return { ok: false, why: 'Can\u2019t build that on this lot' };
   if (!state.owned) return { ok: false, why: 'Buy the lot first' };
   const [w, d] = footprint(type, r);
   if (i < 0 || j < 0 || i + w > SIZE || j + d > SIZE) return { ok: false, why: 'Off your lot' };

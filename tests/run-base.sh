@@ -5,6 +5,7 @@
 here=$(cd "$(dirname "$0")" && pwd); cd "${PW:-/workspace/pw-ben-base}" || exit 1; cp "$here/test-base.js" .
 export SHOTS_DIR="${SHOTS_DIR:-$PWD/shots}"; mkdir -p "$SHOTS_DIR"; L="${LOGS:-/tmp/ben-base/logs}"; mkdir -p "$L"
 node "$here/test-base-unit.mjs" > "$L/unit.log" 2>&1; echo "$? unit $(tail -1 "$L/unit.log")"
+node "$here/test-base-register-unit.mjs" > "$L/unit-reg.log" 2>&1; echo "$? register unit $(tail -1 "$L/unit-reg.log")"
 run() { f=$L/$(echo "$*" | tr -c 'a-zA-Z0-9\n' '_').log; env "$@" timeout 900 node test-base.js > "$f" 2>&1; echo "$? $* $(tail -1 "$f")"; }
 for BR in webkit chromium; do
   run BR=$BR DEV="iPhone SE (3rd gen)"
