@@ -354,7 +354,7 @@ function stepRun(dt, h) {
       else if (r.t <= 0) fail(`${P.name} didn\u2019t make it. Dispatch is not impressed.`);
     } else if (r.stage === 'transport') {
       r.target = r.clinic.at; r.text = `Drive to ${r.clinic.name}`;
-      if (!i.driving) { const c = nearestClinic(p); if (dist(p, c.at) < R_DROP) { r.clinic = c; complete(); return; } r.text = `Carry on: ${r.clinic.name}`; }
+      if (!i.driving) { const c = nearestClinic(p); if (dist(p, c.at) < R_DROP) { r.clinic = c; complete(); return; } r.text = `Get back in a vehicle and drive to ${r.clinic.name}`; }
       if (dist(p, r.clinic.at) < R_DROP && sp < 7) { complete(); return; }
       if (r.t <= 0) fail(`${P.name} flatlined in your back seat. Rough night.`);
     }
@@ -384,7 +384,7 @@ function actStabilise() {
   const h = here(); if (!run || run.type !== 'paramedic' || run.stage !== 'stabilise' || !h) return false;
   if (dist([h.x, h.z], run.patient.at) > STAB_R) { toast(`🩺 Get close to ${run.patient.name} (within ${STAB_R} m) and ${isTouch() ? 'tap Stabilise' : 'press G'}.`, 1800); return false; }
   run.taps++; emit('stage', { stage: 'stabilise', taps: run.taps });
-  if (run.taps >= run.patient.need) { toast(`🩺 ${run.patient.name} is stable. Get them in a vehicle.`, 2400); setStage('load', Math.max(25, 40 - 2 * run.L), { text: 'Load patient' }); }
+  if (run.taps >= run.patient.need) { toast(`🩺 ${run.patient.name} is stable. Pull up next to them in any vehicle.`, 2400); setStage('load', Math.max(25, 40 - 2 * run.L), { text: `Pull up next to ${run.patient.name} in any vehicle` }); }
   renderHud(); return true;
 }
 
