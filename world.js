@@ -360,6 +360,8 @@ export function createWorld(ctx) {
     // known; solids and parked cars it is above (minus ROOF.CLEAR) don't block it, so flying over a building no longer
     // crashes. Callers without a vehicle (people, NPC buggies, the 0.45 m exit probe) keep the old 2-D behaviour.
     if (yb === undefined && skip && skip.spec && Number.isFinite(skip.y) && r > 0.6) yb = skip.y;
+    ROOF.setMover(yb, height); // #44 add-on colliders (SSX.colliders.resolve, wrapped in roofs.js when present) use the same bottom
+    const vehicles = yb === undefined ? allVehicles() : allVehicles().filter(v => !(v.parked && ROOF.clearsCar(v, yb, height))); // cars it's above don't block
     let hit = false;
     for (const s of solids) {
       if (yb !== undefined && ROOF.overlaps(s, x, z, r) && ROOF.clears(s, x, z, r, yb, height)) continue;
@@ -368,15 +370,16 @@ export function createWorld(ctx) {
       const dx = x - s.x, dz = z - s.z, d = Math.hypot(dx, dz), m = s.r + r;
       if (d < m) { hit = true; const k = m / (d || 1); x = s.x + dx * k; z = s.z + dz * k; }
     }
-    for (const v of vehicles) { if (v === skip || !v.parked || (yb !== undefined && ROOF.clearsCar(v, yb, height))) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
-    const xc = (yb !== undefined && yb > height(x, z) + 4) ? null : globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); no heights yet, so only an airborne car well above prop height skips them
+    for (const v of vehicles) { if (v === skip || !v.parked) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
+    const xc = globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
     return hit ? { x, z } : null;
   }
+  function allVehicles() { return vehicles; } // collide() shadows `vehicles` with the cars a flying vehicle can't clear
   function roofGround(car) {
     if (!C || !car) return height;
     const r = (car.spec?.r || 2) * 0.75;
     return (x, z) => {
-      const { g, src } = ROOF.groundUnder(solids, x, z, r, car.y, height, vehicles, car);
+      const { g, src } = ROOF.groundUnder(solids.concat(ROOF.colliderSolids(x, z, r, height)), x, z, r, car.y, height, vehicles, car);
       // stepping on/off a roof: reset updateRover's ground-velocity history so the height jump doesn't launch the car
       if (x === car.x && z === car.z && src !== car.roofSrc) { car.roofSrc = src; if (car.prevG != null) car.prevG = g; }
       return g;

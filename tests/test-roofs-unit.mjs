@@ -71,4 +71,46 @@ ok('prevG reset on stepping onto a roof', s.prevG === g0 && s.roofSrc === block)
 const s2 = car(0, 0, 20.5, { prevG: 10, roofSrc: block }); W.roofGround(s2)(s2.x, s2.z); ok('prevG untouched while on the same roof', s2.prevG === 10);
 // off-colony: roofGround falls back to terrain
 const W0 = mk(ROOF, solids, vehicles, terrain, null); ok('no colony: terrain function', W0.roofGround(car(0, 0, 30)) === terrain);
+// ---- PR #44 add-on colliders (SSX.colliders), feature-detected ----
+ok('no #44: attachColliders is a no-op', ROOF.attachColliders({}) === null && ROOF.colliderSolids(0, 0, 1).length === 0);
+// use #44's real mars/colliders.js when this tree has it (a merge), else a minimal fake with the same API
+let API; try { API = (await import('../mars/colliders.js')).default; console.log('     (using mars/colliders.js from #44)'); } catch (e) {
+  const by = new Map(); let seq = 0; const pub = s => s.type === 'cyl' ? { id: s.id, type: 'cyl', x: s.x, z: s.z, r: s.r, group: s.group } : { id: s.id, type: 'box', x: s.x, z: s.z, hx: s.hx, hz: s.hz, yaw: s.yaw || 0, group: s.group };
+  const ext = s => s.type === 'cyl' ? s.r : Math.hypot(s.hx, s.hz);
+  API = { add: sh => { const s = { ...sh, id: sh.id != null ? String(sh.id) : 'col' + (++seq) }; by.set(s.id, s); return s.id; }, remove: id => by.delete(String(id)),
+    removeGroup: g => { let k = 0; for (const s of [...by.values()]) if (s.group === g) { by.delete(s.id); k++; } return k; }, clear: () => { by.clear(); return true; },
+    list: g => [...by.values()].filter(s => g == null || s.group === g).map(pub), query: (x, z, r = 1) => [...by.values()].filter(s => Math.hypot(x - s.x, z - s.z) < r + ext(s)).map(pub),
+    resolve: (x, z, r = 0.45) => { let hit = false; for (const s of by.values()) { if (s.type !== 'box') continue; const dx = x - s.x, dz = z - s.z; if (Math.abs(dx) < s.hx + r && Math.abs(dz) < s.hz + r) { hit = true; if (s.hx + r - Math.abs(dx) < s.hz + r - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * (s.hx + r); else z = s.z + Math.sign(dz || 1) * (s.hz + r); } } return hit ? { x, z } : null; } };
+}
+const G = { SSX: { colliders: API } }; globalThis.SSX = G.SSX; // the merged collide() reads globalThis.SSX
+// one collider registered BEFORE attach (falls back to the default height), the rest after
+API.clear?.(); const early = API.add({ type: 'box', x: 200, z: 0, hx: 3, hz: 3, group: 'street' });
+ok('attachColliders wraps #44', ROOF.attachColliders(G) === API && API.__roofs === true && ROOF.attachColliders(G) === API);
+const tene = API.add({ type: 'box', x: 100, z: 0, hx: 6, hz: 4, h: 9, group: 'street', tag: 'tenement' }); // declared h
+const cont = API.add({ type: 'box', x: 130, z: 0, hx: 3, hz: 1.2, yaw: 0.3, group: 'street', tag: 'tag:container' }); // tag height 2.6
+const meshObj = { traverse(f) { f({ geometry: { boundingBox: { min: { x: -1, y: 0, z: -1 }, max: { x: 1, y: 2, z: 1 } } }, matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 160, terrain(160, 0) + 3, 0, 1] } }); } };
+const meshC = API.add({ type: 'cyl', x: 160, z: 0, r: 1.2, group: 'street', mesh: meshObj }); // mesh bounds: top = ground + 5
+const at = (id, x, z) => ROOF.colliderSolids(x, z, 0.1, terrain).find(q => q.col === id);
+ok('declared h -> top', Math.abs(ROOF.topOf(at(tene, 100, 0)) - (terrain(100, 0) + 9)) < 1e-9);
+ok('tag height -> top', Math.abs(ROOF.topOf(at(cont, 130, 0)) - (terrain(130, 0) + 2.6)) < 1e-9);
+ok('mesh bounds -> top', Math.abs(ROOF.topOf(at(meshC, 160, 0)) - (terrain(160, 0) + 5)) < 1e-9);
+ok('pre-attach collider gets the default height', Math.abs(ROOF.topOf(at(early, 200, 0)) - (terrain(200, 0) + ROOF.COL_DEF_H)) < 1e-9);
+// what world.collide does on the #44 line: setMover(yb) then SSX.colliders.resolve(x, z, r)
+const res = (x, z, yb) => { ROOF.setMover(yb, terrain); return API.resolve(x, z, R); };
+ok('ground car hits a #44 wall', !!res(93.5, 0, terrain(93.5, 0)));
+ok('car below the #44 top hits', !!res(93.5, 0, terrain(93.5, 0) + 7));
+ok('car above the #44 top passes', res(93.5, 0, terrain(93.5, 0) + 9.5) === null);
+ok('people (no yb) unchanged', !!res(94.2, 0, undefined));
+ok('mover is one-shot', !!API.resolve(93.5, 0, R));
+ok('rotated #44 box still blocks on the ground', !!res(130, 0, terrain(130, 0)));
+ok('rotated #44 box cleared from above', res(130, 0, terrain(130, 0) + 3) === null);
+const Wc = mk(ROOF, [], [], terrain, { name: 'flats' });
+ok('land on a #44 roof', Math.abs(Wc.roofGround(car(100, 0, terrain(100, 0) + 10))(100, 0) - (terrain(100, 0) + 9)) < 1e-9);
+ok('no roof from a #44 collider you are below', Wc.roofGround(car(100, 0, terrain(100, 0) + 2))(100, 0) === terrain(100, 0));
+if (src.slice(a, b).includes('SSX?.colliders?.resolve')) { // merged with #44: the real collide() line
+  ok('merged collide: ground car hits #44 wall', !!Wc.collide(93.5, 0, R, car(93.5, 0, terrain(93.5, 0))));
+  ok('merged collide: flying car passes #44 wall', Wc.collide(93.5, 0, R, car(93.5, 0, terrain(93.5, 0) + 9.5)) === null);
+}
+API.removeGroup('street'); ok('removeGroup clears tops', ROOF.colliderSolids(100, 0, 1, terrain).length === 0);
+globalThis.SSX = undefined;
 console.log(`\nroofs: ${n - fails}/${n} passed`); if (fails) process.exit(1);

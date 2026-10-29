@@ -8,7 +8,7 @@
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8777/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || '393x852';
 const out = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/', PFX = process.env.PFX || 'livefix';
-const ONLY = process.env.ONLY || 'roofs,rides';
+const ONLY = process.env.ONLY || 'roofs,rides', AREA = process.env.AREA || '';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
 (async () => {
@@ -70,12 +70,18 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       // ================= BUG 1: roofs =================
       await boot(SAVE); ok('drive', null, await drive());
       ok('hasVehicleGround', null, await G(() => typeof window.__app.surface.world.vehicleGround === 'function'));
+      // AREA=flats: search Red Tape Flats (mars-rough district) and let #44's street module load there, if present
+      if (AREA === 'flats') {
+        const d = await G(() => (window.__app.surface.world.colony.districts || []).find(d => d.kind === 'rough'));
+        await G(d => window.__app.surface.debugMove(d.x, d.z + d.r + 10, 0), d); await frames(6);
+        R.street44 = await wait(() => !!window.SSX?.colliders && window.SSX.colliders.count > 0, 15000);
+      }
       // find a big flat-roofed building with a clear 30 m run-up on its west side (from the real world.solids via collide)
-      const B = await G(() => {
-        const w = window.__app.surface.world, col = w.colony, probe = { y: 1e6, spec: { r: 0.01 }, x: 0, z: 0 }, low = { y: -1e6, spec: { r: 0.01 } };
+      const B = await G(AREA => {
+        const w = window.__app.surface.world, flats = AREA === 'flats' && (w.colony.districts || []).find(d => d.kind === 'rough'), col = flats ? { x: flats.x, z: flats.z } : w.colony, SPAN = flats ? 80 : 200, probe = { y: 1e6, spec: { r: 0.01 }, x: 0, z: 0 }, low = { y: -1e6, spec: { r: 0.01 } };
         const roof = (x, z) => w.vehicleGround(probe)(x, z), terr = (x, z) => w.vehicleGround(low)(x, z), solidAt = (x, z) => !!w.collide(x, z, 0.05);
         const cands = [], seen = new Set();
-        for (let x = col.x - 200; x <= col.x + 200; x += 2) for (let z = col.z - 200; z <= col.z + 200; z += 2) {
+        for (let x = col.x - SPAN; x <= col.x + SPAN; x += 2) for (let z = col.z - SPAN; z <= col.z + SPAN; z += 2) {
           if (!solidAt(x, z)) continue; const t = roof(x, z), g = terr(x, z); if (t - g < 4) continue;
           const same = (a, b) => Math.abs(roof(a, b) - t) < 0.01;
           let ex = x; while (same(ex - 0.25, z) && ex > x - 60) ex -= 0.25; // west roof edge (incl. car pad)
@@ -83,18 +89,18 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
           const cx = (ex + fx) / 2; let nz = z; while (same(cx, nz - 0.25) && nz > z - 60) nz -= 0.25; let sz = z; while (same(cx, sz + 0.25) && sz < z + 60) sz += 0.25;
           const cz = (nz + sz) / 2, key = [ex, fx, nz, sz].join(); if (seen.has(key) || fx - ex < 6 || sz - nz < 4) continue; seen.add(key);
           if (!same(ex + 0.5, cz) || !same(fx - 0.5, cz)) continue;
-          let clear = true; for (let d = 2; d <= 32 && clear; d += 1) if (w.collide(ex - d, cz, 1.8) || w.collide(ex - d, cz + 1.5, 1.8) || w.collide(ex - d, cz - 1.5, 1.8)) clear = false;
-          if (clear) cands.push({ x: cx, z: cz, top: t, g, ex, fx, w: fx - ex, d: sz - nz });
+          let clear = true; for (let d = 2; d <= (flats ? 18 : 32) && clear; d += 1) if (w.collide(ex - d, cz, 1.8) || w.collide(ex - d, cz + 1.5, 1.8) || w.collide(ex - d, cz - 1.5, 1.8)) clear = false;
+          if (clear) cands.push({ run: flats ? 16 : 30, x: cx, z: cz, top: t, g, ex, fx, w: fx - ex, d: sz - nz });
         }
         cands.sort((a, b) => b.w * b.d - a.w * a.d); return cands[0] || null;
-      });
+      }, AREA);
       ok('foundBuilding', B && JSON.stringify({ x: Math.round(B.x), z: Math.round(B.z), h: +(B.top - B.g).toFixed(1), w: B.w }), !!B);
       if (B) {
         // record speed reversals / crash sfx per frame
         await G(() => { const st = window.__lfRec = { minSpeed: 1e9, crashes: 0, maxX: -1e9, overRoof: 0, maxY: -1e9 }; const s0 = window.__app.sfx().length;
           const f = () => { const c = window.__tc?.car; if (c) { st.minSpeed = Math.min(st.minSpeed, c.speed); st.maxX = Math.max(st.maxX, c.x); st.maxY = Math.max(st.maxY, c.y); } st.crashes = window.__app.sfx().slice(s0).filter(k => k === 'crash').length; if (!st.stop) requestAnimationFrame(f); }; requestAnimationFrame(f); });
         // 1a. take off from the street west of it: thrust + boost (Space + Shift + W), straight east over the roof
-        await G(B => { const s = window.__app.surface; s.debugMove(B.ex - 30, B.z, -Math.PI / 2); }, B); await frames(4);
+        await G(B => { const s = window.__app.surface; s.debugMove(B.ex - B.run, B.z, -Math.PI / 2); }, B); await frames(4);
         await G(B => { const c = window.__tc.car; c.y = B.top + 3.5; c.vy = 2; c.air = true; c.speed = 18; window.__lfRec.minSpeed = 1e9; window.__lfRec.maxX = -1e9; }, B);
         await keys(true, 'KeyW', 'ShiftLeft', 'Space');
         let midShot = false;
@@ -120,6 +126,38 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
         await keys(true, 'KeyW', 'ShiftLeft'); { const t0w = Date.now(); while (Date.now() - t0w < 20000) { await sleep(200); if ((await G(() => window.__lfRec.minSpeed)) < 0) break; } } await keys(false, 'KeyW', 'ShiftLeft');
         const wall = await G(() => window.__lfRec);
         ok('groundWallHit', JSON.stringify({ maxX: +(wall.maxX - B.ex).toFixed(1), minV: +wall.minSpeed.toFixed(1) }), wall.maxX < B.ex + 0.5 && wall.minSpeed < 0);
+        await G(() => { window.__lfRec.stop = true; });
+      }
+      // ---- PR #44 SSX.colliders (only when that API is merged in): fly over one, land on it, hit it on the ground ----
+      const K = await G(() => { const A = window.SSX?.colliders; if (!A?.__roofs) return null;
+        const w = window.__app.surface.world, terr = (x, z) => w.vehicleGround({ y: -1e6, spec: { r: 0.01 } })(x, z);
+        const c = A.list().filter(s => s.type === 'box' && Math.min(Math.abs(Math.sin(s.yaw || 0)), Math.abs(Math.cos(s.yaw || 0))) < 0.1)
+          .map(s => { const sn = Math.abs(Math.sin(s.yaw || 0)) > 0.5; return { ...s, hx: sn ? s.hz : s.hx, hz: sn ? s.hx : s.hz }; }).filter(s => s.hx >= 1 && s.hz >= 1) // world-axis extents
+          .map(s => ({ ...s, top: A.topOf(s.id), g: terr(s.x, s.z) })).filter(s => s.top - s.g > 1.5 && s.top - s.g < 4.5)
+          .filter(s => { for (let d = 2; d <= 14; d++) if (w.collide(s.x - s.hx - d, s.z, 1.8)) return false; return true; });
+        c.sort((a, b) => b.hx * b.hz - a.hx * a.hz); return c[0] || null; });
+      if (await G(() => !!window.SSX?.colliders)) ok('col44Found', K && JSON.stringify({ id: K.id, h: +(K.top - K.g).toFixed(2), hx: K.hx, hz: K.hz }), !!K);
+      if (K) {
+        const ext = K.hx + 0.2;
+        await G(() => { const st = window.__lfRec = { minSpeed: 1e9, crashes: 0, maxX: -1e9 }; const s0 = window.__app.sfx().length;
+          const f = () => { const c = window.__tc?.car; if (c) { st.minSpeed = Math.min(st.minSpeed, c.speed); st.maxX = Math.max(st.maxX, c.x); } st.crashes = window.__app.sfx().slice(s0).filter(k => k === 'crash').length; if (!st.stop) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+        await G(([K, ext]) => window.__app.surface.debugMove(K.x - ext - 13, K.z, -Math.PI / 2), [K, ext]); await frames(4);
+        await G(K => { const c = window.__tc.car; c.y = K.top + 2.5; c.vy = 2; c.air = true; c.speed = 16; window.__lfRec.minSpeed = 1e9; window.__lfRec.maxX = -1e9; }, K);
+        await keys(true, 'KeyW', 'ShiftLeft', 'Space'); { const t0 = Date.now(); while (Date.now() - t0 < 60000) { await sleep(80); if ((await G(() => window.__tc.car.x)) > K.x + ext + 12) break; } }
+        await keys(false, 'KeyW', 'ShiftLeft', 'Space');
+        const rf = await G(() => window.__lfRec);
+        ok('col44FlewOver', JSON.stringify({ past: Math.round(rf.maxX - K.x - ext), minV: +rf.minSpeed.toFixed(1), crash: rf.crashes }), rf.maxX > K.x + ext + 5 && rf.minSpeed > 0 && rf.crashes === 0);
+        await G(K => window.__app.surface.debugMove(K.x, K.z, -Math.PI / 2), K); await frames(2);
+        await G(K => { const c = window.__tc.car; c.y = K.top + 3; c.vy = 0; c.air = true; c.speed = 0; c.prevG = null; }, K);
+        await wait(K => { const c = window.__tc.car; return !c.air && Math.abs(c.y - K.top) < 0.15; }, 20000, K); await sleep(800);
+        const on = await G(() => { const c = window.__tc.car; return { y: c.y, air: c.air }; });
+        ok('col44Landed', JSON.stringify({ dy: +(on.y - K.top).toFixed(2), air: on.air }), !on.air && Math.abs(on.y - K.top) < 0.15);
+        await G(() => window.__app.surface.setView?.('third')); await sleep(600); await shot('col44-on-top');
+        await G(([K, ext]) => window.__app.surface.debugMove(K.x - ext - 10, K.z, -Math.PI / 2), [K, ext]); await frames(4);
+        await G(() => { window.__lfRec.minSpeed = 1e9; window.__lfRec.maxX = -1e9; const c = window.__tc.car; c.speed = 10; c.y = window.__app.surface.world.vehicleGround({ y: -1e6, spec: { r: 0.01 } })(c.x, c.z); c.vy = 0; c.air = false; });
+        await keys(true, 'KeyW'); { const t0 = Date.now(); while (Date.now() - t0 < 20000) { await sleep(200); const q = await G(() => window.__lfRec); if (q.minSpeed < 0 || q.maxX > K.x) break; } } await keys(false, 'KeyW');
+        const wl = await G(() => window.__lfRec);
+        ok('col44GroundHit', JSON.stringify({ maxX: +(wl.maxX - (K.x - K.hx)).toFixed(1), minV: +wl.minSpeed.toFixed(1) }), wl.maxX < K.x - K.hx && wl.minSpeed < 0.5);
         await G(() => { window.__lfRec.stop = true; });
       }
     }
