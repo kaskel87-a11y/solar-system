@@ -28,7 +28,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 90000); await sleep(800);
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
-    await G(() => { window.__app.game.debug?.calm?.(true); window.__app.game.progress.credits = 5000; window.__app.game.save(); window.__app.surface.world.setWanted(0); window.__pev = []; window.SSX.pursuit.on(e => window.__pev.push({ type: e.type, how: e.how, why: e.why, fee: e.fee, kind: e.kind, to: e.to })); });
+    await G(() => { window.__app.game.debug?.calm?.(true); window.__app.game.progress.credits = 5000; window.__app.game.save(); window.__app.surface.world.setWanted(0); window.__pev = []; window.SSX.pursuit.on(e => window.__pev.push({ type: e.type, how: e.how, why: e.why, fee: e.fee, kind: e.kind, to: e.to, reason: e.reason })); });
     ok('driving', await drive());
     await flats(0, 0); await sleep(800);
     R.sites = await G(() => ({ hide: window.SSX.pursuit.hideouts().map(h => h.id), spray: window.SSX.pursuit.sprays().map(s => s.id) }));
@@ -46,6 +46,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     R.allEv = await G(() => window.__pev.map(e => e.type).join(',')); R.tierEv = await G(() => window.__pev.filter(e => e.type === 'tier').map(e => e.to).join(',')); ok('tierEvents', R.tierEv, R.tierEv === '1,2,3,4,5');
     await G(() => window.SSX.pursuit.debug.setHeat(0));
     ok('standDown', await wait(() => window.SSX.pursuit.units().filter(u => u.own).length === 0 && window.SSX.pursuit.roadblocks().length === 0, 15000));
+    R.spike = await G(() => { const P = window.SSX.pursuit; const a = P.spike(2, 'test convoy'), b = P.addHeat(9, 'test toll'), c = P.spike(0, 'noop'); const r = { a, b, c, heat: P.heat(), ev: window.__pev.filter(e => e.type === 'spike').map(e => e.reason + ':' + e.to), log: P.spikes().map(x => x.reason) }; P.debug.setHeat(0); return r; });
+    ok('spike', R.spike, R.spike.a.ok && R.spike.a.to === 2 && R.spike.b.ok && R.spike.b.to === 5 && R.spike.heat === 5 && !R.spike.c.ok && R.spike.ev.join() === 'test convoy:2,test toll:5' && R.spike.log.join() === 'test convoy,test toll');
+    await wait(() => window.SSX.pursuit.units().filter(u => u.own).length === 0, 15000);
     // ---- LOS search ----
     await G(() => { const P = window.SSX.pursuit; P.debug.setHeat(2); P.debug.los(true); P.debug.sync(); }); await sleep(800);
     const sh = await wait(() => window.SSX.pursuit.seen() && !window.SSX.pursuit.searching(), 8000); ok('seenHolds', await G(() => { const s = window.SSX.pursuit.debug.state(); return { stars: s.stars, seen: s.seen, search: !!s.search, forceLOS: s.forceLOS }; }), sh);
@@ -79,6 +82,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(desk ? 6000 : 3500);
     R.pit = await G(() => ({ dbg: window.__pdbg, ev: window.__pev.slice(window.__pev0).filter(e => /ram|pit|boxed|busted|wasted|shot/.test(e.type)).map(e => e.type), vol: window.__vol, modes: window.SSX.pursuit.units().filter(u => u.own).map(u => u.mode), down: window.__app.game.info.down }));
     ok('pitExclusion', R.pit, R.pitIn && R.pit.ev.length === 0 && R.pit.vol === 0 && !R.pit.down && R.pit.modes.every(m => m === 'hold'));
+    R.spikePit = await G(() => { const P = window.SSX.pursuit, h = P.heat(), r = P.spike(1, 'pit test'); return { h, r, after: P.heat() }; });
+    ok('spikePit', R.spikePit, !R.spikePit.r.ok && R.spikePit.r.why === 'pit' && R.spikePit.after === R.spikePit.h);
     await G(() => window.SSX.pursuit.debug.setHeat(0)); await sleep(800);
     // ---- floated car (zero-G): no NaN, no rams, units keep moving ----
     await flats(10, 30); await sleep(500);
