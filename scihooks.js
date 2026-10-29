@@ -75,7 +75,7 @@ export function bark(who, category, line, at) {
   if (typeof B === 'function') {
     regBarks();
     const npc = at ? { x: at.x, z: at.z, name: who, kind: 'sci' } : who;
-    try { if (B(npc, REG.has(cat) ? cat : (line || cat), { force: true }) !== false) return 'ssx'; } catch (e) { console.warn('[sci] SSX.bark', e); }
+    try { if (B(npc, REG.has(cat) ? cat : (line || category), { force: true }) !== false) return 'ssx'; } catch (e) { console.warn('[sci] SSX.bark', e); }
   }
   if (line) toast(`💬 ${who}: "${line}"`, 3600);
   return 'caption';
