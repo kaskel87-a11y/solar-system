@@ -69,7 +69,10 @@ const cb = read('mars/contraband.js'); for (const m of cb.matchAll(/\bbark\(o,\s
 for (const f of ['mars/barter.json', 'data/barter.json']) if (fs.existsSync(path.join(root, f))) for (const o of JSON.parse(read(f)).offers || []) for (const k of Object.keys(o.lines || {})) add('barter_' + k, f);
 console.log('caller keys:', [...keys.keys()].sort().join(', '));
 for (const k of ['activity_complete', 'idle', 'warn', 'poker_offer', 'pit_crowd', 'barter_accept']) ok(`scan found ${k}`, keys.has(k));
-const bad = [...keys].filter(([k]) => { const r = B.resolveBark(k, undefined, B.BARKS, () => {}); return !r || !lineOf(r) || lineOf(r) === k; });
+// scihooks bark(who, key) registers per-speaker categories (sci_silas_drive, sci_ossery_dim...) at runtime (scientists*.js)
+const sciSrc = files.filter(f => /(^|\/)scientists\d*\.js$/.test(f)).map(read).join('\n');
+const sciCat = (k, f) => /scihooks\.js$/.test(f) && new RegExp(`\\bsci_[a-z]+_${k}\\s*:`).test(sciSrc);
+const bad = [...keys].filter(([k, f]) => { if (sciCat(k, f)) return false; const r = B.resolveBark(k, undefined, B.BARKS, () => {}); return !r || !lineOf(r) || lineOf(r) === k; });
 ok('every caller key resolves to a real line', !bad.length, bad.map(([k, f]) => `${k} (${f})`).join(', '));
 for (const [k] of [...keys].sort()) { const r = B.resolveBark(k, undefined, B.BARKS, () => {}); console.log(`   ${k} -> ${r ? r.cat : 'SKIP'}`); }
 
