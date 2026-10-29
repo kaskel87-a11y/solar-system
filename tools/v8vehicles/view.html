@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- dev viewer for the v8 vehicles (look/vehicles.js driven through a stub SSX):
+     /tools/v8vehicles/view.html?only=rover,red_comet&cam=34|side|front|back|top&night=1&dmg=0.5&burn=1&vehicles=0 -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#2a1a14;overflow:hidden}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three/build/three.module.min.js", "three/addons/": "../../vendor/three/addons/" } }</script>
+<script>
+const q0 = new URLSearchParams(location.search), NIGHT = q0.get('night') === '1';
+window.__ticks = [];
+window.SSX = { registerSurfaceTick: f => window.__ticks.push(f), look: { tier: () => q0.get('tier') || 'med', nightness: () => NIGHT ? 1 : 0 }, time: { isNight: () => NIGHT, nightness: () => NIGHT ? 1 : 0 } };
+</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import '../../look/vehicles.js';
+import { buildVehicle, registerVehicle } from '../../world.js';
+import { buildRide } from '../../rides.js';
+import { buildRover } from '../../models.js';
+const q = new URLSearchParams(location.search), NIGHT = q.get('night') === '1';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.setPixelRatio(1); r.shadowMap.enabled = true; r.toneMapping = THREE.ACESFilmicToneMapping; document.body.appendChild(r.domElement);
+window.__app = { renderer: r };
+const sc = new THREE.Scene(); sc.background = new THREE.Color(NIGHT ? 0x0b0d16 : 0xc58a62);
+{ const es = new THREE.Scene(); es.background = new THREE.Color(NIGHT ? 0x05060a : 0x9a6a50); const sky = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ color: NIGHT ? 0x141a2a : 0xffd0a0, side: THREE.BackSide })); sky.scale.y = 0.5; sky.position.y = 6; es.add(sky); sc.environment = new THREE.PMREMGenerator(r).fromScene(es, 0.04).texture; }
+sc.add(new THREE.HemisphereLight(NIGHT ? 0x303850 : 0xffd8b0, NIGHT ? 0x100808 : 0x5a3020, NIGHT ? 0.25 : 0.8));
+const sun = new THREE.DirectionalLight(NIGHT ? 0x8090c0 : 0xffe2c0, NIGHT ? 0.25 : 2.4); sun.position.set(6, 10, 4); sun.castShadow = true; sun.shadow.camera.left = sun.shadow.camera.bottom = -30; sun.shadow.camera.right = sun.shadow.camera.top = 30; sun.shadow.mapSize.set(2048, 2048); sc.add(sun);
+const gnd = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x8a4a30, roughness: 1 })); gnd.rotation.x = -Math.PI / 2; gnd.receiveShadow = true; sc.add(gnd);
+const ALL = ['rover', 'buggy', 'hauler', 'hoverbike', 'shuttle', 'dust_runner', 'red_comet', 'ares_brute', 'olympus_gt', 'phobos_phantom'];
+for (const k of ['dust_runner', 'red_comet', 'ares_brute', 'olympus_gt', 'phobos_phantom']) registerVehicle(k, { vmax: 30 }, () => buildRide(k));
+window.__ticks.forEach(f => f(0, { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), name: 'x' }));
+const only = (q.get('only') || ALL.join(',')).split(','), vs = [];
+let rover = null;
+only.forEach((k, i) => {
+  const v = k === 'rover' ? buildRover() : buildVehicle(k, q.get('sec') === '1');
+  v.group.position.x = (i - (only.length - 1) / 2) * (k === 'shuttle' ? 8 : 5.2); if (k === 'shuttle') v.group.position.y = 0.6;
+  sc.add(v.group); vs.push(v); if (k === 'rover') rover = { ...v, kind: 'rover' };
+});
+const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 32), innerWidth / innerHeight, 0.1, 400);
+const span = Math.max(6, only.length * 5.4), mode = q.get('cam') || '34', D = span * 0.95 + 4;
+const P = { '34': [-D * 0.55, D * 0.32, -D * 0.8], side: [D, D * 0.18, 0.01], front: [0.01, D * 0.2, -D], back: [0.01, D * 0.25, D], top: [0.01, D * 1.2, 0.5] }[mode];
+cam.position.set(...P); cam.lookAt(0, 1.0, 0);
+const ctx = { scene: sc, camera: cam, height: () => 0, player: null, car: null, rover, name: 'Mars', isMobile: false };
+let t = 0, f = 0; const clk = new THREE.Clock();
+(function loop() {
+  const dt = Math.min(clk.getDelta(), 0.05); t += dt; f++;
+  for (const fn of window.__ticks) fn(dt, ctx);
+  if (f === 30) { const A = window.SSX.vehicles; for (const v of vs) { if (+q.get('dmg')) A.damage(v.group, +q.get('dmg')); if (q.get('burn') === '1') A.burn(v.group, 999); if (q.get('burn') === '2') { A.burn(v.group, 0.01); } } }
+  if (q.get('spin') === '1') for (const v of vs) for (const w of v.wheels) w.spin.rotation.x += dt * 4;
+  r.render(sc, cam); window.__viewT = t; window.__viewF = f; requestAnimationFrame(loop);
+})();
+</script></body></html>
