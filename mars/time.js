@@ -246,7 +246,7 @@ window.__time = {
   get sky() { return base?.sky ? { top: base.sky.material.uniforms.top.value.getHex(), horizon: base.sky.material.uniforms.horizon.value.getHex() } : null; },
   get stars() { return stars ? { visible: stars.visible, opacity: stars.material.opacity, n: stars.geometry.attributes.position.count } : null; },
   get neon() { return { level: neon.level, signs: neon.signs.length, halos: neon.signs.filter(s => s.halo.visible).length, near: neon.signs.filter(s => s.near).length, spill: neon.spill ? neon.spill.children.length : 0, spillOn: !!neon.spill?.visible, lamp: neon.lamp?.intensity ?? null, sample: neon.signs[0] ? neon.signs[0].m.material.color.r : null }; },
-  get boot() { return { ...boot }; }, dangerHour: () => DC.marsHour(), filters: () => filters.size, openClock
+  get boot() { return { ...boot }; }, dangerHour: () => (typeof DC.gameHour === 'function' ? DC.gameHour() : DC.marsHour()), /* the hour danger.js uses (reads SSX.time since #19) */ filters: () => filters.size, openClock
 };
 
 (function boot() {
