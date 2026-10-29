@@ -366,8 +366,8 @@ function propPhysics(props, dt) {
     const dx = ent.x - p.x, dz = ent.z - p.z; if (dx * dx + dz * dz > 144) continue;
     const along = dx * fx + dz * fz, lat = dx * lx + dz * lz, key = p, cd = (R?.cool || propCool).get(key) || 0;
     if (p.t === 'barrier') {
-      // live fix: a car whose bottom is above the 1.1 m barrier (minus roofs.js CLEAR 0.6) flies over it
-      if (car && Number.isFinite(car.y) && car.y > H(p.x, p.z) + 0.5) continue;
+      // live fix: a car whose physics bottom (car.y, not the mesh) clears the 1.1 m barrier flies over it (no roof to land on here)
+      if (car && Number.isFinite(car.y) && car.y > H(p.x, p.z) + 1.0) continue;
       if (Math.abs(lat) < 3 + r && Math.abs(along) < 0.4 + r) {
         const push = (Math.sign(along) || 1) * (0.4 + r) - along; ent.x += fx * push; ent.z += fz * push;
         if (car && Math.abs(car.speed) > 3) { if (now > cd) { sfx('crash'); (R?.cool || propCool).set(key, now + 400); } car.speed *= -0.3; }
