@@ -15,7 +15,7 @@ const PRECACHE = [
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   'vendor/three/build/three.module.min.js',
-  `clubdancers.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
+  `clubdancers.js${q}`, `privateshow.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'textures/2k_stars_milky_way.jpg'
 ];
