@@ -16,7 +16,7 @@ export function villaAt(x, z) {
     alarm: { wanted: 2, responseS: 18 }, loot: { credits: 400, item: 'contraband' },
   };
 }
-export const VILLA_AT = [380, 150]; // Helios Heights, east of the gate; open, flat (checked in tests/test-depth.js)
+export const VILLA_AT = [370, 85]; // Helios Heights, 50 m east of the hub; open and flat (probed in WebKit, rechecked by tests/test-depth.js)
 export const VILLA = villaAt(...VILLA_AT);
 
 export const fresh = () => ({ v: VERSION, unlocked: false, tipped: false, at: 0 });

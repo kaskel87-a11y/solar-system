@@ -18,7 +18,7 @@ export function prepTemplate(def, tpl, centre) {
       }
     }
     if (s.at_aj_random_in && def?.id === 'act-vale-scanner') { // a real, moving mark (activities/mark.js)
-      out.push({ type: 'goto', at: MARK.spots[0], r: 2.5, mark: MARK.id, text: MARK.text, ...(s.limit ? { limit: Math.max(s.limit, 180) } : {}) });
+      out.push({ type: 'goto', at: MARK.spots[0].slice(0, 2), r: 2.5, mark: MARK.id, text: MARK.text, ...(s.limit ? { limit: Math.max(s.limit, 180) } : {}) });
       continue;
     }
     if (s.type === 'race' && !s.pts) {
