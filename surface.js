@@ -836,6 +836,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     r.wasAir = r.air; return ang;
   }
   function updateRover(dt, input, g, r = rover) {
+    const height = world.vehicleGround(r); // live fix (roofs.js): ground under this vehicle = terrain or a roof it's on
     const sp = r.spec || VEHICLES.rover, me = driving && car === r;
     let thr = 0, st = 0;
     if (me) { [st, thr] = readMove(input); thr = clamp(thr, -1, 1); st = clamp(st, -1, 1); }
