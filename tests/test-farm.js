@@ -46,7 +46,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await tapSel('#farmPanel button[data-a="close"]');
 
     // ---- buy / build via the context button + sheet ----
-    await go('farm', 16);
+    await go('farm', 12);
     ok('contextBtn', await wait(() => document.getElementById('farmAct').classList.contains('on'), 10000));
     const ab = await center('#farmAct'); ok('contextSize', ab, ab && ab.h >= 44 && /Farm/.test(await G(() => document.getElementById('farmAct').textContent)));
     await tapSel('#farmAct'); ok('sheetOpens', await shown());
@@ -59,6 +59,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('btnSizes', btnH, btnH.length > 3 && btnH.every(h => h >= 44));
     await G(() => { const F = window.SSX.farm; F.plant(1, 'lichen'); F.addRack(); F.plant(2, 'glowberry'); });
     ok('scene', await G(() => window.SSX.farm.debug.scene()), (await G(() => window.SSX.farm.debug.scene()))?.dome);
+    // SSX.base (#24): the homestead is a registered lot and the dome + racks are base pieces at the layout spots; without it, we draw them
+    const BASE = await G(() => typeof window.SSX.base?.registerPlot === 'function');
+    if (BASE) { const bs = await G(() => { const b = window.SSX.base, p = b.plots().find(q => q.id === 'farm-homestead'); return { p, pieces: b.state('farm-homestead')?.pieces?.map(q => [q.type, q.i, q.j]), ids: b.piecesFor ? null : null, st: window.SSX.farm.status().base }; });
+      const fpl = await G(() => window.SSX.farm.places().find(q => q.id === 'farm'));
+      ok('basePlot', bs.p, bs.p && bs.p.owned && Math.abs(bs.p.world.x - fpl.x) < 0.5 && Math.abs(bs.p.world.z - fpl.z) < 0.5);
+      ok('basePieces', bs.pieces, bs.pieces && JSON.stringify(bs.pieces) === JSON.stringify([['farm-dome', 2, 0], ['farm-rack', 3, 7], ['farm-rack', 6, 7], ['farm-rack', 2, 7]]));
+      ok('baseNoDupDome', await G(() => !window.__app.surface.scene.getObjectByName('farm-dome')));
+      // a rack scrapped in base's own flow leaves the farm too (refund from base), and a rack placed there joins it
+      const rm = await G(() => { const b = window.SSX.base, p = b.state('farm-homestead').pieces.filter(q => q.type === 'farm-rack').at(-1); const r = b.remove('farm-homestead', p.id); const n1 = window.SSX.farm.status().racks.length; const r2 = b.place('farm-homestead', 'farm-rack', 2, 7, 0); window.SSX.farm.plant(2, 'glowberry'); return { r: r.ok, n1, r2: r2.ok, n2: window.SSX.farm.status().racks.length }; });
+      ok('baseSync', rm, rm.r && rm.n1 === 2 && rm.r2 && rm.n2 === 3);
+    } else R.base = 'no SSX.base.registerPlot: farm draws its own dome + racks';
     // upkeep: top up through the sheet
     const c2 = await cr(); await tapSel('#farmPanel button[data-a="water"]'); await tapSel('#farmPanel button[data-a="power"]');
     s = await St(); const c3 = await cr(); ok('refill', { w: s.water, p: s.power, cost: c2 - c3 }, s.water === 100 && s.power === 100 && c2 - c3 === 60 * 2 + 60 * 3);
@@ -69,9 +80,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('growOwn', { via: k.via, racks: k.s.racks, water: k.s.water }, k.via === 'own' && k.s.racks[0].growth > 0.25 && k.s.racks[0].growth < 0.35 && k.s.water < 100);
     await G(() => { window.__fakeH = 9; window.SSX.time = { hour: () => window.__fakeH, set: h => { window.__fakeH = h; }, isNight: () => false }; }); await fr(4);
     await G(() => { window.__fakeH = 11; }); await fr(6);
-    k = await St(); ok('growTimeTick', { clock: k.clock, g: k.racks[0].growth }, k.clock === 'SSX.time' && k.racks[0].growth > 0.45 && k.racks[0].growth < 0.55);
+    const EMPH = await G(() => typeof window.SSX.empire?.on === 'function' && !!window.SSX.farm.status().empire);
+    if (EMPH) await wait(() => window.SSX.farm.status().empire?.live, 6000); // SSX.empire (#52) re-baselines on SSX.time, then fires the 2 hours crossed
+    k = await St(); ok('growTimeTick', { clock: k.clock, g: k.racks[0].growth, emp: k.empire }, EMPH ? (k.clock === 'SSX.empire.hour' && k.racks[0].growth > 0.35 && k.racks[0].growth < 0.65) : (k.clock === 'SSX.time' && k.racks[0].growth > 0.45 && k.racks[0].growth < 0.55));
     k = await G(() => { const r = window.SSX.farm.skip(8); return { via: r.via, h: window.__fakeH, s: window.SSX.farm.status() }; });
     ok('growTimeSkip', { via: k.via, h: k.h, racks: k.s.racks }, k.via === 'SSX.time' && k.h === 19 && k.s.racks[0].ripe && !k.s.racks[1].ripe);
+    if (EMPH) { // one SSX.time hour -> exactly one empire 'hour' -> exactly one farm hour (no double tick); skip()'s 8 hour events were swallowed
+      await sleep(3200); const e0 = await St(); await G(() => { window.__fakeH = 20.05; }); await wait(n => window.SSX.farm.status().empire.hours > n, 6000, e0.empire.hours); await sleep(1500); const e1 = await St();
+      ok('empireHour', { h0: e0.hours, h1: e1.hours, n0: e0.empire.hours, n1: e1.empire.hours }, Math.abs(e1.hours - e0.hours - 1) < 0.01 && e1.empire.hours === e0.empire.hours + 1);
+    } else R.empireHour = 'no SSX.empire.on: own clock / SSX.time';
     ok('ripeEvent', await G(() => window.__fev.some(e => e.type === 'ripe')));
     // ---- storm (SSX.storm shape) ----
     await G(() => { window.SSX.farm.refill('water'); window.SSX.farm.refill('power'); window.SSX.storm = { active: () => true, intensity: () => 1, on() { return () => {}; } }; });
@@ -101,6 +118,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await tapSel('#farmPanel button[data-a="close"]');
     // ---- raids (SSX.raids on main): one won, one lost ----
     await go('farm', 6);
+    R.raidsBusy = await G(() => { const st = window.__raids?.state; if (st?.id && !/^farm-raid/.test(st.id)) { window.SSX.raids.stop(st.id, 'test'); return st.id; } return null; }); // another add-on's raid (e.g. empire crew raids, #52) holds the one SSX.raids slot
     k = await G(() => window.SSX.farm.raid({ waves: 1 })); R.raid1 = k;
     await G(() => { window.__raids?.flushQueue?.(); }); await fr(4);
     const won = await wait(() => { window.__raids?.flushQueue?.(); window.__raids?.killAll?.(); return window.__fev.some(e => e.type === 'raid:end'); }, 60000);
@@ -111,8 +129,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('raidLose', { r: k.r, sil0, sil1: k.s.siloCount }, k.r.ok && sil0 > 0 && k.s.siloCount < sil0 && await G(() => window.__fev.some(e => e.type === 'raid:end' && e.result === 'lose' && e.stolen > 0)));
     await G(() => window.__app.game.restore?.());
     // ---- floating car: no context button, actions say land first ----
-    await G(() => { window.__app.surface.summonRover(); }); await fr(4); await G(() => { if (!window.__app.surface.info.driving) window.__app.surface.interact(); }); await fr(3);
-    await G(() => { const p = window.SSX.farm.places()[0]; window.__app.surface.debugMove(p.x, p.z + 14, 0); }); await fr(3);
+    await G(() => { const p = window.SSX.farm.places()[0]; window.__app.surface.debugMove(p.x, p.z + 13, 0); }); await fr(3);
+    // the lost raid's raiders still roam: clear them so the rover can come
+    R.summon = await G(() => { window.__app.game.debug?.clear?.(); return window.__app.surface.summonRover(); }); await fr(4); await G(() => { if (!window.__app.surface.info.driving) window.__app.surface.interact(); }); await fr(3);
+    R.driving = await G(() => !!window.__app.surface.info.driving);
+    await G(() => { const p = window.SSX.farm.places()[0]; window.__app.surface.debugMove(p.x, p.z + 13, 0); }); await fr(3);
     // lift the car through the next tick's tc.car (the farm reads lastTc.car)
     R.float = await G(async () => { const F = window.SSX.farm; let hit = null; const lift = (dt, tc) => { if (tc.car) { tc.car.y = tc.height(tc.car.x, tc.car.z) + 40; tc.car.vy = 0; } };
       window.SSX.registerSurfaceTick(lift); await new Promise(r => setTimeout(r, 900));
@@ -124,7 +145,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     R.pit = await G(() => { const F = window.SSX.farm; return { pit: F.debug.inPit(), raid: F.raid(), act: document.getElementById('farmAct').classList.contains('on') }; });
     ok('pitSafe', R.pit, R.pit.pit && !R.pit.raid.ok && !R.pit.act);
     // phone screenshot at the farm: dome, racks, the one context button
-    await go('farm', 17); await G(() => { window.SSX.farm.plant(0, 'algae'); window.SSX.farm.plant(1, 'glowberry'); window.SSX.farm.skip(4); }); await fr(6);
+    await go('farm', 12); await G(() => { window.SSX.farm.plant(0, 'algae'); window.SSX.farm.plant(1, 'glowberry'); window.SSX.farm.skip(4); }); await fr(6);
     if (!desk) await page.screenshot({ path: out + `farm-dome-${tag}.png` });
     // ---- persistence: a real reload ----
     const before = await St();

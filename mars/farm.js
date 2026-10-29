@@ -87,6 +87,103 @@ function clockTick(dt) {
 }
 const hourNow = () => { const s = srcHour(); return s ? s.h : (S.hours + 8) % 24; };
 
+// ---------- SSX.base (Ben, #24): the homestead is a registered 20 x 20 lot; the dome and racks are base pieces ----------
+// Guarded: no SSX.base yet -> queue on window.SSX_pending.{plots,pieces} (drained by base at init / every frame; same id replaces).
+// No SSX.base at all -> we draw and charge everything ourselves, same layout.
+const B = () => window.SSX?.base, PLOT = F.LOT.id;
+let baseHook = null, baseSub = null, adopting = false, synced = false, rackIds = [];
+const SITE_LOCAL = () => F.SITES.farm.at;
+function baseLot() { try { return B()?.plots?.().find(p => p.id === PLOT) || null; } catch (e) { return null; } }
+function basePieces() { if (!baseLot()) return []; try { const p = B().state(PLOT)?.pieces; return Array.isArray(p) ? p.filter(x => x.type === F.LOT.dome.type || x.type === 'farm-rack') : []; } catch (e) { return []; } }
+function rackSpot(k, bRacks) {
+  const sorted = [...bRacks].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  if (k < sorted.length) { const p = sorted[k]; return { ...F.lotCentre(p.i, p.j, F.LOT.rackFp, p.r | 0), base: true }; }
+  const slot = F.LOT.rackSlots[Math.min(k, F.LOT.rackSlots.length - 1)]; return { ...F.lotCentre(slot[0], slot[1], F.LOT.rackFp), base: false };
+}
+function sortedRackIds() { return basePieces().filter(p => p.type === 'farm-rack').map(p => p.id).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })); }
+const domeParts = (THREE, kit) => { const R = F.LOT.dome.r, glass = kit.std(0xcfefff, { transparent: true, opacity: 0.22, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false });
+  const ring = new THREE.TorusGeometry(R, 0.12, 6, 40); ring.rotateX(Math.PI / 2); ring.translate(0, 0.3, 0);
+  return [[new THREE.SphereGeometry(R, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), glass], [ring, kit.std(0xdddddd)], [kit.box(R * 2 - 0.4, 1.7, 0.3, 0, -0.55, R - 0.2), kit.std(0x777777)]]; };
+const rackParts = (THREE, kit) => [[kit.box(1.6, 2.3, 3.4, 0, -0.45, 0), kit.std(0x9aa3ad, { metalness: 0.5 })], [kit.box(1.7, 0.06, 3.5, 0, 2.3, 0), kit.std(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.4 })],
+  [kit.box(0.1, 3.5, 0.1, 0, -0.3, -1.6), kit.std(0x777777)], [kit.box(0.1, 3.5, 0.1, 0, -0.3, 1.6), kit.std(0x777777)]];
+function pieceDefs() {
+  return [
+    { id: F.LOT.dome.type, name: 'Greenhouse dome', icon: '🫧', cost: F.PRICES.dome, fp: F.LOT.dome.fp, max: 1, hp: 200, h: 6, solid: false, plots: [PLOT], parts: domeParts, onPlace: e => onBasePlace(e) },
+    { id: 'farm-rack', name: 'Hydro rack', icon: '🪴', cost: F.PRICES.rack, fp: F.LOT.rackFp, max: F.LIMITS.racks, hp: 100, h: 2.4, plots: [PLOT], parts: rackParts, colliders: [[0, 0, 0.8, 1.7]], onPlace: e => onBasePlace(e) }
+  ];
+}
+function plotDef() { return { id: PLOT, name: F.SITES.farm.name, district: 'Mars outskirts', at: SITE_LOCAL(), price: F.PRICES.plot, owned: () => !!S.owned,
+  blurb: 'Flat, cheap, and far from the patrols. Grow potatoes, sell to the aliens.' }; }
+function hookBase() {
+  if (baseHook === 'api' || baseHook === 'old') { if (!baseSub && baseLot()) subBase(); return; }
+  const b = B();
+  if (b?.registerPlot && b?.registerPiece) {
+    if (baseHook !== 'queued') { try { for (const d of pieceDefs()) b.registerPiece(d); b.registerPlot(plotDef()); } catch (e) { console.warn('farm base', e); } }
+    baseHook = 'api'; if (baseLot()) subBase(); return;
+  }
+  if (b) { baseHook = 'old'; return; } // a base without the add-on API: we keep drawing and charging ourselves
+  if (baseHook === 'queued') return;
+  const q = (window.SSX_pending = window.SSX_pending || {}); (q.pieces = q.pieces || []).push(...pieceDefs()); (q.plots = q.plots || []).push(plotDef()); baseHook = 'queued';
+}
+function subBase() {
+  const b = B(); if (!b?.on || baseSub === b) return; baseSub = b; rackIds = sortedRackIds();
+  try { b.on('remove', e => onBaseRemove(e)); } catch (e) { /* */ }
+  try { b.on('lost', e => { if (e?.plotId === PLOT) refresh(true); }); } catch (e) { /* */ }
+  syncBase(); emit('base', { plot: PLOT, registered: true });
+}
+// keep S and the base's pieces in step: pieces placed in base's own Build flow join the farm; old saves get their pieces placed (we pay)
+function syncBase() {
+  if (synced || !baseLot() || !S.owned) return; synced = true;
+  const bp = basePieces(), hasDome = bp.some(p => p.type === F.LOT.dome.type), nR = bp.filter(p => p.type === 'farm-rack').length;
+  if (hasDome && !S.dome) { S.dome = true; S.domeHp = 100; }
+  while (S.racks.length < Math.min(nR, F.LIMITS.racks)) S.racks.push(F.freshRack());
+  adopting = true;
+  try {
+    if (S.dome && !hasDome) { give(F.PRICES.dome); if (!basePlace(F.LOT.dome.type).ok) spend(F.PRICES.dome); }
+    for (let k = nR; k < S.racks.length; k++) { give(F.PRICES.rack); if (!basePlace('farm-rack').ok) { spend(F.PRICES.rack); break; } }
+  } finally { adopting = false; }
+  rackIds = sortedRackIds(); save(); rebuildFarm(true);
+}
+// place at the layout spot first, then anywhere free on the lot
+function basePlace(type) {
+  const b = B(); if (!b?.place) return { ok: false, why: 'The base builder is not ready.' };
+  const fp = type === F.LOT.dome.type ? F.LOT.dome.fp : F.LOT.rackFp, tries = [];
+  if (type === F.LOT.dome.type) tries.push([F.LOT.dome.i, F.LOT.dome.j, 0]); else tries.push(...F.LOT.rackSlots.map(([i, j]) => [i, j, 0]));
+  for (let j = 0; j <= F.LOT.size - fp[1]; j++) for (let i = 0; i <= F.LOT.size - fp[0]; i++) tries.push([i, j, 0]);
+  try { if (S.owned && b.state?.(PLOT)?.owned === false) b.registerPlot(plotDef()); } catch (e) { /* ownership follows owned() every base frame; this syncs it now */ }
+  let why = 'No room left on the lot.';
+  for (const [i, j, r] of tries) { let o; try { o = b.place(PLOT, type, i, j, r); } catch (e) { o = { ok: false, why: String(e?.message || e) }; } if (o?.ok) { rackIds = sortedRackIds(); return { ok: true, piece: o.piece }; } if (o?.why && !/already there|off your lot|overlap|occupied/i.test(o.why)) { why = o.why; break; } }
+  return { ok: false, why };
+}
+function onBasePlace(e) {
+  if (adopting || e?.plotId !== PLOT) return; const t = e?.piece?.type;
+  if (t === F.LOT.dome.type && !S.dome) { S.dome = true; S.domeHp = 100; }
+  else if (t === 'farm-rack' && S.racks.length < F.LIMITS.racks && S.racks.length < sortedRackIds().length) S.racks.push(F.freshRack());
+  rackIds = sortedRackIds(); save(); dirty = true; refresh(true); guideTick();
+}
+function onBaseRemove(e) {
+  if (e?.plotId !== PLOT) return; const t = e?.type ?? e?.piece?.type, id = e?.pieceId ?? e?.piece?.id;
+  if (t === F.LOT.dome.type || (!t && !basePieces().some(p => p.type === F.LOT.dome.type) && S.dome)) { S.dome = false; }
+  else { const k = rackIds.indexOf(id); if (k >= 0 && k < S.racks.length) S.racks.splice(k, 1); else if (S.racks.length > sortedRackIds().length) S.racks.pop(); }
+  rackIds = sortedRackIds(); save(); dirty = true; refresh(true); guideTick();
+}
+
+// ---------- SSX.empire 'hour' (Ben, #52): one event per game hour drives growth, upkeep and raid rolls ----------
+// Guarded: no SSX.empire yet -> queue on window.SSX_pending.empire. The first event is a baseline; from then on our own clock stops
+// advancing the farm (no double ticks). skip() that moves SSX.time swallows the hour events it causes (skipDebt).
+let empOff = null, empHook = null, empOn = false, skipDebt = 0, skipDebtT = 0, empHours = 0;
+function onHour(e) {
+  if (!empOn) { if (e?.catchUp) return; empOn = true; emit('clock', { source: 'SSX.empire.hour', hour: e?.hour }); return; } // the first event (or burst) is a baseline: our clock already covered it
+  if (skipDebt > 0 && performance.now() < skipDebtT) { skipDebt--; return; } skipDebt = 0;
+  empHours++; advance(1, e?.catchUp ? 'catchup' : 'tick'); raidTick(0, 1); guideTick();
+}
+function hookEmpire() {
+  if (empHook) return; const E = EMP();
+  if (E?.on) { try { const off = E.on('hour', onHour); empOff = typeof off === 'function' ? off : null; } catch (e) { /* */ } empHook = 'api'; return; }
+  if (E) { empHook = 'old'; return; }
+  const q = (window.SSX_pending = window.SSX_pending || {}); (q.empire = q.empire || []).push(['hour', onHour]); empHook = 'queued';
+}
+
 // ---------- storms ----------
 let dbgStorm = 0, stormSub = null;
 function stormI() { try { const s = STORM(); if (s?.active?.()) { const i = +s.intensity?.(); return fin(i) ? F.clamp(i, 0, 1) : 0.5; } } catch (e) { /* */ } return dbgStorm; }
@@ -111,17 +208,21 @@ function advance(dh, why = 'tick') {
 }
 function skip(hours) {
   hours = Math.max(0, +hours || 0); const t = T(); let via = 'own';
-  try { if (t?.set && (t.hour || t.now)) { const h = (t.hour?.() ?? t.now()); t.set(((h + hours) % 24 + 24) % 24); via = 'SSX.time'; const s = srcHour(); if (s) { lastH = s.h; src = s.src; } } } catch (e) { via = 'own'; }
-  const o = advance(hours, 'skip'); return { ok: true, hours, via, out: o, status: status() };
+  try { if (t?.set && (t.hour || t.now)) { const h = (t.hour?.() ?? t.now()); if (empOn) { skipDebt += Math.floor(h + (hours % 24)) - Math.floor(h); skipDebtT = performance.now() + 3000; } t.set(((h + hours) % 24 + 24) % 24); via = 'SSX.time'; const s = srcHour(); if (s) { lastH = s.h; src = s.src; } } } catch (e) { via = 'own'; }
+  const o = advance(hours, 'skip'); guideTick(); return { ok: true, hours, via, out: o, status: status() };
 }
 
 // ---------- actions ----------
-function res(ok, msg, extra = {}) { if (msg) say(msg); refresh(true); return { ok, msg, ...extra }; }
+function res(ok, msg, extra = {}) { if (msg) say(msg); refresh(true); guideTick(); return { ok, msg, ...extra }; }
 function buy() { const n = need('farm'); if (n) return res(false, n); const v = F.canBuy(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.owned = true; S.water = 40; S.power = 40; save(); rebuildFarm(); emit('buy', { price: v.cost }); return res(true, `🏡 ${F.SITES.farm.name} is yours. Build the greenhouse dome next.`, { cost: v.cost }); }
-function buildDome() { const n = need('farm'); if (n) return res(false, n); const v = F.canDome(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
+function buildDome() { const n = need('farm'); if (n) return res(false, n); const v = F.canDome(S, credits()); if (!v.ok) return res(false, v.why);
+  if (baseLot()) { const p = basePlace(F.LOT.dome.type); if (!p.ok) return res(false, p.why); if (!S.dome) { S.dome = true; S.domeHp = 100; } save(); rebuildFarm(true); emit('dome', { price: v.cost, via: 'base' }); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: v.cost, via: 'base' }); }
+  if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.dome = true; S.domeHp = 100; save(); rebuildFarm(); emit('dome', { price: v.cost }); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: v.cost }); }
-function addRack() { const n = need('farm'); if (n) return res(false, n); const v = F.canRack(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
+function addRack() { const n = need('farm'); if (n) return res(false, n); const v = F.canRack(S, credits()); if (!v.ok) return res(false, v.why);
+  if (baseLot()) { const n0 = S.racks.length, p = basePlace('farm-rack'); if (!p.ok) return res(false, p.why); if (S.racks.length === n0) S.racks.push(F.freshRack()); save(); rebuildFarm(true); emit('rack', { n: S.racks.length, price: v.cost, via: 'base' }); return res(true, `🪴 Rack ${S.racks.length} installed. Plant something.`, { cost: v.cost, rack: S.racks.length - 1, via: 'base' }); }
+  if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.racks.push(F.freshRack()); save(); rebuildFarm(); emit('rack', { n: S.racks.length, price: v.cost }); return res(true, `🪴 Rack ${S.racks.length} installed. Plant something.`, { cost: v.cost, rack: S.racks.length - 1 }); }
 function plant(i, crop) { const n = need('farm'); if (n) return res(false, n); i = i == null ? S.racks.findIndex(r => !r.crop) : i | 0; const v = F.canPlant(S, i, crop, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
   F.plant(S, i, crop); save(); rebuildFarm(); emit('plant', { rack: i, crop, price: v.cost }); const c = F.CROPS[crop]; return res(true, `${c.icon} ${c.name} planted. Ripe in about ${c.hours} game hours if the water and power hold.`, { rack: i, cost: v.cost }); }
@@ -183,7 +284,7 @@ function raid_(opts = {}) {
   if (R?.start && p) { try { const r = R.start({ id, pos: { x: p.x, z: p.z }, radius: 24, attackers: 'gang', waves, label: 'Dust raiders', onWin: info => endRaid('win', info), onLose: info => endRaid('lose', info) }); if (r && r.ok !== false) raid.via = 'SSX.raids'; else raid.engineWhy = r?.why || 'refused'; } catch (e) { console.warn('farm raid engine', e); } }
   emit('raid', { id, via: raid.via, waves, watched, silo: F.siloCount(S) });
   say(`🚨 Dust raiders are hitting ${F.SITES.farm.name}. ${at('farm') ? 'Fight them off!' : directions('farm').replace('tap Farm', 'fight them off')}`);
-  refresh(true); return { ok: true, id, via: raid.via, waves, watched };
+  refresh(true); return { ok: true, id, via: raid.via, waves, watched, engineWhy: raid.engineWhy || null };
 }
 function endRaid(result, info = {}) {
   if (!raid) return false; const r = raid; raid = null; let st = { took: {}, n: 0 };
@@ -218,7 +319,7 @@ function build(scene) {
   const pg = new THREE.Group(); pg.name = 'farm-post'; pg.position.set(pp.x, ground(pp.x, pp.z) - 0.15, pp.z); G.add(pg);
   G.userData = { fg, pg };
   // trading post: pad, a humming obelisk, a canopy and three tall buyers
-  box(14, 0.3, 12, mat(0x3a3340), 0, 0, 0, pg); box(1.2, 6, 1.2, mat(0x221a33, { emissive: 0x7a3cff, emissiveIntensity: 0.6 }), -4.5, 0.3, -3.5, pg);
+  box(14, 2.3, 12, mat(0x3a3340), 0, -2, 0, pg); // a plinth: no floating lip where the ground dips box(1.2, 6, 1.2, mat(0x221a33, { emissive: 0x7a3cff, emissiveIntensity: 0.6 }), -4.5, 0.3, -3.5, pg);
   box(9, 0.25, 5, mat(0x5b4f73), 1.5, 3.4, -3.5, pg); for (const [x, z] of [[-2.8, -1.2], [5.8, -1.2], [-2.8, -5.8], [5.8, -5.8]]) box(0.25, 3.4, 0.25, mat(0x8d82a8), x, 0.3, z, pg);
   const skin = [0x5fd38a, 0xd07af0, 0x9fb3c8];
   F.BUYERS.forEach((b, k) => { const n = new THREE.Group(); const bd = new THREE.Mesh(new THREE.CapsuleGeometry(0.38, 1.7, 3, 8), mat(skin[k])); bd.position.y = 1.35; n.add(bd); const hd = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 8), mat(skin[k], { emissive: skin[k], emissiveIntensity: 0.25 })); hd.scale.set(1, 1.35, 1); hd.position.y = 2.75; n.add(hd); n.position.set(-1 + k * 2.6, 0.3, -2.4); pg.add(n); });
@@ -227,30 +328,35 @@ function build(scene) {
   try { window.SSX?.minimap?.addMarks?.('farm', [{ ...fp, color: '#4ade80', r: 3, ring: true }, { ...pp, color: '#b388ff', r: 2.6, ring: true }]); } catch (e) { /* */ }
 }
 function rebuildFarm(force) {
-  if (!G) return; const fg = G.userData.fg; const key = JSON.stringify([S.owned, S.dome, S.racks.map(r => [r.crop, Math.round(r.growth * 10), r.health > 0])]);
+  if (!G) return; const fg = G.userData.fg; const key = JSON.stringify([S.owned, S.dome, S.racks.map(r => [r.crop, Math.round(r.growth * 10), r.health > 0]), basePieces().map(p => [p.id, p.i, p.j, p.r])]);
   if (!force && key === rackKey) return; rackKey = key;
   if (rackG) { fg.remove(rackG); rackG.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); }
   rackG = new THREE.Group(); fg.add(rackG);
-  // the lot: a stake fence, a sign, a water tank and a solar mast. Unowned: a FOR SALE board.
-  box(22, 0.2, 22, mat(S.owned ? 0x6b4a32 : 0x7d5a40), 0, 0, 0, rackG);
-  for (let k = -5; k <= 5; k++) for (const [x, z] of [[k * 2, -11], [k * 2, 11], [-11, k * 2], [11, k * 2]]) box(0.15, 1.1, 0.15, mat(0xc9b38a), x, 0.2, z, rackG);
-  const s = sign(S.owned ? 'DUSTBOWL HOMESTEAD' : 'FOR SALE · HOMESTEAD', S.owned ? '#000000' : '#ffffff', S.owned ? '#ffd84d' : '#b31b1b', 7); s.position.set(0, 2.4, 11.2); rackG.add(s);
-  box(0.2, 2.2, 0.2, mat(0x555555), -3.5, 0.2, 11.1, rackG); box(0.2, 2.2, 0.2, mat(0x555555), 3.5, 0.2, 11.1, rackG);
-  if (S.owned) { const tk = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2.6, 14), mat(0x8ab4d8, { metalness: 0.4 })); tk.position.set(8.5, 1.5, -8.5); rackG.add(tk);
-    box(0.2, 3, 0.2, mat(0x777777), -8.5, 0.2, -8.5, rackG); const pnl = box(2.6, 0.08, 1.6, mat(0x1a2a6c, { metalness: 0.6, roughness: 0.3 }), -8.5, 3.2, -8.5, rackG); pnl.rotation.x = -0.5; }
-  if (S.dome) {
-    const d = new THREE.Mesh(new THREE.SphereGeometry(8, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.22, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }));
-    d.position.y = 0.2; d.name = 'farm-dome'; rackG.add(d);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 0.12, 6, 40), mat(0xdddddd)); ring.rotation.x = Math.PI / 2; ring.position.y = 0.3; rackG.add(ring);
-    const leaf = { potato: 0x6aa84f, algae: 0x2fbf71, glowberry: 0x6e5bff, lichen: 0xd9e6f2 };
-    S.racks.forEach((r, k) => {
-      const x = -4.5 + (k % 3) * 4.5, z = k < 3 ? -2.5 : 2.5;
-      box(3.2, 0.9, 1.2, mat(0x9aa3ad, { metalness: 0.5 }), x, 0.2, z, rackG); box(3.3, 0.06, 1.3, mat(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.4 }), x, 2.3, z, rackG);
-      if (r.crop) { const g = Math.max(0.1, r.growth), dead = r.health <= 0; const c = box(3, 0.9 * g, 1, mat(dead ? 0x5a4632 : leaf[r.crop], r.crop === 'glowberry' || r.crop === 'lichen' ? { emissive: leaf[r.crop], emissiveIntensity: r.growth >= 1 ? 0.6 : 0.2 } : {}), x, 1.1, z, rackG); c.name = 'farm-crop'; }
-    });
+  // the lot is one 20 x 20 m base lot (F.LOT): dome on the north 6 x 6 cells, racks along the south row, a path up the middle.
+  // With SSX.base (#24) the dome and racks are base pieces it draws; we draw only what it doesn't have, plus the crops.
+  box(19.6, 2.2, 19.6, mat(S.owned ? 0x6b4a32 : 0x7d5a40), 0, -2, 0, rackG);
+  for (let k = -5; k <= 5; k++) for (const [x, z] of [[k * 1.96, -9.8], [k * 1.96, 9.8], [-9.8, k * 1.96], [9.8, k * 1.96]]) { if (z === 9.8 && Math.abs(x) < 2.5) continue; box(0.15, 1.1, 0.15, mat(0xc9b38a), x, 0.2, z, rackG); }
+  box(3.6, 0.22, 7, mat(0x8f6f52), 0, 0.02, 5.5, rackG);
+  const s = sign(S.owned ? 'DUSTBOWL HOMESTEAD' : 'FOR SALE · HOMESTEAD', S.owned ? '#000000' : '#ffffff', S.owned ? '#ffd84d' : '#b31b1b', 5); s.position.set(0, 2.6, 10.3); rackG.add(s);
+  box(0.2, 2.4, 0.2, mat(0x555555), -2.5, 0.2, 10.2, rackG); box(0.2, 2.4, 0.2, mat(0x555555), 2.5, 0.2, 10.2, rackG);
+  if (S.owned) { const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 2.2, 14), mat(0x8ab4d8, { metalness: 0.4 })); tk.position.set(8.2, 1.3, 1.6); rackG.add(tk);
+    box(0.2, 3, 0.2, mat(0x777777), -8.2, 0.2, 1.6, rackG); const pnl = box(2, 0.08, 1.3, mat(0x1a2a6c, { metalness: 0.6, roughness: 0.3 }), -8.2, 3.2, 1.6, rackG); pnl.rotation.x = -0.5; }
+  const bp = basePieces(), bDome = bp.find(p => p.type === F.LOT.dome.type), bRacks = bp.filter(p => p.type === 'farm-rack');
+  if (S.dome && !bDome) {
+    const D = F.LOT.dome, c = F.lotCentre(D.i, D.j, D.fp);
+    const d = new THREE.Mesh(new THREE.SphereGeometry(D.r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.22, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+    d.position.set(c.x, 0.2, c.z); d.name = 'farm-dome'; rackG.add(d);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(D.r, 0.12, 6, 40), mat(0xdddddd)); ring.rotation.x = Math.PI / 2; ring.position.set(c.x, 0.3, c.z); rackG.add(ring);
   }
+  const leaf = { potato: 0x6aa84f, algae: 0x2fbf71, glowberry: 0x6e5bff, lichen: 0xd9e6f2 };
+  S.racks.forEach((r, k) => {
+    const c = rackSpot(k, bRacks), g0 = new THREE.Group(); g0.position.set(c.x, 0, c.z); g0.rotation.y = c.rot; rackG.add(g0);
+    if (!c.base) { box(1.6, 0.9, 3.4, mat(0x9aa3ad, { metalness: 0.5 }), 0, 0.2, 0, g0); box(1.7, 0.06, 3.5, mat(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.4 }), 0, 2.3, 0, g0);
+      for (const z of [-1.6, 1.6]) box(0.1, 2.1, 0.1, mat(0x777777), 0, 0.2, z, g0); }
+    if (r.crop) { const g = Math.max(0.1, r.growth), dead = r.health <= 0; const cm = box(1.4, 0.9 * g, 3.1, mat(dead ? 0x5a4632 : leaf[r.crop], r.crop === 'glowberry' || r.crop === 'lichen' ? { emissive: leaf[r.crop], emissiveIntensity: r.growth >= 1 ? 0.6 : 0.2 } : {}), 0, 1.1, 0, g0); cm.name = 'farm-crop'; }
+  });
 }
-function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); } G = null; rackG = null; rackKey = ''; try { window.SSX?.minimap?.clear?.('farm'); } catch (e) { /* */ } }
+function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); } G = null; rackG = null; rackKey = ''; try { window.SSX?.minimap?.clear?.('farm'); } catch (e) { /* */ } beacon = null; wpClear(); }
 
 // ---------- UI ----------
 const css = `
@@ -263,8 +369,11 @@ const css = `
 #farmPanel button.pri{background:#fff;color:#000}#farmPanel button:disabled{opacity:1;color:#c8c8c8;border-style:dashed;border-color:#8a8a8a}#farmPanel button small{display:block;font-weight:600;font-size:12px;opacity:.85}
 #farmPanel .row{display:flex;gap:8px}#farmPanel .row button{flex:1}
 #farmPanel .msg{min-height:18px;margin-top:8px;color:#ffd400;font-weight:800}
+#farmGuide{position:fixed;z-index:14;top:calc(122px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;width:max-content;max-width:min(460px,calc(100vw - 24px));padding:6px 6px 6px 14px;border-radius:14px;border:3px solid #ffd400;background:#000;color:#fff;font:800 16px/1.25 system-ui,sans-serif;box-shadow:0 2px 10px #000;pointer-events:none}
+#farmGuide.on{display:flex}#farmGuide small{display:block;color:#fff;font-weight:700;font-size:13px}
+#farmGuide button{pointer-events:auto;flex:none;width:44px;height:44px;border-radius:10px;border:2px solid #fff;background:#111;color:#fff;font:900 18px/1 system-ui,sans-serif;touch-action:manipulation}
 `;
-let panel, pBody, pMsg, actBtn, pMode = 'farm', actKey = '';
+let panel, pBody, pMsg, actBtn, guideEl, pMode = 'farm', actKey = '';
 function tap(el, fn) { let last = 0; const g = e => { const n = performance.now(); if (e?.type === 'click' && n - last < 700) return; if (e?.type === 'pointerup') last = n; fn(e); }; (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g); }
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -273,11 +382,13 @@ function ui() {
   panel.addEventListener('pointerup', e => { if (e.target === panel) close(); });
   actBtn = document.createElement('button'); actBtn.id = 'farmAct'; actBtn.type = 'button'; document.body.appendChild(actBtn);
   tap(actBtn, () => open(actBtn.dataset.mode || 'farm'));
+  guideEl = document.createElement('div'); guideEl.id = 'farmGuide'; guideEl.setAttribute('role', 'status'); guideEl.innerHTML = '<div id="farmGuideTxt"></div><button type="button" id="farmGuideX" aria-label="Hide the farm guide">✕</button>'; document.body.appendChild(guideEl);
+  tap(guideEl.querySelector('#farmGuideX'), () => guideOff());
   try { window.SSX.registerMenuItem({ id: 'rmFarm', label: '🌱 Farm', onTap: () => open(at('post') ? 'post' : 'farm') }); } catch (e) { console.warn('farm menu', e); }
 }
 function btn(a, label, sub, o = {}) { return `<button type="button" data-a="${a}"${o.i != null ? ` data-i="${o.i}"` : ''}${o.c ? ` data-c="${o.c}"` : ''}${o.b ? ` data-b="${o.b}"` : ''} class="${o.pri ? 'pri' : ''}" ${o.dis ? 'disabled' : ''}>${label}${sub ? `<small>${sub}</small>` : ''}</button>`; }
-function open(mode = 'farm') { if (!panel) return; pMode = mode; pMsg.textContent = ''; plantFor = null; render(); panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { mode }); }
-function close() { panel?.classList.remove('show'); }
+function open(mode = 'farm') { if (!panel) return; guideStart(); pMode = mode; pMsg.textContent = ''; plantFor = null; render(); panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { mode }); }
+function close() { panel?.classList.remove('show'); guideTick(true); }
 let plantFor = null;
 function render() {
   if (!pBody) return; const cr = credits(); let h = '';
@@ -321,6 +432,7 @@ function render() {
     if (S.owned) h += `<p>🏚️ Silo: ${silo || 'empty'} <span class="sub">(${F.siloCount(S)}/${F.LIMITS.silo}). Sell at ${F.SITES.post.name}, ${(() => { const a = W(F.SITES.farm.at), b = W(F.SITES.post.at); return a && b ? Math.round(Math.hypot(b.x - a.x, b.z - a.z) / 10) * 10 + ' m ' + F.dirWord(b.x - a.x, b.z - a.z) + ' of the farm' : 'south-east of the farm'; })()}.</span></p>`;
     h += btn('postInfo', `👽 ${F.SITES.post.name} prices`, 'See today\u2019s alien buyers.');
   }
+  if (S.guide.off && !S.guide.done) h += btn('guide', '🧭 Show the farm guide', 'One step at a time, from buying the plot to your first sale.');
   h += btn('close', 'Close', '');
   pBody.innerHTML = h;
   pBody.querySelectorAll('button[data-a]').forEach(b => tap(b, () => { if (!b.disabled) act(b.dataset); }));
@@ -332,7 +444,7 @@ function act(d) {
   if (a === 'plant') { plantFor = +d.i; return render(); }
   if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack(); else if (a === 'plantc') { r = plant(+d.i, d.c); plantFor = null; }
   else if (a === 'harvest') r = harvest(+d.i); else if (a === 'harvestAll') r = harvest('all'); else if (a === 'water' || a === 'power') r = refill(a); else if (a === 'patch') r = patch();
-  else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have); } else if (a === 'favor') r = useFavor(d.c);
+  else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have); } else if (a === 'favor') r = useFavor(d.c); else if (a === 'guide') r = guideOn();
   if (panel.classList.contains('show')) { render(); pMsg.textContent = r?.msg || ''; }
 }
 function refresh(force) {
@@ -342,34 +454,88 @@ function refresh(force) {
   if (force && panel?.classList.contains('show')) { const m = pMsg.textContent; render(); pMsg.textContent = m; }
 }
 
+// ---------- first-loop guide: one caption + one waypoint, until the first sale ----------
+// Waypoint: SSX.waypoint / SSX.nav / SSX.gps if any lands (set/to/add + clear/remove, guarded), else a minimap mark + a world beacon.
+let beacon = null, wpKey = '', wpVia = null, gKey = '', gStep = null;
+const NAV = () => { const S_ = window.SSX || {}; for (const k of ['waypoint', 'nav', 'gps']) { const n = S_[k]; if (n && (typeof n.set === 'function' || typeof n.to === 'function' || typeof n.add === 'function')) return n; } return null; };
+function wpClear() {
+  if (wpVia === 'api') { try { const n = NAV(); (n?.clear || n?.remove)?.call(n, 'farm-guide'); } catch (e) { /* */ } }
+  try { window.SSX?.minimap?.clear?.('farm-guide'); } catch (e) { /* */ }
+  if (beacon) { beacon.visible = false; } wpKey = ''; wpVia = null;
+}
+function wpSet(id) {
+  const p = W(F.SITES[id].at); if (!p) return; const key = id + ':' + Math.round(p.x) + ',' + Math.round(p.z); if (key === wpKey && (wpVia === 'api' || beacon?.visible)) return;
+  wpClear(); wpKey = key; const label = F.SITES[id].name, n = NAV();
+  if (n) { try { const o = { id: 'farm-guide', x: p.x, z: p.z, label, color: '#ffd400' }; const r = (n.set || n.to || n.add).call(n, o); if (r !== false && r?.ok !== false) { wpVia = 'api'; return; } } catch (e) { /* fall back */ } }
+  wpVia = 'beacon';
+  try { window.SSX?.minimap?.addMarks?.('farm-guide', [{ x: p.x, z: p.z, color: '#ffd400', r: 4.5, ring: true }]); } catch (e) { /* */ }
+  if (G) { if (!beacon) beacon = makeBeacon(); beacon.position.set(p.x, ground(p.x, p.z), p.z); beacon.visible = true; }
+}
+function makeBeacon() {
+  const b = new THREE.Group(); b.name = 'farm-beacon';
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 70, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+  col.position.y = 35; b.add(col);
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.2, 14), new THREE.MeshBasicMaterial({ color: 0xffd400 })); arrow.rotation.x = Math.PI; arrow.position.y = 12; arrow.name = 'farm-beacon-arrow'; b.add(arrow);
+  b.userData.arrow = arrow; G.add(b); return b;
+}
+let bT = 0;
+function beaconTick(dt) { if (!beacon?.visible) return; bT += dt; const a = beacon.userData.arrow; a.position.y = 12 + Math.sin(bT * 2.4) * 1.2; a.rotation.y += dt * 1.5; }
+function guideStart() { if (!S.guide.on && !S.guide.done) { S.guide.on = true; save(); emit('guide', { step: F.guideStep(S)?.id, why: 'start' }); } }
+function guideOff() { S.guide.off = true; save(); guideTick(true); emit('guide', { step: gStep?.id || null, why: 'off' }); return res(true, 'Farm guide hidden. Turn it back on in the Farm sheet.'); }
+function guideOn() { S.guide.off = false; S.guide.on = true; save(); guideTick(true); emit('guide', { step: F.guideStep(S)?.id, why: 'on' }); return res(true, '🧭 Farm guide on. Follow the yellow beacon.'); }
+function guideTick(force) {
+  if (!guideEl) return;
+  // start the guide the first time a new player walks up to either site
+  if (!S.guide.on && !S.guide.done && onMars() && (at('farm') || at('post'))) guideStart();
+  const step = S.guide.on && !S.guide.off ? F.guideStep(S) : null;
+  if (gStep && !step && S.guide.done && gStep.id !== 'done') { gStep = { id: 'done' }; emit('guide', { step: 'done', why: 'sale' }); say('🎉 First sale! Your farm loop is running. Grow, harvest, sell.'); }
+  else if (step && step.id !== gStep?.id) { gStep = step; emit('guide', { step: step.id, why: 'step' }); }
+  const show = !!step && onMars() && !inPit() && !floating() && !raid && !panel?.classList.contains('show');
+  if (!step || !onMars()) wpClear(); else wpSet(step.to);
+  let html = '';
+  if (show) {
+    const here = at(step.to), i = me(), p = W(F.SITES[step.to].at);
+    let sub = here ? (step.to === 'post' ? 'Tap 👽 Trade.' : 'Tap 🌱 Farm.') : '';
+    if (!here && i && p) { const d = Math.hypot(p.x - i.x, p.z - i.z); sub = `${F.SITES[step.to].name}: ${d < 1000 ? Math.round(d / 10) * 10 + ' m' : (d / 1000).toFixed(1) + ' km'} ${F.dirWord(p.x - i.x, p.z - i.z)}. Follow the yellow beacon.`; }
+    if (step.id === 'grow' && here) sub = 'Keep the water and power topped up.';
+    html = `${step.icon} ${esc(step.text)}<small>${esc(sub)}</small>`;
+  }
+  const k = show + html; if (force || k !== gKey) { gKey = k; guideEl.querySelector('#farmGuideTxt').innerHTML = html; guideEl.classList.toggle('on', show); }
+}
+function guideStatus() { const st = F.guideStep(S); return { on: S.guide.on, off: S.guide.off, done: S.guide.done, step: st?.id || null, text: st?.text || null, to: st?.to || null, shown: !!guideEl?.classList.contains('on'), caption: guideEl?.querySelector('#farmGuideTxt')?.textContent || '', waypoint: wpVia ? { via: wpVia, key: wpKey, beacon: beacon?.visible ? { x: Math.round(beacon.position.x), z: Math.round(beacon.position.z) } : null } : null }; }
+
 // ---------- tick + boot ----------
 let uiT = 0;
 function tick(dt, tc) {
   lastTc = tc; if (!fin(dt)) return;
-  hookStorm();
-  const dh = clockTick(dt);
+  hookStorm(); hookEmpire(); hookBase();
+  const dh0 = clockTick(dt), dh = empOn ? 0 : dh0; // SSX.empire 'hour' drives growth once it's live: never both
   if (dh > 0) advance(dh);
-  if (!onMars()) { if (G) teardown(); refresh(); return; }
+  if (baseHook === 'api' && !synced && S.owned) syncBase();
+  if (!onMars()) { if (G) teardown(); refresh(); guideTick(); return; }
   if (!G || G.parent !== tc.scene) build(tc.scene); else if (dirty) { dirty = false; rebuildFarm(); }
   raidTick(dt, dh);
-  if ((uiT -= dt) <= 0) { uiT = 0.25; refresh(); }
+  if ((uiT -= dt) <= 0) { uiT = 0.25; refresh(); guideTick(); }
+  beaconTick(dt);
 }
 function status() {
   return { owned: S.owned, dome: S.dome, domeHp: Math.round(S.domeHp), racks: S.racks.map(r => ({ crop: r.crop, growth: Math.round(r.growth * 1000) / 1000, health: Math.round(r.health * 10) / 10, ripe: !!r.crop && r.growth >= 1 })),
-    water: S.water, power: S.power, silo: { ...S.silo }, siloCount: F.siloCount(S), favors: [...S.favors], hours: Math.round(S.hours * 100) / 100, day: F.day(S), clock: src,
-    raid: raid ? { id: raid.id, via: raid.via } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats } };
+    water: S.water, power: S.power, silo: { ...S.silo }, siloCount: F.siloCount(S), favors: [...S.favors], hours: Math.round(S.hours * 100) / 100, day: F.day(S), clock: empOn ? 'SSX.empire.hour' : src, base: baseLot() ? { plot: PLOT, pieces: basePieces().map(p => ({ id: p.id, type: p.type, i: p.i, j: p.j, r: p.r })) } : (baseHook || null), empire: empHook ? { hook: empHook, live: empOn, hours: empHours } : null, hooks: { base: baseHook, baseRegistered: !!baseLot(), empire: empHook, empireLive: empOn },
+    raid: raid ? { id: raid.id, via: raid.via, engineWhy: raid.engineWhy || null } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats } };
 }
 const API = {
   status, buy, buildDome, addRack, plant, harvest, refill, patch, sell, useFavor, raid: raid_, skip,
-  buyers: () => F.buyersToday(F.day(S)), clock: () => ({ hour: hourNow(), hours: S.hours, day: F.day(S), source: src }),
+  buyers: () => F.buyersToday(F.day(S)), clock: () => ({ hour: hourNow(), hours: S.hours, day: F.day(S), source: empOn ? 'SSX.empire.hour' : src }),
   places: () => Object.values(F.SITES).map(p => { const w = W(p.at); return { id: p.id, name: p.name, x: w?.x, z: w?.z, r: p.r }; }),
   open, close, on, CROPS: F.CROPS, PRICES: F.PRICES,
+  guide: { status: guideStatus, start: () => { guideStart(); guideTick(true); return guideStatus(); }, hide: guideOff, show: guideOn },
   debug: {
     goto(id) { const s = surf(), p = W(F.SITES[id === 'post' ? 'post' : 'farm'].at); if (!s || !p) return false; s.debugMove(p.x + (id === 'post' ? 0 : 0), p.z + (id === 'post' ? 4 : 6), 0); return { x: p.x, z: p.z }; },
     storm(i = 1) { dbgStorm = F.clamp(+i || 0, 0, 1); return dbgStorm; }, raidEnd: (r = 'win') => endRaid(r), noRaids: v => { noRaids = v !== false; return noRaids; },
-    state: () => JSON.parse(JSON.stringify(S)), reset() { S = F.fresh(); save(); raid = null; dbgStorm = 0; rebuildFarm(true); refresh(true); return true; },
+    state: () => JSON.parse(JSON.stringify(S)), reset() { const c0 = credits(); for (const p of basePieces()) { try { B().remove(PLOT, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(); synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
     reload() { try { S = F.migrate(JSON.parse(localStorage.getItem(F.SAVE_KEY))); } catch (e) { S = F.fresh(); } rebuildFarm(true); emit('load', {}); return status(); },
-    inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome'), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
+    ground: (x, z) => ground(x, z), colony: () => { const c = colony(); return c ? { x: c.x, z: c.z } : null; },
+    inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome') || basePieces().some(p => p.type === F.LOT.dome.type), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
   }
 };
 (function boot() {

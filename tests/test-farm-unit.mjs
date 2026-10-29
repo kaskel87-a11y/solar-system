@@ -32,4 +32,13 @@ const before = F.siloCount(s), st = F.steal(s); ok('steal', st.n > 0 && F.siloCo
 const m = F.migrate(JSON.parse(JSON.stringify(s))); ok('migrate', m.owned && m.racks.length === 6 && m.favors.includes('cool') && m.hours === s.hours, m);
 ok('migrateJunk', F.migrate('x').owned === false && F.migrate({ v: 1, racks: [{ crop: 'nope', growth: 9 }], dome: true, owned: true }).racks[0].crop === null);
 ok('dirs', F.dirWord(0, 10) === 'south' && F.dirWord(10, 0) === 'east' && /Go to X \(\d+ m south\)/.test(F.directions({ x: 0, z: 0 }, { x: 0, z: 300 }, 'X')));
+// first-loop guide
+{ const g = F.fresh(); const ids = []; const st = () => { const x = F.guideStep(g); ids.push(x?.id ?? null); return x; };
+  st(); g.owned = true; g.water = 40; g.power = 40; st(); g.dome = true; st(); g.racks.push({ crop: null, growth: 0, health: 100, planted: 0 }); st();
+  F.plant(g, 0, 'potato'); st(); F.advance(g, 4, 0); const mid = F.guideStep(g); F.advance(g, 7, 0); st(); F.harvest(g, 0); const sell = st();
+  const q = F.quoteSale(g, 'vell', 'potato', g.silo.potato); F.applySale(g, q); st();
+  ok('guideSteps', ids.join() === 'buy,dome,plant,plant,grow,harvest,sell,' && sell.to === 'post' && /^Wait for your potatoes to grow \(\d+%\)$/.test(mid.text) && g.guide.done, { ids, mid });
+  const dry = F.fresh(); Object.assign(dry, { owned: true, dome: true, water: 0, power: 0 }); dry.racks.push({ crop: 'potato', growth: 0.2, health: 100, planted: 0 });
+  ok('guideUpkeep', F.guideStep(dry).id === 'upkeep');
+  ok('guideMigrate', F.migrate({ v: 1, stats: { sold: 3 } }).guide.done === true && F.migrate({ v: 1, guide: { on: true, off: true } }).guide.off === true && F.migrate(null).guide.on === false); }
 console.log(bad ? `farm unit: ${bad} FAIL` : 'farm unit OK'); process.exit(bad ? 1 : 0);
