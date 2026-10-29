@@ -65,7 +65,7 @@ function allowedAttackers() {
   }
   return Math.max(0, n);
 }
-function reserve(n) { try { if (typeof C?.world?.npcReserve === 'function' && reserved !== n) { reserved = n; C.world.npcReserve('raids', n); } } catch {} }
+function reserve(n) { try { if (typeof C?.world?.npcReserve === 'function' && reserved !== n) { const up = n > reserved; reserved = n; C.world.npcReserve('raids', n); if (up) dispatchEvent(new CustomEvent('ssx:npcbudget', { detail: { by: 'raids', n } })); } } catch {} }
 let reserved = 0;
 function aliveAttackers() { return raid ? raid.npcs.filter(n => n.alive) : []; }
 const playerXZ = () => C.car ? { x: C.car.x, z: C.car.z } : { x: C.player.x, z: C.player.z };

@@ -27,6 +27,8 @@ const NAMES = ['Dez', 'Rook', 'Big Ollie', 'Mags', 'Spoon', 'Cutter', 'Nan', 'Po
 
 export function createCrowds(K) {
   let root = null, slots = [], fx = [], selT = 0, shown = 0, fights = [], dbg = { built: 0, fights: 0, sold: 0, bought: 0 };
+  let lastP = null; // v7.5.4: give slots back the moment a raid reserves (no frame over the phone cap)
+  try { addEventListener('ssx:npcbudget', () => { if (root && lastP) try { select(lastP); } catch (e) { /* */ } }); } catch (e) { /* no window */ }
   const R = () => Math.random();
   const C = () => { const c = K.X().contraband; return c && typeof c.buy === 'function' ? c : null; };
   const faceYaw = (x, z, tx, tz) => Math.atan2(-(tx - x), -(tz - z)); // buildHuman faces -z
@@ -193,7 +195,7 @@ export function createCrowds(K) {
         if (night && d < 45 && (f.fightT -= dt) <= 0) { f.fightT = 70 + R() * 90; fight(fx.indexOf(f)); }
         if (night && d < 18 && (f.chatT -= dt) <= 0) { f.chatT = 9 + R() * 8; const ppl = slots.filter(s => s.on && s.role === 'crowd' && s.barrel === fx.indexOf(f) && !s.fight && s.st !== 'down'); if (ppl.length) { const s = ppl[(R() * ppl.length) | 0]; K.say(s, s.name, 'barrel', { quiet: true }); } }
       }
-      if ((selT -= dt) <= 0) { selT = 0.6; select(P); }
+      lastP = P; if ((selT -= dt) <= 0) { selT = 0.6; select(P); }
       fights = fights.filter(F => fightTick(F, dt, t));
       for (const s of slots) { if (!s.on || !s.h) continue; const h = s.h;
         if (K.combat?.drive?.(s, h, dt, t, P)) continue;
