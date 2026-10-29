@@ -167,7 +167,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (S.shot === 0 || S.shot === 2) { _p.set(Math.sin(S.t * 0.4) * 0.03, 1.12 + Math.sin(S.t * 0.7) * 0.01, b.seat.z + 0.08); _l.set(hx * 0.6, 1.0 + Math.sin(S.t * 0.5) * 0.08, hz); cam.fov = portrait ? 72 : 52; }
     else if (S.shot === 1) { _p.set(1.55 - u * 0.25, 1.5, b.seat.z + 0.15); _l.set(hx, 1.05, hz); cam.fov = portrait ? 66 : 46; } // over-the-shoulder dolly
     else { _p.set(-1.3 + u * 0.3, 0.75, hz + 1.0); _l.set(hx, 1.15, hz); cam.fov = portrait ? 70 : 50; } // low side angle
-    if (S.dbg) { const d = { front: [0, 1.0, 3.1, 0.92, 44, 66], side: [3.1, 1.0, 0, 0.92, 44, 66], back: [0, 1.0, -1.6, 0.92, 44, 66], face: [0.08, 1.6, 0.62, 1.53, 32, 44] }[S.dbg] || [0, 1, 3.1, 0.92, 44, 66]; // test/screenshot views of her (look-dev)
+    if (S.dbg) { const d = { front: [0, 1.0, 3.1, 0.92, 44, 66], side: [3.1, 1.0, 0, 0.92, 44, 66], back: [0, 1.0, -1.6, 0.92, 44, 66], face: [0.08, 1.62, 0.72, 1.57, 34, 46] }[S.dbg] || [0, 1, 3.1, 0.92, 44, 66]; // test/screenshot views of her (look-dev)
       _p.set(hx + d[0], d[1], hz + d[2]); _l.set(hx, d[3], hz); cam.fov = portrait ? d[5] : d[4]; h.group.rotation.y = Math.PI; h.group.position.x = hx; }
     b.g.localToWorld(_p); b.g.localToWorld(_l); cam.position.copy(_p); S.camLocal = b.g.worldToLocal(_l.clone().copy(_p)); cam.lookAt(_l); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   }
