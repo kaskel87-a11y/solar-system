@@ -43,7 +43,7 @@ const CSS = `
  padding:6px 6px 6px 9px;border-radius:10px;background:rgba(6,14,26,.88);border:1px solid rgba(56,225,255,.55);color:#e8f6ff;font:600 12.5px/1.3 system-ui,-apple-system,sans-serif;
  box-shadow:0 2px 10px rgba(0,0,0,.35)}
 #obLine[hidden]{display:none!important}
-#obLine .ob-t{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+#obLine .ob-t{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 #obLine .ob-k{display:block;font:700 10px/1.2 system-ui,sans-serif;letter-spacing:.04em;color:#38e1ff;text-transform:uppercase;margin-bottom:1px}
 #obLine .ob-d{flex:none;font:700 12px/1 system-ui,sans-serif;color:#38e1ff;white-space:nowrap;text-align:center;min-width:34px}
 #obLine .ob-d i{display:block;font-style:normal;font-size:17px;line-height:1;margin-bottom:2px}
@@ -123,7 +123,7 @@ function renderCodex() {
   let html = tour ? `<div class="ob-tour" id="obTour">${tour}</div>` : '';
   for (const s of secs) {
     html += `<h3>${esc(s.sec)}</h3>`;
-    for (const i of s.items) html += `<p data-id="${esc(i.id)}"><b>${esc(i.t)}${i.opt ? '<span class="ob-tag">add-on</span>' : ''}</b><span>${esc(i.d)}</span></p>`;
+    for (const i of s.items) html += `<p data-id="${esc(i.id)}"><b>${esc(i.t)}${i.opt ? '<span class="ob-tag">if available</span>' : ''}</b><span>${esc(i.d)}</span></p>`;
   }
   const body = $('obCodexBody'); body.innerHTML = html;
   body.querySelectorAll('button[data-cx]').forEach(b => tap(b, () => {
@@ -189,7 +189,7 @@ function target(id, i) {
       return { ...walkPt, label: 'Walk here' };
     }
     case 'rover': return Number.isFinite(i.roverX) ? { x: i.roverX, z: i.roverZ, label: 'Your rover' } : null;
-    case 'taxi': return aj([-24, 40], '🚕 Taxi stand');
+    case 'taxi': { let p = null; try { p = x.jobs?.places?.()?.taxiStands?.[0]; } catch (e) { /* optional */ } return aj(Array.isArray(p) ? p : [-24, 40], '🚕 Taxi stand'); }
     case 'blue': return aj([-258, -50], '💊 Blue');
     case 'turfmap': {
       if (!turfOrg) { try { const o = x.turf?.debug?.state?.()?.org; if (Array.isArray(o)) turfOrg = o; } catch (e) { /* optional */ } }

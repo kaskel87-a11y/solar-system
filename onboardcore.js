@@ -45,7 +45,7 @@ export function initialState(stored, returning, force = null) {
 export const MISSIONS = [
   { id: 'feet', title: 'Find your feet', reward: 25, steps: [
     { kind: 'go', target: 'walk', r: 4, label: 'Walk here',
-      text: { touch: 'Walk to the blue marker: push the left stick. Hold Run to go faster.', desk: 'Walk to the blue marker with W A S D. Hold Shift to run.' } },
+      text: { touch: 'Walk to the blue marker with the left stick. Hold Run to go faster.', desk: 'Walk to the blue marker with W A S D. Hold Shift to run.' } },
     { kind: 'do', check: 'jump', text: { touch: 'Now jump: tap Jump.', desk: 'Now jump: press Space.' } }
   ] },
   { id: 'wheels', title: 'Wheels', reward: 40, steps: [
@@ -53,7 +53,7 @@ export const MISSIONS = [
       text: { touch: 'Walk up to your rover and tap 🚙 Drive.', desk: 'Walk up to your rover and press E to drive.' },
       alt: { touch: 'Your rover is far away: tap ☰, then 🚙 Summon rover here.', desk: 'Your rover is far away: press R to call it.' } },
     { kind: 'go', target: 'taxi', r: 10, label: 'Taxi stand',
-      text: { touch: 'Drive to the 🚕 Taxi stand in Ares Junction. Hold ⚡ Boost to go faster.', desk: 'Drive to the 🚕 Taxi stand in Ares Junction. Hold Shift to boost.' } }
+      text: { touch: 'Drive to the 🚕 Taxi stand. Hold ⚡ Boost to go faster.', desk: 'Drive to the 🚕 Taxi stand. Hold Shift to boost.' } }
   ] },
   { id: 'phone', title: 'Your phone & jobs', reward: 40, steps: [
     { kind: 'do', check: 'jobsOpen',
@@ -86,7 +86,7 @@ export const MISSIONS = [
 ];
 export const TOTAL_REWARD = MISSIONS.reduce((a, m) => a + m.reward, 0);
 export const DONE_TEXT = `Tour done! That’s ${TOTAL_REWARD} cr. Tap ☰, then 📖 How to play any time.`;
-export const SPACE_TEXT = { touch: 'Tap Mars in the bottom row, then 🛬 Land here.', desk: 'Click Mars in the bottom row, then 🛬 Land here.' };
+export const SPACE_TEXT = { touch: 'Swipe the bottom row to Mars, tap it, then 🛬 Land here.', desk: 'Click Mars in the bottom row, then 🛬 Land here.' };
 export const AWAY_TEXT = { touch: 'The tour is on Mars. Tap ☰, then 🚀 Take off, and land on Mars.', desk: 'The tour is on Mars. Press T to take off, then land on Mars.' };
 
 export function textOf(t, touch) { return t == null ? '' : typeof t === 'string' ? t : (touch ? t.touch : t.desk) || t.touch || t.desk || ''; }
@@ -154,7 +154,7 @@ export const CODEX = [
     { id: 'travel', t: '🏙 Getting around', d: 'Tap ☰, then 🏙 Districts to fast travel, or 🌍 Colonies for other towns.' },
     { id: 'rags', t: '🧱 Rags to Riches', d: 'A new game that starts you broke: tap ☰, then 🧱 New Game: Rags to Riches.' }
   ] },
-  { sec: 'Add-ons (if available)', items: [
+  { sec: 'More (if available)', items: [
     { id: 'heists', need: 'heist', menu: '🕵️', t: '🕵️ Heists', d: 'Case a target, plan, then pull the job. Find them in ☰ → 🕵️ Heists when one is in town.' },
     { id: 'fightclub', need: 'fight', t: '🥊 Rust Pit fight club', d: { touch: 'A cage fight ring in Red Tape Flats: walk in and tap 🥊 to fight bouts.', desk: 'A cage fight ring in Red Tape Flats: walk in and press ] to fight bouts.' } },
     { id: 'rep', need: 'rep', t: '🩸 Rep', d: 'What the gangs think of you. Jobs and fights change it; see ☰ → 🩸 Rep.' },
