@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { addMenuItem, tap } from '../racehooks.js';
 import * as R from './ragscore.js';
+import * as RR from './ragsrover.js';
 
 const KEY = 'ssx.r2r.v1', MENU_ID = 'r2rMenuBtn', CTX_ID = 'r2rCtxBtn', PANEL_ID = 'r2rPanel', ALERT_ID = 'r2rAlert';
 let C = null, data = null, loading = null, S = null, ui = null, root = null, rootPlanet = null, meshes = {}, nearProp = null;
@@ -32,7 +33,7 @@ function loadData() {
   return loading;
 }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.v === 1) { const f = R.freshState(data); return { ...f, ...s, props: { ...f.props, ...s.props }, stats: { ...f.stats, ...s.stats } }; } } catch {}
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.v === 1) { const f = R.freshState(data), o = { ...f, ...s, props: { ...f.props, ...s.props }, stats: { ...f.stats, ...s.stats } }; if (RR.sync(o, RR.ridesOf(P(), window.SSX))) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch {} } return o; } } catch {}
   return R.freshState(data);
 }
 function save() { if (!S) return; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
@@ -208,7 +209,7 @@ function openMain() {
     <div class="item"><b>Hustles</b><small>Quick jobs from your contacts (${esc(contacts)}).</small><div class="row">${hustles}</div>
       ${acts ? `<small>Side jobs in your districts:</small><div class="row">${acts}</div>` : ''}</div>
     <div class="item"><b>Spawn points</b><small>Respawn and fast travel to places you've earned.</small><div class="row">${spawns}</div></div>
-    ${!S.hasRover ? `<div class="item"><b>Wrench's beater rover</b><small>${data.rover.price} cr. Until then you walk, or borrow something that isn't yours.</small><div class="row"><button data-a="rover" ${(P()?.credits ?? 0) < data.rover.price ? 'disabled' : ''}>Buy rover</button></div></div>` : ''}
+    ${!S.hasRover ? `<div class="item"><b>Wrench's beater rover</b><small>${data.rover.price} cr. ${RR.PANEL_HINT}</small><div class="row"><button data-a="rover" ${(P()?.credits ?? 0) < data.rover.price ? 'disabled' : ''}>Buy rover</button></div></div>` : ''}
     <div class="sub">Raids won ${S.stats.raidsWon} · lost ${S.stats.raidsLost} · collected ${S.stats.collected} cr</div>
     <div class="foot"><button data-a="quit">Return to normal game</button><button data-a="new">Start over</button></div>`,
     [['[data-a=close]', closePanel], ['[data-a=quit]', quit], ['[data-a=new]', startNew], ['[data-a=rover]', buyRover],
@@ -368,8 +369,8 @@ export function ragsTick(dt, ctx) {
   if (wasDown && !down) respawnT = 0.6; wasDown = down;
   if (respawnT > 0 && (respawnT -= dt) <= 0) goSpawn(Object.entries(data.spawns).filter(([, s]) => s.tier <= S.tier).pop()[0]);
   // no rover until you buy one: your own rover won't start (stolen rides are fair game)
-  roverCd -= dt;
-  if (!S.hasRover && ctx.car && ctx.car === ctx.rover && roverCd <= 0) { roverCd = 1.5; sf?.interact?.(); toast('No rover yet. Buy Wrench\u2019s beater, or borrow something.', 2800); }
+  roverCd -= dt; const rides = RR.ridesOf(p, window.SSX); if (RR.sync(S, rides)) save(); // any owned ride counts (Dealer, My rides)
+  if (RR.shouldKick(S, rides, ctx.car && ctx.car === ctx.rover) && roverCd <= 0) { roverCd = 1.5; sf?.interact?.(); toast(RR.NO_ROVER_MSG, 2800); }
   // Helios gate: residents and guests only
   gateCd -= dt;
   const hel = data.districts.helios;
