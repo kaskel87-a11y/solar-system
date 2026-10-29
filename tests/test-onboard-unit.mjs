@@ -101,6 +101,7 @@ const sw = src('sw.js');
 ok('precache', (sw.match(/\['onboard', 'onboardcore'\]/g) || []).length === 1);
 try {
   const base = execSync('git merge-base HEAD origin/main', { cwd: ROOT }).toString().trim();
+  if (execSync(`git rev-list --merges ${base}..HEAD`, { cwd: ROOT }).toString().trim() || execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim() === base) throw new Error('PR-scope checks skipped: integration branch or merged');
   const diff = f => execSync(`git diff ${base} -- ${f}`, { cwd: ROOT }).toString().split('\n').filter(l => /^[+-][^+-]/.test(l));
   const iLines = diff('index.html').filter(l => !/^\+\s*"(\.\/|ssx\/)onboard(core)?(\.js)?": /.test(l));
   ok('indexOneHook', iLines.length === 1 && /import '\.\/onboard\.js'/.test(iLines[0]), iLines.join('\n'));

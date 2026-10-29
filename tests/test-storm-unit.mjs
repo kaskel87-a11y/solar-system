@@ -58,6 +58,7 @@ t('captions short', ['building', 'peak', 'clearing'].every(p => [...K.caption(p,
 const rd = f => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 const idx = rd('index.html'), sw = rd('sw.js'), world = rd('world.js'), src = rd('mars/storm.js');
 let base = null; try { base = execSync('git merge-base HEAD origin/main', { cwd: new URL('..', import.meta.url).pathname }).toString().trim(); } catch (e) {}
+try { if (base && (execSync(`git rev-list --merges ${base}..HEAD`, { cwd: new URL('..', import.meta.url).pathname }).toString().trim() || execSync(`git rev-parse HEAD`, { cwd: new URL('..', import.meta.url).pathname }).toString().trim() === base)) { base = null; console.log('(PR-scope wiring checks skipped: integration branch or merged)'); } } catch (e) { /* */ }
 const added = f => { if (!base) return null; try { return execSync(`git diff ${base} -- ${f}`, { cwd: new URL('..', import.meta.url).pathname }).toString().split('\n').filter(l => /^[+-][^+-]/.test(l)); } catch (e) { return null; } };
 const dw = added('world.js'), di = added('index.html'), ds = added('sw.js');
 t('world.js: one added hook line', !dw || (dw.length === 1 && dw[0].startsWith('+') && /SSX\?\.heatFilter/.test(dw[0])));
