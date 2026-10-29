@@ -60,10 +60,11 @@ const SONGS = [['Track_One.wav', 330, 2.5], ['track two.wav', 440, 2.5], ['Third
     await land();
     // night mix: silent without a clock, plays seedy one-shots in the Flats when SSX.time.isNight() says so
     await G(() => { const s = window.__app.surface, c = s.world.colony; s.debugPlace(c.x - 280, c.z - 40, 0); }); await sleep(2500);
+    const realT = await G(() => { const T = window.SSX.time; if (T && typeof T.set === 'function') { window.__realT = T; T.set(12); return true; } return false; }); if (realT) await sleep(2500); // v7.5.4: the shared Mars clock ships: daytime = no night mix
     ok('noNightWithoutClock', (await RX()).night === null);
     await G(() => { window.SSX.time = { isNight: () => true }; });
     ok('nightMix', await wait(() => !!window.SSX.radioExtra.state.night, 20000)); R.nightMix = (await RX()).night;
-    await G(() => { delete window.SSX.time; });
+    await G(() => { if (window.__realT) window.SSX.time = window.__realT; else delete window.SSX.time; });
     ok('roverIn', await enterRover());
     ok('panelOpen', await openPanel());
     const box = await G(() => { const b = document.getElementById('mineBox'), cs = getComputedStyle(b), bt = getComputedStyle(document.getElementById('minePick')); return { bg: cs.backgroundColor, fg: cs.color, btBg: bt.backgroundColor, btFg: bt.color, h: document.getElementById('minePick').getBoundingClientRect().height }; });

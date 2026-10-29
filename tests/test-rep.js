@@ -64,7 +64,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('barterGate', R.gate, /15 rep with ozzie/i.test(R.gate[0]) && !/rep with ozzie/i.test(R.gate[1]));
     // backup at Trusted: Saltblood via SSX.danger.spawnBackup; a crew danger.js can't spawn fails soft
     R.backup = await G(() => { const r = window.SSX.rep; r.debug.set('saltblood', 45); r.debug.set('dustjaws', 45); const b = r.backup('dustjaws'), a = r.backup('saltblood'), c = r.backup('saints'); return [a.ok, window.SSX.danger?.backup?.faction || null, b.ok, b.msg, c.ok, c.msg]; });
-    ok('backup', R.backup, R.backup[0] && R.backup[1] === 'saltblood' && R.backup[4] === false); // dustjaws: ok on PR #19's BACKUP, soft-fail on main
+    ok('backup', R.backup, ((R.backup[0] && R.backup[1] === 'saltblood') || (R.backup[2] && R.backup[1] === 'dustjaws')) && R.backup[4] === false); // v7.5.4: Dustjaw backup ships (first call wins the one crew on the way) // dustjaws: ok on PR #19's BACKUP, soft-fail on main
     // panel: open via key/menu (no #ssxDock on main -> no dock button), contrast, 44px
     R.docks = await G(() => document.querySelectorAll('#ssxDock').length); ok('noSecondDock', R.docks <= 1);
     if (!R.docks) ok('noDockNoButton', await G(() => !document.getElementById('dockRep')));

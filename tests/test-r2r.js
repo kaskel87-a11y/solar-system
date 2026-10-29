@@ -168,7 +168,7 @@ function measureHud() {
       cs.total = Math.max(cs.total, x.total); cs.used = Math.max(cs.used, x.used); cs.att = Math.max(cs.att, x.att); cs.allowed = x.allowed; cs.queued = x.queued;
       if (i > 10 && x.att >= x.allowed && x.queued > 0) break; }
     await sleep(2500); { const x = await sample(); cs.total = Math.max(cs.total, x.total); cs.used = Math.max(cs.used, x.used); cs.queued = x.queued; }
-    R.capStress = cs; R.capRes = await G(() => window.__capRes);
+    R.capStress = cs; R.capRes = await G(() => window.__capRes); R.capBudget = await G(() => { const W = window.__app.surface.world; return { b: W.npcBudget?.(), hum: window.__app.surface.game?.humanCount?.(), sec: (W.securityList?.() || []).map(s => s.kind).join(), wanted: W.wanted }; });
     const stopped = await G(() => window.SSX.raids.stop('cap-test', 'test'));
     ok('capStress', cs, cs.total <= cap && cs.used <= cap && cs.att >= 3 && cs.queued > 0 && stopped);
     ok('reservationReleased', null, await G(() => !(window.__app.surface.world.npcBudget?.().reserved?.raids)));
