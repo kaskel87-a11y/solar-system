@@ -276,6 +276,7 @@
     body.surface #joy { left: calc(14px + var(--sal)); bottom: calc(22px + var(--sab)); width: 120px; height: 120px; opacity: 0.85; }
     #surfHelp { position: fixed; bottom: calc(10px + var(--sab)); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 9px; font-size: 0.7rem; z-index: 7; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 2 * (84px + var(--sar))); opacity: 0.7; } /* v7.5.4: wraps clear of the right-hand button column (was nowrap, ran under 🐾 Pet on 1280px) */
     body:not(.touch) #surfHelp { max-width: calc(100vw - 2 * (130px + var(--sar))); } /* v7.5.5: the desktop button column is 110px wide (🐾 Pet / r2r), so wrap clear of it */
+    @media (min-width: 1200px) and (min-height: 720px) and (hover: hover) and (pointer: fine) { body:not(.touch) #surfHelp { max-width: calc((100vw - 2 * (160px + var(--sar))) / 1.25 - 24px); } } /* #surfHud is zoomed 1.25 there (v7.3), so the cap is in zoomed px */
     body.surface #fact-panel { display: none !important; }
     /* cinematic: everything off except a faint restore button (the stick still works, just faded) */
     /* v7.4 duels: a small sheet to pick weapons and a wager, and one compact banner during the fight */

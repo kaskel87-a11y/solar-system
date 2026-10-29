@@ -55,7 +55,7 @@ body.hudx .hxCtxOff{display:none!important}
 #hxCtxNext{position:fixed;z-index:13;display:none;min-height:44px;min-width:48px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.1 system-ui,sans-serif;touch-action:manipulation;padding:0 4px}
 body.surface:not(.indoors):not(.cinematic) #hxCtxNext.show{display:block}
 body:has(#roverMenu.show) :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hxMapOpen :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hidehud #hxCtxNext,body.danger-standoff #hxCtxNext{display:none!important}
-body.hxFold #ssxDock{display:none!important}
+body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF):not([style*="display: none"]))){display:none!important} body.hxFold #ssxDock > :not(#dockRcn,#dockSmg,#dockSmgF){display:none!important} /* v7.5.5: on-the-spot actions (Raccoon buy/pick, smuggling pickup/drop) stay as a button on the spot, not in ☰ */
 #roverMenu .hxDockItem{display:none} body.hxFold #roverMenu .hxDockItem.show{display:block}
 @media (orientation:portrait){body.hudx #stackR{max-height:calc(25vh - 62px - var(--sat))} body.hudx #stackR:has(> #radio[style*="block"]:not(.mini)){max-height:44vh}}
 `;
@@ -250,11 +250,12 @@ function updCtx() {
     ctxNext.style.right = land ? `${r + Math.round(pr.width || 120) + 8}px` : `${r}px`; ctxNext.style.bottom = land ? `${b}px` : `${b + Math.round(pr.height || 52) + 6}px`; }
 }
 const touch = () => document.body.classList.contains('touch') || matchMedia('(pointer:coarse)').matches;
+const CTX_DOCK = ['dockRcn', 'dockSmg', 'dockSmgF']; // contextual dock actions: never folded into ☰
 function updDock() {
   document.body.classList.toggle('hxFold', touch());
   const dock = document.getElementById('ssxDock'), menu = document.getElementById('roverMenu'); if (!dock || !menu) return;
   const norm = t => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  for (const b of dock.querySelectorAll('button[id]')) {
+  for (const b of dock.querySelectorAll('button[id]')) { if (CTX_DOCK.includes(b.id)) continue;
     const id = 'hxm_' + b.id; let m = document.getElementById(id);
     // most dock modules already put the same item in ☰ (🎒 Stash, 💼 Jobs, 🚩 Turf): only mirror the ones that don't
     if (!m && [...menu.querySelectorAll('button')].some(x => norm(x.textContent) === norm(b.textContent))) continue;

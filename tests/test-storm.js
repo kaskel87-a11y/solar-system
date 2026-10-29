@@ -47,6 +47,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // stay at the landing pad: the district skyline ahead shows the fog wall best
     await sleep(touch ? 4000 : 3000);
     await G(() => window.SSX.storm.setTier('med')); await sleep(300);
+    const TIMED = await G(() => typeof window.SSX.time?.addLookFilter === 'function'); R.timed = TIMED; // v7.5.5 integration: with SSX.time (main) the storm tints through its look filter, so colours follow its (still running) clock: only fog distances are render-time, and the look comes back to within a clock tick
     const L0 = await look(); R.lookClear = L0;
     R.fpsClear = await fpsFor(3000);
     await shot('clear');
@@ -71,7 +72,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     R.gritN = await G(() => window.__gritN);
     // layered, not overwritten: between renders the scene still holds everyone else's values
     const L1 = await look(); R.lookPeak = L1;
-    ok('layeredOnly', JSON.stringify({ sky: L1.sky, bg: L1.bg, fog: L1.fog, dl: L1.dl }), L1.sky === L0.sky && L1.bg === L0.bg && L1.fog === L0.fog && L1.dl === L0.dl && L1.far > A.far);
+    ok('layeredOnly', JSON.stringify({ sky: L1.sky, bg: L1.bg, fog: L1.fog, dl: L1.dl }), (TIMED || (L1.sky === L0.sky && L1.bg === L0.bg && L1.fog === L0.fog && L1.dl === L0.dl)) && L1.far > A.far);
     // caption (team UI rule): one short line, clear of the centre and the top-right, gone after ~3 s, nothing left on the HUD
     await wait(() => window.__cap?.goneMs, 15000); R.caption = await G(() => window.__cap);
     ok('caption', JSON.stringify(R.caption), R.caption?.shown && /Dust storm/.test(R.caption.text) && [...R.caption.text].length <= 28 && R.caption.oneLine && !R.caption.centre && !R.caption.topRight && R.caption.parent === 'body'
@@ -103,7 +104,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     R.afterGrit = await G(() => window.SSX.storm.debug.grit());
     ok('restored', JSON.stringify(await G(() => ({ applied: window.SSX.storm.debug.applied(), filter: window.SSX.storm.debug.heatFilter(), traffic: window.SSX.storm.debug.traffic().touched, grit: window.SSX.storm.debug.grit().visible, saved: window.SSX.storm.debug.saved() }))),
       await G(() => !window.SSX.storm.debug.applied() && !window.SSX.storm.debug.heatFilter() && window.SSX.storm.debug.traffic().touched === 0 && !window.SSX.storm.debug.grit().visible && !window.SSX.storm.debug.saved()));
-    const L2 = await look(); ok('lookBack', JSON.stringify(L2), L2.sky === L0.sky && L2.bg === L0.bg && L2.fog === L0.fog && L2.dl === L0.dl && L2.far === L0.far);
+    const near = (a, b) => { const p = h => [16, 8, 0].map(k => (parseInt(h, 16) >> k) & 255); const x = p(a), y = p(b); return x.every((v, i) => Math.abs(v - y[i]) <= 6); };
+    const L2 = await look(); ok('lookBack', JSON.stringify(L2), (TIMED ? (near(L2.sky, L0.sky) && near(L2.bg, L0.bg) && near(L2.fog, L0.fog) && Math.abs(L2.dl - L0.dl) < 0.03) : (L2.sky === L0.sky && L2.bg === L0.bg && L2.fog === L0.fog && L2.dl === L0.dl)) && L2.far === L0.far);
     await G(() => window.__app.surface.world.setWanted(0, 'test')); await G(() => window.__app.surface.world.setWanted(2, 'test')); ok('heatNormal', await wanted(), (await wanted()) === 2); await G(() => window.__app.surface.world.setWanted(0, 'test'));
     ok('events', JSON.stringify([...new Set(await G(() => window.__stEv))]), await G(() => ['start', 'peak', 'clearing', 'end', 'shed'].every(e => window.__stEv.includes(e))));
     // ---- SSX.time coexistence: colours go through its look filter; a frozen clock holds the storm
