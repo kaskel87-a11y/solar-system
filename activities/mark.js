@@ -50,7 +50,7 @@ export function markTick(dt, ctx) {
   }
   if (S.g) { S.g.position.set(w.x, ctx.height(w.x, w.z), w.z); if (p.yaw != null) S.g.rotation.y = p.yaw; S.g.children[0].position.y = 1.05 + (p.moving ? Math.abs(Math.sin(S.t * 6)) * 0.04 : 0); }
   const P = ctx.car || ctx.player, d = Math.hypot(P.x - w.x, P.z - w.z);
-  if (!S.tipped && S.search >= TIP_S) { S.tipped = true; try { window.__app?.radio?.(MARK.tip, 'Vale'); } catch {} }
+  if (!S.tipped && S.search >= TIP_S) { S.tipped = true; try { const R = window.SSX?.city?.radio || window.__app?.radio; R?.(MARK.tip.replace(/^[A-Z][\w .]{0,20}:\s*/, ''), 'Detective Vale'); } catch {} }
   const was = S.show; S.show = revealed(d, S.search, S.tipped);
   if (S.show && !was && !S.tipped) { try { window.__app?.toast?.(`◆ That's ${MARK.name}. Orange coat ➤ close in.`, 2500); } catch {} }
   const t = q.target; if (t) { t.x = w.x; t.z = w.z; t.r = S.show ? REACH_M : -1e9; } // hidden: can't complete on a ghost marker

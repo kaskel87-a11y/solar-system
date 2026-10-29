@@ -16,8 +16,8 @@ export function heistTipTick(dt, ctx) {
   if (d.unlock) { st.unlocked = true; st.at = Date.now(); save(); }
   if (st.unlocked && !reg) { try { if (!heist.heists().some(h => h.id === VILLA.id)) heist.registerHeist(VILLA); reg = true; } catch (e) { console.warn('[heist tip]', e); } }
   // the text waits for a calm moment: on Mars, no duel, no heist running, not mid-transition
-  if (d.tip && reg && ctx.name === 'Mars' && !ctx.world?.inDuel && !heist.active && window.__app?.radio) {
-    window.__app.radio(TIP_TEXT, INFORMANT); st.tipped = true; save();
+  if (d.tip && reg && ctx.name === 'Mars' && !ctx.world?.inDuel && !heist.active && (window.SSX?.city?.radio || window.__app?.radio)) {
+    (window.SSX?.city?.radio || window.__app.radio)(TIP_TEXT.replace(/^[A-Z][\w .]{0,20}:\s*/, ''), INFORMANT); st.tipped = true; save();
   }
 }
 export const tipState = () => st && { ...st, registered: reg };

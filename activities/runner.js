@@ -367,10 +367,10 @@ function completeActivity(extra = {}) {
   // Mission accept already paid base via engine; top up scaling / market delta
   const baseCr = def.rewards?.base?.credits || 50;
   const top = Math.max(0, bonus.credits - baseCr);
-  if (top > 0) C.game.debug?.credits?.(top);
+  if (top > 0 && !extra.purse) C.game.debug?.credits?.(top); // the Pit pays its own purse
   setCooldown(def);
   const bark = def.bark?.complete || def.bark?.win;
-  sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
+  if (extra.purse) toast(extra.purse, 4000); else sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
   active = null;
   updateMenu();
   setChip(null);
@@ -383,8 +383,7 @@ function finishSeries() {
   if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
   active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;
   if (S.result === 'lose') return failActivity(`🥊 Lost the series ${S.me}–${S.them}. Marrow tosses you ${pay.credits} cr for the show.`);
-  toast(`🥊 ${S.result === 'sweep' ? 'Clean sweep' : 'Series won'} ${S.me}–${S.them}. Purse +${pay.credits} cr.`, 4000);
-  completeActivity();
+  completeActivity({ purse: `🥊 ${S.result === 'sweep' ? 'Clean sweep' : 'Series won'} ${S.me}–${S.them}. Purse +${pay.credits} cr.` });
 }
 let lastPit = null;
 
