@@ -69,9 +69,19 @@ function leaveZeroG(car, tc) {
   car.yaw = h; car.pitch = 0; car.roll = 0; car.barrel = null; car.rolls = 0;
   car.speed = Math.max(-7, f[0] * zs.v[0] + f[2] * zs.v[2]); car.vy = zs.v[1]; car.prevG = null;
   car.x = zs.p[0]; car.y = zs.p[1]; car.z = zs.p[2];
-  if (car.spec?.hover) { const gh = tc?.height ? tc.height(car.x, car.z) : car.y; car.lift = Math.max(0, Math.min(18, car.y - gh - (car.spec.hover || 0))); }
+  if (car.spec?.hover) { const gh = groundAt(car, tc); car.lift = Math.max(0, Math.min(18, car.y - gh - (car.spec.hover || 0))); }
   car.air = true; soft = car; zs = null; zCar = null;
 }
+
+// ground under a vehicle: PR #63 (live fix: roofs) adds world.vehicleGround(car) -> (x, z) => max(terrain, roof top);
+// feature-detected so main (terrain only) keeps working. Returns a height function like tc.height.
+function groundFn(car, tc) {
+  let g = null; try { g = car ? tc?.world?.vehicleGround?.(car) : null; } catch (e) { g = null; }
+  if (typeof g === 'function') return g;
+  if (Number.isFinite(g)) return () => g; // tolerate a plain height
+  return tc?.height || null;
+}
+const groundAt = (car, tc) => { const f = groundFn(car, tc); return f ? f(car.x, car.z) : car.y; };
 
 // ---------- per-frame tick (SSX.registerSurfaceTick: runs right after the vehicle physics step) ----------
 let simT = 0;
@@ -90,12 +100,12 @@ function tick(dt, tc) {
     const jump = !!(keys.Space || tb.jump);
     if (car.spec?.hover) { if ((car.lift || 0) > 0 && !car.thrusting) car.lift = Math.min(18, car.lift + LOW_HOVER_LIFT * dt); }
     else {
-      const gh = tc.height(car.x, car.z), alt = car.y - gh;
+      const gh = groundAt(car, tc), alt = car.y - gh;
       if (alt > 0.02) { car.vy += lowGLift(0.38 * 9.81, dt, true); car.vy = lowGLand(car.vy); }
       const thrusty = car === tc.rover || car.kind === 'hoverbike';
       if (jump && !jumpWas && !thrusty && alt < 0.3) { car.vy = LOW_HOP; car.y += 0.3; car.air = true; car.prevG = null; }
     }
-    jumpWas = jump; floating = floatingOf(mode, car, car.y - tc.height(car.x, car.z)); return;
+    jumpWas = jump; floating = floatingOf(mode, car, car.y - groundAt(car, tc)); return;
   }
   // ---- ZERO-G ----
   if (!zs || zCar !== car) { zs = zgFrom(car); zCar = car; }
@@ -120,7 +130,7 @@ function tick(dt, tc) {
   if (!hasAr || rollRoute === 'axis') { car.barrel = null; car.rolls = 0; }
   rollWas = rollIn;
   inp.hold = airRolling(ar) || !!car.barrel;
-  zgStep(zs, inp, dt, tc.height);
+  zgStep(zs, inp, dt, groundFn(car, tc));
   // collisions with buildings / domes near the ground (same collider the wheels use); only block moving INTO one
   const col = (x, z) => tc.world?.collide?.(x, z, (car.spec?.r || 2) * 0.75, car);
   if (zs.alt < 8 && col(zs.p[0], zs.p[2]) && !col(ox, oz)) { zs.p[0] = ox; zs.p[2] = oz; zs.v[0] *= -0.3; zs.v[2] *= -0.3; }
@@ -213,7 +223,7 @@ window.__gravity = {
   get mode() { return mode; }, set: api.set, cycle, log, pad,
   get eligible() { return eligible; }, get simT() { return simT; }, why: () => why(lastTc),
   state: () => zs ? { p: zs.p.slice(), v: zs.v.slice(), alt: zs.alt, tilt: tiltOf(zs.q), bank: bankOf(zs.q), pitch: pitchOf(zs.q), heading: headingOf(zs.q), rolled: zs.rolled, speed: Math.hypot(...zs.v), route: rollRoute } : null,
-  car: () => { const c = lastTc?.car; return c ? { x: c.x, y: c.y, z: c.z, vy: c.vy, air: !!c.air, kind: c.kind, alt: c.y - lastTc.height(c.x, c.z), lift: c.lift || 0 } : null; },
+  car: () => { const c = lastTc?.car; return c ? { x: c.x, y: c.y, z: c.z, vy: c.vy, air: !!c.air, kind: c.kind, alt: c.y - groundAt(c, lastTc), ground: lastTc.world?.vehicleGround ? 'vehicleGround' : 'terrain', lift: c.lift || 0 } : null; },
   ZG
 };
 function boot() {
