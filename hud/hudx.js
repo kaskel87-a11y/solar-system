@@ -154,10 +154,14 @@ function updWay(md) {
 // one context button: the three left-side action buttons (contraband deal, turf action, taxi/medic/bounty duty) all move to one
 // slot above the right-hand cluster; only the top-priority one that wants to show is visible, ⇅ n cycles when several do.
 // The real buttons stay the real buttons (their own handlers, keys and tests keep working); we only move/hide them.
-const CTX = ['cbBtn', 'turfAct', 'jobAct']; // priority: contraband deal > turf action > taxi duty
+const CTX = ['cbBtn', 'turfAct', 'jobAct']; // default priority: contraband deal > turf action > job duty
+// ...but a running job (🩺 Stabilise, 🚕 fare) or turf fight outranks a passer-by deal: the task in hand wins the slot
+const ctxOrder = () => { let o = CTX; try { if (window.SSX?.turf?.fight?.()) o = ['turfAct', ...o.filter(x => x !== 'turfAct')]; if (window.SSX?.jobs?.active?.()) o = ['jobAct', ...o.filter(x => x !== 'jobAct')]; } catch (e) {} return o; };
+let ctxSet = '';
 function updCtx() {
   if (!ctxNext) { ctxNext = document.createElement('button'); ctxNext.id = 'hxCtxNext'; ctxNext.type = 'button'; ctxNext.setAttribute('aria-label', 'Next action'); document.body.appendChild(ctxNext); onTap(ctxNext, () => { ctxPick++; tick(true); }); }
-  const all = CTX.map(id => document.getElementById(id)).filter(Boolean), list = all.filter(el => el.classList.contains('show'));
+  const all = ctxOrder().map(id => document.getElementById(id)).filter(Boolean), list = all.filter(el => el.classList.contains('show'));
+  const set = list.map(e => e.id).join(); if (set !== ctxSet) { ctxSet = set; ctxPick = 0; } // a new button showing up starts from the top pick again
   // sit just above the right-hand button cluster (never in the middle, never in the bottom-left radio slot)
   // portrait: right edge, just above the cluster. landscape: bottom edge, just left of the cluster (the middle stays clear)
   let top = innerHeight - 24, left = innerWidth; for (const id of ['surfBtns', 'fireBtn', 'meleeBtn']) { const r = document.getElementById(id)?.getBoundingClientRect(); if (r && r.height && r.right > innerWidth * 0.6) { top = Math.min(top, r.top); left = Math.min(left, r.left); } }
