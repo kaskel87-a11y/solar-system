@@ -24,12 +24,17 @@ const FORCE = qs.get('vehicles') === '0' || LS === 'off' ? 'off' : qs.get('vehic
 const CAPS = { low: 4, med: 8, high: 14, ultra: 18 }, LIGHTS = { low: 1, med: 3, high: 5, ultra: 6 };
 const D_LOD1 = 45, D_FAR = 120, D_LIGHT = 70;
 const S = { on: false, tier: 'classic', scene: null, ctx: null, gen: null, fx: null, loading: null, tracked: new Map(), mats: new Map(), geos: new Map(), lights: null, lightsIn: false,
-  ship: null, t: 0, frame: 0, night: 0, isNight: false, warned: new Set(), stats: { attached: 0, tagged: 0, impacts: 0, burns: 0, fails: 0, builds: 0 } };
+  ship: null, t: 0, frame: 0, night: 0, isNight: false, warned: new Set(), stats: { attaches: 0, tagged: 0, impacts: 0, burns: 0, fails: 0, builds: 0 } };
 const warnOnce = (k, e) => { if (S.warned.has(k)) return; S.warned.add(k); console.warn('v8 vehicles: ' + k, e); };
 
 // ---------------------------------------------------------------- tagging (runs on every tier; only adds userData) ----------------------------------------------------------------
 const BUILTIN = ['buggy', 'hauler', 'hoverbike', 'shuttle'];
-function collect(v) { const keep = new Set(v.group.userData.bar || []), list = []; v.group.traverse(o => { if (o.isMesh && !keep.has(o)) list.push(o); }); return list; }
+function collect(v) { // blocky meshes to hide; the security light bar, garage body kits and underglow stay
+  const ud = v.group.userData, keep = new Set(ud.bar || []), list = [];
+  for (const k of [ud.deco?.kit, ud.deco?.glow]) k?.traverse?.(o => keep.add(o));
+  const walk = (o) => { if (keep.has(o) || o.name === 'ssxVehAttach' || o.name === 'ssxVehSkin' || (o !== v.group && o.userData?.ssxVeh)) return; // attach groups and nested vehicles (dealer skins) stay
+    if (o.isMesh) list.push(o); for (const c of o.children) walk(c); };
+  walk(v.group); return list; }
 function tagV(v, kind, sec) {
   if (!v || !v.group) return v;
   try { const ud = v.group.userData, prev = ud.ssxVeh, orig = prev?.orig || collect(v);
@@ -87,7 +92,7 @@ const phys = () => S.tier !== 'low';
 function srcPaint(e) { const pm = e.tag.paintMeshes[0]; return pm ? pm.material : e.tag.paint; }
 function paintMat(e) {
   const src = srcPaint(e), k = e.kit, col = src?.color ? src.color.getHex() : 0x8a8f96;
-  const matte = (src?.roughness ?? 0.5) > 0.8, metal = (src?.metalness ?? 0) > 0.8 ? 0.95 : 0.3 + (src?.metalness ?? 0) * 0.3, rough = matte ? 0.75 : Math.min(src?.roughness ?? 0.4, 0.42) * (metal > 0.9 ? 0.4 : 1);
+  const matte = (src?.roughness ?? 0.5) > 0.8, metal = (src?.metalness ?? 0) > 0.8 ? 0.85 : 0.08 + (src?.metalness ?? 0) * 0.2, rough = matte ? 0.75 : Math.min(src?.roughness ?? 0.4, 0.42) * (metal > 0.9 ? 0.4 : 1);
   const dent = e.burn !== 0 ? 1 : e.dmg >= 0.7 ? 1 : e.dmg >= 0.45 ? 0.66 : e.dmg >= 0.2 ? 0.33 : 0, dirt = Math.round(e.dirt * 3) / 3, burn = e.burn > 0 ? 2 : e.burn < 0 ? 1 : 0;
   const decal = e.tag.sec ? 2 : k.decal && (e.seed * 7 % 1) > 0.4 ? 1 : 0;
   const key = [col, metal.toFixed(2), rough.toFixed(2), matte, dirt, dent, burn, decal, k.frame.zN.toFixed(2), k.frame.zT.toFixed(2), k.frame.yb.toFixed(2), k.frame.yt.toFixed(2), (k.frame.seams || []).join('/'), phys()].join('|');
@@ -95,6 +100,13 @@ function paintMat(e) {
   if (!m) { m = S.gen.paintMaterial({ color: col, metal, rough, dirt, dent, burn: burn ? 1 : 0, seed: (e.seed * 97) % 13, frame: k.frame, decal, decalColor: e.tag.sec ? 0x1f4fd8 : 0xf4f1ea, clear: matte ? 0 : 1 }, phys()); m.userData.burning = burn === 2; S.mats.set(key, m); }
   return m;
 }
+// garage rim colour (rides.js decorate recolours the blocky hub material): tint our wheel the same way
+function rimOf(e) { const h = e.g.userData.hubM || e.tag.wheels[0]?.spin?.children?.[1]?.material; return h?.color ? h.color.getHex() : -1; }
+function wheelMat(e) {
+  const burnt = e.burn !== 0, rim = burnt ? -1 : rimOf(e), key = burnt ? 'wheelB' : rim < 0 || rim === STOCK_RIM ? 'wheel' : 'wheel' + rim;
+  return shared(key, () => { const m = S.gen.trimMaterial('wheel', burnt); if (key.length > 5) { m.color.setHex(rim).lerp(new THREE.Color(1, 1, 1), 0.25); } return m; });
+}
+const STOCK_RIM = 0x8c9097, HIDE_MASK = 1 << 30;
 function shared(name, f) { let m = S.mats.get(name); if (!m) { m = f(); S.mats.set(name, m); } return m; }
 
 // ---------------------------------------------------------------- attach / detach ----------------------------------------------------------------
@@ -111,17 +123,20 @@ function attach(e) {
     if (inst.glass) inst.glass.renderOrder = 2;
     inst.beam = new THREE.Mesh(k.beam, shared('beam', () => G.beamMaterial())); inst.beam.visible = false; inst.beam.renderOrder = 4; inst.beam.userData.noV8 = true; inst.beam.frustumCulled = false; root.add(inst.beam);
     // the beam's pool sits on the ground under the nose: body-local y of the ground ~ 0 (pivots are at wheel radius)
-    const wg = G.wheelGeo(), wm = shared(burnt ? 'wheelB' : 'wheel', () => G.trimMaterial('wheel', burnt));
+    const wg = G.wheelGeo(), wm = wheelMat(e); inst.rim = rimOf(e);
     for (const w of e.fit.W) { const m = new THREE.Mesh(wg, wm); const s = w.x < 0 ? -1 : 1; m.scale.set(s * w.wd, w.r, w.r); m.castShadow = true; m.userData.noV8 = true; w.w.spin.add(m); inst.wheels.push(m); }
-    for (const o of e.tag.orig) { inst.hidden.push([o, o.visible]); o.visible = false; }
-    e.tag.body.add(root); e.matKey = inst.paint.material; S.stats.attached++;
-    applyBurnLook(e);
-  } catch (err) { e.failed = true; S.stats.fails++; warnOnce('attach ' + e.tag.base, err); detach(e); }
+    // hide the blocky meshes from the camera (and shadows) with a spare layer instead of .visible, so the game,
+    // dealership hideStock / decorate and game.js cosmetics keep full ownership of .visible and see the same values
+    for (const o of e.tag.orig) { inst.hidden.push([o, o.layers.mask]); o.layers.mask = HIDE_MASK; }
+    e.tag.body.add(root); e.matKey = inst.paint.material; S.stats.attaches++;
+    inst.paint.name = 'ssxVehPaint'; applyBurnLook(e); emit('attach', e);
+  } catch (err) { e.failed = true; S.stats.fails++; warnOnce('attach ' + e.tag.base, err); detach(e); emit('fallback', e); }
 }
 function detach(e) {
   const inst = e.inst; if (!inst) return; e.inst = null;
   inst.root.parent?.remove(inst.root); for (const m of inst.wheels) m.parent?.remove(m);
-  for (const [o, v] of inst.hidden) o.visible = v;
+  for (const [o, m] of inst.hidden) if (o.layers.mask === HIDE_MASK) o.layers.mask = m;
+  emit('detach', e);
 }
 function applyBurnLook(e) {
   const inst = e.inst; if (!inst) return; const burnt = e.burn !== 0, G = S.gen;
@@ -129,21 +144,45 @@ function applyBurnLook(e) {
   if (inst.trim) inst.trim.material = shared(burnt ? 'trimB' : 'trim', () => G.trimMaterial('trim', burnt));
   if (inst.lamps) inst.lamps.material = shared(burnt ? 'lampD' : 'lamp', () => G.lampMaterial(burnt));
   if (inst.glass) inst.glass.visible = !burnt;
-  const wm = shared(burnt ? 'wheelB' : 'wheel', () => G.trimMaterial('wheel', burnt)); for (const m of inst.wheels) m.material = wm;
+  const wm = wheelMat(e); for (const m of inst.wheels) m.material = wm;
 }
 
 // ---------------------------------------------------------------- scan + damage ----------------------------------------------------------------
+// a kind gets the realistic model only when it IS one of the modelled kinds: world.js builtins, the rover, and the dealer
+// rides (rides.js SHAPES). Kinds built on top of a base (planet liveries, PR #53's raccoon_rover = buggy + junk panels,
+// the Raccoon Mobile) keep their own mesh unless they opt in with SSX.vehicleLook.useBase(kind).
+const SKIP = new Set(['raccoon_mobile', 'raccoon_rover']), USE_BASE = new Set();
+function realistic(tag, g) {
+  if (!tag || SKIP.has(tag.kind) || g?.userData?.rcn || g?.userData?.ssxVehSkip) return false;
+  const modelled = !!PROFILES[tag.base] || !!g?.userData?.ride?.shape;
+  return modelled && (tag.kind === tag.base || USE_BASE.has(tag.kind));
+}
 function track(g) {
   const tag = g.userData.ssxVeh; if (!tag || S.tracked.has(g)) return;
+  if (g.userData.ride?.shape && tag.kind === tag.base) RIDE_KINDS.add(tag.kind);
   const o0 = tag.orig[0]?.material; if (o0 && o0.transparent && o0.opacity < 0.9 && tag.orig.every(o => o.material === o0)) return; // race ghost
-  if (tag.kind === 'raccoon_mobile' || (!PROFILES[tag.base] && !g.userData.ride?.shape)) return; // Raccoon Mobile and unknown mods stay blocky
+  if (!realistic(tag, g)) return; // no model for this kind (raccoon rover, planet liveries, mods): the existing mesh stays
   const seed = Math.random();
   S.tracked.set(g, { g, tag, seed, dirt: tag.sec ? 0.2 + seed * 0.2 : 0.25 + seed * 0.6, dmg: 0, burn: 0, inst: null, kit: null, fit: null, failed: false, wp: new THREE.Vector3(), last: null, spd: 0, d: 1e9, player: false, wreckChk: 0, still: 0 });
 }
+// the stock rover steps aside when the dealership has put your bought ride's skin in its body (that skin gets its own
+// realistic model by kind) or when game.js shows a cosmetic kit instead of the stock hull
+function suppressed(e, ctx) {
+  const g = e.g; if (g.userData.ssxVehSkip || SKIP.has(e.tag.kind)) return true;
+  if (e.tag.paintMeshes[0] && !e.tag.paintMeshes[0].visible) return true; // someone else hid the stock body: their look wins
+  const rv = ctx.rover?.group === g ? ctx.rover : null; if (!rv) return false;
+  return !!rv.__dlr?.skin || !!(rv.kit && rv.kitG?.visible);
+}
 function scan(ctx) {
   const st = [[ctx.scene, 0]];
-  while (st.length) { const [o, d] = st.pop(); for (const c of o.children) { if (c.userData?.ssxVeh) { track(c); continue; } if (d < 4 && c.children.length && !c.isMesh) st.push([c, d + 1]); } }
-  const rv = ctx.rover; if (rv?.group && !rv.group.userData.ssxVeh) { tagV({ group: rv.group, body: rv.body, wheels: rv.wheels, paint: rv.paint }, 'rover'); track(rv.group); }
+  while (st.length) { const [o, d] = st.pop(); for (const c of o.children) { if (c.userData?.ssxVeh) track(c); if (d < 5 && c.children.length && !c.isMesh) st.push([c, d + 1]); } }
+  const rv = ctx.rover; if (rv?.group && !rv.group.userData.ssxVeh) {
+    // the rover: hide only its stock parts (surface.js rover.stockParts), wheels and headlight pool, never the turret,
+    // jets, game.js cosmetic kit (kitG) or the dealership's ride skin that also live on rover.body
+    tagV({ group: rv.group, body: rv.body, wheels: rv.wheels, paint: rv.paint }, 'rover');
+    const t = rv.group.userData.ssxVeh, orig = [];
+    if (rv.stockParts?.length) { for (const p of rv.stockParts) p.traverse(o => { if (o.isMesh) orig.push(o); }); for (const w of rv.wheels || []) w.pivot.traverse(o => { if (o.isMesh) orig.push(o); }); for (const o of rv.group.children) if (o.isMesh) orig.push(o); t.orig = orig; t.paintMeshes = orig.filter(o => o.material === rv.paint); }
+    track(rv.group); }
   for (const e of S.tracked.values()) {
     // wreck detection: every blocky mesh switched to one shared material (pursuit kills) -> burn; upside-down junk -> charred
     if (e.burn === 0) { const o = e.tag.orig, m0 = o[0]?.material; if (o.length > 3 && m0 && m0 !== e.tag.paint && o.every(x => x.material === m0)) startBurn(e, 16);
@@ -191,7 +230,7 @@ function shipRestore() { const s = S.ship; if (!s) return; for (const [o, m] of 
 const qn = new THREE.Vector3(), qt = new THREE.Vector3();
 function visibleInScene(g) { for (let o = g; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; } return false; }
 function update(dt, ctx) {
-  const cam = ctx.camera, cap = (CAPS[S.tier] ?? 8), carG = ctx.car?.group || null, rvG = ctx.rover?.group || null, list = [];
+  const cam = ctx.camera, cap = (CAPS[S.tier] ?? 8), carG = ctx.car?.group || null, list = [];
   for (const [g, e] of S.tracked) {
     if (!g.parent) { detach(e); S.tracked.delete(g); continue; }
     g.getWorldPosition(e.wp);
@@ -199,14 +238,15 @@ function update(dt, ctx) {
       if (mv < 25 && dt > 0) { const prev = e.spd; e.spd += (Math.min(v, 60) - e.spd) * Math.min(1, dt * 10);
         if (!e.player && prev > 7.5 && e.spd < prev * 0.45 && e.burn === 0) damage(e, Math.min(0.4, (prev - e.spd) * 0.03)); } }
     else e.last = new THREE.Vector3(); e.last.copy(e.wp);
-    e.player = g === carG || (!carG && g === rvG);
+    e.player = !!carG && (g === carG || g.parent?.parent === carG); // your rover, or the dealer skin inside its body
+    e.off = suppressed(e, ctx);
     e.d = e.wp.distanceTo(cam.position);
     if (e.burn > 0) { e.burn -= dt; if (e.burn <= 0) { e.burn = -1; if (e.inst) applyBurnLook(e); } }
-    if (!visibleInScene(g) || e.d > D_FAR + 10) { if (e.inst && (e.d > D_FAR + 10 || !g.visible)) detach(e); continue; }
+    if (e.off || !visibleInScene(g) || e.d > D_FAR + 10) { if (e.inst) detach(e); continue; }
     list.push(e);
   }
   // your car's own speed is exact: a sudden loss = a crash
-  const pc = ctx.car || null, pe = pc?.group ? S.tracked.get(pc.group) : null;
+  const pc = ctx.car || null, pe = pc?.group ? (list.find(e => e.player) || S.tracked.get(pc.group)) : null;
   if (pe) { const v = Math.abs(pc.speed || 0); if (pe.pv != null && pe.pv > 8 && pe.pv - v > 6) damage(pe, Math.min(0.35, (pe.pv - v - 4) * 0.035)); pe.pv = v; }
   list.sort((a, b) => (b.player - a.player) || a.d - b.d);
   let n = 0;
@@ -215,9 +255,16 @@ function update(dt, ctx) {
     if (want) { n++; if (!e.inst) attach(e); } else if (e.inst) detach(e);
     const inst = e.inst; if (!inst) continue;
     if (inst.paint.material !== paintMat(e)) inst.paint.material = paintMat(e);
+    const rim = rimOf(e); if (rim !== inst.rim) { inst.rim = rim; const wm = wheelMat(e); for (const m of inst.wheels) m.material = wm; }
     if (inst.trim) inst.trim.visible = e.d < D_LOD1 || e.player;
     inst.beam.visible = S.night > 0.3 && e.burn === 0;
   }
+  // IBL: on low / med #35 puts the env map on metallic materials only (scene.environment stays null); give our paint,
+  // trim and glass the same probe so clearcoat and chrome have something to reflect. One recompile when it first appears.
+  const env = ctx.scene.environment ? null : (window.__v8?.S?.envRT?.texture || null);
+  if (env !== S.env) { S.env = env; for (const m of S.mats.values()) if (m.isMeshStandardMaterial) { m.envMap = env; m.needsUpdate = true; } }
+  else if (env && S.mats.size !== S.envN) for (const m of S.mats.values()) if (m.isMeshStandardMaterial && m.envMap !== env) { m.envMap = env; m.needsUpdate = true; }
+  S.envN = S.mats.size;
   // lamps + beams follow the night
   const G = S.gen; G.LAMP_U.uHead.value = 0.35 + S.night * 3.4; G.LAMP_U.uTail.value = 0.45 + S.night * 1.8; G.LAMP_U.uBlink.value = 0.25 + S.night * 0.8; G.BEAM_U.uK.value = THREE.MathUtils.smoothstep(S.night, 0.3, 0.8);
   // smoke / fire
@@ -226,7 +273,7 @@ function update(dt, ctx) {
     for (const e of list) { if (!e.inst || e.d > 90) continue; const k = e.kit.meta;
       if (e.burn > 0) { S.fx.emit(e.seed, 'fire', worldOf(e, k.fire), 1, dt); S.fx.emit(e.seed, 'smoke', worldOf(e, [k.fire[0], k.fire[1] + 0.8, k.fire[2]]), 1, dt); if (!fireE || e.d < fireE.d) fireE = e; }
       else if (e.burn < 0) S.fx.emit(e.seed, 'smoke', worldOf(e, k.fire), 0.35, dt * 0.5);
-      else if (e.dmg >= 0.45) S.fx.emit(e.seed, 'smoke', worldOf(e, k.smoke), (e.dmg - 0.45) / 0.4, dt); }
+      else if (e.dmg >= 0.45) S.fx.emit(e.seed, 'smoke', worldOf(e, k.smoke), Math.min(0.45, (e.dmg - 0.45) / 0.8), dt * 0.6); }
     for (const m of S.mats.values()) if (m.userData.burning) m.userData.U.uEmber.value = 0.6 + Math.sin(S.frame * 0.37) * 0.25 + Math.random() * 0.25;
     S.fx.update(dt, cam, window.__app?.renderer?.domElement?.height || innerHeight * devicePixelRatio);
     S.fireE = fireE;
@@ -284,8 +331,38 @@ const API = {
   repair: (t) => { const e = entryOf(t); if (!e) return false; e.dmg = 0; e.burn = 0; if (e.inst) applyBurnLook(e); return true; },
   preload: () => load()
 };
-window.__v8veh = { S, API };
+// ---------------------------------------------------------------- SSX.vehicleLook: the hook for dealership / garage / mods ----------------------------------------------------------------
+// Everything stays keyed by the vehicle group and its kind (VEHICLE_BUILDERS key, userData.ride.kind untouched).
+//   has(kind)                 -> true if that kind gets a realistic model on med+ (false: raccoon_rover, liveries, mods)
+//   info(target)              -> { kind, rideKind, base, realistic, on, root, paintMesh, paintSource, attach, wheels } | null
+//   attachGroup(target)       -> THREE.Group 'ssxVehAttach' on the vehicle body: shown in BOTH looks (kits, decals, props)
+//   paint(target, { color, metal, rough }) -> recolours the vehicle's source paint material (v.paint / ride.paint, the
+//                                same one decorate() writes); the realistic paint mirrors it next frame. Returns true.
+//   skip(kind, on = true)     -> force a kind to keep its existing mesh (or group.userData.ssxVehSkip = true for one car)
+//   useBase(kind, on = true)  -> let a kind built on a modelled base (e.g. build('buggy') + livery) use the base's model
+//   refresh(target)           -> drop and rebuild the model now (after swapping meshes on the blocky group)
+//   onChange(fn)              -> fn({ type: 'attach' | 'detach' | 'fallback', group, kind }); returns an unsubscribe
+// target: a vehicle group, a { group } vehicle / rover object, 'player' or 'nearest'.
+const LISTEN = new Set(), RIDE_KINDS = new Set(Object.keys(RIDE_EXTRA));
+function emit(type, e) { for (const f of LISTEN) { try { f({ type, group: e.g, kind: e.tag.kind }); } catch (err) { warnOnce('listener', err); } } }
+function groupOf(t) { if (!t) return null; if (t === 'player' || t === 'nearest') return entryOf(t)?.g || null; return t.isObject3D ? t : t.group || null; }
+function attachGroupOf(g) { const t = g?.userData?.ssxVeh, body = t?.body || g?.children?.[0] || g; if (!body) return null; let a = body.getObjectByName?.('ssxVehAttach'); if (!a || a.parent !== body) { a = new THREE.Group(); a.name = 'ssxVehAttach'; body.add(a); } return a; }
+const LOOK = {
+  version: VERSION,
+  has: (kind) => !SKIP.has(kind) && (!!PROFILES[kind] || RIDE_KINDS.has(kind) || USE_BASE.has(kind)),
+  info(t) { const g = groupOf(t), tag = g?.userData?.ssxVeh; if (!tag) return null; const e = S.tracked.get(g);
+    return { kind: tag.kind, rideKind: g.userData.ride?.kind ?? null, base: tag.base, realistic: S.on && realistic(tag, g), on: !!e?.inst, fallback: !e?.inst ? (e?.off ? 'suppressed' : e?.failed ? 'failed' : !realistic(tag, g) ? 'no model' : !S.on ? 'look off' : 'far / over cap') : null,
+      root: e?.inst?.root || null, paintMesh: e?.inst?.paint || null, paintSource: tag.paintMeshes[0]?.material || tag.paint || null, attach: attachGroupOf(g), wheels: tag.wheels }; },
+  attachGroup: (t) => attachGroupOf(groupOf(t)),
+  paint(t, o = {}) { const g = groupOf(t), tag = g?.userData?.ssxVeh; if (!tag) return false; const mats = new Set([tag.paint, ...tag.paintMeshes.map(m => m.material)].filter(m => m?.color));
+    for (const m of mats) { if (o.color != null) m.color.set(o.color); if (o.metal != null) m.metalness = o.metal; if (o.rough != null) m.roughness = o.rough; } return mats.size > 0; },
+  skip(kind, on = true) { on ? SKIP.add(kind) : SKIP.delete(kind); for (const e of S.tracked.values()) if (e.tag.kind === kind) { detach(e); S.tracked.delete(e.g); } return true; },
+  useBase(kind, on = true) { on ? USE_BASE.add(kind) : USE_BASE.delete(kind); return true; },
+  refresh(t) { const g = groupOf(t), e = g && S.tracked.get(g); if (!e) return false; detach(e); e.fit = null; e.failed = false; e.tag.orig = collect({ group: g }); e.tag.paintMeshes = e.tag.orig.filter(o => o.material === e.tag.paint); return true; },
+  onChange(fn) { LISTEN.add(fn); return () => LISTEN.delete(fn); }
+};
+window.__v8veh = { S, API, LOOK };
 (function boot() {
   const X = window.SSX; if (!X || typeof X.registerSurfaceTick !== 'function') { setTimeout(boot, 250); return; }
-  X.registerSurfaceTick(tick); X.vehicles = API;
+  X.registerSurfaceTick(tick); X.vehicles = API; X.vehicleLook = LOOK;
 })();

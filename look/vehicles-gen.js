@@ -342,12 +342,12 @@ if (uDent > 0.05) { vec3 fdx = dFdx(vViewPosition), fdy = dFdy(vViewPosition); v
     float holes = atl(vec2(fract(suv.x * 3.0 + uSeed * 0.37), h * 1.6 - 0.2), 3.0) * side * smoothstep(0.35, 0.7, uDent);
     vScr = max(sc, holes); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.55, 0.56, 0.58), sc * 0.8); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.02), holes); }
   diffuseColor.rgb = mix(diffuseColor.rgb, dustC, vDirtK * 0.88);
-  if (uBurn > 0.0) { float ch = smoothstep(0.2, 0.8, vfbm(vOP * 2.2 + 11.0)); vec3 burnt = mix(vec3(0.025, 0.022, 0.02), vec3(0.22, 0.1, 0.05), ch * 0.6); diffuseColor.rgb = mix(diffuseColor.rgb, burnt, uBurn); vDirtK = max(vDirtK, uBurn); } }`)
+  if (uBurn > 0.0) { float ch = smoothstep(0.2, 0.8, vfbm(vOP * 2.2 + 11.0)); vec3 burnt = mix(vec3(0.018, 0.017, 0.016), vec3(0.13, 0.065, 0.035), ch * 0.55); diffuseColor.rgb = mix(diffuseColor.rgb, burnt, uBurn); vDirtK = max(vDirtK, uBurn); } }`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + vDirtK * 0.55 + vScr * 0.3, 0.04, 1.0);')
       .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = mix(metalnessFactor, 0.0, vDirtK * 0.8);')
       .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\n#ifdef USE_CLEARCOAT\nmaterial.clearcoat *= (1.0 - vDirtK) * (1.0 - vScr);\n#endif')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-if (uEmber > 0.0) { float e = smoothstep(0.68, 0.82, vfbm(vOP * 3.1 + 5.0)) * uEmber; totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * e * 2.5; }`);
+if (uEmber > 0.0) { float e = smoothstep(0.74, 0.86, vfbm(vOP * 3.1 + 5.0)) * uEmber; totalEmissiveRadiance += vec3(1.0, 0.3, 0.05) * e * 1.8; }`);
   };
   m.customProgramCacheKey = () => 'ssxveh-paint' + (phys ? 'p' : 's');
   return m;
