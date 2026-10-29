@@ -48,15 +48,16 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR, ID = 'q-v
       if (s.st.time - lastG > 45 || Date.now() - lastT > 240000) { R.stuckAt = `Gate ${s.st.next + 1}/8 car (${s.car?.x.toFixed(1)},${s.car?.z.toFixed(1)})`; R.stuckDiag = await G(() => { const c = window.__race.car(), w = window.__app.surface.world, P = window.SSX?.pursuit, out = { wanted: w.wanted ?? w.getWanted?.(), pursuit: P?.debug?.state?.() || null, roadblocks: P?.roadblocks?.() || null };
         out.collide = c ? [0, 1.5, 3].map(d => { const x = c.x - Math.sin(c.yaw) * d, z = c.z - Math.cos(c.yaw) * d, r = w.collide(x, z, 2); return r ? [+r.x.toFixed(1), +r.z.toFixed(1)] : null; }) : null;
         const near = []; window.__app.surface.scene.traverse(o => { if (!o.isMesh || !o.visible) return; const p = o.getWorldPosition(o.position.clone()); if (Math.hypot(p.x - c.x, p.z - c.z) < 6) near.push((o.parent?.name || '') + '/' + (o.name || o.geometry?.type)); });
-        out.near = [...new Set(near)].slice(0, 25); return out; }); await page.screenshot({ path: `${out}race-p2-STUCK-${tag}.png` }); break; }
+        out.near = [...new Set(near)].slice(0, 25); const tr = window.__race.tracks().find(q => q.id === window.__race.state?.id) || window.__race.tracks().find(q => q.gates?.length === 8); out.props = (tr?.props || []).filter(p => Math.hypot(p.x - c.x, p.z - c.z) < 16).map(p => [p.t, +p.x.toFixed(1), +p.z.toFixed(1), +(p.yaw || 0).toFixed(2)]); out.car = { x: +c.x.toFixed(1), z: +c.z.toFixed(1), y: +(c.y ?? 0).toFixed(2), yaw: +c.yaw.toFixed(2), speed: +c.speed.toFixed(1), air: !!c.air }; out.state = JSON.stringify(window.__race.state).slice(0, 300); out.runGates = JSON.stringify((window.__race.gates?.() || []).map(g => [+g.x.toFixed(1), +g.z.toFixed(1)])); out.liveGates = JSON.stringify((tr?.gates || []).map(g => [+g.x.toFixed(1), +g.z.toFixed(1)])); return out; });
+        R.stuckTrail = []; for (let i = 0; i < 6; i++) { await sleep(300); R.stuckTrail.push(await G(() => { const c = window.__race.car(); return c ? [+c.x.toFixed(1), +c.z.toFixed(1), +c.speed.toFixed(1)] : null; })); } await page.screenshot({ path: `${out}race-p2-STUCK-${tag}.png` }); break; }
       // stuck = slow OR not actually moving (wheels spin against a parked car / traffic: speed > 1.2 but position frozen)
       // stuck = slow, OR no progress toward the next gate for ~60 polls (pushing/jittering against a parked car or traffic)
-      const gN = s.car ? await G(([id, n]) => window.__race.tracks().find(q => q.id === id).gates[n], [ID, last]) : null;
+      const gN = s.car ? await G(([id, n]) => (window.__race.gates?.() || window.__race.tracks().find(q => q.id === id).gates)[n], [ID, last]) : null;
       const dG = s.car && gN ? Math.hypot(gN.x - s.car.x, gN.z - s.car.z) : 0;
       if (!p2pos || p2pos.n !== last || dG < p2pos.best - 1) p2pos = { n: last, best: dG, k: 0 }; else p2pos.k++;
       slow = s.car && (Math.abs(s.car.speed) < 1.2 || p2pos.k > 60) ? (p2pos.k > 60 ? 99 : slow + 1) : 0; if (slow === 99) p2pos.k = 0;
       if (slow > 25) { slow = 0; reverses++; await page.keyboard.up('KeyW'); await G(() => { window.__p2turn = (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random()); }); await page.keyboard.down('KeyS'); await sleep(900); await page.keyboard.up('KeyS'); await page.keyboard.down('KeyW'); await sleep(1200); await G(() => { window.__p2turn = 0; }); }
-      await G(([id, n]) => { const g = window.__race.tracks().find(q => q.id === id).gates[n], c = window.__race.car(); if (!c || !g) return;
+      await G(([id, n]) => { const g = (window.__race.gates?.() || window.__race.tracks().find(q => q.id === id).gates)[n], c = window.__race.car(); if (!c || !g) return;
         window.__race.place(c.x, c.z, Math.atan2(-(g.x - c.x), -(g.z - c.z)) + (window.__p2turn || 0)); if (c.speed > 11) window.__race.setCarSpeed(11); }, [ID, last]);
       await sleep(40);
     }
