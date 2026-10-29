@@ -30,7 +30,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('ready:' + d, ready);
       ok('assets:' + d, JSON.stringify(D.counts), want[d].every(id => (D.counts || {})[id] > 0));
       if (!desk) ok('streamed:' + d, Object.keys(s.districts).join(), Object.keys(s.districts).length === 1);
-      ok('dressTris:' + d, s.tris, s.tris <= window.SSX?.dress?.budget || s.tris <= (desk ? 600000 : 110000));
+      ok('dressTris:' + d, s.tris, s.tris <= (s.budget ?? Infinity) && s.tris <= (desk ? 600000 : 110000));
       const tri = await G(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => { const i = window.__app.renderer.info; r({ tris: i.render.triangles, calls: i.render.calls }); }))));
       ok('sceneTris:' + d, `${tri.tris} tris / ${tri.calls} calls`, desk || tri.tris <= 350000);
       if (d === 'mars-downtown') ok('signs', (D.signs || []).join('|'), (D.signs || []).length >= 1);
