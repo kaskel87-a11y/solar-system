@@ -41,4 +41,29 @@ ok('dirs', F.dirWord(0, 10) === 'south' && F.dirWord(10, 0) === 'east' && /Go to
   const dry = F.fresh(); Object.assign(dry, { owned: true, dome: true, water: 0, power: 0 }); dry.racks.push({ crop: 'potato', growth: 0.2, health: 100, planted: 0 });
   ok('guideUpkeep', F.guideStep(dry).id === 'upkeep');
   ok('guideMigrate', F.migrate({ v: 1, stats: { sold: 3 } }).guide.done === true && F.migrate({ v: 1, guide: { on: true, off: true } }).guide.off === true && F.migrate(null).guide.on === false); }
+// ---- idempotent taps / API calls: two taps in one frame (same clock reading) and two back-to-back API calls give 1 effect, 1 charge ----
+{ let t = 1000; const G = F.makeActGuard(() => t);
+  const mk = () => { const st = F.fresh(); return { st, cr: 20000, charges: 0, fx: 0 }; };
+  // the same rules farm.js runs inside each guarded action: check (incl. the expected state the button was drawn with), then charge once
+  const A = {
+    buy: m => G.run('buy', () => { const v = F.canBuy(m.st, m.cr); if (!v.ok) return v; m.cr -= v.cost; m.charges++; m.st.owned = true; m.fx++; return { ok: true }; }),
+    dome: m => G.run('dome', () => { const v = F.canDome(m.st, m.cr); if (!v.ok) return v; m.cr -= v.cost; m.charges++; m.st.dome = true; m.fx++; return { ok: true }; }),
+    rack: (m, exp) => G.run('rack', () => { const v = F.canRack(m.st, m.cr); if (!v.ok) return v; const sl = F.actStale(m.st, 'rack', exp); if (sl) return { ok: false, why: sl }; m.cr -= v.cost; m.charges++; m.st.racks.push(F.freshRack()); m.fx++; return { ok: true }; }),
+    sell: (m, exp) => G.run(F.actKey('sell', { b: 'vell', c: 'potato' }), () => { const sl = F.staleSale(m.st, 'potato', exp); if (sl) return { ok: false, why: sl }; const q = F.quoteSale(m.st, 'vell', 'potato', m.st.silo.potato | 0); if (!q.ok) return q; F.applySale(m.st, q); m.cr += q.cash | 0; m.charges++; m.fx++; return { ok: true }; })
+  };
+  const m = mk(); const once = (k, f) => { const c0 = m.charges, f0 = m.fx; const r1 = f(), r2 = f(); ok(k, r1.ok && !r2.ok && m.charges - c0 === 1 && m.fx - f0 === 1, { r1, r2 }); t += 400; };
+  // two taps in the same frame (the clock doesn't move between them); a tap carries the state its button was drawn with
+  once('tapBuy', () => A.buy(m)); once('tapDome', () => A.dome(m));
+  const n0 = m.st.racks.length; once('tapRack', () => A.rack(m, n0));
+  m.st.silo.potato = 6; const q0 = m.st.silo.potato; once('tapSell', () => A.sell(m, q0));
+  // two API calls back to back (no expectation passed): the per-key debounce alone keeps it to one
+  const m2 = mk(); const once2 = (k, f) => { const c0 = m2.charges, f0 = m2.fx; const r1 = f(), r2 = f(); ok(k, r1.ok && r2.dup && m2.charges - c0 === 1 && m2.fx - f0 === 1, { r1, r2 }); t += 400; };
+  once2('apiBuy', () => A.buy(m2)); once2('apiDome', () => A.dome(m2)); once2('apiRack', () => A.rack(m2)); m2.st.silo.potato = 6; once2('apiSell', () => A.sell(m2, undefined));
+  // the debounce is per key and short: another key goes through at once, the same key again after ACT_MS
+  ok('otherKey', A.rack(m2).ok && A.rack(m2).dup && G.run('plant:0', () => ({ ok: true })).ok); t += F.ACT_MS - 50; ok('withinMs', A.rack(m2).dup); t += 60; ok('afterMs', A.rack(m2).ok && m2.st.racks.length === 3, m2.st.racks.length);
+  // a stale button (drawn when there were N racks) never charges after the count moved
+  const c0 = m2.charges; t += 400; ok('staleRack', !A.rack(m2, 0).ok && m2.charges === c0);
+  // re-entry (an action fired from inside another, e.g. a base onPlace callback) is dropped
+  ok('reentry', G.run('a', () => G.run('b', () => ({ ok: true }))).dup === true);
+  ok('keys', F.actKey('plantc', { i: 2 }) === 'plant:2' && F.actKey('harvestAll') === 'harvest:all' && F.actKey('sell', { b: 'x', c: 'algae' }) === 'sell:x:algae'); }
 console.log(bad ? `farm unit: ${bad} FAIL` : 'farm unit OK'); process.exit(bad ? 1 : 0);

@@ -17,8 +17,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const center = sel => G(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height, w: r.width, t: r.top, b: r.bottom, l: r.left, r: r.right }; }, sel);
-  // tapSel: let the sheet settle first (a re-render after a base event can shift buttons under a touch)
-  const tapSel = async sel => { await fr(2, 5000); await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
+  // tapSel waits (like a person would) until a button held by the sheet's settle window is tappable again
+  const tapSel = async sel => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); await wait(s => { const b = document.querySelector(s); return !b || !b.dataset.hold; }, 1500, sel); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
+  // two taps in one frame: the same button twice, then whatever sits under that point now (a button that slid in after a re-render)
+  const dbl = sel => G(([s, desk]) => { const b = document.querySelector(s); if (!b) return 'no ' + s; const r = b.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+    const fire = el => { if (!el) return; if (desk) { el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y })); return; }
+      const o = { bubbles: true, cancelable: true, pointerId: 9, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }; el.dispatchEvent(new PointerEvent('pointerdown', o)); el.dispatchEvent(new PointerEvent('pointerup', o)); };
+    fire(b); fire(b); fire(document.elementFromPoint(x, y)?.closest('button')); return true; }, [sel, desk]);
   const fr = async (n = 4, ms = 60000) => { const f0 = await G(() => window.__frames | 0); return wait(t => (window.__frames | 0) >= t, ms, f0 + n); };
   const St = () => G(() => window.SSX.farm.status());
   const cr = () => G(() => window.__app.game.progress.credits);
@@ -46,13 +51,26 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('directions', R.far, !R.far.r.ok && /Go to Dustbowl Homestead \(\d+ m (north|south|east|west|north-east|north-west|south-east|south-west)\) and tap Farm\./.test(R.far.txt) && !R.far.act);
     await tapSel('#farmPanel button[data-a="close"]');
 
-    // ---- buy / build via the context button + sheet ----
+    // ---- idempotent API: two back-to-back calls = 1 effect, 1 charge ----
     await go('farm', 12);
+    R.apiTwice = await G(() => { const F = window.SSX.farm, g = window.__app.game, out = {}; const c = () => g.progress.credits;
+      let c0 = c(); const b1 = F.buy(), b2 = F.buy(); out.buy = { a: b1.ok, b: b2.ok, dup: !!b2.dup, charged: c0 - c(), owned: F.status().owned };
+      c0 = c(); const d1 = F.buildDome(), d2 = F.buildDome(); out.dome = { a: d1.ok, b: d2.ok, dup: !!d2.dup, charged: c0 - c(), pieces: (window.SSX.base?.state?.('farm-homestead')?.pieces || []).filter(p => p.type === 'farm-dome').length };
+      c0 = c(); const r1 = F.addRack(), r2 = F.addRack(); out.rack = { a: r1.ok, b: r2.ok, dup: !!r2.dup, charged: c0 - c(), racks: F.status().racks.length, pieces: (window.SSX.base?.state?.('farm-homestead')?.pieces || []).filter(p => p.type === 'farm-rack').length };
+      F.debug.reset(); g.progress.credits = 20000; g.save(); return out; });
+    { const a = R.apiTwice, BASEX = await G(() => typeof window.SSX.base?.registerPlot === 'function');
+      ok('apiTwiceBuy', a.buy, a.buy.a && !a.buy.b && a.buy.charged === 1200 && a.buy.owned);
+      ok('apiTwiceDome', a.dome, a.dome.a && !a.dome.b && a.dome.dup && a.dome.charged === 900 && (!BASEX || a.dome.pieces === 1));
+      ok('apiTwiceRack', a.rack, a.rack.a && !a.rack.b && a.rack.dup && a.rack.charged === 300 && a.rack.racks === 1 && (!BASEX || a.rack.pieces === 1)); }
+    await sleep(400);
+    // ---- buy / build via the context button + sheet (each one double-tapped in a single frame) ----
     ok('contextBtn', await wait(() => document.getElementById('farmAct').classList.contains('on'), 10000));
     const ab = await center('#farmAct'); ok('contextSize', ab, ab && ab.h >= 44 && /Farm/.test(await G(() => document.getElementById('farmAct').textContent)));
     await tapSel('#farmAct'); ok('sheetOpens', await shown());
     const c0 = await cr();
-    await tapSel('#farmPanel button[data-a="buy"]'); await tapSel('#farmPanel button[data-a="dome"]'); await tapSel('#farmPanel button[data-a="rack"]'); await tapSel('#farmPanel button[data-a="rack"]');
+    const dt = {}; for (const a of ['buy', 'dome', 'rack']) { const m = await cr(), n = (await St()).racks.length; dt[a] = { r: await dbl(`#farmPanel button[data-a="${a}"]`) }; await sleep(450); const s1 = await St(); dt[a].charged = m - await cr(); dt[a].racks = s1.racks.length - n; dt[a].sheet = await shown(); }
+    ok('tapTwice', dt, dt.buy.charged === 1200 && dt.dome.charged === 900 && dt.rack.charged === 300 && dt.rack.racks === 1 && dt.buy.sheet && dt.rack.sheet);
+    await tapSel('#farmPanel button[data-a="rack"]');
     await tapSel('#farmPanel button[data-a="plant"][data-i="0"]'); await tapSel('#farmPanel button[data-a="plantc"][data-c="potato"]');
     let s = await St(); const c1 = await cr();
     ok('buyBuildPlant', { s: { owned: s.owned, dome: s.dome, racks: s.racks }, spent: c0 - c1 }, s.owned && s.dome && s.racks.length === 2 && s.racks[0].crop === 'potato' && c0 - c1 === 1200 + 900 + 600 + 20);
@@ -114,9 +132,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await go('post', 4);
     ok('tradeBtn', await wait(() => /Trade/.test(document.getElementById('farmAct').textContent) && document.getElementById('farmAct').classList.contains('on'), 10000));
     await tapSel('#farmAct'); const p0 = (await St()).silo.potato, m0 = await cr();
-    await tapSel('#farmPanel button[data-a="sell"][data-b="vell"][data-c="potato"]');
+    R.sellTap = await dbl('#farmPanel button[data-a="sell"][data-b="vell"][data-c="potato"]'); await sleep(450);
     k = await St(); const m1 = await cr();
+    ok('tapTwiceSell', { got: m1 - m0, sales: await G(() => window.__fev.filter(e => e.type === 'sale').length) }, (await G(() => window.__fev.filter(e => e.type === 'sale').length)) === 1);
     ok('sale', { p0, p1: k.silo.potato, got: m1 - m0 }, !k.silo.potato && m1 > m0 && await G(() => window.__fev.some(e => e.type === 'sale')));
+    // two sell calls via the API: one sale, one payment
+    R.apiSell = await G(() => { const F = window.SSX.farm, g = window.__app.game, st = F.status(); const crop = Object.keys(st.silo).find(c => st.silo[c] > 1 && F.buyers().some(b => b.pays === 'cash' && b.offers.some(o => o.crop === c)));
+      if (!crop) return { skip: 'no cash crop left' }; const b = F.buyers().find(b => b.pays === 'cash' && b.offers.some(o => o.crop === crop)); const n0 = window.__fev.filter(e => e.type === 'sale').length, q0 = st.silo[crop], c0 = g.progress.credits;
+      const r1 = F.sell(b.id, crop, 1), r2 = F.sell(b.id, crop, 1); return { crop, a: r1.ok, b: r2.ok, dup: !!r2.dup, sold: q0 - (F.status().silo[crop] | 0), paid: g.progress.credits - c0, unit: r1.cash, sales: window.__fev.filter(e => e.type === 'sale').length - n0 }; });
+    ok('apiTwiceSell', R.apiSell, R.apiSell.skip || (R.apiSell.a && !R.apiSell.b && R.apiSell.dup && R.apiSell.sold === 1 && R.apiSell.sales === 1 && R.apiSell.paid === R.apiSell.unit));
     if (!desk) await page.screenshot({ path: out + `farm-post-${tag}.png` });
     await tapSel('#farmPanel button[data-a="close"]');
     // ---- one context button inside the owned lot (base's 🏗️ Build stays hidden: build:false) ----

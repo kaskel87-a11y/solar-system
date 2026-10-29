@@ -175,3 +175,38 @@ export function guideStep(s) {
   }
   return { id: 'plant', text: s.racks.length ? 'Plant potatoes in a hydro rack' : 'Add a hydro rack, then plant potatoes', to: 'farm', icon: '🥔' };
 }
+
+// ---------- idempotent taps and API calls ----------
+// Every buy/build/plant/harvest/sell goes through one guard: a call made while another farm action is running, or within
+// ACT_MS of the last successful call with the same key, is dropped ({ ok:false, dup:true }), so it has no effect and no charge.
+export const ACT_MS = 300;
+export function actKey(a, o = {}) {
+  switch (a) {
+    case 'plant': case 'plantc': return 'plant:' + (o.i ?? 'next');
+    case 'harvest': return 'harvest:' + (o.i ?? 'all');
+    case 'harvestAll': return 'harvest:all';
+    case 'sell': return 'sell:' + (o.b ?? '') + ':' + (o.c ?? '');
+    case 'favor': return 'favor:' + (o.c ?? '');
+    case 'water': case 'power': return 'refill:' + a;
+    default: return String(a);
+  }
+}
+export function makeActGuard(now = () => Date.now(), ms = ACT_MS) {
+  const last = new Map(); let busy = null;
+  return {
+    run(key, fn) {
+      if (busy) return { ok: false, dup: true, why: 'busy', msg: '' };
+      const t = now(), l = last.get(key); if (l != null && t - l < ms) return { ok: false, dup: true, why: 'debounced', msg: '' };
+      busy = key; try { const r = fn(); if (r && r.ok) last.set(key, now()); return r; } finally { busy = null; }
+    },
+    get busy() { return busy; }, reset() { last.clear(); busy = null; }
+  };
+}
+// the state a sheet button was drawn against must still hold before anything is charged (null = still fine)
+export function actStale(s, a, exp) {
+  if (exp == null || exp === '' || !Number.isFinite(+exp)) return null; const n = +exp;
+  if (a === 'rack') return s.racks.length !== n ? 'That rack is already in.' : null;
+  if (a === 'sell') return null; // per crop: checked in staleSale
+  return null;
+}
+export const staleSale = (s, crop, exp) => (exp == null || exp === '' || !Number.isFinite(+exp)) ? null : ((s.silo[crop] | 0) !== +exp ? 'Already sold.' : null);

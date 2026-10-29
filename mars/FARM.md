@@ -91,6 +91,16 @@ at the farm when the timer ends. `?farmraids=0` turns off random raids, and `rai
   - If there is no base, or a base without the add-on API, the farm draws and charges everything itself, with the same layout.
 - Core: `game.spend`, `game.progress.inv`, `world.setWanted`, `registerSurfaceTick`, `registerMenuItem`, `minimap.addMarks`.
 
+## Taps are idempotent (no extra racks or charges)
+- Every buy / build / plant / harvest / refill / patch / sell (sheet tap or API call) runs through one action guard (`makeActGuard` in farmcore):
+  - a re-entrant call while another action runs is ignored (`why:'busy'`)
+  - the same action key within 300 ms of its last success is ignored (`why:'debounced'`). Keys are per action, e.g. `rack`, `plant:<rack>#<pieceId>`, `sell:<buyer>:<crop>`, so different actions don't block each other, and a rack replaced in base's flow counts as a new target.
+  - Duplicates return `{ ok:false, dup:true }` and charge nothing.
+- Expected state is checked before charging: the rack button carries `data-n` (the rack count it saw) and sell buttons carry `data-q` (the silo count it saw). If the state moved on ("That rack is already in." / "Already sold."), nothing is charged.
+- While the sheet re-renders, and for 250 ms after any change, its buttons are held (`data-hold`, disabled) and taps on stale or held buttons are ignored, so a double tap can't land on the button that replaced it.
+- Base mode: Build dome adopts an existing `farm-dome` piece for free. Add rack clamps to one new rack. If `SSX.base.place` charged more than the piece cost (a doubled `onPlace` path), the excess is refunded, so each place charges once.
+- Buttons stay on `window.__onTap` and 48 px+.
+
 ## Safety
 - In the Rust Pit (AJ [-292, -68], r 12) and while the car is floating (> 4 m above ground), the context button is hidden and actions
   return "Not now." or "Land first." Raids never start there.
@@ -101,7 +111,7 @@ at the farm when the timer ends. `?farmraids=0` turns off random raids, and `rai
 SSX.farm.status()  -> { owned, dome, domeHp, racks:[{crop,growth,health,ripe}], water, power, silo, siloCount, favors, hours, day, clock, base, empire, hooks, raid, at, storm, stats }
   hooks: { base:'api'|'queued'|'old'|null, baseRegistered, lotSync:'refresh'|'syncOwners'|'reregister'|null, empire:'api'|'queued'|'old'|null, empireLive, yieldRaid, raidSlot }; clock: 'SSX.empire.hour'|'SSX.time'|'SSX.empire'|'own'; base: { plot, pieces } | 'queued'|'old'|null; empire: { hook:'api'|'queued'|'old', live, hours } | null
 guide.status() guide.start() guide.hide() guide.show()
-buy() buildDome() addRack() plant(i, crop) harvest('all'|i) refill('water'|'power') patch()
+buy() buildDome() addRack() plant(i, crop) harvest('all'|i) refill('water'|'power') patch()   (a repeat within 300 ms -> { ok:false, dup:true }, no charge)
 sell(buyerId, crop, qty) useFavor('cool') raid({waves}) skip(hours) -> { ok, via:'SSX.time'|'own' }
 buyers() clock() places() open('farm'|'post') close() on(fn) CROPS PRICES
 debug: goto('farm'|'post') storm(i) raidEnd('win'|'lose') noRaids(b) state() reset() reload() inPit() floating() scene() ground(x,z) colony()
@@ -132,5 +142,8 @@ Earlier notes for Ben (two context buttons, "Buy the lot first", the busy raid s
   - `lotSync` is `'refresh'` when SSX.base.refresh exists
   - raid slot: an empire raid yields via `yieldRaid` (and via `raid:request` when yieldRaid is absent), the farm raid runs on SSX.raids, and a third add-on's raid keeps the farm on its own timer
   Without those APIs, it checks the farm's own drawing and clocks.
+  - idempotency: `apiTwice` (buy, dome and rack called twice: one charge each of 1200 / 900 / 300, one base piece), `tapTwice` (two taps in the same frame on buy, dome and rack, and on the button now under the finger), `tapTwiceSell` (one sale), `apiSell` (one sale, paid once)
+- `test-farm-unit.mjs` fires two taps in the same frame and two API calls for buy lot, build dome, add rack and sell: each gives exactly one effect and one charge. It also covers per-key debounce, re-entry and stale expected state.
+- The e2e taps no longer wait two frames. They wait (up to 1.5 s) for the sheet's `data-hold` to clear, like a person would.
 - `tests/test-farm-loop.js` plays the first loop through the guide (buy → dome → rack + plant → grow → harvest → sell), including dismiss, re-enable, a reload mid-loop and done after the sale, then checks for one context button in the lot.
   It saves phone screenshots `farm-loop-<n>-<step>-<device>-<browser>.png`.

@@ -160,11 +160,11 @@ function basePlace(type) {
   const fp = type === F.LOT.dome.type ? F.LOT.dome.fp : F.LOT.rackFp, tries = [];
   if (type === F.LOT.dome.type) tries.push([F.LOT.dome.i, F.LOT.dome.j, 0]); else tries.push(...F.LOT.rackSlots.map(([i, j]) => [i, j, 0]));
   for (let j = 0; j <= F.LOT.size - fp[1]; j++) for (let i = 0; i <= F.LOT.size - fp[0]; i++) tries.push([i, j, 0]);
-  syncLot(b);
+  syncLot(b); const c0 = credits(), cost = (type === F.LOT.dome.type ? F.PRICES.dome : F.PRICES.rack);
   let why = 'No room left on the lot.', retried = false;
   for (const [i, j, r] of tries) { let o; const put = () => { try { return b.place(PLOT, type, i, j, r); } catch (e) { return { ok: false, why: String(e?.message || e) }; } };
     o = put(); if (!o?.ok && !retried && S.owned && /buy the lot/i.test(o?.why || '')) { retried = true; reRegister(b); o = put(); } // fallback: old base without refresh()
-    if (o?.ok) { rackIds = sortedRackIds(); return { ok: true, piece: o.piece }; } if (o?.why && !/already there|off your lot|overlap|occupied/i.test(o.why)) { why = o.why; break; } }
+    if (o?.ok) { rackIds = sortedRackIds(); const over = (c0 - credits()) - cost; if (over > 0 && !adopting) give(over); return { ok: true, piece: o.piece, charged: c0 - credits() }; } if (o?.why && !/already there|off your lot|overlap|occupied/i.test(o.why)) { why = o.why; break; } }
   return { ok: false, why };
 }
 function onBasePlace(e) {
@@ -226,19 +226,21 @@ function skip(hours) {
 
 // ---------- actions ----------
 function res(ok, msg, extra = {}) { if (msg) say(msg); refresh(true); guideTick(); return { ok, msg, ...extra }; }
-function buy() { const n = need('farm'); if (n) return res(false, n); const v = F.canBuy(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
+function buy_() { const n = need('farm'); if (n) return res(false, n); const v = F.canBuy(S, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.owned = true; S.water = 40; S.power = 40; save(); syncLot(); rebuildFarm(); emit('buy', { price: v.cost }); return res(true, `🏡 ${F.SITES.farm.name} is yours. Build the greenhouse dome next.`, { cost: v.cost }); }
-function buildDome() { const n = need('farm'); if (n) return res(false, n); const v = F.canDome(S, credits()); if (!v.ok) return res(false, v.why);
+function buildDome_() { const n = need('farm'); if (n) return res(false, n); const v = F.canDome(S, credits()); if (!v.ok) return res(false, v.why);
+  if (baseLot() && basePieces().some(q => q.type === F.LOT.dome.type)) { S.dome = true; S.domeHp = 100; save(); rebuildFarm(true); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: 0, via: 'base' }); } // already placed: adopt, no second charge
   if (baseLot()) { const p = basePlace(F.LOT.dome.type); if (!p.ok) return res(false, p.why); if (!S.dome) { S.dome = true; S.domeHp = 100; } save(); rebuildFarm(true); emit('dome', { price: v.cost, via: 'base' }); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: v.cost, via: 'base' }); }
   if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.dome = true; S.domeHp = 100; save(); rebuildFarm(); emit('dome', { price: v.cost }); return res(true, '🫧 Greenhouse dome is up. Add a hydroponic rack.', { cost: v.cost }); }
-function addRack() { const n = need('farm'); if (n) return res(false, n); const v = F.canRack(S, credits()); if (!v.ok) return res(false, v.why);
-  if (baseLot()) { const n0 = S.racks.length, p = basePlace('farm-rack'); if (!p.ok) return res(false, p.why); if (S.racks.length === n0) S.racks.push(F.freshRack()); save(); rebuildFarm(true); emit('rack', { n: S.racks.length, price: v.cost, via: 'base' }); return res(true, `🪴 Rack ${S.racks.length} installed. Plant something.`, { cost: v.cost, rack: S.racks.length - 1, via: 'base' }); }
+function addRack_(o = {}) { const n = need('farm'); if (n) return res(false, n); const v = F.canRack(S, credits()); if (!v.ok) return res(false, v.why);
+  const st = F.actStale(S, 'rack', o.expect); if (st) return res(false, st);
+  if (baseLot()) { const n0 = S.racks.length, p = basePlace('farm-rack'); if (!p.ok) return res(false, p.why); if (S.racks.length === n0) S.racks.push(F.freshRack()); if (S.racks.length > n0 + 1) S.racks.length = n0 + 1; save(); rebuildFarm(true); emit('rack', { n: S.racks.length, price: v.cost, via: 'base' }); return res(true, `🪴 Rack ${S.racks.length} installed. Plant something.`, { cost: v.cost, rack: S.racks.length - 1, via: 'base' }); }
   if (!spend(v.cost)) return res(false, 'Short on credits.');
   S.racks.push(F.freshRack()); save(); rebuildFarm(); emit('rack', { n: S.racks.length, price: v.cost }); return res(true, `🪴 Rack ${S.racks.length} installed. Plant something.`, { cost: v.cost, rack: S.racks.length - 1 }); }
-function plant(i, crop) { const n = need('farm'); if (n) return res(false, n); i = i == null ? S.racks.findIndex(r => !r.crop) : i | 0; const v = F.canPlant(S, i, crop, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
+function plant_(i, crop) { const n = need('farm'); if (n) return res(false, n); i = i == null ? S.racks.findIndex(r => !r.crop) : i | 0; const v = F.canPlant(S, i, crop, credits()); if (!v.ok) return res(false, v.why); if (!spend(v.cost)) return res(false, 'Short on credits.');
   F.plant(S, i, crop); save(); rebuildFarm(); emit('plant', { rack: i, crop, price: v.cost }); const c = F.CROPS[crop]; return res(true, `${c.icon} ${c.name} planted. Ripe in about ${c.hours} game hours if the water and power hold.`, { rack: i, cost: v.cost }); }
-function harvest(i = 'all') {
+function harvest_(i = 'all') {
   const n = need('farm'); if (n) return res(false, n);
   const idx = i === 'all' ? S.racks.map((r, k) => (r.crop && r.growth >= 1 ? k : -1)).filter(k => k >= 0) : [i | 0];
   if (!idx.length) return res(false, 'Nothing is ripe yet.');
@@ -256,13 +258,13 @@ function toStash() {
   const n = r?.ok === false ? 0 : (fin(r?.qty) ? r.qty : room); if (n > 0) { S.silo.lichen -= n; if (S.silo.lichen <= 0) delete S.silo.lichen; emit('stash', { item: 'glowdust', n }); }
   return n;
 }
-function refill(what) { const n = need('farm'); if (n) return res(false, n); if (!S.owned) return res(false, 'Buy the homestead first.'); if (what !== 'water' && what !== 'power') return res(false, 'Water or power?');
+function refill_(what) { const n = need('farm'); if (n) return res(false, n); if (!S.owned) return res(false, 'Buy the homestead first.'); if (what !== 'water' && what !== 'power') return res(false, 'Water or power?');
   const q = F.refillCost(S, what); if (!q.units) return res(false, what === 'water' ? 'The tanks are full.' : 'The cells are full.'); if (!spend(q.cost)) return res(false, `That top-up is ${q.cost} cr.`);
   S[what] = F.LIMITS[what]; save(); emit('refill', { what, units: q.units, cost: q.cost }); return res(true, what === 'water' ? `💧 Tanks filled. ${q.cost} cr.` : `🔋 Power cells charged. ${q.cost} cr.`, q); }
-function patch() { const n = need('farm'); if (n) return res(false, n); if (!S.dome) return res(false, 'No dome to patch.'); if (S.domeHp >= 100) return res(false, 'The dome is sound.'); if (!spend(F.PRICES.patch)) return res(false, `A patch kit is ${F.PRICES.patch} cr.`);
+function patch_() { const n = need('farm'); if (n) return res(false, n); if (!S.dome) return res(false, 'No dome to patch.'); if (S.domeHp >= 100) return res(false, 'The dome is sound.'); if (!spend(F.PRICES.patch)) return res(false, `A patch kit is ${F.PRICES.patch} cr.`);
   S.domeHp = 100; save(); emit('patch', { cost: F.PRICES.patch }); return res(true, `🩹 Dome patched. ${F.PRICES.patch} cr.`); }
-function sell(buyer, crop, qty = 1) {
-  const n = need('post'); if (n) return res(false, n);
+function sell_(buyer, crop, qty = 1, o = {}) {
+  const n = need('post'); if (n) return res(false, n); const st = F.staleSale(S, crop, o.expect); if (st) return res(false, st);
   const q = F.quoteSale(S, buyer, crop, qty); if (!q.ok) return res(false, q.why);
   F.applySale(S, q); let paid = '';
   if (q.cash) { give(q.cash); paid = `+${q.cash} cr`; }
@@ -271,6 +273,17 @@ function sell(buyer, crop, qty = 1) {
   save(); emit('sale', { ...q, paid }); if (q.favor) emit('favor', { id: q.favor, got: true });
   const b = F.BUYERS.find(x => x.id === buyer); return res(true, `${b.icon} ${b.name} took ${q.qty} ${F.CROPS[crop].name}. ${paid}.`, { ...q, paid });
 }
+// guarded entry points (API and sheet): one effect and one charge per action, see farmcore makeActGuard
+const AG = F.makeActGuard(() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
+const buy = () => AG.run('buy', () => buy_());
+const buildDome = () => AG.run('dome', () => buildDome_());
+const addRack = (o = {}) => AG.run('rack', () => addRack_(o || {}));
+const rackTag = i => (i == null || i === 'all') ? i : `${i}${rackIds[i | 0] ? '#' + rackIds[i | 0] : ''}`; // a rack replaced in base's flow is a new target
+const plant = (i, crop) => AG.run(F.actKey('plant', { i: rackTag(i) }), () => plant_(i, crop));
+const harvest = (i = 'all') => AG.run(F.actKey('harvest', { i: rackTag(i) }), () => harvest_(i));
+const refill = what => AG.run(F.actKey(what), () => refill_(what));
+const patch = () => AG.run('patch', () => patch_());
+const sell = (buyer, crop, qty = 1, o = {}) => AG.run(F.actKey('sell', { b: buyer, c: crop }), () => sell_(buyer, crop, qty, o || {}));
 function giveItem(id) {
   const it = F.ITEMS.find(x => x.id === id), P = game()?.progress;
   if (id === 'medkit' && P?.inv && P.inv.medkits < 3) { P.inv.medkits++; try { game().save(); } catch (e) { /* */ } return `✚ Medkit (${P.inv.medkits}/3)`; }
@@ -380,6 +393,7 @@ function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry
 const css = `
 #farmAct{position:fixed;z-index:15;left:calc(14px + env(safe-area-inset-left));bottom:calc(250px + env(safe-area-inset-bottom));display:none;min-height:52px;min-width:120px;padding:6px 16px;border-radius:14px;border:3px solid #fff;background:#000;color:#fff;font:900 17px/1.1 system-ui,sans-serif;touch-action:manipulation;box-shadow:0 2px 10px #000}
 #farmAct.on{display:block}
+#farmPanel button[data-hold]{opacity:1;cursor:progress}
 #farmPanel{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
 #farmPanel.show{display:flex}#farmPanel .wrap{width:min(480px,calc(100vw - 20px));max-height:calc(100vh - 40px);overflow:auto;background:#000;color:#fff;border:3px solid #fff;border-radius:16px;padding:14px 14px 10px;font:600 15px/1.35 system-ui,sans-serif}
 #farmPanel h2{margin:0 0 4px;font:900 21px/1.2 system-ui,sans-serif}#farmPanel p{margin:6px 0}#farmPanel .sub{color:#ddd;font-size:13px}
@@ -404,8 +418,8 @@ function ui() {
   tap(guideEl.querySelector('#farmGuideX'), () => guideOff());
   try { window.SSX.registerMenuItem({ id: 'rmFarm', label: '🌱 Farm', onTap: () => open(at('post') ? 'post' : 'farm') }); } catch (e) { console.warn('farm menu', e); }
 }
-function btn(a, label, sub, o = {}) { return `<button type="button" data-a="${a}"${o.i != null ? ` data-i="${o.i}"` : ''}${o.c ? ` data-c="${o.c}"` : ''}${o.b ? ` data-b="${o.b}"` : ''} class="${o.pri ? 'pri' : ''}" ${o.dis ? 'disabled' : ''}>${label}${sub ? `<small>${sub}</small>` : ''}</button>`; }
-function open(mode = 'farm') { if (!panel) return; guideStart(); pMode = mode; pMsg.textContent = ''; plantFor = null; render(); panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { mode }); }
+function btn(a, label, sub, o = {}) { return `<button type="button" data-a="${a}"${o.i != null ? ` data-i="${o.i}"` : ''}${o.c ? ` data-c="${o.c}"` : ''}${o.b ? ` data-b="${o.b}"` : ''}${o.n != null ? ` data-n="${o.n}"` : ''}${o.q != null ? ` data-q="${o.q}"` : ''} class="${o.pri ? 'pri' : ''}" ${o.dis ? 'disabled' : ''}>${label}${sub ? `<small>${sub}</small>` : ''}</button>`; }
+function open(mode = 'farm') { if (!panel) return; guideStart(); pMode = mode; pMsg.textContent = ''; plantFor = null; settleNext = false; settleUntil = 0; render(); panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { mode }); }
 function close() { panel?.classList.remove('show'); guideTick(true); }
 let plantFor = null;
 function render() {
@@ -420,7 +434,7 @@ function render() {
       for (const o of b.offers) { const have = S.silo[o.crop] | 0, c = F.CROPS[o.crop], q = have ? F.quoteSale(S, b.id, o.crop, have) : null;
         const label = b.pays === 'cash' ? `${c.icon} Sell ${have || ''} ${c.name} · ${o.unit} cr each` : `${c.icon} Trade ${q?.ok ? q.qty : ''} ${c.name}`.replace(/\s+/g, ' ');
         const sub = b.pays === 'cash' ? `${o.mult >= 1.15 ? 'Good price today.' : o.mult <= 0.85 ? 'Low today.' : 'Fair today.'} You have ${have}.` : q?.ok ? (q.item ? `For ${F.ITEMS.find(i => i.id === q.item).name}.` : `For ${F.FAVORS[q.favor].name}.`) : (q?.why || `You have ${have}.`);
-        h += btn('sell', label, sub, { b: b.id, c: o.crop, dis: !here || !!bl || !q?.ok }); }
+        h += btn('sell', label, sub, { b: b.id, c: o.crop, q: have, dis: !here || !!bl || !q?.ok }); }
     }
     if (S.favors.length) { h += `<p><b>Your favors</b></p>`; for (const f of [...new Set(S.favors)]) { const n = S.favors.filter(x => x === f).length; h += btn('favor', `${F.FAVORS[f].icon} ${F.FAVORS[f].name}${n > 1 ? ' ×' + n : ''}`, F.FAVORS[f].blurb, { c: f, dis: f !== 'cool' }); } }
   } else {
@@ -440,7 +454,7 @@ function render() {
           else if (r.health <= 0) h += btn('harvest', `🥀 Rack ${k + 1}: ${c.name} died`, 'Clear it out.', { i: k, dis: true });
           else h += btn('harvest', `${c.icon} Rack ${k + 1}: ${c.name} · ${r.growth >= 1 ? 'ripe' : Math.floor(r.growth * 100) + '%'}`, `Health ${Math.round(r.health)}%${r.growth >= 1 ? ` · harvest ${F.yieldOf(r)}` : ''}`, { i: k, pri: r.growth >= 1, dis: dis || r.growth < 1 }); });
         if (S.racks.some(r => r.crop && r.growth >= 1)) h += btn('harvestAll', '🧺 Harvest everything ripe', '', { pri: true, dis });
-        if (S.racks.length < F.LIMITS.racks) h += btn('rack', `➕ Add a hydroponic rack · ${F.PRICES.rack} cr`, `${S.racks.length}/${F.LIMITS.racks} racks`, { dis: dis || cr < F.PRICES.rack });
+        if (S.racks.length < F.LIMITS.racks) h += btn('rack', `➕ Add a hydroponic rack · ${F.PRICES.rack} cr`, `${S.racks.length}/${F.LIMITS.racks} racks`, { n: S.racks.length, dis: dis || cr < F.PRICES.rack });
         const w = F.refillCost(S, 'water'), p = F.refillCost(S, 'power');
         h += `<div class="row">${btn('water', `💧 Fill · ${w.cost} cr`, '', { dis: dis || !w.units || cr < w.cost })}${btn('power', `🔋 Charge · ${p.cost} cr`, '', { dis: dis || !p.units || cr < p.cost })}</div>`;
         if (S.domeHp < 100) h += btn('patch', `🩹 Patch the dome · ${F.PRICES.patch} cr`, 'Storm damage. Under 60% it stops shielding the crops.', { dis: dis || cr < F.PRICES.patch });
@@ -452,18 +466,29 @@ function render() {
   }
   if (S.guide.off && !S.guide.done) h += btn('guide', '🧭 Show the farm guide', 'One step at a time, from buying the plot to your first sale.');
   h += btn('close', 'Close', '');
+  const changed = h !== lastHtml; lastHtml = h; const gen = ++renderGen;
   pBody.innerHTML = h;
-  pBody.querySelectorAll('button[data-a]').forEach(b => tap(b, () => { if (!b.disabled) act(b.dataset); }));
+  pBody.querySelectorAll('button[data-a]').forEach(b => tap(b, () => { if (b.disabled || b.dataset.hold || gen !== renderGen || !b.isConnected || nowMs() < settleUntil) return; holdSheet(); act(b.dataset); }));
+  if (changed && settleNext) settleUntil = nowMs() + SETTLE_MS; settleNext = true;
+  if (nowMs() < settleUntil) holdSheet(settleUntil - nowMs());
+}
+// while the sheet re-renders (and for SETTLE_MS after the layout changed) its buttons are disabled, so a tap or a late
+// touch click can't land on a button that just slid under the finger
+const SETTLE_MS = 250, nowMs = () => performance.now(); let renderGen = 0, lastHtml = '', settleNext = false, holdT = 0, settleUntil = 0;
+function holdSheet(ms) {
+  if (!pBody) return; const gen = renderGen;
+  pBody.querySelectorAll('button[data-a]').forEach(b => { if (!b.disabled) { b.disabled = true; b.dataset.hold = '1'; } });
+  if (ms) { clearTimeout(holdT); holdT = setTimeout(() => { if (gen !== renderGen || !pBody) return; pBody.querySelectorAll('button[data-hold]').forEach(b => { b.disabled = false; delete b.dataset.hold; }); }, ms); }
 }
 const fmtH = h => { const m = Math.round(((h % 24) + 24) % 24 * 60) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 function act(d) {
   const a = d.a; let r = null;
   if (a === 'close') return close(); if (a === 'back') { plantFor = null; return render(); } if (a === 'postInfo') { pMode = 'post'; return render(); }
   if (a === 'plant') { plantFor = +d.i; return render(); }
-  if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack(); else if (a === 'plantc') { r = plant(+d.i, d.c); plantFor = null; }
+  if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack({ expect: d.n }); else if (a === 'plantc') { r = plant(+d.i, d.c); if (!r?.dup) plantFor = null; }
   else if (a === 'harvest') r = harvest(+d.i); else if (a === 'harvestAll') r = harvest('all'); else if (a === 'water' || a === 'power') r = refill(a); else if (a === 'patch') r = patch();
-  else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have); } else if (a === 'favor') r = useFavor(d.c); else if (a === 'guide') r = guideOn();
-  if (panel.classList.contains('show')) { render(); pMsg.textContent = r?.msg || ''; }
+  else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have, { expect: d.q }); } else if (a === 'favor') r = useFavor(d.c); else if (a === 'guide') r = guideOn();
+  if (panel.classList.contains('show')) { const m = pMsg.textContent; render(); pMsg.textContent = r?.dup ? m : (r?.msg || ''); }
 }
 function refresh(force) {
   if (!actBtn) return; let mode = '', label = '';
@@ -550,7 +575,7 @@ const API = {
   debug: {
     goto(id) { const s = surf(), p = W(F.SITES[id === 'post' ? 'post' : 'farm'].at); if (!s || !p) return false; s.debugMove(p.x + (id === 'post' ? 0 : 0), p.z + (id === 'post' ? 4 : 6), 0); return { x: p.x, z: p.z }; },
     storm(i = 1) { dbgStorm = F.clamp(+i || 0, 0, 1); return dbgStorm; }, raidEnd: (r = 'win') => endRaid(r), noRaids: v => { noRaids = v !== false; return noRaids; },
-    state: () => JSON.parse(JSON.stringify(S)), reset() { const c0 = credits(); for (const p of basePieces()) { try { B().remove(PLOT, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(); synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
+    state: () => JSON.parse(JSON.stringify(S)), reset() { AG.reset(); const c0 = credits(); for (const p of basePieces()) { try { B().remove(PLOT, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(); synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
     reload() { try { S = F.migrate(JSON.parse(localStorage.getItem(F.SAVE_KEY))); } catch (e) { S = F.fresh(); } rebuildFarm(true); emit('load', {}); return status(); },
     ground: (x, z) => ground(x, z), colony: () => { const c = colony(); return c ? { x: c.x, z: c.z } : null; },
     inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome') || basePieces().some(p => p.type === F.LOT.dome.type), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
