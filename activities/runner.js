@@ -6,6 +6,7 @@
 import { addMenuItem, tap, panelTap } from '../racehooks.js';
 import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
+import { toAJ, toWorld } from './coords.js'; // pack coords are colony-relative; player x/z are world
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -80,6 +81,8 @@ function sayNpc(npc, category, fallbackText) {
   if (fallbackText) toast(fallbackText);
 }
 function app() { return typeof window !== 'undefined' ? window.__app : null; }
+// player (or car) position in the pack's AJ-relative frame; null until the colony exists
+function ajHere(c = C) { const p = c?.car || c?.player; return p ? toAJ(p.x, p.z, c.world?.colony) : null; }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function districtAt(x, z) {
@@ -415,7 +418,7 @@ function setChip(html) {
 
 function openPanel() {
   if (!ensureUI() || !pack) return;
-  const px = C?.car ? C.car.x : C?.player?.x || 0, pz = C?.car ? C.car.z : C?.player?.z || 0;
+  const aj = ajHere() || { x: 0, z: 0 }, px = aj.x, pz = aj.z;
   const here = districtAt(px, pz);
   const items = (pack.activities || []).map(def => {
     const deferred = DEFERRED.has(def.id);
@@ -459,9 +462,10 @@ function onPanelClick(e) {
   const def = pack?.activities?.find(a => a.id === id); if (!def) return;
   if (t.dataset.warp) {
     const at = def.location?.at_aj || DISTRICTS[def.district]?.centre || [0, -200];
-    C?.player && (C.player.x = at[0], C.player.z = at[1]);
+    const w = toWorld(at, C?.world?.colony); if (!w) { toast('Land on Mars first'); return; }
+    C?.player && (C.player.x = w.x, C.player.z = w.z);
     // surface debugMove if available
-    app()?.surface?.debugMove?.(at[0], at[1], 0);
+    app()?.surface?.debugMove?.(w.x, w.z, 0);
     toast(`Warped to ${def.name}`);
     closePanel();
     return;
@@ -582,7 +586,8 @@ export function activityTick(dt, ctx) {
   if (window.__race?.state) { ui.ctx.style.display = 'none'; return; }
 
   ctxT -= dt; if (ctxT > 0) return; ctxT = 0.25;
-  const px = ctx.car ? ctx.car.x : ctx.player.x, pz = ctx.car ? ctx.car.z : ctx.player.z;
+  const aj = ajHere(ctx); if (!aj) { ui.ctx.style.display = 'none'; return; }
+  const px = aj.x, pz = aj.z;
   let best = null, bd = 18;
   for (const def of pack.activities || []) {
     if (DEFERRED.has(def.id)) continue;
@@ -610,9 +615,8 @@ window.__activities = {
   get active() { return active ? { id: active.def.id, mode: active.mode, missionId: active.missionId } : null; },
   get data() { return data; },
   get district() {
-    if (!C) return null;
-    const px = C.car ? C.car.x : C.player.x, pz = C.car ? C.car.z : C.player.z;
-    return districtAt(px, pz);
+    const aj = ajHere(); if (!aj) return null;
+    return districtAt(aj.x, aj.z);
   },
   list: () => (pack?.activities || []).map(a => ({
     id: a.id, name: a.name, district: a.district,
@@ -628,11 +632,12 @@ window.__activities = {
   openPanel, closePanel,
   warp(id) {
     const d = pack?.activities?.find(a => a.id === id); if (!d) return false;
-    const at = d.location?.at_aj || [0, -200];
-    app()?.surface?.debugMove?.(at[0], at[1], 0);
+    const w = toWorld(d.location?.at_aj || [0, -200], C?.world?.colony || app()?.surface?.info?.colony); if (!w) return false;
+    app()?.surface?.debugMove?.(w.x, w.z, 0);
     return true;
   },
   reload: async () => { pack = null; registered = false; data = load(); await ensurePack(); registerAll(); },
+  startWorld: (id) => { const d = pack?.activities?.find(a => a.id === id); return d ? toWorld(d.location?.at_aj, C?.world?.colony || app()?.surface?.info?.colony) : null; },
   counts: () => ({ ctx: ui?.ctx?.style?.display, chip: ui?.chip?.classList?.contains('on'), registered }),
 };
 
