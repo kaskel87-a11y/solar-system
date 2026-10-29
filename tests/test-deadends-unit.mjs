@@ -1,8 +1,8 @@
 // Runner side-job dead ends (pure, no browser): node tests/test-deadends-unit.mjs
 // Every compiled step must have a reachable target: collect pools resolve to spots, pts_local races keep their gates,
-// markers inside geometry get pushed out, and every Pit bout outcome moves the job on.
+// markers inside geometry get pushed out. (Pit outcomes: tests/test-pit-series-unit.mjs)
 import fs from 'fs'; import path from 'path'; import { fileURLToPath } from 'url';
-import { prepTemplate, nudgeSteps, duelOutcome } from '../activities/deadends.js';
+import { prepTemplate, nudgeSteps } from '../activities/deadends.js';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 let fails = 0, n = 0;
 const ok = (name, c, extra = '') => { n++; if (!c) { fails++; console.log('FAIL', name, extra); } else console.log('ok  ', name); };
@@ -36,8 +36,6 @@ ok('nudge pushes marker out of geometry', st[0].at[0] >= 106 && st[0].at[1] === 
 ok('nudge leaves free markers', st[1].at[0] === 130 && st[1].at[1] === 4);
 ok('nudge pushes race gates', st[2].pts[0][0] >= 106 && st[2].pts[1][0] === 140);
 ok('nudge without a colony is a no-op', nudgeSteps([{ type: 'goto', at: [1, 2] }], {})[0].at[0] === 1);
-// Pit outcomes
-for (const [why, want] of [['ko-win', 'win'], ['yield-win', 'win'], ['ko-lose', 'fail'], ['yield-lose', 'fail'], ['forfeit', 'fail'], ['chicken', 'rearm']]) ok(`pit ${why} -> ${want}`, duelOutcome({ why, win: /win/.test(why) }) === want);
-ok('runner uses the guards', /prepTemplate\(def, tpl/.test(runner) && /nudgeSteps\(steps, C\)/.test(runner) && /duelOutcome\(L\)/.test(runner));
+ok('runner uses the guards', /prepTemplate\(def, tpl/.test(runner) && /nudgeSteps\(steps, C\)/.test(runner));
 console.log(`\n${n - fails}/${n} passed`);
 process.exit(fails ? 1 : 0);
