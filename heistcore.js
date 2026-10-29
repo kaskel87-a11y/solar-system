@@ -68,7 +68,7 @@ export function stepCamera(cam, dt, target, time) {
   cam.yaw = cam.yaw0 + (cam.sweep ? Math.sin(time * cam.sweepSpeed + cam.phase) * cam.sweep : 0);
   if (cam.cooldown > 0) cam.cooldown -= dt;
   if (cam.disabledFor > 0) { cam.disabledFor = Math.max(0, cam.disabledFor - dt); cam.meter = Math.max(0, cam.meter - dt); return null; }
-  const k = target && !target.hidden ? inCone(cam, target.x, target.z) : 0;
+  const k = target && !target.hidden && globalThis.SSX?.camLos?.(cam.x, cam.z, target.x, target.z) !== false ? inCone(cam, target.x, target.z) : 0; // camLos: walls block sight (mars/villa.js)
   if (k > 0) cam.meter = Math.min(1, cam.meter + dt * k * (0.9 + Math.min(1.5, (target.speed || 0) / 6)));
   else cam.meter = Math.max(0, cam.meter - dt * 0.35);
   if (cam.meter >= 1 && !cam.alerted && cam.cooldown <= 0) { cam.alerted = true; cam.cooldown = 8; return 'alert'; }

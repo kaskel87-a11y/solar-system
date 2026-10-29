@@ -1,21 +1,12 @@
 // First real heist (pure data + unlock logic; runtime in mars/heisttip.js).
 // After NEED city missions, an informant texts you about Halvorsen Villa and ☰ Heists appears.
+import { villaDef } from './villacore.js';
 export const KEY = 'ssx.heist.unlock', VERSION = 1, NEED = 3;
 export const INFORMANT = 'Sable';
 export const TIP_TEXT = 'Sable: ◆ Word gets around. Halvorsen Villa, Helios Heights. Owner is off-world all week: one wall safe, three cameras, a power box out back. ➤ ☰ Heists when you\'re ready.';
 
-// villa layout reuses the heist sample's shape (walls, safe, power box, 3 cameras), placed on open ground (colony-relative AJ metres)
-export function villaAt(x, z) {
-  return {
-    id: 'heist-halvorsen-villa', title: 'Halvorsen Villa', world: 'Mars', rel: 'colony', sample: true, payout: true,
-    site: { x, z, r: 12 }, door: { x, z: z + 7 }, safe: { x, z: z - 4, tier: 'medium', time: 45 }, power: { x: x - 8, z: z + 8, s: 45 },
-    cameras: [
-      { id: 'hv-cam0', x: x - 6, z: z - 6, yaw: Math.PI * 0.25, range: 12, sweep: 30, label: 'the villa camera' },
-      { id: 'hv-cam1', x: x + 6, z: z - 6, yaw: -Math.PI * 0.25, range: 12, sweep: 30, phase: 1.3, label: 'the villa camera' },
-      { id: 'hv-cam2', x: x + 6, z: z + 6, yaw: -Math.PI * 0.75, range: 10, sweep: 25, phase: 2.1, label: 'the porch camera' }],
-    alarm: { wanted: 2, responseS: 18 }, loot: { credits: 400, item: 'contraband' },
-  };
-}
+// Halvorsen Villa's own layout (walls, doors, rooms, vault, guards, cameras) lives in villacore.js
+export function villaAt(x, z) { return villaDef([x, z]); }
 export const VILLA_AT = [370, 85]; // Helios Heights, 50 m east of the hub; open and flat (probed in WebKit, rechecked by tests/test-depth.js)
 export const VILLA = villaAt(...VILLA_AT);
 
