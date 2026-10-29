@@ -70,7 +70,7 @@ export function phoneTexts({ toast = () => {}, onTap = null, playing = () => tru
     if (S.msgs.some(m => m.id === id)) return;
     S.msgs.push({ id, from: DANNY_NAME, body, at: Date.now(), read: false }); save(S); badge(); if (panel.classList.contains('show')) { S.msgs.at(-1).read = true; save(S); render(); }
     const touch = document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
-    toast(`📱 ${DF}: ${body.length > 70 ? body.slice(0, 68) + '…' : body}  ${touch ? '(💬 Texts)' : '(I to read)'}`, 4500);
+    toast(`📱 ${DF}: ${body.length > 70 ? body.slice(0, 68) + '…' : body}  ${touch ? (document.body.classList.contains('hxFold') ? '(☰ → 💬 Texts)' : '(💬 Texts)') : '(Shift+I to read)'}`, 4500);
   }
   function step(sec) { // play-time clock since the number; only advances while playing and not mid-show
     if (!hasNumber()) return; S.clock += sec;
