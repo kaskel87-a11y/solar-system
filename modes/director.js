@@ -24,6 +24,9 @@ const cheats = () => D.activeCheats(S, session), blocked = () => D.rewardsBlocke
 const toast = (t, ms = 2400) => { try { app()?.toast?.(t, ms); } catch {} };
 
 // ---------- look: time of day + dust storm (Mars only, outdoors) ----------
+let fogPull = null; const fogHooked = new WeakSet();
+function hookFog(scene) { if (fogHooked.has(scene)) return; fogHooked.add(scene); const prev = scene.onBeforeRender;
+  scene.onBeforeRender = function (...a) { if (typeof prev === 'function') prev.apply(this, a); const f = scene.fog, P = fogPull; if (P && f && !f.isFogExp2) { f.near = Math.min(f.near, f.near + (P.near - f.near) * P.f); f.far = Math.min(f.far, f.far + (P.far - f.far) * P.f); } }; }
 let base = null, baseFogObj = null, applied = false, stormFade = 0, stars = null, dust = null, sunSprite = null;
 const tmpC = new THREE.Color();
 function capture(scene) {
@@ -96,10 +99,11 @@ function lookShared(dt, ctx, T) {
   if (scene.fog !== baseFogObj || !base) capture(scene);
   const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside, p = D.stormParams(onMars ? S.storm : 'off', mobile);
   stormFade = D.clamp(stormFade + (p.count ? dt / 2.5 : -dt / 1.5), 0, 1);
-  if (stormFade <= 0) { if (dust) dust.visible = false; return; }
+  if (stormFade <= 0) { fogPull = null; if (dust) dust.visible = false; return; }
   const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
   if (scene.fog && !scene.fog.isFogExp2 && !indoor && mix > 0) { scene.fog.near = Math.min(scene.fog.near, scene.fog.near + (sp.near - scene.fog.near) * stormFade); scene.fog.far = Math.min(scene.fog.far, scene.fog.far + (sp.far - scene.fog.far) * stormFade); }
   else if (scene.fog?.isFogExp2 && !indoor && mix > 0) scene.fog.density = Math.max(scene.fog.density, 0.05 * mix);
+  fogPull = !indoor && mix > 0 ? { near: sp.near, far: sp.far, f: stormFade } : null; hookFog(scene); // re-applied right before render (time.js / street looks write fog after add-on ticks)
   if (S.storm !== 'off' && (!dust || dust.userData.level !== S.storm + (mobile ? ':m' : ''))) makeDust(scene, sp);
   if (dust) { if (indoor) dust.visible = false; else updateDust(dt, ctx.camera, sp, stormFade); }
 }
@@ -110,7 +114,7 @@ function look(dt, ctx) {
   const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside;
   const wantTod = onMars && S.tod != null, p = D.stormParams(onMars ? S.storm : 'off', mobile);
   stormFade = D.clamp(stormFade + (p.count ? dt / 2.5 : -dt / 1.5), 0, 1);
-  if (!wantTod && stormFade <= 0) { if (applied) restore(scene); return; }
+  if (!wantTod && stormFade <= 0) { fogPull = null; if (applied) restore(scene); return; }
   applied = true;
   const L = wantTod ? D.todLook(S.tod, { top: base.top, horizon: base.horizon, light: base.light, lightColor: base.lightColor, hemi: base.hemiI })
     : { top: base.top, horizon: base.horizon, fog: base.fogColor ?? base.horizon, light: base.light, lightColor: base.lightColor, hemi: base.hemiI, dir: null, sunVisible: true, stars: 0, day: 1 };
@@ -127,6 +131,7 @@ function look(dt, ctx) {
   // fog: surface.js rewrites near/far every frame before add-on ticks, so we only ever pull them in
   if (scene.fog && !scene.fog.isFogExp2 && !indoor && mix > 0) { scene.fog.near = Math.min(scene.fog.near, scene.fog.near + (sp.near - scene.fog.near) * stormFade); scene.fog.far = Math.min(scene.fog.far, scene.fog.far + (sp.far - scene.fog.far) * stormFade); }
   else if (scene.fog?.isFogExp2 && !indoor && mix > 0) scene.fog.density = Math.max(scene.fog.density, 0.05 * mix);
+  fogPull = !indoor && mix > 0 ? { near: sp.near, far: sp.far, f: stormFade } : null; hookFog(scene); // re-applied right before render (time.js / street looks write fog after add-on ticks)
   if (S.storm !== 'off' && (!dust || dust.userData.level !== S.storm + (mobile ? ':m' : ''))) makeDust(scene, sp);
   if (dust) { if (indoor) dust.visible = false; else updateDust(dt, ctx.camera, sp, stormFade); }
 }
