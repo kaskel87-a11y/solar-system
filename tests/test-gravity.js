@@ -11,7 +11,8 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
 (async () => {
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
   const m = /^(\d+)x(\d+)$/.exec(DEV), { defaultBrowserType: _d, ...iph } = devices['iPhone 14'];
-  const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
+  const named = !m && DEV !== 'desktop' && devices[DEV] ? (({ defaultBrowserType: _n, ...d }) => d)(devices[DEV]) : null; // named Playwright devices too ("iPhone SE (3rd gen)")
+  const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : named || { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
   const touch = DEV !== 'desktop';
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('CE ' + m.text().slice(0, 200)); });
@@ -44,7 +45,7 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await G(() => localStorage.clear());
     ok('api', await G(() => !!window.SSX?.gravity && typeof window.SSX.gravity.cycle === 'function' && window.SSX.gravity.mode === 'MARS'));
     ok('apiFloatingReadOnly', await G(() => { const g = window.SSX.gravity; try { g.mode = 'ZERO-G'; } catch (e) { /* frozen */ } return g.floating === false && g.mode === 'MARS' && typeof g.set === 'function'; }));
-    ok('airRollAbsentOnMain', await G(() => !window.SSX.airRoll));
+    const hasAR = await G(() => !!window.SSX.airRoll?.roll); R.airRoll = hasAR; // v7.5.4 ships PR #41: ZERO-G rolls go through SSX.airRoll
     // in space: Z does nothing (the ship is never affected)
     await page.keyboard.press('KeyZ'); await sleep(200); ok('spaceZIgnored', await mode(), (await mode()) === 'MARS');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
@@ -117,13 +118,21 @@ const tag = `grav-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('zeroPitchUp', (await G(() => window.__gravity.state().pitch)).toFixed(2), pitched);
     await wait(() => window.__gravity.state().tilt < 0.15, 60000);
     // roll: E / ⟳ held until a full 360 on the plain roll axis (no airRoll on main)
-    await G(() => { window.__r0 = window.__gravity.state().rolled; window.__maxTilt = 0; window.__rs = setInterval(() => { const s = window.__gravity.state(); if (s) window.__maxTilt = Math.max(window.__maxTilt, s.tilt); }, 30); });
+    await G(() => { window.__r0 = window.__gravity.state().rolled; window.__maxTilt = 0; window.__rolls0 = window.__app.surface.info.stunts?.rolls || 0; window.__rs = setInterval(() => { const s = window.__gravity.state(); if (s) window.__maxTilt = Math.max(window.__maxTilt, s.tilt); }, 30); });
     if (touch) await P('pointerdown', '#gravRollR', 47); else await page.keyboard.down('KeyE');
-    await wait(() => window.__gravity.state().tilt > 1.5, 60000); await shot('zerog-roll');
+    if (!hasAR) await wait(() => window.__gravity.state().tilt > 1.5, 60000); else await sleep(350); await shot('zerog-roll');
+    if (hasAR) { // airRoll route: the stunt barrel roll (car.barrel) plays on top of the zero-G pose and completes
+      const started = await wait(() => window.SSX.airRoll.isRolling() || window.__app.surface.info.stunts?.rolls > window.__rolls0, 30000, null);
+      if (touch) await P('pointerup', '#gravRollR', 47); else await page.keyboard.up('KeyE');
+      const ended = started && await wait(() => !window.SSX.airRoll.isRolling(), 30000);
+      const rr = await G(() => { clearInterval(window.__rs); const s = window.__gravity.state(); return { route: s.route, rolls: window.__app.surface.info.stunts?.rolls - window.__rolls0, driving: window.__app.surface.info.driving, floating: window.SSX.gravity.floating }; });
+      ok('zeroRoll360', JSON.stringify(rr), started && ended && rr.route === 'airRoll' && rr.driving && rr.floating);
+    } else {
     const full = await wait(() => window.__gravity.state().rolled - window.__r0 >= Math.PI * 2, 90000);
     if (touch) await P('pointerup', '#gravRollR', 47); else await page.keyboard.up('KeyE');
     const rr = await G(() => { clearInterval(window.__rs); const s = window.__gravity.state(); return { deg: Math.round((s.rolled - window.__r0) * 57.3), maxTilt: Math.round(window.__maxTilt * 57.3), route: s.route, driving: window.__app.surface.info.driving }; });
     ok('zeroRoll360', JSON.stringify(rr), full && rr.maxTilt > 160 && rr.route === 'axis' && rr.driving);
+    }
     // auto-level once released
     const lv = await wait(() => window.__gravity.state().tilt < 0.12, 60000); ok('zeroAutoLevel', (await G(() => window.__gravity.state().tilt * 57.3)).toFixed(1) + ' deg', lv);
     await shot('zerog-level');
