@@ -45,7 +45,10 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR, ID = 'q-v
       if (!s.st) break;
       if (/P2/.test(s.chip)) sawP2 = true; npcMax = Math.max(npcMax, +s.npc || 0); npcCap = s.cap;
       if (s.st.next !== last) { last = s.st.next; lastT = Date.now(); lastG = s.st.time; log.push(`gate ${s.st.next + 1} t=${s.st.time.toFixed(1)}`); }
-      if (s.st.time - lastG > 45 || Date.now() - lastT > 240000) { R.stuckAt = `Gate ${s.st.next + 1}/8 car (${s.car?.x.toFixed(1)},${s.car?.z.toFixed(1)})`; await page.screenshot({ path: `${out}race-p2-STUCK-${tag}.png` }); break; }
+      if (s.st.time - lastG > 45 || Date.now() - lastT > 240000) { R.stuckAt = `Gate ${s.st.next + 1}/8 car (${s.car?.x.toFixed(1)},${s.car?.z.toFixed(1)})`; R.stuckDiag = await G(() => { const c = window.__race.car(), w = window.__app.surface.world, P = window.SSX?.pursuit, out = { wanted: w.wanted ?? w.getWanted?.(), pursuit: P?.debug?.state?.() || null, roadblocks: P?.roadblocks?.() || null };
+        out.collide = c ? [0, 1.5, 3].map(d => { const x = c.x - Math.sin(c.yaw) * d, z = c.z - Math.cos(c.yaw) * d, r = w.collide(x, z, 2); return r ? [+r.x.toFixed(1), +r.z.toFixed(1)] : null; }) : null;
+        const near = []; window.__app.surface.scene.traverse(o => { if (!o.isMesh || !o.visible) return; const p = o.getWorldPosition(o.position.clone()); if (Math.hypot(p.x - c.x, p.z - c.z) < 6) near.push((o.parent?.name || '') + '/' + (o.name || o.geometry?.type)); });
+        out.near = [...new Set(near)].slice(0, 25); return out; }); await page.screenshot({ path: `${out}race-p2-STUCK-${tag}.png` }); break; }
       // stuck = slow OR not actually moving (wheels spin against a parked car / traffic: speed > 1.2 but position frozen)
       // stuck = slow, OR no progress toward the next gate for ~60 polls (pushing/jittering against a parked car or traffic)
       const gN = s.car ? await G(([id, n]) => window.__race.tracks().find(q => q.id === id).gates[n], [ID, last]) : null;
