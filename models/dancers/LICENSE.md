@@ -1,6 +1,6 @@
 # Velvet Airlock dancer models — sources and licences
 
-`dancer_danny.glb` (Danny Nova, the hero dancer: centre stage + private dance), `dancer_rhea.glb`, `dancer_kiara.glb`.
+`dancer_danny.glb` (Danny Alvarez, the hero dancer: centre stage + private dance), `dancer_rhea.glb`, `dancer_kiara.glb`.
 Phone build (2026-10, after the iPhone review): each GLB is 2 skinned primitives (opaque body+garments, alpha-masked
 hair/lashes/cover-up/cardigan) with embedded **512×512** WebP maps; small garment/tattoo/eye textures share one 512 atlas
 `dancer_aux.webp`. Desktop ("high" tier) only swaps in `dancer_*_{skin,hair}_hd.webp` (2048×2048 for Danny, 1024 for Rhea/Kiara) and
@@ -22,7 +22,7 @@ and released (geometry, textures, skeletons, mixers) when you leave it.
 
 All characters are fictional adults with original, procedurally generated faces; no real person's likeness, no
 scanned or ripped assets. Reference photos were used for generic style cues only and are not stored anywhere; the
-tattoo compositions are original designs at a similar density and placement (no moon motif, nothing copied from any real tattoo). Styling is non-explicit (costumes never come off). "Danny Nova" is a fictional name.
+tattoo compositions are original designs at a similar density and placement (no moon motif, nothing copied from any real tattoo). Styling is non-explicit (costumes never come off). "Danny Alvarez" is a fictional name.
 Rebuild: `/workspace/ss-assets/src/3d-gen/scripts/ss-dancers.ts` then `/workspace/ss-assets/tools/dancers.mjs`.
 
 ## Ara 3D Gen MIT notice (covers the baked Idle/Cheer keyframes)
