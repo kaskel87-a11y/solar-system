@@ -294,6 +294,8 @@ function boot() {
   if (window.SSX.hudx) return;
   const st = document.createElement('style'); st.id = 'hudxCss'; st.textContent = css; document.head.appendChild(st);
   document.body.classList.add('hudx'); window.SSX.hudx = hudx;
+  // v7.6: no "(T)" style key hints in toasts on phones; guarded, index.html untouched (the rewrite no longer matches, so it settles)
+  try { const t = document.getElementById('toast'); if (t && window.MutationObserver) new MutationObserver(() => { if (!document.body.classList.contains('touch')) return; const v = t.textContent, n = noKeys(v); if (n !== v) t.textContent = n; }).observe(t, { childList: true, characterData: true, subtree: true }); } catch (e) { /* toast keeps its text */ }
   setInterval(() => tick(false), 150);
 }
 boot();

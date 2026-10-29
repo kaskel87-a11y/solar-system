@@ -1390,7 +1390,6 @@
     const toastQ = []; let toastAt = 0, toastNext = 0;
     function toast(msg, ms = 4000) {
       if (!msg) return; ms = Math.max(1400, Math.min(2800, ms * 0.65));
-      if (document.body.classList.contains('touch')) msg = String(msg).replace(/\s*\((?:[A-Z0-9]|Esc|Space|Tab|Shift|Enter)\)/g, ''); // v7.6: no key hints on phones
       const up = toastEl.classList.contains('on'), age = performance.now() - toastAt;
       if (up && toastEl.textContent === msg) return;
       if (up && age < 1000) { if (!toastQ.some(t => t[0] === msg)) { toastQ.push([msg, ms]); if (toastQ.length > 3) toastQ.shift(); } clearTimeout(toastNext); toastNext = setTimeout(toastPop, 1000 - age); return; }
