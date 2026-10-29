@@ -188,6 +188,40 @@ Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js
 ```js
 ```
 
+### Empire: safehouses, fronts and rival crews (add-on: empire.js + empirecore.js)
+Buy property around the Mars districts and keep it. ☰ → **🏢 Empire** lists every place with its distance, till and status; walk up to a door for its one context button (desktop key **\\**). Following the team UI rule there are no permanent empire buttons and no standing threat chip: the context button only shows while you stand at a property, stash / office / park-rover live in the sheet, only one pop-up or caption shows at a time (messages go into the open sheet instead of a toast over it), and directions are plain words ("Go to the Red Dust Wash & Fold (190 m north) and tap Collect.").
+
+| Place | District | Kind | Price | What it does |
+|---|---|---|---|---|
+| Crater Rim Walk-up | Ares Junction | Safehouse | 1200 | 🛏️ rest = save + heal (sleeps to 07:00 at night when SSX.time is loaded), 💰 stash for credits and medkits, garage spot |
+| Tenement 9C | Red Tape Flats | Safehouse | 700 | same |
+| Meridian Loft | Olympus Row | Safehouse | 3000 | same |
+| Red Dust Wash & Fold | Ares Junction | Laundromat | 2000 | ~45 cr/game h, busy in the day |
+| The Thin Air | Olympus Row | Bar | 3500 | ~70 cr/game h, 1.8× at night |
+| Rustbucket Parts | Red Tape Flats | Chop shop | 2500 | ~55 cr/game h, and strip a stolen ride in the bay for 120-300 cr |
+| Greenhouse Nine | Helios Heights | Dispensary | 5000 | ~90 cr/game h, peaks at dusk |
+
+Fronts earn on the Mars clock (`SSX.time.hour()` when Steve's time.js is loaded, else `dangercore.marsHour()`: 2 real minutes per game hour) into a till that holds 10 hours of base income; collect at the counter. Up to 8 hours more accrue while the game is closed. A garage spot opens `SSX.garage.open('current')` when the garage module is there, otherwise it parks and refuels your rover. After a bust or med-evac, a one-line message tells you to open ☰ → Empire and tap **🏠 Back** to return to the last safehouse you rested in (for 60 s).
+
+Rival crews (the SSX.turf block owner, the crew that lost that block to you, or the district's crew) roll once per game hour. Odds rise with bad `SSX.rep`, at night and with turf grudges; they fall with good rep, on your own blocks and with a 🔒 security upgrade. Friendlier crews **extort** first (pay = rep +3 and 12 game hours of peace, refuse or ignore = raid). A **raid** gives you 150 s (180 s on phones) to get within ~24 m, then you defend through `SSX.raids.start` (waves, NPC cap, your rep −4 with them when you win). If SSX.raids is busy or missing, you hold the spot for 40 s against up to 3 crew. Lose and a front's till is taken and it shuts for 6 game hours (🔨 fix it for 20% of the price), or a safehouse loses 30% of its stash. Owned Mars base lots (`SSX.base`) can draw a crew too; that goes through `SSX.base.raid`. **Sharing the raid slot:** SSX.raids runs one raid at a time. While another add-on's raid holds it, rival crews skip their hourly roll and a defense goes straight to the hold fallback. To take the slot from a rival raid that's already running, call `SSX.empire.yieldRaid(why)` or `dispatchEvent(new CustomEvent('raid:request', { detail: { id } }))` before `SSX.raids.start`: the empire stops its `empire-*` raid and keeps the fight going as a 40 s hold (emits `'yield'`). `SSX.empire.raidSlot()` returns `'free' | 'ours' | 'other'`. The layer spawns no NPCs of its own outside a fallback hold, and those fit in `world.npcBudget()`.
+
+```js
+SSX.empire.props();               // [{ id, kind, name, district, price, owned, pending, cap, perHour, closedH, security, protect, stash, door, garage, pos }]
+SSX.empire.buy('fr-bar');         // at the door: { ok, prop, price } | { ok:false, why }
+SSX.empire.collect('fr-bar');     // at the counter: { ok, amount }
+SSX.empire.pending(); SSX.empire.perHour(); SSX.empire.clock(); // { hour, band, night, source: 'SSX.time'|'real', text }
+SSX.empire.on('hour', ({ hour, prev, at, catchUp, source, night, band, fronts }) => {}); // every whole game hour, fronts or not, in space too; returns off()
+// queue before the empire loads: (window.SSX_pending ||= {}).empire = [['hour', fn]] (or SSX._pendingEmpire). A clock jump fires each hour crossed
+// (all but the last flagged catchUp); SSX.time appearing re-baselines without a burst. '*' listeners don't get 'hour'. Income is unchanged.
+SSX.empire.threat();              // { prop, gang, kind: 'extort'|'raid', phase: 'demand'|'alert'|'defend', demand, left, engine } | null
+SSX.empire.pay(); SSX.empire.refuse(); SSX.empire.defend();
+SSX.empire.rest('sh-rim'); SSX.empire.deposit('sh-rim', { credits: 500, medkits: 1 }); SSX.empire.withdraw('sh-rim', { credits: 200 });
+SSX.empire.garage('sh-rim'); SSX.empire.chopRide(); SSX.empire.upgrade('fr-bar'); SSX.empire.repair('fr-bar');
+SSX.empire.open('fr-wash'); SSX.empire.close(); SSX.empire.frameMs();
+SSX.empire.on('collect', e => {}); // also SSX.emit('empire:collect') and window 'empire:collect'
+```
+Events: `ready`, `buy`, `collect`, `income`, `extort`, `pay`, `refuse`, `raid`, `defend:start`, `defend:win`, `defend:lose`, `lost`, `repair`, `security`, `rest`, `save`, `stash`, `garage`, `chop`, `wake`, `baseRaid`, `open`, `close`. Save: localStorage `ssx.empire.v1`. Tests: `node tests/test-empire-unit.mjs`, `tests/run-empire.sh`.
+
 ## Mars city ambience (add-on: radio stations, district soundscapes, pedestrian barks)
 
 Files: `mars-audio.js` (glue, mixer, ☰ 🔊 panel), `radio.js`, `ambience.js`, `barks.js`, `synth.js`. Everything is synthesized with Web Audio: no samples, nothing downloaded, no licences to track.
