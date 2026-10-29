@@ -467,7 +467,8 @@ handlers.deliver = id => { const r = MR.deliver(id); toast(r.msg, 3000); rerende
 handlers.showmap = id => { const r = MR.showOnMap(id); toast(r.msg, 3000); if (r.ok) closeSheet(); };
 handlers.open = n => n === 'dealer' ? openDealer() : openGarage();
 handlers.wait = () => { skipToMeet(); toast('⏩ You kill a few hours at the cantina. The neon’s on and the engines are warming up.', 3200); rerender(); };
-export function skipToMeet() { const G = garage(), now = Date.now(), m = GC.minsToMeet(now, G.clock); if (m > 0) G.clock += m + 0.05; save(); }
+export function skipToMeet() { const T = window.SSX?.time; if (typeof T?.isNight === 'function' && typeof T.set === 'function') { if (!T.isNight()) T.set(T.NIGHT_START ?? 21); return; } // v7.5.4: meets run on the shared Mars clock when SSX.time is loaded
+  const G = garage(), now = Date.now(), m = GC.minsToMeet(now, G.clock); if (m > 0) G.clock += m + 0.05; save(); }
 function navTo(n) { if (!here()) return; const p = spots()[n]; nav = { x: p.x, z: p.z, n }; toast(`📍 ${n === 'dealer' ? CFG.name : n === 'garage' ? 'Your lock-ups' : 'The car meet lot'}: ${Math.round(dist(meOf(), p))} m. Follow the marker on the radar.`, 3000); }
 const patched = new WeakSet();
 function patchGame(game) {

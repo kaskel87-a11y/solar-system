@@ -74,7 +74,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 1. ☰ hub ----------
     await G(() => window.__app.toggleMenu(true)); await sleep(250);
     await tap('#rmRides'); ok('hubOpens', null, await sheetIs('hub'));
-    ok('hubText', null, await G(() => /Colony time/.test(document.getElementById('dlrSheet').innerText) && /Dealer/.test(document.getElementById('dlrSheet').innerText)));
+    ok('hubText', null, await G(() => /Colony time|Car meet/.test(document.getElementById('dlrSheet').innerText) /* SSX.time shared clock shows the meet line instead */ && /Dealer/.test(document.getElementById('dlrSheet').innerText)));
     await tap('[data-nav="dealer"]'); ok('navMarker', null, await G(() => !document.getElementById('dlrSheet') && !!window.__app.surface.game.mapGate?.()));
     // ---------- 2. dealer ----------
     await releaseStick();
