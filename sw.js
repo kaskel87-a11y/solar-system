@@ -18,7 +18,6 @@ const PRECACHE = [
   ...['colliders', 'street-blood', 'street-combat', 'street-tweakers', 'street-rant', 'street-night'].map(n => `mars/${n}.js${q}`), // Red Tape Flats colliders, street violence, rockheads, night
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, `activities/coords.js${q}`, `activities/deadends.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['hud/hudx', 'hud/hudmap', 'hud/hints'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter
-  `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
   ...['sci2core', 'scientists2', 'dimensions/index2', 'dimensions/orchard', 'dimensions/hum', 'dimensions/pawn', 'dimensions/rehearsal', 'dimensions/gut'].map(n => `${n}.js${q}`), // junkyard lab part 2 (sci-06..10)
@@ -34,11 +33,10 @@ const PRECACHE = [
   `mars/gravity.js${q}`, `mars/gravitycore.js${q}`, // Pumpkin: gravity modes for Mars vehicles
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
   'vendor/three/build/three.module.min.js',
-  `clubdancers.js${q}`, `privateshow.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
-  `clubdancers.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
+  `clubdancers.js${q}`, `privateshow.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'textures/2k_stars_milky_way.jpg'
 ];

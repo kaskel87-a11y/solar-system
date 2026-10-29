@@ -546,6 +546,8 @@
   "ssx/myrides": "./myrides.js?v=7.5.5",
   "./night.js": "./night.js?v=7.5.5",
   "ssx/night": "./night.js?v=7.5.5",
+  "./phonetexts.js": "./phonetexts.js?v=7.5.5",
+  "ssx/phonetexts": "./phonetexts.js?v=7.5.5",
   "./pit.js": "./pit.js?v=7.5.5",
   "ssx/pit": "./pit.js?v=7.5.5",
   "./portals.js": "./portals.js?v=7.5.5",
@@ -795,6 +797,7 @@
     import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
     import { registerInterior } from './interiors.js';
     import { privateShow } from './privateshow.js'; import { DANNY_NAME } from './clubdancers.js'; // v7.5.4 Danny's upstairs private show
+    import { phoneTexts } from './phonetexts.js'; // Danny's texts once you have her number
     import { createAudio7 } from './audio7.js';
     import './base.js'; // v7.5 Mars base building (lots, walls, garage, stash, turrets); self-registers via SSX.registerSurfaceTick + SSX.base
     import { initPlanets } from './planets/index.js'; // multi-planet expansion (data-driven, planets/*.js)
@@ -1662,6 +1665,7 @@
       updateSurfHud(true);
     }
     const pshow = privateShow({ surface, toast, onTap, fx: au7.fx, hud: () => updateSurfHud(true) }); // v7.5.4 (privateshow.js)
+    phoneTexts({ toast, onTap, playing: () => onSurface }); // texts from Danny (phonetexts.js)
     function doSpot(s) {
       const g = surface.game;
       if (s.act === 'leave') { surface.leaveBuilding(); }

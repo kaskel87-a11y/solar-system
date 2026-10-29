@@ -1,6 +1,8 @@
 // v7.5.4 test: Danny Nova's private show (privateshow.js). Talk to her in the VIP room, 18+ gate, offer panel,
 // pay 150, upstairs booth (cinematic camera, HUD hidden), three tips unlock her number, touching gets you thrown out.
 // Also renders FRONT / SIDE / PRIVATE SHOW screenshots and reports draw calls, textures, frame time and browser PSS.
+// v3: FACE close-up, LAP DANCE booth shots (250 cr chair dance: distance to the player, tip, leave), crossfade pops
+// (peak core-bone angular speed inside crossfades vs. steady clips) and Danny's phone texts (toast, list, storage).
 // BASE=http://localhost:8765/ BR=chromium DEV=desktop node tests/test-danny.js   (DEV="iPhone 14" BR=webkit for touch)
 // W=375 H=667 BR=webkit DEV=touch: a custom touch viewport
 const pw = require('playwright'), fs = require('fs');
@@ -48,7 +50,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await act(); ok('adultGate', await wait(() => getComputedStyle(document.getElementById('adultGate')).display === 'flex', 3000));
     await tapSel('#adultYes'); ok('offerPanel', await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000));
     const ob = await center('#pshowYes'); ok('offerBtn44', `${Math.round(ob.w)}x${Math.round(ob.h)} top=${ob.top}`, ob.h >= 44 && ob.top === 'pshowYes');
-    ok('offerBW', await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); return c.backgroundColor + ' / ' + c.color; }), await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); return c.backgroundColor === 'rgb(0, 0, 0)' && c.color === 'rgb(255, 255, 255)'; }));
+    ok('offerBW', await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); return c.backgroundColor + ' / ' + c.color; }), await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); const el = document.getElementById('pshowNo'); return (c.backgroundColor === 'rgb(0, 0, 0)' && c.color === 'rgb(255, 255, 255)') || (el.matches(':active') && c.backgroundColor === 'rgb(255, 255, 255)'); })); // the press state inverts (a tap on the 18+ gate can leave :active on the button under the finger)
     const c0 = await G(() => window.__app.game.progress.credits);
     await tapSel('#pshowYes'); ok('paid150', await wait(c => window.__app.game.progress.credits === c - 150, 4000, c0));
     ok('showActive', await wait(() => window.__pshow.active && window.__pshow.state.ready && document.body.classList.contains('pshow'), 20000));
@@ -72,7 +74,10 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     // FRONT / SIDE views of her in the booth light
     await G(() => window.__pshow.debugView('front')); await sleep(1500); await page.screenshot({ path: `${out}danny-${tag}-front.png` });
     await G(() => window.__pshow.debugView('side')); await sleep(1200); await page.screenshot({ path: `${out}danny-${tag}-side.png` });
+    await G(() => window.__pshow.debugView('face')); await sleep(1500); await page.screenshot({ path: `${out}danny-${tag}-face.png` });
     await G(() => window.__pshow.debugView(null)); await sleep(300);
+    const pop = await G(() => ({ x: +window.__pshow.state.popX.toFixed(2), n: +window.__pshow.state.popN.toFixed(2) }));
+    ok('noPops', `crossfade ${pop.x} rad/s vs steady ${pop.n}`, pop.x > 0 && pop.x <= Math.max(pop.n * 1.25, 9));
     // hands off: touching gets you thrown out
     if (desk) await page.keyboard.press('KeyE'); else await tapSel('#pshowTouch');
     ok('bouncer', await wait(() => /TINY/.test(document.getElementById('pshowCap').textContent), 3000));
@@ -80,12 +85,42 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     ok('thrownOut', await wait(() => !window.__app.surface.info.inside && !window.__pshow.active, 8000));
     ok('fadeOut', await wait(() => !document.getElementById('fadeBlack').classList.contains('on'), 6000));
     ok('hudBack', await G(() => !document.body.classList.contains('pshow') && !document.body.classList.contains('cinebars')));
+    // texts from her, later in play (the play clock is fast-forwarded): toast, list, stored on the device
+    await G(() => window.__texts.skip(80)); ok('text1', await G(() => window.__texts.state.msgs.length === 1 && /Danny/.test(document.getElementById('toast')?.textContent || '')));
+    await G(() => { window.__texts.skip(300); window.__texts.skip(400); });
+    R.texts = await G(() => window.__texts.state.msgs.map(m => m.id).join());
+    ok('textsStored', await G(() => (JSON.parse(localStorage.getItem('ssx.texts') || '{}').msgs || []).length >= 3 && /Airlock/.test(localStorage.getItem('ssx.texts')) && /driver/.test(localStorage.getItem('ssx.texts'))));
+    if (!desk) for (let i = 0, p = null; i < 12; i++) { const c = await center('#dockTexts'); if (p && c && c.x === p.x && c.y === p.y && c.top === 'dockTexts') break; p = c; await sleep(400); } // the dock re-flows when the door/interact button pops in; tap once it has settled
+    if (desk) await page.keyboard.press('KeyI'); else await tapSel('#dockTexts');
+    ok('textsOpen', await wait(() => document.getElementById('ssxTexts').classList.contains('show') && document.querySelectorAll('#ssxTexts .b').length >= 3, 3000));
+    const xb = await center('#ssxTextsClose'); ok('textsClose44', `${Math.round(xb.w)}x${Math.round(xb.h)} top=${xb.top}`, xb.h >= 44 && xb.top === 'ssxTextsClose');
+    await page.screenshot({ path: `${out}danny-${tag}-texts.png` });
+    ok('textsRead', await G(() => window.__texts.state.unread === 0));
+    await tapSel('#ssxTextsClose'); ok('textsClosed', await wait(() => !document.getElementById('ssxTexts').classList.contains('show'), 2000));
     // and back in: the club still works, a leave ends cleanly
     await G(() => window.__app.surface.enterBuilding()); ok('reEnter', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000));
     await G(() => { window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); }); await wait(() => /Private show/.test(document.getElementById('driveBtn').textContent), 4000);
-    await act(); await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000); await tapSel('#pshowYes');
-    ok('show2', await wait(() => window.__pshow.active && window.__pshow.state.ready, 20000));
-    await sleep(800); if (desk) await page.keyboard.press('Escape'); else await tapSel('#pshowLeave');
+    await act(); await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000);
+    const lb = await center('#pshowLap'); ok('lapBtn44', `${Math.round(lb.w)}x${Math.round(lb.h)} top=${lb.top}`, lb.h >= 44 && lb.top === 'pshowLap');
+    const c2 = await G(() => window.__app.game.progress.credits); await tapSel('#pshowLap');
+    ok('paid250', await wait(c => window.__app.game.progress.credits === c - 250, 4000, c2));
+    ok('lapActive', await wait(() => window.__pshow.active && window.__pshow.state.ready && window.__pshow.state.mode === 'lap', 20000));
+    // distance check while the routine runs: her feet stay clear of the chair front (z 0.95) and of the player's knees
+    let minGap = 9, beats = new Set(); const t0 = Date.now();
+    const sample = async ms => { const e = Date.now() + ms; while (Date.now() < e) { const s = await G(() => window.__pshow.state); if (!s) break; beats.add(s.beat); const gap = Math.max(0.95 - s.herZ, Math.abs(s.herX) - 0.56); /* clearance outside the chair box (front edge z 0.95, armrests |x| 0.56) */ minGap = Math.min(minGap, gap); await sleep(150); } };
+    await sample(3500); await page.screenshot({ path: `${out}danny-${tag}-lap-approach.png` });
+    await G(() => window.__pshow.lapBeat('tease')); await sample(2500); await page.screenshot({ path: `${out}danny-${tag}-lap-tease.png` });
+    await G(() => window.__pshow.lapBeat('lean')); await sample(3200); await page.screenshot({ path: `${out}danny-${tag}-lap-lean.png` });
+    ok('lapCamInBooth', await G(() => window.__pshow.state.camInBooth));
+    await G(() => window.__pshow.lapBeat('circle')); await sample(3600); await page.screenshot({ path: `${out}danny-${tag}-lap-circle.png` });
+    await G(() => window.__pshow.lapBeat('return')); await sample(1800);
+    ok('lapGap', +minGap.toFixed(2), minGap >= 0.12); R.lapBeats = [...beats].join();
+    R.perfLap = await perf();
+    const lt = await G(() => window.__pshow.state.left); if (desk) await page.keyboard.press('KeyT'); else await tapSel('#pshowTip');
+    ok('lapTip', await G(l => window.__pshow.state.left > l + 4, lt));
+    const lpop = await G(() => ({ x: +window.__pshow.state.popX.toFixed(2), n: +window.__pshow.state.popN.toFixed(2) }));
+    ok('lapNoPops', `crossfade ${lpop.x} rad/s vs steady ${lpop.n}`, lpop.x <= Math.max(lpop.n * 1.25, 9));
+    if (desk) await page.keyboard.press('Escape'); else await tapSel('#pshowLeave');
     ok('leaveEnds', await wait(() => !window.__pshow.active && !document.getElementById('fadeBlack').classList.contains('on'), 6000));
     ok('stillInClub', await G(() => window.__app.surface.info.inside?.kind === 'club'));
     R.perfClub = await perf();
