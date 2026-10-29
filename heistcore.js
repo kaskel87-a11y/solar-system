@@ -157,3 +157,14 @@ export function applyTipTo(tips, tip) {
   else tips.safeEase = Math.min(0.6, Math.max(tips.safeEase || 0, t.ease)); // tips don't stack past the best one
   return t;
 }
+
+// v7.5.3 (CoS review): which interior a running heist unlocks. heistAt(kind, name) used to be true for every vault and
+// safe during any heist. A def may name its target ({ kind, name }); otherwise the target is the door (world coords)
+// inside the heist's resolved site circle. No site or no matching door -> false.
+export function heistCovers(def, site, door, kind, name) {
+  if (!def) return false;
+  if (!kind && !name) return true;
+  if (def.kind || def.name) return (!def.kind || def.kind === kind) && (!def.name || def.name === name);
+  if (!site || !door || !isFinite(site.x) || !isFinite(door.x)) return false;
+  return Math.hypot(door.x - site.x, door.z - site.z) <= (def.site?.r || site.r || 12) + 4;
+}

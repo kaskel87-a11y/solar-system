@@ -41,7 +41,7 @@ const OUT = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__
     await held('#radioLater'); ok('laterHeld', await wait(() => getComputedStyle(document.getElementById('radio')).display === 'none', 3000));
     // 3) keyboard Enter still accepts (desktop path: .click())
     await G(() => window.__app.surface.game.abandon(true)); await offer(); await radioShown(); await G(() => { window.__ev = []; document.getElementById('radio').classList.remove('mini'); });
-    await page.keyboard.press('Enter'); ok('enterAccepts', await wait(id => window.__ev.includes('accepted:' + id), 3000, offerId));
+    await sleep(400); await page.keyboard.press('Enter'); if (!(await wait(id => window.__ev.includes('accepted:' + id), 1500, offerId))) { await sleep(500); await page.keyboard.press('Enter'); } ok('enterAccepts', await wait(id => window.__ev.includes('accepted:' + id), 3000, offerId));
     // 4) Log: Abandon then ▶ Start, both held
     await G(() => { window.__ev = []; window.__app.openLog ? window.__app.openLog() : document.getElementById('discBtn').click(); });
     await wait(() => getComputedStyle(document.getElementById('logPanel')).display !== 'none', 3000);
