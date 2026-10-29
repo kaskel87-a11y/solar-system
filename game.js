@@ -882,7 +882,9 @@ export function createGame(ctx) {
       H.down -= dt;
       if (H.down <= 0) {
         const busted = downWhy === 'busted';
-        const fee = Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
+        // v7.5.x (Marsmania): mars/consequences.js can own the outcome penalty (hospital bill / booking); then no core fee
+        let owned = false; try { owned = globalThis.SSX?.consequences?.ownsOutcome?.(downWhy) === true; } catch (e) { owned = false; }
+        const fee = owned ? 0 : Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
         P.credits -= fee; save();
         ctx.respawn(downWhy);
         H.hp = H.max; H.shield = H.smax; H.inv = 3; H.lastHit = time;
@@ -890,8 +892,8 @@ export function createGame(ctx) {
         for (const o of orbs) scene.remove(o.mesh); orbs = [];
         if (zone) { zone.active = false; zone.cool = Math.max(zone.cool, 20); }
         if (quest) { quest.wave = null; quest.killed = 0; if (busted && quest.def.contact) fail('You got pinched. Job\u2019s blown.'); }
-        onEvent('respawn', { why: downWhy, fee });
-        onEvent('radio', { text: busted
+        onEvent('respawn', { why: downWhy, fee, owned });
+        if (!owned) onEvent('radio', { text: busted
           ? `Colony Security: you\u2019ve been processed. Fine: ${fee} credits. Gear returned. Try not to make us do the paperwork again.`
           : `Control: med-evac dragged you back to the ship. That\u2019s ${fee} credits for the ride, and the doc says stop getting chewed on.` });
       }
