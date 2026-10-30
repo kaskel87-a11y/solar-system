@@ -2106,7 +2106,7 @@
       roverMenu.insertBefore(b, document.getElementById('settingsBtn')); return b;
     }
     window.SSX = {
-      ...(window.SSX?.controls ? { controls: window.SSX.controls } : {}), // v7.5.3 control mode (controlmode.js registers first)
+      ...(window.SSX || {}), // v7.6.0: keep every API a module attached before this runs (controlmode.js, flame.js, ...): with the v8 modules in the page, Chromium can run flame.js first and the old reset dropped SSX.flame
       registerColony, registerDistrict, districtsOf, registerMission, registerInterior,
       registerVehicle, registerMenuItem,
       ...DEALER_API,
