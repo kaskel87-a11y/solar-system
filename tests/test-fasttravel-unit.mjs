@@ -53,7 +53,23 @@ ok('tapPx', C.TAP_PX === 10);
 const fs = C.frameStats([16, 17, 16, 80, 16, 15, 'x', NaN]);
 ok('frameStats', fs.n === 6 && fs.max === 80 && fs.over50 === 1 && fs.avg > 16, JSON.stringify(fs));
 ok('frameStatsEmpty', C.frameStats([]).n === 0 && C.frameStats(null).max === 0);
-ok('settled', !C.settled([600, 40], [33, 35]) && !C.settled([600, 40, 40, 300], [33]) && C.settled([600, 40, 40, 45], [33, 35]) && !C.settled([60, 60, 60], [16]) && C.settled([60, 60, 60], [50, 50, 50]));
+ok('median', C.median([5, 1, 3]) === 3 && C.median([]) === 0 && C.median([4, 'x', 2]) === 4);
+ok('readyNeedsFrames', !C.ready([20, 20], [], 16));
+ok('readyHitch', !C.ready([600, 40, 40, 300], [], 33) && C.ready([600, 40, 40, 45], [], 33));
+ok('readyBase', !C.ready([120, 120, 120], [], 50) && C.ready([120, 120, 120], [], 90), 'slow devices: 1.5x their normal frame');
+ok('readyGrowing', !C.ready([20, 20, 20, 20], [2500, 2530, 2580, 2600], 16) && C.ready([20, 20, 20, 20], [2600, 2604, 2606, 2610], 16));
+ok('readyFewCounts', !C.ready([20, 20, 20], [2600, 2600], 16));
+ok('readyPending', !C.ready([20, 20, 20, 20], [], 16, ['dress:mars-downtown']) && C.ready([20, 20, 20, 20], [], 16, []));
+{ const sites = [{ id: 'mars-downtown', x: 0, z: -600, r: 60 }, { id: 'mars-rough', x: -280, z: -220, r: 50 }];
+  const g = { enabled: true, built: [], streamIn: 190 }, d = { loaded: true, failed: false, tier: 'phone', districts: {} };
+  ok('pendGrimeDress', JSON.stringify(C.pendingFor({ x: 0, z: -560, sites, grime: g, dress: d })) === '["grime:mars-downtown","dress:mars-downtown"]');
+  ok('pendBuilt', C.pendingFor({ x: 0, z: -560, sites, grime: { ...g, built: ['mars-downtown'] }, dress: { ...d, districts: { 'mars-downtown': { ready: true } } } }).length === 0);
+  ok('pendBuilding', JSON.stringify(C.pendingFor({ x: 0, z: -560, sites, grime: null, dress: { ...d, districts: { 'mars-downtown': { ready: false } } } })) === '["dress:mars-downtown"]');
+  ok('pendFarAway', C.pendingFor({ x: 10, z: 26, sites, grime: g, dress: d }).length === 0, 'the farm is far from every district');
+  ok('pendOff', C.pendingFor({ x: 0, z: -560, sites, grime: { ...g, enabled: false }, dress: { ...d, failed: true } }).length === 0 && C.pendingFor({ x: 0, z: -560, sites, grime: null, dress: { ...d, loaded: false } }).length === 0);
+  ok('pendDesktop', C.pendingFor({ x: 10, z: 26, sites, grime: null, dress: { ...d, tier: 'desktop' } }).length === 2);
+  ok('pendBad', C.pendingFor(null).length === 0 && C.pendingFor({ x: NaN, z: 0 }).length === 0); }
+ok('readyCap', C.SETTLE_MAX_MS >= 2000 && C.SETTLE_MAX_MS <= 3000 && C.SMOOTH_MS === 100);
 ok('fade', C.FADE_MS >= 150 && C.FADE_MS <= 400 && C.HOLD_FRAMES >= 1);
 
 console.log(fails ? `${fails}/${n} FAILED` : `ALL PASS (${n})`); process.exit(fails ? 1 : 0);

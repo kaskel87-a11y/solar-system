@@ -5,7 +5,9 @@ export const MATCH_M = 15;        // a map marker this close to a known place co
 export const TAP_PX = 10;         // a real tap moves less than this between pointerdown and pointerup (same pointerId)
 export const FADE_MS = 260;       // fade to black, hop, hold, fade back
 export const HOLD_FRAMES = 3;     // at least this many frames kept black after the hop while the new chunks build (hides the hitch)
-export const SETTLE_MAX_MS = 1500; // ...and up to this long, until the frame times settle (see settled())
+export const SETTLE_MAX_MS = 2500; // ...and up to this long, until the destination is ready (see ready())
+export const SMOOTH_MS = 100;      // a frame slower than this after the fade counts as a hitch
+export const STABLE_N = 4, STABLE_OBJ = 12; // ready = the visible-object count moved <= STABLE_OBJ over the last STABLE_N frames
 
 // known places, in the order the map lists them
 export const KINDS = {
@@ -84,9 +86,36 @@ export function frameStats(dts) {
   return { n: a.length, max: Math.round(a[a.length - 1] * 10) / 10, p95: Math.round(a[Math.min(a.length - 1, Math.floor(a.length * 0.95))] * 10) / 10, avg: Math.round(sum / a.length * 10) / 10, over50: a.filter(v => v > 50).length };
 }
 
-// after the hop, stay black until the last HOLD_FRAMES frames are all smooth: under max(50 ms, 1.5x the p95 from before the hop)
-export function settled(after, before) {
-  const a = (after || []).filter(fin); if (a.length < HOLD_FRAMES) return false;
-  const lim = Math.max(50, 1.5 * (frameStats(before).p95 || 0));
-  return a.slice(-HOLD_FRAMES).every(v => v < lim);
+export function median(a) { const v = (a || []).filter(fin).slice().sort((x, y) => x - y); return v.length ? v[v.length >> 1] : 0; }
+// is the destination ready to show? (after the hop, frame by frame while the screen is black)
+//   black: frame times since the hop; counts: visible scene objects per black frame ([] = unknown, ignored);
+//   base: the median frame time before the hop. Ready when the last HOLD_FRAMES frames are all under
+//   max(SMOOTH_MS, 1.5 x base) and the scene stopped growing (new NPCs / signs / district groups switching on is what hitches).
+export function ready(black, counts, base, pending) {
+  if (pending && pending.length) return false;
+  const a = (black || []).filter(fin); if (a.length < HOLD_FRAMES) return false;
+  const lim = Math.max(SMOOTH_MS, 1.5 * (fin(base) ? base : 0));
+  if (!a.slice(-HOLD_FRAMES).every(v => v < lim)) return false;
+  const c = (counts || []).filter(fin); if (!c.length) return true;
+  if (c.length < STABLE_N) return false;
+  const t = c.slice(-STABLE_N); return Math.max(...t) - Math.min(...t) <= STABLE_OBJ;
+}
+
+// what the destination is still building, by name (empty = nothing we know of). The district dressing streams in a bit
+// after you arrive, and its first frames are the hitch, so the fade waits for it:
+//   grime (mars/grime.js): builds a district's decals/neon/camps when you're within streamIn of its centre
+//   dress (mars/dress.js): builds a district's street props (async GLTF); phones: only the nearest district within 140 m of its edge
+// w = { x, z, sites: [{ id, x, z, r }], grime: { enabled, built: [ids], streamIn } | null, dress: { loaded, failed, tier, districts: { id: { ready } } } | null }
+export function pendingFor(w) {
+  const out = []; if (!w || !fin(w.x) || !fin(w.z)) return out;
+  const sites = (w.sites || []).filter(s => s && s.id && fin(s.x) && fin(s.z));
+  const g = w.grime;
+  if (g && g.enabled) for (const s of sites) if (Math.hypot(w.x - s.x, w.z - s.z) < (fin(g.streamIn) ? g.streamIn : 190) && !(g.built || []).includes(s.id)) out.push('grime:' + s.id);
+  const d = w.dress;
+  if (d && d.loaded && !d.failed) {
+    const near = sites.map(s => ({ s, e: Math.hypot(w.x - s.x, w.z - s.z) - (fin(s.r) ? s.r : 0) })).sort((a, b) => a.e - b.e)[0];
+    const want = d.tier === 'phone' ? (near && near.e < 140 ? [near.s] : []) : sites;
+    for (const s of want) if (!d.districts?.[s.id]?.ready) out.push('dress:' + s.id);
+  }
+  return out;
 }
