@@ -85,7 +85,7 @@ for (const so of C.SOCKETS) for (const face of [false, true]) {
 ok('v8Head', Math.abs(C.sockFit('head', V8S, true).s[0] - 0.117 / C.FACE_R) < 1e-9 && Math.abs(C.sockFit('head', V8S, false).s[0] - 0.2 / 0.23) < 1e-9);
 ok('v8Torso', Math.abs(C.sockFit('torso', V8S, false).s[0] - 0.34 / 0.56) < 1e-9);
 ok('fitJunk', C.sockFit('armL', { armRadius: 'x', upperArm: -1 }, false).s.every(x => x === 1) && C.sockFit('nope', V8S, false).s.join() === '1,1,1' && C.sockFit('head', null, false).s[0] === 1);
-ok('hidesHair', C.hidesHair(C.BY_ID.cowboy) && C.hidesHair(C.BY_ID.clown) && C.hidesHair(C.BY_ID.kingpin) && !C.hidesHair(null) && C.SKINS.every(k => !k.face || C.hidesHair(k)));
+ok('hidesHair', C.hidesHair(C.BY_ID.cowboy) && C.hidesHair(C.BY_ID.clown) && C.hidesHair(C.BY_ID.kingpin) && !C.hidesHair(null) && !C.hidesHair(C.BY_ID.chrome) && C.SKINS.every(k => C.hidesHair(k) === (!!k.face && k.parts.some(p => p[0] === 'head'))));
 
 console.log(fails ? `FAIL ${fails}/${n}` : `PASS ${n} skins unit checks`);
 process.exit(fails ? 1 : 0);

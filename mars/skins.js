@@ -318,7 +318,7 @@ function hookTick() { if (ticking) return true; const r = X().registerSurfaceTic
 const api = {
   list: () => C.SKINS.map(k => ({ id: k.id, name: k.name, price: k.price, icon: k.icon, owned: C.owns(st, k.id), worn: st.eq === k.id })),
   get owned() { return st.owned.slice(); }, get equipped() { return st.eq; }, buy, equip, open, close, at, near: nearShop,
-  state: () => ({ ...st, owned: st.owned.slice(), applied: player?.applied?.id || null, v8: player?.applied?.via?.body === 'v8', body: player?.applied?.via?.body || (player ? 'blocky' : null), viaApi: !!player?.applied?.via, parts: player?.applied ? player.applied.anchors.reduce((n, a) => n + a.children.length, 0) : 0 }),
+  state: () => ({ ...st, owned: st.owned.slice(), applied: player?.applied?.id || null, v8: !!player && bodyApi(player)?.body === 'v8', body: player ? (bodyApi(player)?.body || 'blocky') : null, viaApi: !!player?.applied?.via, parts: player?.applied ? player.applied.anchors.reduce((n, a) => n + a.children.length, 0) : 0 }),
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); }, __anywhere: false
 };
 window.__skins = { api, C, taps, stats, log, fitBody, bodyApi, player: () => player, mannequins, stall: () => stall, render, readRig, applySkin, built, geos, mats, merged };

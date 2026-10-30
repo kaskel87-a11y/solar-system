@@ -230,15 +230,16 @@ export function sockOf(slot, y) { const m = /^(arm|leg)([LR])$/.exec(slot); if (
 const SZ = { arm: ['armRadius', 'upperArm'], forearm: ['forearmRadius', 'forearm'], hand: ['handRadius', 'handLength'], leg: ['legRadius', 'thigh'], shin: ['shinRadius', 'shin'], foot: ['footWidth', 'footLength'] };
 const ratio = (a, b) => { const v = +a / b; return fin(v) && v > 0 ? Math.min(2, Math.max(0.3, v)) : 1; };
 // scale + offset of one anchor on a socket of a body with sizes sz: blocky sizes -> scale 1, offset = -blocky socket position
-// (so the parts land exactly where they sit on main); other bodies scale by their sizes over the blocky ones
+// (so the parts land exactly where they sit on main); other bodies scale by their sizes over the blocky ones (hands by
+// girth only: the v8 handLength is the whole hand, the blocky one a stub)
 export function sockFit(sock, sz, face) {
   const R = BLOCKY_SIZES, z = sz || R, m = /^(arm|forearm|hand|leg|shin|foot)[LR]$/.exec(sock); let s;
   if (sock === 'head') { const k = face ? (z.headRadius === R.headRadius ? 1 : ratio(z.headRadius, FACE_R)) : ratio(z.helmetRadius, R.helmetRadius); s = [k, k, k]; }
   else if (sock === 'torso') s = [ratio(z.torso?.w, R.torso.w), ratio(z.torso?.h, R.torso.h), ratio(z.torso?.d, R.torso.d)];
-  else if (m) { const [rk, lk] = SZ[m[1]], a = ratio(z[rk], R[rk]), l = ratio(z[lk], R[lk]); s = m[1] === 'foot' ? [a, (a + l) / 2, l] : m[1] === 'hand' ? [a, (a + l) / 2, a] : [a, l, a]; }
+  else if (m) { const [rk, lk] = SZ[m[1]], a = ratio(z[rk], R[rk]), l = ratio(z[lk], R[lk]); s = m[1] === 'foot' ? [a, (a + l) / 2, l] : m[1] === 'hand' ? [a, a, a] : [a, l, a]; }
   else s = [1, 1, 1];
   const b = m ? BLOCKY_SOCK[m[1]] : [0, 0, 0];
   return { s, o: [-b[0] * s[0] || 0, -b[1] * s[1] || 0, -b[2] * s[2] || 0] };
 }
-// hats, masks, wigs and bare-head (face) skins hide the v8 body's hair
-export const hidesHair = k => !!k && (!!k.face || (k.parts || []).some(p => p[0] === 'head'));
+// a face skin (helmet off) with a hat / mask / wig / hood on the head hides the v8 body's hair; under a kept helmet it stays
+export const hidesHair = k => !!k && !!k.face && (k.parts || []).some(p => p[0] === 'head');

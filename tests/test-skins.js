@@ -17,6 +17,8 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
   const m = /^(\d+)x(\d+)$/.exec(DEV), { defaultBrowserType: _d, ...iph } = devices['iPhone 14'];
   const dev = { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2 };
   const ctx = await browser.newContext(dev); const page = await ctx.newPage();
+  // v8 look on a software-GL headless browser: keep its fps governor / dynamic resolution off (as #48's own WebKit test does)
+  if (V8) await ctx.addInitScript(() => { try { localStorage.setItem('ssx.v8.nogov', '1'); localStorage.setItem('ssx.v8.nodrs', '1'); } catch (e) { /* */ } });
   const errors = []; page.on('pageerror', e => { if (!/audio device/i.test(e.message)) errors.push('PE ' + e.message); }); page.on('console', m => { if (m.type() === 'error' && !/audio device/i.test(m.text())) errors.push('CE ' + m.text().slice(0, 200)); });
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); console.log(`${cond ? 'PASS' : 'FAIL'} ${k} ${typeof v === 'boolean' ? '' : JSON.stringify(v)}`); };
@@ -45,7 +47,7 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
   const row = id => `#skPanel .row[data-id="${id}"] button`;
   try {
     await page.goto(base + '?' + QS + 't=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
-    await G(() => localStorage.clear()); await page.reload(); await boot();
+    await G(V8 => { localStorage.clear(); if (V8) { localStorage.setItem('ssx.v8.nogov', '1'); localStorage.setItem('ssx.v8.nodrs', '1'); } }, V8); await page.reload(); await boot();
     ok('api', await G(() => { const k = window.SSX?.skins; return !!k && k === window.__skins.api && k.list().length >= 10 && k.list().length <= 12; }));
     if (V8) { ok('v8Body', await wait(() => window.SSX.models?.player?.()?.body === 'v8', 60000), true); }
     else ok('noBodyApi', await G(() => !window.SSX.models?.player), true);
@@ -117,7 +119,7 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
       const st = await S(); ok('worn:' + id, st.applied, st.applied === id && st.parts > 3);
       const pb = await PB(), face = await G(id => !!window.__skins.C.BY_ID[id].face, id);
       if (V8) ok('v8fit:' + id, { st: pb.st, socks: [...new Set(pb.anchors.map(x => x.sock))].join(), face0: pb.anchors.filter(x => /face0/.test(x.n)).map(x => x.vis) },
-        st.v8 && st.viaApi && pb.anchors.length > 0 && pb.anchors.every(x => x.sock) && pb.st.tint.length >= 3 && pb.st.helmetHidden === face && pb.anchors.filter(x => /face0/.test(x.n)).every(x => !x.vis));
+        st.v8 && st.viaApi && pb.anchors.length > 0 && pb.anchors.every(x => x.sock) && pb.st.tint.length >= 3 && pb.st.helmetHidden === face && pb.st.hairHidden === await G(id => window.__skins.C.hidesHair(window.__skins.C.BY_ID[id]), id) && pb.anchors.filter(x => /face0/.test(x.n)).every(x => !x.vis));
       else ok('plain:' + id, pb.anchors.length, !st.viaApi && !st.v8 && pb.anchors.length > 0 && pb.anchors.every(x => !x.sock));
       await shot('worn-' + id);
     }
