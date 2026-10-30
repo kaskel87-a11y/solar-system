@@ -78,7 +78,15 @@ const OUTFITS = {
   crop: ['SSX crop top', 'SSX shorts', 'SSX cardigan'] // private dance: pink ribbed two-piece (+ cardigan)
 };
 /** Danny's display name: the ONE place it is set (nameplate/sign, spots, captions, contacts and toasts all read it). */
-export const DANNY_NAME = 'Danny Nova';
+export const DANNY_NAME = 'Danny Alvarez';
+// saves from v7.5.4/v7.5.5 stored her under an old stage name: move that contact (and her texts) to DANNY_NAME once
+const OLD_DANNY_NAMES = ['Danny ' + 'Nova'];
+try {
+  const c = JSON.parse(localStorage.getItem('ssx.contacts') || 'null');
+  if (c && typeof c === 'object') { let ch = false; for (const o of OLD_DANNY_NAMES) if (o in c) { if (!(DANNY_NAME in c)) c[DANNY_NAME] = c[o]; delete c[o]; ch = true; } if (ch) localStorage.setItem('ssx.contacts', JSON.stringify(c)); }
+  const t = JSON.parse(localStorage.getItem('ssx.texts') || 'null');
+  if (t && Array.isArray(t.msgs) && t.msgs.some(m => OLD_DANNY_NAMES.includes(m?.from))) { for (const m of t.msgs) if (OLD_DANNY_NAMES.includes(m?.from)) m.from = DANNY_NAME; localStorage.setItem('ssx.texts', JSON.stringify(t)); }
+} catch (e) {}
 export const DANCERS = {
   danny: { file: 'dancer_danny', name: DANNY_NAME, sheen: 0.55 }, // long straight wet-look black hair
   rhea: { file: 'dancer_rhea', name: 'Rhea', sheen: 0.18 },

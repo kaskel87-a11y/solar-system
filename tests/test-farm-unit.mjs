@@ -66,4 +66,20 @@ ok('dirs', F.dirWord(0, 10) === 'south' && F.dirWord(10, 0) === 'east' && /Go to
   // re-entry (an action fired from inside another, e.g. a base onPlace callback) is dropped
   ok('reentry', G.run('a', () => G.run('b', () => ({ ok: true }))).dup === true);
   ok('keys', F.actKey('plantc', { i: 2 }) === 'plant:2' && F.actKey('harvestAll') === 'harvest:all' && F.actKey('sell', { b: 'x', c: 'algae' }) === 'sell:x:algae'); }
+// v7.5.6 economy: one full plant -> grow -> harvest -> sell cycle per crop, paying seed, the water and power actually used
+// and the rack's amortized share of plot + dome + rack. Selling at Vell must clear >= 2.5x that cost even on the worst day,
+// and ~3-4x on an average day.
+{ const econ = {};
+  for (const id of F.CROP_IDS) {
+    const g = F.fresh(); g.owned = g.dome = true; g.water = F.LIMITS.water; g.power = F.LIMITS.power; g.racks.push({ crop: null, growth: 0, health: 100, planted: 0 });
+    const c = F.CROPS[id]; let spent = F.canPlant(g, 0, id, 1e9).cost; F.plant(g, 0, id);
+    for (let h = 0; h < c.hours + 1 && g.racks[0].growth < 1; h++) { F.advance(g, 1, 0); }
+    spent += (F.LIMITS.water - g.water) * F.PRICES.water + (F.LIMITS.power - g.power) * F.PRICES.power;
+    spent += ((F.PRICES.plot + F.PRICES.dome) / F.LIMITS.racks + F.PRICES.rack) / F.AMORT_HARVESTS;
+    const hv = F.harvest(g, 0); const q = F.quoteSale(g, 'vell', id, hv.n); F.applySale(g, q);
+    const days = Array.from({ length: 60 }, (_, d) => F.unitPrice(d, id) * hv.n), worst = Math.min(...days), avg = days.reduce((a, b) => a + b, 0) / days.length;
+    econ[id] = { spent: Math.round(spent * 10) / 10, growCost: F.growCost(id), n: hv.n, sale: q.cash, profit: q.cash - Math.round(spent), worstX: +(worst / spent).toFixed(2), avgX: +(avg / spent).toFixed(2) };
+    ok('econ:' + id, hv.n === c.yield && Math.abs(spent - F.growCost(id)) < 1 && q.cash > spent * 2.5 && worst > spent * 2.5 && avg > spent * 3 && avg < spent * 4.2, econ[id]);
+  }
+  if (process.env.ECON) console.log(JSON.stringify(econ, null, 1)); }
 console.log(bad ? `farm unit: ${bad} FAIL` : 'farm unit OK'); process.exit(bad ? 1 : 0);

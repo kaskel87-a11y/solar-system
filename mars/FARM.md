@@ -55,7 +55,20 @@ Files: `mars/farm.js` (scene, UI, integration), `mars/farmcore.js` (pure rules, 
 | Patch the dome | 120 cr | Back to 100% |
 | Harvest | free | Yield scales with health. Ghost lichen dries into **Glow-dust** in your contraband stash (if there's room), otherwise it stays in the silo |
 
-**Trading post.** Prices shift every game day (seeded by day number):
+**Trading post.** Prices shift every game day (seeded by day number) between 0.85x and 1.15x of the base price:
+
+v7.5.6 economy: a crop's base price is about 3.5x its full grow cost for one harvest on one rack. That cost is seed + the water
+and power it uses + the rack's share of plot, dome and rack ((1200 + 900) / 6 + 300 = 650 cr) over 5 harvests (130 cr).
+Even on a low day a full rack sells for about 3x what it cost (`growCost(crop)` in farmcore.js, checked in test-farm-unit).
+
+| Crop | Grow cost / harvest | Yield | Base price / unit | Full rack at Vell (1.0 day) |
+|---|---|---|---|---|
+| Potatoes | 182 cr | 6 | 105 cr | 630 cr (3.5x) |
+| Algae mats | 183.4 cr | 8 | 80 cr | 640 cr (3.5x) |
+| Glow-berries | 265.6 cr | 5 | 185 cr | 925 cr (3.5x) |
+| Ghost lichen | 366 cr | 4 | 320 cr | 1280 cr (3.5x) |
+
+Oru items and Hush favors still ask the same number of crops as before (they're priced on the old per-unit `barter` value).
 - **Vell broker** pays cash for every crop.
 - **Oru collector** pays rare items (Medkit, Coil slugs ×4, or Void Honey; the item changes by day) for Glow-berries and Algae.
 - **The Hush** pays favors for Ghost lichen and Glow-berries. "ColSec loses your file" drops 2 wanted stars when you tap it. "Watchers on the farm" is

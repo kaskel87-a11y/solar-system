@@ -35,17 +35,22 @@ const tierNow = () => K.pickTier({ override: S.tierOverride, app: appTier(), sto
 function appTier() { const X = SSX(); try { const L = X?.look; if (typeof L?.tier === 'function') { const t = L.tier(); if (t && t !== 'classic') return t; } const q = X?.quality; const v = typeof q?.tier === 'function' ? q.tier() : q?.tier ?? q?.level; return typeof v === 'string' ? v : null; } catch (e) { return null; } }
 function storedTier() { try { return localStorage.getItem('ssx-quality') || localStorage.getItem('ssx-gfx-tier'); } catch (e) { return null; } }
 function clockScale() { const T = SSX()?.time; if (!T) return 1; try { if (T.frozen) return 0; const s = +T.scale; return Number.isFinite(s) ? Math.min(20, Math.max(0, s)) : 1; } catch (e) { return 1; } } // a 240x Director fast-forward shouldn't strobe storms
-const directorStorm = () => { try { const st = SSX()?.director?.state?.(); return !!st && st.storm && st.storm !== 'off'; } catch (e) { return false; } };
+// SSX.director.state is a getter (an object, not a function): the old state?.() threw, so this was always false and both
+// storms ran at once. Cached 250 ms (the getter copies the whole Director state).
+let dirAt = -1e9, dirOn = false;
+const directorStorm = () => { const now = performance.now(); if (now - dirAt < 250) return dirOn; dirAt = now;
+  try { const d = SSX()?.director, st = typeof d?.state === 'function' ? d.state() : d?.state; dirOn = !!st && !!st.storm && st.storm !== 'off'; } catch (e) { dirOn = false; } return dirOn; };
+const guard = () => SSX()?.stormGuard || null;
 
 // ---------- grit: one Points cloud that wraps around the camera; positions are computed in the vertex shader ----------
-const VS = `attribute float rnd; uniform vec3 uCam; uniform vec3 uBox; uniform vec3 uOff; uniform float uTime; uniform float uSize; uniform float uPx; uniform float uOpacity;
+const VS = `attribute float rnd; uniform vec3 uCam; uniform vec3 uBox; uniform vec3 uOff; uniform float uTime; uniform float uSize; uniform float uPx; uniform float uOpacity; uniform float uMaxPx;
 varying float vA;
 void main() {
   vec3 p = position * uBox + uOff * (0.65 + 0.7 * rnd) + vec3(0.0, sin(uTime * (0.8 + rnd) + rnd * 40.0) * 0.8, 0.0);
   vec3 l = mod(p - uCam, uBox) - uBox * 0.5; vec3 w = uCam + l;
   vec4 mv = viewMatrix * vec4(w, 1.0); float z = max(0.35, -mv.z);
   vA = uOpacity * smoothstep(1.2, 4.0, z) * (1.0 - smoothstep(uBox.x * 0.3, uBox.x * 0.5, length(l.xz)));
-  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uSize * (0.55 + rnd) * uPx / z, 1.0, 22.0); // near / faded grains cost no fill
+  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uSize * (0.55 + rnd) * uPx / z, 1.0, uMaxPx); // near / faded grains cost no fill
   gl_Position = projectionMatrix * mv;
 }`;
 const FS = `uniform vec3 uColor; varying float vA;
@@ -61,13 +66,13 @@ function buildGrit() {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('rnd', new THREE.BufferAttribute(rnd, 1));
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
   if (!S.mat) S.mat = new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, fog: false,
-    uniforms: { uCam: { value: new THREE.Vector3() }, uBox: { value: new THREE.Vector3(50, 18, 50) }, uOff: { value: new THREE.Vector3() }, uTime: { value: 0 }, uSize: { value: 0.7 }, uPx: { value: 600 }, uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0xc98a5a) } } });
+    uniforms: { uCam: { value: new THREE.Vector3() }, uBox: { value: new THREE.Vector3(50, 18, 50) }, uOff: { value: new THREE.Vector3() }, uTime: { value: 0 }, uSize: { value: 0.7 }, uPx: { value: 600 }, uOpacity: { value: 0 }, uMaxPx: { value: 22 }, uColor: { value: new THREE.Color(0xc98a5a) } } });
   const p = new THREE.Points(g, S.mat); p.frustumCulled = false; p.renderOrder = 5; p.name = 'ssx-storm-grit'; p.userData.keep = false; p.visible = false;
   S.pts = p; S.n = n; return p;
 }
 const gritNight = new THREE.Color(0x6a3c28), gritDay = new THREE.Color(0xf2c896);
 function updateGrit(dt, tc) {
-  const on = S.eff > 0.01 && S.gritOn;
+  const on = S.eff > 0.01 && S.gritOn && !directorStorm(); // the Director's dust is the one grain overlay when both run
   if (!on) { if (S.pts) S.pts.visible = false; return; }
   const p = buildGrit(); if (p.parent !== tc.scene) tc.scene.add(p);
   const U = S.mat.uniforms, cam = tc.camera, T = K.TIERS[S.tier];
@@ -78,6 +83,7 @@ function updateGrit(dt, tc) {
   const r = APP()?.renderer, pr = (() => { try { return r?.getPixelRatio?.() || 1; } catch (e) { return 1; } })();
   U.uPx.value = innerHeight * pr * 0.5 * cam.projectionMatrix.elements[5];
   U.uOpacity.value = Math.min(0.85, S.eff * 0.9);
+  const G = guard(); U.uMaxPx.value = G?.maxPx?.(S.mobile) ?? 22; p.geometry.setDrawRange(0, Math.max(1, Math.round(S.n * (G?.density?.() ?? 1)))); // storm perf: phones 10 px, fewer grains under 40 fps
   let night = 0; try { night = SSX()?.time?.nightness?.() || 0; } catch (e) { /* */ }
   U.uColor.value.copy(gritDay).lerp(gritNight, night * 0.8);
   p.visible = true;
@@ -203,6 +209,7 @@ function tick(dt, tc) {
   if (r.phase !== S.lastPhase) phaseChanged(S.lastPhase, r.phase);
   S.I = onMars ? r.I : 0; S.eff = S.indoor ? 0 : S.I;
   if (onMars) { scanRefs(tc.scene); timeFilter(); }
+  if (onMars && !S.indoor && (!S.pts || S.pts.parent !== tc.scene || S.n !== K.particles(S.tier, S.mobile))) { const p = buildGrit(); if (p.parent !== tc.scene) { tc.scene.add(p); try { guard()?.prewarm?.(p); } catch (e) { warnOnce('prewarm', e); } } } // prewarm on landing
   updateGrit(dt, tc);
   syncHeat(S.cycle.phase !== 'clear' && onMars);
   if ((S.trafT -= dt) <= 0) { S.trafT = 0.5; try { syncTraffic(tc); } catch (e) { warnOnce('traffic', e); } }

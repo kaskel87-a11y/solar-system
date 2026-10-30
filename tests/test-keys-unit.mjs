@@ -11,7 +11,7 @@ const CODE = /(['"`])((?:Key[A-Z])|(?:Digit[0-9])|Comma|Period|Slash|Semicolon|B
 // known context-dependent overlaps (each side checks its own mode/visible button). file lists are the full allowed set.
 const KNOWN = {
   KeyQ: ['index.html', 'mars/arsenal.js', 'mars/gravity.js'], // core weapon switch | arsenal wheel on foot | zero-G vehicle roll
-  KeyE: ['index.html', 'mars/gravity.js', 'mars/flats-interiors.js', 'privateshow.js', 'myrides.js'], KeyT: ['index.html', 'privateshow.js'], // booth is modal: capture-phase handler eats the key // myrides.js: E enters your closest parked ride (same meaning as E)
+  KeyE: ['index.html', 'mars/gravity.js', 'mars/flats-interiors.js', 'privateshow.js', 'clubprivate.js', 'myrides.js'], KeyT: ['index.html', 'privateshow.js', 'clubprivate.js'], // booth is modal: capture-phase handler eats the key // myrides.js: E enters your closest parked ride (same meaning as E)
   KeyC: ['index.html', 'mars/gravity.js'], // interact/melee on foot | zero-G roll/descend in a vehicle
   KeyW: ['index.html', 'mars/gravity.js', 'trackbuilder.js'], KeyS: ['index.html', 'mars/gravity.js', 'trackbuilder.js'],
   KeyA: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'], KeyD: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'],
