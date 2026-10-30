@@ -60,8 +60,24 @@ body.hudx .hxCtxOff{display:none!important}
 body.surface:not(.indoors):not(.cinematic) #hxCtxNext.show{display:block}
 body:has(#roverMenu.show) :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hxMapOpen :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hidehud #hxCtxNext,body.danger-standoff #hxCtxNext{display:none!important}
 body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF):not([style*="display: none"]))){display:none!important} body.hxFold #ssxDock > :not(#dockRcn,#dockSmg,#dockSmgF){display:none!important} /* v7.5.5: on-the-spot actions (Raccoon buy/pick, smuggling pickup/drop) stay as a button on the spot, not in ☰ */
-#roverMenu .hxDockItem{display:none} body.hxFold #roverMenu .hxDockItem.show{display:block}
 @media (orientation:portrait){body.hudx #stackR{max-height:calc(25vh - 62px - var(--sat))} body.hudx #stackR:has(> #radio[style*="block"]:not(.mini)){max-height:44vh}}
+/* v7.6 ▤ More (phones): the dock items that aren't already in ☰ live here, left side under the minimap, clear of FIRE/Pet/Jump/Run/joystick */
+#hxMore{display:none;position:fixed;z-index:9;left:calc(10px + var(--sal,0px));top:calc(196px + var(--sat,0px));min-width:44px;min-height:44px;padding:0 12px;border-radius:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.55);font:700 13px/1 system-ui,sans-serif;touch-action:manipulation}
+#hxMore.on{display:block} #hxMore[aria-expanded="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#hxMoreP{display:none;position:fixed;z-index:9;left:calc(10px + var(--sal,0px));top:calc(246px + var(--sat,0px));width:min(214px,calc(100vw - 20px - var(--sal,0px) - var(--sar,0px)));max-height:max(96px,calc(100vh - 246px - 196px - var(--sat,0px) - var(--sab,0px)));overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;box-sizing:border-box;padding:6px;border-radius:12px;background:rgba(0,0,0,.92);border:1px solid rgba(255,255,255,.3);grid-template-columns:1fr 1fr;gap:6px}
+#hxMoreP.show{display:grid} body.hxMoreOn #roverMenu button.hxDup{display:none!important}
+#hxMore:not(.on) + #hxMoreP{display:none!important}
+#hxMoreP button{min-height:44px;padding:4px 6px;border-radius:9px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.45);font:700 12px/1.15 system-ui,sans-serif;white-space:normal;text-align:left}
+#hxMoreP button:not(.show){display:none}
+@media (max-height:440px){#hxMore{top:calc(140px + var(--sat,0px))} #hxMoreP{top:calc(190px + var(--sat,0px));max-height:calc(100vh - 190px - 140px - var(--sat,0px) - var(--sab,0px));width:min(300px,40vw)}}
+/* v7.6 👁 hide-HUD: only the joystick, Jump, Run, FIRE (+ flight pad in space) and the 👁 stay */
+body.cinematic #surfHud{display:block!important} body.touch.cinematic.surface #surfHud > #surfBtns{display:grid!important} body.cinematic #surfBtns > :not(#jumpBtn,#runBtn){display:none!important}
+body.touch.cinematic.surface.combat #surfHud > #fireBtn,body.touch.cinematic.surface.turret #surfHud > #fireBtn,body.touch.cinematic.surface.canfire #surfHud > #fireBtn,body.touch.cinematic.surface.wanted:not(.driving) #surfHud > #fireBtn{display:block!important}
+body.cinematic.surface #joy{opacity:.85}
+body.cinematic > :not(#surfHud,#hud,#joy,canvas,script,style,link,#fadeBlack,#adultGate,#loading,#hudShow){display:none!important}
+body.cinematic #hud > :not(#joy,#flyBtns){display:none!important}
+/* v7.6 sheets scroll vertically; the tap guard below stops a swipe from firing the button it started on */
+#roverMenu,#shopPanel .wrap,#logPanel .wrap,[role="dialog"]{touch-action:pan-y}
 `;
 
 // ---------- objective + points of interest (world coords) ----------
@@ -264,13 +280,58 @@ function updDock() {
   const norm = t => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
   for (const b of dock.querySelectorAll('button[id]')) { if (CTX_DOCK.includes(b.id)) continue;
     const id = 'hxm_' + b.id; let m = document.getElementById(id);
-    // most dock modules already put the same item in ☰ (🎒 Stash, 💼 Jobs, 🚩 Turf): only mirror the ones that don't
-    if (!m && [...menu.querySelectorAll('button')].some(x => norm(x.textContent) === norm(b.textContent))) continue;
-    if (!m) { m = document.createElement('button'); m.id = id; m.type = 'button'; m.className = 'btn hxDockItem'; menu.insertBefore(m, document.getElementById('settingsBtn') || null);
-      onTap(m, () => { menu.classList.remove('show'); b.click(); }); }
-    const lab = (b.textContent || '').replace(/\s+/g, ' ').trim(); if (m.textContent !== lab) m.textContent = lab;
-    m.classList.toggle('show', b.style.display !== 'none' && !b.hidden);
+    // the whole dock column lives in ▤ More; its ☰ twin (🎒 Stash, 🛢️ Vat House…) is hidden while More is up, so nothing shows twice
+    const name = norm((b.getAttribute('aria-label') || '').replace(/\([^)]*\)\s*$/, ''));
+    const twin = [...menu.querySelectorAll('button')].find(x => !x.classList.contains('hxDockItem') && (norm(x.textContent) === norm(b.textContent) || (name && norm(x.textContent).replace(/^\S+\s/, '') === name)));
+    if (!m) { m = document.createElement('button'); m.id = id; m.type = 'button'; m.className = 'hxDockItem'; morePanel().appendChild(m);
+      onTap(m, () => { setMore(false); menu.classList.remove('show'); b.click(); }); }
+    let lab = (b.textContent || '').replace(/\s+/g, ' ').trim(); if (!/[a-z]/i.test(lab) && b.getAttribute('aria-label')) lab = `${lab} ${b.getAttribute('aria-label').replace(/\s*\([^)]*\)\s*$/, '')}`.trim(); // icon-only dock buttons (🎯) get their name
+    if (m.textContent !== lab) m.textContent = lab;
+    const shown = b.style.display !== 'none' && !b.hidden; m.classList.toggle('show', shown);
+    if (twin) twin.classList.toggle('hxDup', shown); // a hidden dock item keeps its ☰ entry
   }
+  updMore();
+}
+// ---------- v7.6 ▤ More: one black button folds the phone dock column; starts collapsed, remembers open/closed, closes on a pick ----------
+const MORE_KEY = 'ssx.hudx.more';
+let moreBtn = null, moreP = null;
+function morePanel() {
+  if (moreP) return moreP;
+  moreP = document.createElement('div'); moreP.id = 'hxMoreP'; moreP.setAttribute('role', 'menu'); moreP.setAttribute('aria-label', 'More');
+  moreBtn = document.createElement('button'); moreBtn.id = 'hxMore'; moreBtn.type = 'button'; moreBtn.textContent = '▤ More'; moreBtn.setAttribute('aria-haspopup', 'menu'); moreBtn.setAttribute('aria-expanded', 'false');
+  document.body.appendChild(moreBtn); document.body.appendChild(moreP);
+  onTap(moreBtn, () => setMore(!moreP.classList.contains('show')));
+  return moreP;
+}
+function setMore(open) { if (!moreP) return; if (open && !moreBtn.classList.contains('on')) open = false; moreP.classList.toggle('show', !!open); moreBtn.setAttribute('aria-expanded', String(!!open)); try { localStorage.setItem(MORE_KEY, open ? '1' : '0'); } catch (e) { /* private mode */ } }
+function updMore() {
+  if (!moreP) return; const b = document.body;
+  const avail = touch() && b.classList.contains('surface') && !b.classList.contains('cinematic') && !b.classList.contains('indoors') && !!moreP.querySelector('button.show');
+  b.classList.toggle('hxMoreOn', avail); // ☰ hides the twins of More's items only while More is reachable
+  const on = avail && !document.getElementById('roverMenu')?.classList.contains('show');
+  if (moreBtn.classList.contains('on') !== on) { moreBtn.classList.toggle('on', on); let open = false; try { open = localStorage.getItem(MORE_KEY) === '1'; } catch (e) { /* none */ } moreP.classList.toggle('show', on && open); moreBtn.setAttribute('aria-expanded', String(on && open)); }
+}
+// ---------- v7.6 tap guard for scrolling sheets (☰, shop, farm, any panel): a swipe never fires the button it started on ----------
+// Capture phase on window runs before every handler (window.__onTap, registerMenuItem, the modules' own tap helpers, plain click).
+// A touch that moved > 10 px, or whose sheet scrolled, or that lands < 150 ms after a scroll, becomes a pointercancel + no click.
+const TAP_SLOP = 10, SCROLL_QUIET = 150;
+function scrollers(el) { const o = []; for (let e = el; e && e !== document.documentElement; e = e.parentElement) { if (e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1) { const cs = getComputedStyle(e); if (/(auto|scroll)/.test(cs.overflowY + cs.overflowX)) o.push([e, e.scrollTop, e.scrollLeft]); } } return o; }
+function installTapGuard() {
+  if (window.__hxTapGuard) return; window.__hxTapGuard = true;
+  let down = null, blockClick = 0; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
+  const now = () => performance.now(), recent = sc => sc.some(([el]) => now() - (lastS.get(el) ?? -1e9) < SCROLL_QUIET);
+  addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1) lastS.set(t, now()); }, true);
+  addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, quiet: recent(sc) } : null; }, true);
+  addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) down.moved = true; }, true);
+  addEventListener('pointerup', e => {
+    if (!down || e.pointerId !== down.id || e.__hx) return; const d = down; down = null;
+    const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1);
+    if (!bad) return;
+    e.stopImmediatePropagation(); e.preventDefault(); blockClick = now() + 700;
+    try { const c = new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true, clientX: e.clientX, clientY: e.clientY }); c.__hx = true; e.target.dispatchEvent(c); } catch (er) { /* old WebKit */ }
+  }, true);
+  addEventListener('pointercancel', e => { if (down && e.pointerId === down.id && !e.__hx) down = null; }, true);
+  addEventListener('click', e => { if (now() < blockClick || (e.isTrusted && e.detail !== 0 && recent(scrollers(e.target)))) { blockClick = 0; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
 function tick(force) {
   const now = performance.now(); if (!force && now - lastT < 140) return; lastT = now;
@@ -293,7 +354,7 @@ function boot() {
   if (!window.__app || !window.SSX || !document.getElementById('stackR')) { setTimeout(boot, 300); return; }
   if (window.SSX.hudx) return;
   const st = document.createElement('style'); st.id = 'hudxCss'; st.textContent = css; document.head.appendChild(st);
-  document.body.classList.add('hudx'); window.SSX.hudx = hudx;
+  document.body.classList.add('hudx'); window.SSX.hudx = hudx; installTapGuard();
   // v7.6: no "(T)" style key hints in toasts on phones; guarded, index.html untouched (the rewrite no longer matches, so it settles)
   try { const t = document.getElementById('toast'); if (t && window.MutationObserver) new MutationObserver(() => { if (!document.body.classList.contains('touch')) return; const v = t.textContent, n = noKeys(v); if (n !== v) t.textContent = n; }).observe(t, { childList: true, characterData: true, subtree: true }); } catch (e) { /* toast keeps its text */ }
   setInterval(() => tick(false), 150);
