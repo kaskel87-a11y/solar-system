@@ -1871,7 +1871,7 @@
       document.getElementById('shVal').textContent = Math.round(g.shield); document.getElementById('hpVal').textContent = Math.round(g.hp);
       heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
       document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
-      rankLine.innerHTML = `💰 ${g.credits}<span class="xp"> · ⭐ ${g.xp}</span>`; rankLine.title = `${g.rank} · ${g.xp} XP`;
+      rankLine.innerHTML = `💰 ${g.credits}<span class="xp"> · ⭐ ${window.SSX?.stars?.balance?.() ?? g.xp}</span>`; rankLine.title = `${g.rank} · ${g.xp} XP`;
       const si = surface.info, wl = si?.wanted || 0, ws = document.getElementById('wantedStars');
       document.body.classList.toggle('wanted', wl > 0);
       if (wl > 0) { ws.textContent = '★'.repeat(wl); ws.classList.toggle('evade', !!si.evading); }
