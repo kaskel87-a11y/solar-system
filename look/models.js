@@ -16,8 +16,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { prepBody, regionUniforms, REG_VS, REG_FS, makePlayerApi, HIDE_MASK } from './models-player.js';
 
-const VERSION = 'v8-models-1';
+const VERSION = 'v8-models-2';
 const V = new URL(import.meta.url).searchParams.get('v');
 const url = (n) => new URL(`../models/v8/${n}${V ? `?v=${V}` : ''}`, import.meta.url).href;
 const qs = new URLSearchParams(location.search);
@@ -39,19 +40,21 @@ function charMaterial(src, kind, tint) {
   const m = new THREE.MeshStandardMaterial({ map: src.map, vertexColors: true, roughness: 1, metalness: 1, side: kind === 'opaque' ? THREE.FrontSide : THREE.DoubleSide });
   if (kind === 'mask' || kind === 'far') m.alphaTest = 0.5;
   if (kind === 'glass') { m.transparent = true; m.depthWrite = false; m.envMapIntensity = 1.4; }
-  const U = { uTint: { value: new THREE.Color(tint ?? 0xffffff) }, uTintK: { value: tint == null ? 0 : 0.55 } };
+  const U = { uTint: { value: new THREE.Color(tint ?? 0xffffff) }, uTintK: { value: tint == null ? 0 : 0.55 }, ...regionUniforms() }; // uReg: player().setTint / hideHelmet / hideHair (models-player.js)
   m.userData.noV8 = true; m.userData.weathered = true; m.userData.ssxChar = true; m.userData.U = U;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 _cell;\nattribute vec4 _rm;\nvarying vec4 vCell;\nvarying vec3 vRM;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvCell = _cell; vRM = _rm.xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vCell;\nvarying vec3 vRM;\nuniform vec3 uTint;\nuniform float uTintK;')
-      .replace('#include <map_fragment>', `#ifdef USE_MAP
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 _cell;\nattribute vec4 _rm;\nvarying vec4 vCell;\nvarying vec3 vRM;\n' + REG_VS[0])
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvCell = _cell; vRM = _rm.xyz;\n' + REG_VS[1]);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vCell;\nvarying vec3 vRM;\nuniform vec3 uTint;\nuniform float uTintK;\n' + REG_FS[0])
+      .replace('#include <map_fragment>', `${REG_FS[1]}
+#ifdef USE_MAP
   vec2 tuv = vCell.xy + fract(vMapUv) * vCell.zw;
   vec4 sampledDiffuseColor = textureGrad(map, tuv, dFdx(vMapUv) * vCell.zw, dFdy(vMapUv) * vCell.zw);
   diffuseColor *= sampledDiffuseColor;
   if (vRM.z > 0.5) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, uTint * min(l * 1.5, 0.9), uTintK); }
-#endif`)
+#endif
+${REG_FS[2]}`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = max(0.04, roughness * vRM.x);')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * vRM.y;');
   };
@@ -66,7 +69,9 @@ function loadChar(id) {
     const parts = {}; g.scene.traverse(o => { if (o.isSkinnedMesh) { const k = o.material.name || 'opaque'; parts[k] = o; o.frustumCulled = true; } });
     if (!parts.opaque || !parts.far) throw new Error('bad char file ' + id);
     for (const o of Object.values(parts)) { o.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.25); }
-    return { g, clips, parts, map: parts.opaque.material.map };
+    const file = { g, clips, parts, map: parts.opaque.material.map };
+    try { prepBody(file); } catch (e) { warnOnce('prep ' + id, e); } // _reg regions + rest-pose joints / sizes for player()
+    return file;
   });
   f.then(x => { f.ready = x; }, e => { S.stats.fails++; warnOnce('load ' + id, e); });
   S.files.set(id, f); return f;
@@ -122,7 +127,20 @@ const hash = (o) => { let h = 0; for (const c of o.uuid) h = (h * 31 + c.charCod
 const isAstro = (g) => g.children.length >= 9 && g.children.some(o => o.isMesh && o.geometry?.type === 'BoxGeometry' && o.geometry.parameters.width === 0.56 && o.geometry.parameters.height === 0.66);
 const outdoors = (o) => { for (let p = o.parent; p; p = p.parent) if (p.userData?.keep) return false; return true; };
 
-function blocky(e, on) { e.group.traverse(o => { if (o.isMesh && !o.userData.ssxModel && !o.userData.ssxDancer) { if (on) { if (o.userData.__ssxVis !== undefined) { o.visible = o.userData.__ssxVis; delete o.userData.__ssxVis; } } else if (o.userData.__ssxVis === undefined) { o.userData.__ssxVis = o.visible; o.visible = false; } } }); }
+// hide/show the blocky rig under a model. Layers, not .visible: a hidden limb must not hide what add-ons hung on it, and
+// anything flagged userData.ssxKeep (player().attach() sets it, sockets carry it) is skipped with its whole subtree.
+const DRAWN = o => o.isMesh || o.isSprite || o.isLine || o.isPoints;
+function blocky(e, on) {
+  (function walk(o) {
+    if (o.userData.ssxKeep) return;
+    if (DRAWN(o) && !o.userData.ssxModel && !o.userData.ssxDancer) {
+      const u = o.userData;
+      if (on) { if (u.__ssxL !== undefined) { if (o.layers.mask === HIDE_MASK) o.layers.mask = u.__ssxL; delete u.__ssxL; } }
+      else if (u.__ssxL === undefined) { u.__ssxL = o.layers.mask; o.layers.mask = HIDE_MASK; }
+    }
+    for (const c of o.children) walk(c);
+  })(e.group);
+}
 function attach(e, inst) {
   e.inst = inst; e.group.add(inst.root); 
   inst.root.scale.setScalar(e.info.scale); inst.root.position.set(0, 0, 0); inst.lod = -1; setLod(inst, 0); blocky(e, false);
@@ -146,7 +164,7 @@ function scanPeople(ctx) {
   const scene = ctx.scene, roots = [scene];
   for (const o of scene.children) if (o.isGroup && o.userData?.v8?.site) roots.push(o);
   for (const r of roots) for (const g of r.children) {
-    if (!g.isGroup || S.people.has(g) || g.userData.ssxSkip) continue;
+    if (!g.isGroup || S.people.has(g) || g.userData.ssxSkip || g.userData.ssxMannequin) continue;
     if (!S.player && isAstro(g)) { S.player = track(g, { src: 'astro', kind: 'player', body: 'player', tint: null, gun: false, scale: 1.08 }, true); continue; }
     const info = classify(g); if (!info) { g.userData.ssxSkip = true; continue; }
     if (!outdoors(g)) continue;
@@ -224,6 +242,10 @@ function clearAll() {
 }
 function tick(dt, ctx) {
   S.frame++;
+  try { tickInner(dt, ctx); } finally { try { PLAYER.sync(ctx); } catch (e) { warnOnce('player api', e); } }
+  if (window.SSX && window.SSX.models !== API && typeof window.SSX.registerSurfaceTick === 'function') window.SSX.models = API; // re-attach after index.html rebuilds window.SSX
+}
+function tickInner(dt, ctx) {
   const on = wanted();
   if (!on || ctx.name !== 'Mars' && S.tier === 'low') { if (S.on) { clearAll(); S.on = false; } return; }
   if (S.scene !== ctx.scene) { clearAll(); S.scene = ctx.scene; S.t = 0; }
@@ -232,14 +254,16 @@ function tick(dt, ctx) {
   try { watchBolts(ctx); updatePeople(dt, ctx); } catch (e) { warnOnce('people', e); }
   if (S.kitMod && ctx.name === 'Mars' && S.tier !== 'low') { try { S.kitMod.updateKits(S, ctx, D_KIT); } catch (e) { warnOnce('kits', e); } }
 }
+const PLAYER = makePlayerApi(S, isAstro);
 const API = {
   version: VERSION,
+  player: () => PLAYER, // the player body: sockets (attach), sizes, setTint / resetTint, hideHelmet / hideHair. See look/MODELS.md
   enabled: () => S.on,
   state: () => ({ version: VERSION, on: S.on, tier: S.tier, force: FORCE, people: S.people.size, player: !!S.player?.inst, cap: CAPS[S.tier] ?? 12, ...S.stats, files: [...S.files.keys()], kits: [...S.kits.keys()], kitState: S.kitMod?.kitState?.(S) }),
   preload: (ids = ['player', 'soldier', 'worker', 'hacker']) => Promise.all(ids.map(loadChar)),
 };
 S.gltf = gltf;
-window.__v8models = { S, API, dev: { loadChar, makeInstance, play } };
+window.__v8models = { S, API, PLAYER, dev: { loadChar, makeInstance, play, blocky, detach } };
 (function boot() {
   const X = window.SSX; if (!X || typeof X.registerSurfaceTick !== 'function') { setTimeout(boot, 250); return; }
   X.registerSurfaceTick(tick); X.models = API;
