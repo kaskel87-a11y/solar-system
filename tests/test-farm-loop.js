@@ -69,7 +69,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.farm.skip(5)); await step('grow', /grow \(50%\)/); await shot('grow');
     await G(() => window.SSX.farm.skip(5));
     await step('harvest', /^🧺 Harvest your potatoes/); await shot('harvest');
-    await tapSel('#farmAct'); await tapSel('#farmPanel button[data-a="harvestAll"]'); await tapSel('#farmPanel button[data-a="close"]');
+    await tapSel('#farmAct'); await tapSel('#farmPanel button[data-a="harvestAll"]'); await tapSel('#farmPanel button[data-a="close"]'); await G(() => window.SSX.harvest?.debug?.rush?.()); // mars/harvest.js turns one-tap harvest into a hired hand (15 s); finish the job now
     g = await step('sell', /^👽 Sell to the aliens at Xen-7 Trading Post.*Xen-7 Trading Post: \d+ m (north|south|east|west|north-east|north-west|south-east|south-west)\. Follow the yellow beacon\.$/);
     const pp = await G(() => window.SSX.farm.places().find(q => q.id === 'post'));
     ok('waypointPost', g.waypoint, g.waypoint && (g.waypoint.via === 'api' || (g.waypoint.beacon && Math.abs(g.waypoint.beacon.x - Math.round(pp.x)) <= 1 && Math.abs(g.waypoint.beacon.z - Math.round(pp.z)) <= 1)));

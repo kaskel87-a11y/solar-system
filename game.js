@@ -959,6 +959,7 @@ export function createGame(ctx) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
     if (st.inside) { holster(); return false; }
+    if (!st.driving && typeof window !== 'undefined' && window.SSX?.fireHooks) for (const f of window.SSX.fireHooks) { try { if (f(aimAt) === true) return true; } catch (e) { /* an add-on hook (mars/harvest.js sickle) must never block a shot */ } }
     if (!st.driving && ((P.equip.weapon === 'blade' && hasBlade()) || (P.equip.weapon === 'cleaver' && hasCleaver()))) return melee();
     const wpn = curWeapon(); if (!wpn) return false;
     if (W.cd > 0 || (wpn.heat && W.over)) return false;

@@ -124,7 +124,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { window.SSX.farm.refill('water'); window.SSX.farm.refill('power'); window.SSX.farm.skip(10); window.SSX.farm.refill('water'); window.SSX.farm.refill('power'); window.SSX.farm.skip(6); });
     k = await St(); ok('allRipe', k.racks.map(r => r.ripe), k.racks.every(r => r.ripe));
     const gd0 = await G(() => window.SSX.contraband?.stash?.().items?.glowdust?.qty | 0);
-    await tapSel('#farmAct'); await tapSel('#farmPanel button[data-a="harvestAll"]');
+    await tapSel('#farmAct'); await tapSel('#farmPanel button[data-a="harvestAll"]'); await G(() => window.SSX.harvest?.debug?.rush?.()); // mars/harvest.js turns one-tap harvest into a hired hand (15 s); finish the job now
     k = await St(); const gd1 = await G(() => window.SSX.contraband?.stash?.().items?.glowdust?.qty | 0);
     ok('harvest', { silo: k.silo, gd0, gd1, racks: k.racks.map(r => r.crop) }, k.racks.every(r => !r.crop) && k.silo.potato > 0 && k.silo.glowberry > 0 && gd1 - gd0 >= 1);
     await tapSel('#farmPanel button[data-a="close"]');

@@ -268,6 +268,22 @@ function harvest_(i = 'all') {
   const words = Object.entries(got).map(([k, v]) => `${v} ${F.CROPS[k].name}`).join(', ') || 'nothing';
   return res(true, `🧺 Harvested ${words}.${stash ? ` ${stash} ghost lichen dried into Glow-dust for your stash.` : ''}${lost ? ` The silo is full: ${lost} rotted.` : ''}`, { got, lost, stash });
 }
+// hands-on harvest (mars/harvest.js, SSX.harvest): cut takes a ripe rack's crop off without banking it; bank puts crops in
+// the silo (capped; lichen still dries into Glow-dust). o.hand: a hired hand works while you're away (owned farm is enough).
+function cut_(i, o = {}) {
+  const n = o.hand ? (S.owned ? null : 'Buy the homestead first.') : need('farm'); if (n) return res(false, n); i = i | 0; const r = S.racks[i];
+  if (!r?.crop) return res(false, 'Nothing planted there.'); if (r.health <= 0) return res(false, 'That crop died.'); if (r.growth < 1) return res(false, `Not ripe yet (${Math.floor(r.growth * 100)}%).`);
+  if (o.planted != null && r.planted !== o.planted) return res(false, 'That rack changed.');
+  const crop = r.crop, k = F.yieldOf(r); S.racks[i] = F.freshRack(); save(); rebuildFarm(true); emit('cut', { rack: i, crop, n: k, via: o.via || 'hand' }); return res(true, '', { crop, n: k });
+}
+function bank_(items, o = {}) {
+  const n = o.hand ? (S.owned ? null : 'Buy the homestead first.') : need('farm'); if (n) return res(false, n);
+  const got = {}, left = {}; let room = Math.max(0, F.LIMITS.silo - F.siloCount(S)), stash = 0, total = 0;
+  for (const [c, q0] of Object.entries(items || {})) { const q = Math.max(0, q0 | 0); if (!F.CROPS[c] || !q) continue; const g = Math.min(q, room); room -= g; if (g) { S.silo[c] = (S.silo[c] || 0) + g; got[c] = g; total += g; } if (q - g) left[c] = q - g; }
+  if (!total) return res(false, 'The silo is full. Sell some crops first.', { got, left, full: true });
+  S.stats.harvested += total; if (got.lichen) stash = toStash();
+  save(); emit('harvest', { got, lost: 0, stash, via: o.via || 'silo' }); return res(true, '', { got, left, stash, n: total });
+}
 function toStash() {
   const C = CB(), have = S.silo.lichen | 0; if (!C?.add || !have) return 0;
   let room = have; try { const c = C.capacity?.(); if (c && fin(c.max) && fin(c.used)) room = Math.max(0, Math.min(have, c.max - c.used)); } catch (e) { /* */ }
@@ -300,6 +316,7 @@ const plant = (i, crop) => AG.run(F.actKey('plant', { i: rackTag(i) }), () => pl
 const harvest = (i = 'all') => AG.run(F.actKey('harvest', { i: rackTag(i) }), () => harvest_(i));
 const refill = what => AG.run(F.actKey(what), () => refill_(what));
 const patch = () => AG.run('patch', () => patch_());
+const cut = (i, o = {}) => AG.run('cut:' + rackTag(i | 0), () => cut_(i, o || {}));
 const sell = (buyer, crop, qty = 1, o = {}) => AG.run(F.actKey('sell', { b: buyer, c: crop }), () => sell_(buyer, crop, qty, o || {}));
 function giveItem(id) {
   const it = F.ITEMS.find(x => x.id === id), P = game()?.progress;
@@ -376,7 +393,8 @@ function build(scene) {
   try { window.SSX?.minimap?.addMarks?.('farm', [{ ...fp, color: '#4ade80', r: 3, ring: true }, { ...pp, color: '#b388ff', r: 2.6, ring: true }]); } catch (e) { /* */ }
 }
 function rebuildFarm(force) {
-  if (!G) return; const fg = G.userData.fg; const key = JSON.stringify([S.owned, S.dome, S.racks.map(r => [r.crop, Math.round(r.growth * 10), r.health > 0]), basePieces().map(p => [p.id, p.i, p.j, p.r])]);
+  if (!G) return; const fg = G.userData.fg; const HL = (k, r) => { try { const f = window.SSX?.harvest?.cropLeft?.(k, r); return fin(f) ? F.clamp(f, 0, 1) : 1; } catch (e) { return 1; } };
+  const key = JSON.stringify([S.owned, S.dome, S.racks.map((r, k) => [r.crop, Math.round(r.growth * 10), r.health > 0, HL(k, r)]), basePieces().map(p => [p.id, p.i, p.j, p.r])]);
   if (!force && key === rackKey) return; rackKey = key;
   if (rackG) { fg.remove(rackG); rackG.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); }
   rackG = new THREE.Group(); fg.add(rackG);
@@ -401,7 +419,8 @@ function rebuildFarm(force) {
     const c = rackSpot(k, bRacks), g0 = new THREE.Group(); g0.position.set(c.x, 0, c.z); g0.rotation.y = c.rot; rackG.add(g0);
     if (!c.base) { box(1.6, 0.9, 3.4, mat(0x9aa3ad, { metalness: 0.5 }), 0, 0.2, 0, g0); box(1.7, 0.06, 3.5, mat(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.4 }), 0, 2.3, 0, g0);
       for (const z of [-1.6, 1.6]) box(0.1, 2.1, 0.1, mat(0x777777), 0, 0.2, z, g0); }
-    if (r.crop) { const g = Math.max(0.1, r.growth), dead = r.health <= 0; const cm = box(1.4, 0.9 * g, 3.1, mat(dead ? 0x5a4632 : leaf[r.crop], r.crop === 'glowberry' || r.crop === 'lichen' ? { emissive: leaf[r.crop], emissiveIntensity: r.growth >= 1 ? 0.6 : 0.2 } : {}), 0, 1.1, 0, g0); cm.name = 'farm-crop'; }
+    const left = r.crop ? HL(k, r) : 0; // hands-on harvest: cut patches come off the rack from the north end
+    if (r.crop && left > 0) { const g = Math.max(0.1, r.growth), dead = r.health <= 0; const cm = box(1.4, 0.9 * g, 3.1 * left, mat(dead ? 0x5a4632 : leaf[r.crop], r.crop === 'glowberry' || r.crop === 'lichen' ? { emissive: leaf[r.crop], emissiveIntensity: r.growth >= 1 ? 0.6 : 0.2 } : {}), 0, 1.1, 1.55 * (1 - left), g0); cm.name = 'farm-crop'; }
   });
 }
 function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); } G = null; rackG = null; rackKey = ''; try { window.SSX?.minimap?.clear?.('farm'); } catch (e) { /* */ } beacon = null; wpClear(); }
@@ -470,7 +489,9 @@ function render() {
           if (!c) h += btn('plant', `🪴 Rack ${k + 1}: empty`, 'Tap to plant.', { i: k, dis });
           else if (r.health <= 0) h += btn('harvest', `🥀 Rack ${k + 1}: ${c.name} died`, 'Clear it out.', { i: k, dis: true });
           else h += btn('harvest', `${c.icon} Rack ${k + 1}: ${c.name} · ${r.growth >= 1 ? 'ripe' : Math.floor(r.growth * 100) + '%'}`, `Health ${Math.round(r.health)}%${r.growth >= 1 ? ` · harvest ${F.yieldOf(r)}` : ''}`, { i: k, pri: r.growth >= 1, dis: dis || r.growth < 1 }); });
-        if (S.racks.some(r => r.crop && r.growth >= 1)) h += btn('harvestAll', '🧺 Harvest everything ripe', '', { pri: true, dis });
+        const HX = window.SSX?.harvest, hireTxt = HX?.hireText ? (() => { try { return HX.hireText(); } catch (e) { return ''; } })() : '';
+        if (hireTxt) h += `<p class="sub">${esc(hireTxt)}</p>`;
+        if (S.racks.some(r => r.crop && r.growth >= 1)) h += btn('harvestAll', hireTxt ? '👷 Hire a hand for everything ripe' : '🧺 Harvest everything ripe', '', { pri: true, dis });
         if (S.racks.length < F.LIMITS.racks) h += btn('rack', `➕ Add a hydroponic rack · ${F.PRICES.rack} cr`, `${S.racks.length}/${F.LIMITS.racks} racks`, { n: S.racks.length, dis: dis || cr < F.PRICES.rack });
         const w = F.refillCost(S, 'water'), p = F.refillCost(S, 'power');
         h += `<div class="row">${btn('water', `💧 Fill · ${w.cost} cr`, '', { dis: dis || !w.units || cr < w.cost })}${btn('power', `🔋 Charge · ${p.cost} cr`, '', { dis: dis || !p.units || cr < p.cost })}</div>`;
@@ -503,6 +524,7 @@ function act(d) {
   if (a === 'close') return close(); if (a === 'back') { plantFor = null; return render(); } if (a === 'postInfo') { pMode = 'post'; return render(); }
   if (a === 'plant') { plantFor = +d.i; return render(); }
   if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack({ expect: d.n }); else if (a === 'plantc') { r = plant(+d.i, d.c); if (!r?.dup) plantFor = null; }
+  else if ((a === 'harvest' || a === 'harvestAll') && typeof window.SSX?.harvest?.hire === 'function') r = window.SSX.harvest.hire(a === 'harvestAll' ? 'all' : +d.i); // the slow one-tap way
   else if (a === 'harvest') r = harvest(+d.i); else if (a === 'harvestAll') r = harvest('all'); else if (a === 'water' || a === 'power') r = refill(a); else if (a === 'patch') r = patch();
   else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have, { expect: d.q }); } else if (a === 'favor') r = useFavor(d.c); else if (a === 'guide') r = guideOn();
   if (panel.classList.contains('show')) { const m = pMsg.textContent; render(); pMsg.textContent = r?.dup ? m : (r?.msg || ''); }
@@ -586,6 +608,10 @@ function status() {
 }
 const API = {
   status, buy, buildDome, addRack, plant, harvest, refill, patch, sell, useFavor, raid: raid_, skip,
+  // mars/harvest.js: cut a ripe rack without banking, bank crops into the silo, rack spots in world metres, redraw the crops
+  cut, bank: (items, o = {}) => bank_(items, o || {}), siloRoom: () => Math.max(0, F.LIMITS.silo - F.siloCount(S)), redraw: () => { rebuildFarm(true); return !!G; },
+  rackSpots: () => { const c = W(F.SITES.farm.at); if (!c) return []; const bR = basePieces().filter(p => p.type === 'farm-rack');
+    return S.racks.map((r, k) => { const p = rackSpot(k, bR); return { i: k, x: c.x + p.x, z: c.z + p.z, rot: p.rot, crop: r.crop, ripe: !!r.crop && r.growth >= 1 && r.health > 0, planted: r.planted, n: F.yieldOf(r) }; }); },
   buyers: () => F.buyersToday(F.day(S)), clock: () => ({ hour: hourNow(), hours: S.hours, day: F.day(S), source: empOn ? 'SSX.empire.hour' : src }),
   places: () => Object.values(F.SITES).map(p => { const w = W(p.at); return { id: p.id, name: p.name, x: w?.x, z: w?.z, r: p.r }; }),
   open, close, on, CROPS: F.CROPS, PRICES: F.PRICES,

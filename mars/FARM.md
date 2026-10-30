@@ -169,3 +169,11 @@ Earlier notes for Ben (two context buttons, "Buy the lot first", the busy raid s
 - `tests/test-farm-restore.js` (WebKit iPhone 14, 393x852) seeds a v7.5.5 save (974154e: homestead, dome, 3 racks, potatoes) and checks it loads owned with its racks and no charge; then the farm save lost, unowned over a base synced to unowned (the for-sale state), broken with a mirror, `base.refresh()` + a stale unowned write (no downgrade), and that `debug.reset()` still resets. It saves `farm-restored-<tag>.png`.
 - `tests/test-farm-loop.js` plays the first loop through the guide (buy → dome → rack + plant → grow → harvest → sell), including dismiss, re-enable, a reload mid-loop and done after the sale, then checks for one context button in the lot.
   It saves phone screenshots `farm-loop-<n>-<step>-<device>-<browser>.png`.
+
+## Hands-on harvest (mars/harvest.js, SSX.harvest)
+- **Sickle** (free): at a ripe rack, tap FIRE or the black 🌾 Cut button. Each swing cuts one of 3 patches, throws chaff and makes a sound, and the crop on the rack gets shorter. The third swing clears the rack.
+- **Bale**: whatever you cut is tied on your back, up to 12 crops. Walk to the corrugated **silo** east of the dome and tap 🏚️ Drop bale (or FIRE) to put it into the farm silo. Lichen goes to the contraband stash as before.
+- **Quick cuts**: cut again within 2.5 s. Every 3rd quick cut in a row adds 1 extra crop. The caption counts it in plain words.
+- **Harvester rover** (4,000 cr, ☰ → 🌾 Harvest, at the farm): it's parked by the west fence. Walk up and tap 🔑 Drive. Drive over ripe racks and the header cuts them into a 40-crop hopper. Stop at the silo and it empties (or tap 🏚️ Empty hopper). It doesn't cut while floating.
+- **Hire a hand**: the old one-tap harvest in the farm sheet now hires a hand for 6 cr a rack. The crops reach the silo in about 15 s.
+- None of it works in the Rust Pit. Saved under `ssx.harvest.v1`. FIRE reaches it through `SSX.fireHooks` (game.js `fire()`). farm.js gives it `cut` / `bank` / `rackSpots` / `redraw`.
