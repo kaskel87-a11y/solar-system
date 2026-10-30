@@ -25,10 +25,11 @@
     'ssx.controlMode', 'ssx.danger.v1', 'ssx.director.v1', 'ssx.empire.v1', 'ssx.farm.v1', 'ssx.farm.v1.bak', 'ssx.fight.v1', 'ssx.flats.v1',
     'ssx.grime.v1', 'ssx.hudx.more', 'ssx.hudx.v1', 'ssx.jobs.v1', 'ssx.lab.v1', 'ssx.mars.act.v1', 'ssx.marstracks.snap', 'ssx.mix.v1',
     'ssx.onboard.v1', 'ssx.planets.v1', 'ssx.pursuit.v1', 'ssx.r2r.v1', 'ssx.raccoonRover.v1', 'ssx.race.v1', 'ssx.radioBanner', 'ssx.rep.v1',
-    'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1'
+    'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1',
+    'ssx.flame.v1', 'ssx.jetpack.v1' // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
   ];
   const PREFIXES = ['ssx.race.ghost.'];
-  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts'];
+  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];
   const OWN = [PENDING, BAK, DONE];
   const MAX_CODE = 4e6, MAX_VAL = 2e6;
   const VERSIONED = /^ssx\.[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*\.v\d+$/;
