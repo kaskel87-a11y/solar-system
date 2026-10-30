@@ -52,7 +52,7 @@ export function createGuards({ emit, alarm, onBackup, onLockdown, onSealed } = {
   function blocked(world) { return (x, y, z) => boxHit(boxes, x, y, z) || !!world?.camBlocked?.(x, y, z); }
   function resolve(ctx) {
     const W = ctx.world, out = [];
-    for (const [i, gd] of (def.guards || []).entries()) {
+    for (const [i, gd] of (def.ownGuards ? [] : def.guards || []).entries()) { // ownGuards: the layout walks its own guards (Halvorsen Villa), don't spawn a second set
       const p0 = toWorld(W, Array.isArray(gd) ? { x: gd[0], z: gd[1] } : gd, def.rel); if (!p0) return false;
       const route = (gd.route || []).map(p => toWorld(W, Array.isArray(p) ? { x: p[0], z: p[1] } : p, def.rel));
       out.push(normGuard({ ...gd, x: p0.x, z: p0.z, route }, i, def.guard || {}));
