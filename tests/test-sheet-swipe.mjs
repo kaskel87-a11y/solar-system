@@ -32,16 +32,17 @@ try {
     let pid = 500;
     const pe = (el, type, x, y, id) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y }));
     const ctr = el => { el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; };
+    const nudge = (sc, d) => { const t = sc.scrollTop; sc.scrollTop += d; if (sc.scrollTop === t) sc.scrollTop -= d; if (sc.scrollTop !== t) W.scrolled = (W.scrolled || 0) + 1; else W.stuck = (W.stuck || 0) + 1; }; // a sheet at its end scrolls the other way
     const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     // swipe: finger down on the button, the sheet scrolls under it, finger lifts 70 px away; iOS may still send a late click
     W.swipe = async sel => { const el = document.querySelector(sel); const [x, y] = ctr(el); await new Promise(r => setTimeout(r, 400)); const sc = W.scroller(el), id = ++pid;
-      pe(el, 'pointerdown', x, y, id); for (let i = 1; i <= 7; i++) { pe(el, 'pointermove', x, y - i * 10, id); if (sc) sc.scrollTop += 10; await frame(); }
+      pe(el, 'pointerdown', x, y, id); for (let i = 1; i <= 7; i++) { pe(el, 'pointermove', x, y - i * 10, id); if (sc) nudge(sc, 10); await frame(); }
       pe(el, 'pointerup', x, y - 70, id); el.click(); await new Promise(r => setTimeout(r, 80)); return !!sc; };
     // the finger hardly moves but the sheet scrolled (momentum) since touch start
     W.scrollTap = async sel => { const el = document.querySelector(sel); const [x, y] = ctr(el); await new Promise(r => setTimeout(r, 400)); const sc = W.scroller(el), id = ++pid;
-      pe(el, 'pointerdown', x, y, id); if (sc) { sc.scrollTop += 30; await frame(); } const r2 = el.getBoundingClientRect(); pe(el, 'pointerup', x, y + 3, id); el.click(); await new Promise(r => setTimeout(r, 80)); return r2.top; };
+      pe(el, 'pointerdown', x, y, id); if (sc) { nudge(sc, 30); await frame(); } const r2 = el.getBoundingClientRect(); pe(el, 'pointerup', x, y + 3, id); el.click(); await new Promise(r => setTimeout(r, 80)); return r2.top; };
     // a tap < 150 ms after a fling ended
-    W.afterFling = async sel => { const el = document.querySelector(sel); const [x0] = ctr(el); await new Promise(r => setTimeout(r, 400)); const sc = W.scroller(el); if (sc) { sc.scrollTop += 2; await frame(); }
+    W.afterFling = async sel => { const el = document.querySelector(sel); const [x0] = ctr(el); await new Promise(r => setTimeout(r, 400)); const sc = W.scroller(el); if (sc) { const ev = new Promise(r => { sc.addEventListener('scroll', r, { once: true }); setTimeout(r, 1500); }); nudge(sc, 2); await ev; } // tap right as the scroll lands (headless frames can be slow)
       const r = el.getBoundingClientRect(), x = x0, y = r.y + r.height / 2, id = ++pid; pe(el, 'pointerdown', x, y, id); pe(el, 'pointerup', x, y, id); el.click(); await new Promise(r => setTimeout(r, 80)); };
     W.tap = async sel => { const el = document.querySelector(sel); const [x, y] = ctr(el); await new Promise(r => setTimeout(r, 400)); const id = ++pid; pe(el, 'pointerdown', x, y, id); await new Promise(r => setTimeout(r, 60)); pe(el, 'pointerup', x, y, id); el.click(); await new Promise(r => setTimeout(r, 80)); };
     window.SSX.registerMenuItem({ id: 'swMenuItem', label: '🧪 swipe probe', onTap: hit('swMenuItem') });
@@ -59,7 +60,7 @@ try {
     if (k === 'menu') await G(() => { const m = document.getElementById('swMenuItem'), t = document.getElementById('swTap_menu'); t.after(m); }); // keep the ☰ probe in the scrolling part
     const c0 = await counts();
     for (const id of ids) { R[k + '_scrolls_' + id] = await G(s => window.__sw.swipe(s), '#' + id); await G(s => window.__sw.scrollTap(s), '#' + id); await G(s => window.__sw.afterFling(s), '#' + id); }
-    const c1 = await counts();
+    const c1 = await counts(); const scr = await G(() => { const r = `${window.__sw.scrolled || 0} scrolled, ${window.__sw.stuck || 0} stuck`; window.__sw.scrolled = window.__sw.stuck = 0; return r; }); ok(k + 'ReallyScrolled', scr, scr.endsWith(' 0 stuck'));
     ok(k + 'SwipeNoFire', ids.map(i => `${i}:${(c1[i] || 0) - (c0[i] || 0)}`).join(' '), ids.every(i => (c1[i] || 0) === (c0[i] || 0)));
     ok(k + 'StillOpen', null, k === 'menu' ? await G(() => document.getElementById('roverMenu').classList.contains('show')) : true);
     // a real button: swipe over the first visible one, nothing changes (sheet stays open)
