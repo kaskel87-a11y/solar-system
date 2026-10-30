@@ -5,6 +5,7 @@
 // without depending on it: activities/runner.js calls jobsTick(dt, ctx) each frame; our own throttled rAF tick is the fallback.
 // Fiction only: invented colony, invented people, no real brands.
 import * as THREE from 'three';
+import { jobPay } from '../economy.js'; // money boost: SSX.economy.payoutMult
 
 /**
  * window.SSX.jobs — public API
@@ -222,7 +223,7 @@ function complete(opts = {}) {
   else { const coll = Math.max(0, (world()?.wanted || 0) - run.wanted0); const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.4 * frac);
     if (coll) { pay = Math.round(pay * 0.6); note = ' Collateral cut your bounty.'; } else { const w = world(); if (w?.wanted > 0) w.setWanted?.(w.wanted - 1, 'bounty paid'); }
     note = `${run.mark.name} (${run.mark.crime}) taken down${tip ? `, +${tip} quick-work bonus` : ''}.${note}`; }
-  const total = pay + tip;
+  const total = jobPay(pay + tip, 'jobs:' + type); // money boost (economy.js)
   try { game()?.reward?.(xp, total); } catch (e) { console.warn('jobs reward', e); }
   const before = levelOf(type); S[type].done++; S[type].earned += total; S[type].best = Math.max(S[type].best, total); S.earned += total; save();
   const after = levelOf(type);

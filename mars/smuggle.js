@@ -7,6 +7,7 @@
 // Fiction only, M-rated (contraband, crooked customs, swearing).
 import * as THREE from 'three';
 import * as C from './smugglecore.js';
+import { jobPay } from '../economy.js'; // money boost: SSX.economy.payoutMult
 
 const app = () => window.__app;
 const SSX = () => window.SSX || {};
@@ -165,7 +166,7 @@ function payout(kind = 'cash') {
       }
     } catch (e) { console.warn('smuggle favor', e); }
   }
-  if (!got) { try { g?.reward?.(0, p.cash); } catch (e) { /* */ } got = { kind: 'cash', cash: p.cash }; S.earned += p.cash; toast(`💰 ${C.FIXER} pays ${p.cash} cr${r.flags ? ' (hot cargo bonus)' : r.hp < 100 ? ' (damaged crate)' : ' (clean run)'}.`, 3000); }
+  if (!got) { p.cash = jobPay(p.cash, 'smuggle'); try { g?.reward?.(0, p.cash); } catch (e) { /* */ } got = { kind: 'cash', cash: p.cash }; S.earned += p.cash; toast(`💰 ${C.FIXER} pays ${p.cash} cr${r.flags ? ' (hot cargo bonus)' : r.hp < 100 ? ' (damaged crate)' : ' (clean run)'}.`, 3000); }
   r.phase = 'done'; S.delivered++; save(); R.last = { ...r, got }; R.run = null; R.cd = R.t; emit('paid');
   return { ok: true, ...got };
 }

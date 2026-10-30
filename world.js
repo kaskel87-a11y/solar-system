@@ -744,6 +744,7 @@ export function createWorld(ctx) {
     for (const p of people) {
       if (p.on === false) continue; // v7.5: only the hub you're at is live
       p.phase += dt;
+      if (p.stun > 0 && !p.ssxDrop && (p.hp <= 0 || p.stun > 6)) { p.ssxDrop = 1; globalThis.SSX?.economy?.npcDown?.(p); } // money boost: a knocked-out NPC drops 20-80 cr, once (economy.js)
       if (p.stun > 0) { p.stun -= dt; p.group.rotation.x = -Math.PI / 2 * Math.min(1, p.stun * 2); p.group.position.y = height(p.x, p.z) + 0.3; if (p.stun <= 0) { p.group.rotation.x = 0; p.hp = p.kind === 'guard' ? 6 : 3; } continue; }
       if (duel && p === duel.p) { duelStep(p, dt); continue; }
       let gx = p.x, gz = p.z, sp = 0;

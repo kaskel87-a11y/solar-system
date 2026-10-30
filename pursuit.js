@@ -11,6 +11,7 @@
 // Lose a street chase by breaking line of sight (terrain, buildings) or out-running them; they search, then give up.
 import * as THREE from 'three';
 import * as DC from './dangercore.js';
+import { jobPay } from './economy.js'; // money boost: SSX.economy.payoutMult
 import { MARS_CITY, chaseRoute } from './streetdata.js';
 import { buildVehicle } from './dangerhooks.js';
 
@@ -137,7 +138,7 @@ function stop(why) {
 }
 function finishSetPiece() {
   const sp = S.sp, g = S.ctx.game;
-  if (sp.status === 'won') { g.progress.credits += 350; g.progress.xp += 60; g.save?.(); toast(`🏁 ${sp.title}: made the Helios gate. +350 cr. ${DC.pick(DC.BARKS.runWin)}`, 3200); }
+  if (sp.status === 'won') { const cr = jobPay(350, 'pursuit:' + sp.kind); g.progress.credits += cr; g.progress.xp += 60; g.save?.(); toast(`🏁 ${sp.title}: made the Helios gate. +${cr} cr. ${DC.pick(DC.BARKS.runWin)}`, 3200); }
   else toast(`❌ ${sp.title} failed: ${{ caught: 'they boxed you in', crate_destroyed: 'the crate is splinters', timer: 'out of time' }[sp.status] || sp.status}.`, 3000);
   S.lastSetPiece = sp.status; stop('setpiece:' + sp.status); S.sp = null;
 }

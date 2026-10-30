@@ -1301,7 +1301,7 @@ export function createGame(ctx) {
     const def = quest.def, qs = qState(def.id), first = !qs.everDone;
     clearQuestObjects();
     qs.status = 'done'; qs.everDone = true; qs.step = 0; qs.n = 0; delete P.active[world];
-    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25);
+    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = (globalThis.SSX?.economy?.job || (n => n))(first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25), 'quest:' + def.id); // money boost (economy.js)
     if (first) {
       if (r.badge && !P.badges.includes(r.badge)) { P.badges.push(r.badge); got.push(`🏅 Badge: ${r.badge}`); }
       if (r.unlock && !P.unlocks.includes(r.unlock)) { P.unlocks.push(r.unlock); const [k, v] = r.unlock.split(':'); got.push(COSMETICS[k]?.[v] ? `${k === 'paint' ? '🎨 Rover paint' : '🧣 Bandana'}: ${COSMETICS[k][v].name}` : k === 'contact' ? `💬 New contact: ${v}` : k === 'shop' ? `🔓 Ozzie\u2019s discount: ${v}` : `🔓 ${k}: ${v.replace(/_/g, ' ')}`); }

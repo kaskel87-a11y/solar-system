@@ -7,6 +7,7 @@
 // SSX.time.isNight (if a day/night cycle ever ships), window.__race (falls back to a built-in gate sprint).
 // Fiction only: invented colony, invented crews and cargo, no real brands.
 import * as THREE from 'three';
+import { jobPay } from '../economy.js'; // money boost: SSX.economy.payoutMult
 
 /**
  * window.SSX.beltway — public API (positions: world metres unless noted)
@@ -78,7 +79,7 @@ const dirTo = (fx, fz, tx, tz) => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][M
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const wanted = () => world()?.wanted || 0;
 const setWanted = (n, why) => { try { world()?.setWanted?.(Math.max(0, Math.min(5, n)), why); } catch (e) { /* optional */ } };
-const pay = (cr, xp = 0) => { const g = game(); if (!g || !cr) return 0; if (g.reward) g.reward(xp, cr); else if (g.bonus) g.bonus(cr); S.stats.earned += cr; save(); return cr; };
+const pay = (cr, xp = 0) => { const g = game(); if (!g || !cr) return 0; cr = jobPay(cr, 'beltway'); if (g.reward) g.reward(xp, cr); else if (g.bonus) g.bonus(cr); S.stats.earned += cr; save(); return cr; };
 const credits = () => game()?.progress?.credits ?? null;
 const hostiles = (types, x, z, faction) => { try { if (window.SSX?.city?.hostiles) return window.SSX.city.hostiles(types, x, z, { faction, src: 'beltway', aggro: true }); return game()?.hostiles?.(types, x, z, { faction, src: 'beltway' }) || 0; } catch (e) { console.warn('beltway hostiles', e); return 0; } };
 const crewOn = () => CREW.filter(c => S.crew[c.id]);

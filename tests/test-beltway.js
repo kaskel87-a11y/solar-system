@@ -83,7 +83,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const sp = await G(() => window.SSX.beltway.split()); R.split = `${sp.gross} -> ${sp.crew.map(c => c.id + ':' + c.cut + '%').join(',')} mine ${sp.mine}`;
     ok('splitOk', sp.crew.length === 2 && sp.mine === 1200 - 180 - 120);
     c0 = await C(); await G(() => window.SSX.beltway.debug.clearHeat());
-    ok('armoredPaid', await wait(() => window.SSX.beltway.active() === null, 5000) && (await C()) - c0 === sp.mine);
+    ok('armoredPaid', await wait(() => window.SSX.beltway.active() === null, 5000) && [0, 25, 50, 75, 100].includes(((await C()) - c0) - Math.round(sp.mine * (await G(() => window.SSX.economy?.payoutMult ?? 1))))); // money boost: payoutMult x (+ streak bonus)
     await calm();
     // ---- night race
     await G(() => window.SSX.beltway.debug.setNight(false));

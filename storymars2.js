@@ -16,6 +16,7 @@ import * as W from './world.js';
 import { buildHuman, BARTER_STORY, DEFERRED } from './storymars.js';
 import { CITY_DISTRICTS } from './city.js';
 import { tap as hookTap } from './planets/hooks.js';
+import { jobPay } from './economy.js'; // money boost: SSX.economy.payoutMult
 
 const MOBILE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const nextStep = g => (typeof g.advanceStep === 'function' ? g.advanceStep() : g.debug.advance());
@@ -412,7 +413,7 @@ function pickSheet(app, g, q, s, def) {
     const q2 = g.debug.quest(); if (!q2 || `${q2.id}:${q2.step}` !== key) return false;
     if (o.cost && !g.spend(o.cost)) return false;
     for (const f of [].concat(o.flag || [])) g.setFlag(f.includes(':') ? f : `story:${q.id}:${f}`);
-    if (o.credits) g.reward(0, o.credits);
+    if (o.credits) g.reward(0, jobPay(o.credits, 'pick:' + q.id, { streak: false })); // money boost (economy.js)
     if (o.wanted) app.surface.world.setWanted?.(Math.max(app.surface.world.wanted || 0, o.wanted), 'choice');
     if (o.clearWanted) app.surface.world.setWanted?.(0, 'choice');
     if (o.give === 'bike') giveRide(app, (o.line || '').split(':')[0] + ': A ride, no plates.');
