@@ -187,6 +187,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const chunks = new Map();
   const rockBlk = new Map(); // v7.5.1 (M4/m2): big rocks per chunk block the camera boom
   const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
+  // v7.5.7: big rocks near (x, z) at ground level (summon keeps the rover out of them; tests count them)
+  const rocksNear = (x, z, pad = 0) => { let n = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = rockBlk.get(`${Math.floor(x / CHUNK) + i},${Math.floor(z / CHUNK) + j}`); if (L) for (const r of L) if (Math.hypot(x - r.x, z - r.z) < r.r + pad) n++; } return n; };
   const poiObjects = [];
   let state = null;
 
@@ -1216,7 +1218,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!best || bd > 200) return null;
     return { name: best.userData.name, dist: Math.round(bd), dir: relDir(Math.atan2(-(best.position.x - player.x), -(best.position.z - player.z)) - viewYaw) };
   }
-  const nearRover = () => rover && !driving && !indoor && Math.hypot(rover.x - player.x, rover.z - player.z) < 6.5;
+  const NEAR_ROVER = 8; // v7.5.7: was 6.5, and a summon could land ~6+ m out (no Drive button)
+  const nearRover = () => rover && !driving && !indoor && Math.hypot(rover.x - player.x, rover.z - player.z) < NEAR_ROVER;
   // ----- v7.3 enterable buildings: walk through a door into a small interior parked above the colony -----
   const groundAt = (x, z) => indoor ? world.inside.floor : height(x, z);
   function enterBuilding(door) {
@@ -1307,10 +1310,31 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (indoor) leaveBuilding(); if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
   function dogTo(x, z) { if (!dog || driving) return; dog.mode = 'follow'; dog.sniff = null; dog.x = x + 1.4; dog.z = z + 1.2; dog.y = height(dog.x, dog.z); dog.vy = 0; dog.nextSniff = 12; }
   function dustRing(x, z, n = 70) { if (!dust) return; const y = height(x, z); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, sp = 3 + (i % 5); spawnDust(x + Math.cos(a) * 2.2, y + 0.4, z + Math.sin(a) * 2.2, Math.cos(a) * sp, 1.5 + (i % 3), Math.sin(a) * sp); } }
+  // v7.5.7: the rover lands ~3.5 m beside you, on a clear dry spot (not in a rock); if that side is blocked, the other side, then behind, then in front
+  const SUMMON_R = 3.5;
+  function summonSpot() {
+    const px = player.x, pz = player.z, base = player.yaw + 0.9, rr = (rover.spec?.r || 1.6) * 0.75;
+    const ok = (x, z) => dry(x, z) && Math.hypot(x - SHIP.x, z - SHIP.z) > 11 && !world.collide?.(x, z, rr, rover);
+    const angs = [base, base + Math.PI, player.yaw, player.yaw + Math.PI]; for (let k = 1; k < 6; k++) angs.push(base - 0.5 * k, base + 0.5 * k);
+    let least = null;
+    for (const r of [SUMMON_R, 4.5, 5.5])
+      for (const a of angs) {
+        const x = px - Math.sin(a) * r, z = pz - Math.cos(a) * r; if (!ok(x, z)) continue;
+        const n = rocksNear(x, z, rr); if (!n) return { x, z };
+        if (!least || n < least.n) least = { x, z, n };
+      }
+    if (least) return least; // boxed in by rocks: the least-rocky clear spot, still within Drive range
+    let p = freeSpot(px, pz, base, SUMMON_R);
+    if (Math.hypot(p.x - px, p.z - pz) > 5) { const q = freeSpot(px, pz, base + Math.PI, SUMMON_R); if (Math.hypot(q.x - px, q.z - pz) < Math.hypot(p.x - px, p.z - pz)) p = q; }
+    if (Math.hypot(p.x - px, p.z - pz) > 5) { const q = freeSpot(px, pz, player.yaw, SUMMON_R); if (Math.hypot(q.x - px, q.z - pz) < Math.hypot(p.x - px, p.z - pz)) p = q; }
+    return p;
+  }
   function summonRover() {
     const b = travelBlocked(); if (b) return { ok: false, why: b };
     if (driving) return { ok: false, why: 'you are already driving' };
-    const p = freeSpot(player.x, player.z, player.yaw + 0.9, 6);
+    // v7.5.8: an impounded rover stays in the ColSec lot; never fake a summon (the impound would drag it straight back)
+    try { if (globalThis.SSX?.consequences?.roverImpounded?.()) return { ok: false, impounded: true, why: 'your rover\u2019s impounded at ColSec (Olympus Row)' }; } catch (e) { /* no consequences module */ }
+    const p = summonSpot();
     rover.x = p.x; rover.z = p.z; rover.y = height(p.x, p.z); rover.yaw = Math.atan2(-(player.x - p.x), -(player.z - p.z)) + Math.PI / 2;
     rover.vy = 0; rover.speed = 0; rover.steer = 0; rover.prevG = null; rover.air = false; rover.pitch = 0; rover.roll = 0;
     rover.group.position.set(rover.x, rover.y, rover.z); rover.group.rotation.set(0, rover.yaw, 0);
@@ -1364,7 +1388,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
       let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
       return v ? world.despawnVehicle(v) : false; },
-    summonRover, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
+    summonRover, rocksNear, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
