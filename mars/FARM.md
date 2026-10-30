@@ -119,6 +119,14 @@ at the farm when the timer ends. `?farmraids=0` turns off random raids, and `rai
   return "Not now." or "Land first." Raids never start there.
 - Mars only, and it tears down with the surface. The save is `localStorage['ssx.farm.v1']`, migrated, with offline catch-up capped at 14 days.
 
+## Save and recovery (v7.5.7 hotfix)
+- The save is `ssx.farm.v1` (one key, not per slot or per version; a v7.5.5 save loads unchanged). Every owned save is mirrored to `ssx.farm.v1.bak`.
+- On load the farm takes the first **owned** state from: the save, the mirror, then the homestead's record in SSX.base's save (`ssx.base.v1`
+  keeps `farm-dome` / `farm-rack` pieces even after the lot synced to unowned). A farm restored from base gets its dome and racks back
+  (crops on them are not known there), the tanks at 40 at least, and no charge. `status().restored` is `'backup' | 'base' | null`, and a `restore` event and one message fire on Mars.
+- Never downgraded: an unowned state is never written over an owned save (only `debug.reset()` does that), and if base reports the lot `lost` while the farm owns it, the farm re-syncs it as owned.
+- If storage is full, the farm drops its own mirror and retries; if that fails too it says so once (`status().saveErr`) instead of failing silently.
+
 ## API
 ```
 SSX.farm.status()  -> { owned, dome, domeHp, racks:[{crop,growth,health,ripe}], water, power, silo, siloCount, favors, hours, day, clock, base, empire, hooks, raid, at, storm, stats }
@@ -158,5 +166,6 @@ Earlier notes for Ben (two context buttons, "Buy the lot first", the busy raid s
   - idempotency: `apiTwice` (buy, dome and rack called twice: one charge each of 1200 / 900 / 300, one base piece), `tapTwice` (two taps in the same frame on buy, dome and rack, and on the button now under the finger), `tapTwiceSell` (one sale), `apiSell` (one sale, paid once)
 - `test-farm-unit.mjs` fires two taps in the same frame and two API calls for buy lot, build dome, add rack and sell: each gives exactly one effect and one charge. It also covers per-key debounce, re-entry and stale expected state.
 - The e2e taps no longer wait two frames. They wait (up to 1.5 s) for the sheet's `data-hold` to clear, like a person would.
+- `tests/test-farm-restore.js` (WebKit iPhone 14, 393x852) seeds a v7.5.5 save (974154e: homestead, dome, 3 racks, potatoes) and checks it loads owned with its racks and no charge; then the farm save lost, unowned over a base synced to unowned (the for-sale state), broken with a mirror, `base.refresh()` + a stale unowned write (no downgrade), and that `debug.reset()` still resets. It saves `farm-restored-<tag>.png`.
 - `tests/test-farm-loop.js` plays the first loop through the guide (buy → dome → rack + plant → grow → harvest → sell), including dismiss, re-enable, a reload mid-loop and done after the sale, then checks for one context button in the lot.
   It saves phone screenshots `farm-loop-<n>-<step>-<device>-<browser>.png`.
