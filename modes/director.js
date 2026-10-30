@@ -58,37 +58,52 @@ function makeStars() {
   const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, sizeAttenuation: false, fog: false, depthWrite: false, transparent: true, opacity: 0 }));
   m.renderOrder = -1; m.name = 'directorStars'; return m;
 }
-let dustTex = null;
-function makeDust(scene, p) {
-  if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.dispose(); }
-  if (!dustTex) { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'), r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); dustTex = new THREE.CanvasTexture(c); }
-  const n = p.count, pos = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) pos.set([(Math.random() - 0.5) * BOX, Math.random() * BOX_H, (Math.random() - 0.5) * BOX], i * 3);
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xd7a070, map: dustTex, size: p.size, transparent: true, opacity: p.opacity, depthWrite: false, fog: false }));
-  dust.frustumCulled = false; dust.name = 'directorDust'; dust.userData.level = S.storm + (mobile ? ':m' : ''); scene.add(dust);
-}
+// v7.5.5 storm perf: one Points cloud built ONCE per visit (sized for 'heavy'); grains move in the vertex shader (no per-frame
+// CPU loop or buffer upload), sizes are clamped on screen (phones 10 px) and the drawn count follows the level and
+// SSX.stormGuard's density (setDrawRange: no rebuild, no new shader when the level changes). Prewarmed on landing.
+const DUST_VS = `attribute float rnd; uniform vec3 uCam; uniform vec3 uBox; uniform vec3 uOff; uniform float uTime; uniform float uSize; uniform float uPx; uniform float uMaxPx; uniform float uOpacity;
+varying float vA;
+void main() {
+  vec3 p = position * uBox + uOff * (0.7 + 0.56 * rnd) + vec3(0.0, -uTime * (0.4 + 0.6 * rnd), 0.0);
+  vec3 l = mod(p - uCam, uBox) - uBox * 0.5; l.y += uBox.y * 0.1; vec3 w = uCam + l;
+  vec4 mv = viewMatrix * vec4(w, 1.0); float z = max(0.3, -mv.z);
+  vA = uOpacity * smoothstep(0.8, 2.5, z) * (1.0 - smoothstep(uBox.x * 0.32, uBox.x * 0.5, length(l.xz)));
+  gl_PointSize = vA < 0.01 ? 0.0 : clamp(uSize * uPx / z, 1.0, uMaxPx);
+  gl_Position = projectionMatrix * mv;
+}`;
+const DUST_FS = `uniform vec3 uColor; varying float vA;
+void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1.0) discard; gl_FragColor = vec4(uColor, vA * (1.0 - d) * (1.0 - d));
+#include <colorspace_fragment>
+}`;
 const BOX = 44, BOX_H = 16;
+const guard = () => window.SSX?.stormGuard || null;
+function makeDust(scene) {
+  if (dust) { if (dust.parent !== scene) scene.add(dust); return dust; }
+  const n = D.stormParams('heavy', mobile).count, pos = new Float32Array(n * 3), rnd = new Float32Array(n);
+  for (let i = 0; i < n; i++) { pos[i * 3] = Math.random(); pos[i * 3 + 1] = Math.random(); pos[i * 3 + 2] = Math.random(); rnd[i] = Math.random(); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('rnd', new THREE.BufferAttribute(rnd, 1));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
+  const m = new THREE.ShaderMaterial({ vertexShader: DUST_VS, fragmentShader: DUST_FS, transparent: true, depthWrite: false, fog: false,
+    uniforms: { uCam: { value: new THREE.Vector3() }, uBox: { value: new THREE.Vector3(BOX, BOX_H, BOX) }, uOff: { value: new THREE.Vector3() }, uTime: { value: 0 }, uSize: { value: 0.4 },
+      uPx: { value: 600 }, uMaxPx: { value: D.dustMaxPx(mobile) }, uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0xd7a070) } } });
+  dust = new THREE.Points(g, m); dust.frustumCulled = false; dust.renderOrder = 5; dust.name = 'directorDust'; dust.visible = false; dust.userData.n = n; dust.userData.level = 'heavy';
+  scene.add(dust); try { guard()?.prewarm?.(dust); } catch (e) { warnOnce('prewarm', e); }
+  return dust;
+}
+const dustOff = new THREE.Vector3();
 function updateDust(dt, cam, p, fade) {
-  if (!dust) return; dust.visible = fade > 0.02; if (!dust.visible) return;
-  dust.material.opacity = p.opacity * fade;
-  const w = D.windAt(clock, S.storm), a = dust.geometry.attributes.position, arr = a.array, n = a.count;
-  // the box follows the camera; particles drift with the wind and wrap, so the cost is n vector adds per frame
-  dust.position.set(Math.floor(cam.position.x), cam.position.y - BOX_H * 0.4, Math.floor(cam.position.z));
-  const ox = cam.position.x - dust.position.x, oz = cam.position.z - dust.position.z, h = BOX / 2;
-  for (let i = 0; i < n; i++) {
-    const k = i * 3, j = 0.7 + (i % 7) * 0.08;
-    let x = arr[k] + w.x * dt * j, y = arr[k + 1] - dt * (0.4 + (i % 5) * 0.15), z = arr[k + 2] + w.z * dt * j;
-    if (x - ox > h) x -= BOX; else if (x - ox < -h) x += BOX; if (z - oz > h) z -= BOX; else if (z - oz < -h) z += BOX; if (y < 0) y += BOX_H;
-    arr[k] = x; arr[k + 1] = y; arr[k + 2] = z;
-  }
-  a.needsUpdate = true;
+  if (!dust) return; dust.visible = fade > 0.02 && p.count > 0; if (!dust.visible) return;
+  const U = dust.material.uniforms, w = D.windAt(clock, S.storm), k = guard()?.density?.() ?? 1;
+  dust.geometry.setDrawRange(0, Math.min(dust.userData.n, D.dustDraw(p.count, k)));
+  dustOff.x += w.x * dt; dustOff.z += w.z * dt; U.uOff.value.copy(dustOff); U.uTime.value += dt; U.uCam.value.copy(cam.position);
+  const r = app()?.renderer; let pr = 1; try { pr = r?.getPixelRatio?.() || 1; } catch { /* */ }
+  U.uPx.value = innerHeight * pr * 0.5 * cam.projectionMatrix.elements[5]; U.uSize.value = p.size; U.uOpacity.value = p.opacity * fade;
 }
 // with SSX.time: the clock and lighting are its job; we only tint its look for storms, pull the fog in and run the dust
 let filterOff = null;
 function stormFilter(L) {
   if (stormFade <= 0 || C?.name !== 'Mars' || C?.world?.inside) return L;
-  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
+  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.last || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
   const dustCol = D.mixHex(D.STORM_COLOR, 0x2a1a14, 1 - (L.day ?? 1));
   return { ...L, top: D.mixHex(L.top, dustCol, mix), horizon: D.mixHex(L.horizon, dustCol, Math.min(1, mix * 1.15)), fog: D.mixHex(L.fog ?? L.horizon, dustCol, Math.min(1, mix * 1.15)),
     light: L.light * (1 - 0.5 * mix), hemi: L.hemi * (1 - 0.25 * mix), sunVisible: L.sunVisible !== false && mix < 0.6, stars: (L.stars || 0) * (1 - mix), storm: mix };
@@ -99,13 +114,14 @@ function lookShared(dt, ctx, T) {
   if (applied && base) restore(scene); // hand back anything the fallback overlay changed before SSX.time showed up
   if (scene.fog !== baseFogObj || !base) capture(scene);
   const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside, p = D.stormParams(onMars ? S.storm : 'off', mobile);
+  if (onMars && !indoor && !dust) makeDust(scene); // built + prewarmed on landing, hidden: a storm starting later costs no frame
   stormFade = D.clamp(stormFade + (p.count ? dt / 2.5 : -dt / 1.5), 0, 1);
   if (stormFade <= 0) { fogPull = null; if (dust) dust.visible = false; return; }
-  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
+  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.last || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
   if (scene.fog && !scene.fog.isFogExp2 && !indoor && mix > 0) { scene.fog.near = Math.min(scene.fog.near, scene.fog.near + (sp.near - scene.fog.near) * stormFade); scene.fog.far = Math.min(scene.fog.far, scene.fog.far + (sp.far - scene.fog.far) * stormFade); }
   else if (scene.fog?.isFogExp2 && !indoor && mix > 0) scene.fog.density = Math.max(scene.fog.density, 0.05 * mix);
   fogPull = !indoor && mix > 0 ? { near: sp.near, far: sp.far, f: stormFade } : null; hookFog(scene); // re-applied right before render (time.js / street looks write fog after add-on ticks)
-  if (S.storm !== 'off' && (!dust || dust.userData.level !== S.storm + (mobile ? ':m' : ''))) makeDust(scene, sp);
+  if (S.storm !== 'off') { makeDust(scene); dust.userData.last = S.storm; }
   if (dust) { if (indoor) dust.visible = false; else updateDust(dt, ctx.camera, sp, stormFade); }
 }
 function look(dt, ctx) {
@@ -113,13 +129,14 @@ function look(dt, ctx) {
   const scene = ctx.scene; if (!scene) return;
   if (scene.fog !== baseFogObj || !base) capture(scene);
   const onMars = ctx.name === 'Mars', indoor = !!ctx.world?.inside;
+  if (onMars && !indoor && !dust) makeDust(scene);
   const wantTod = onMars && S.tod != null, p = D.stormParams(onMars ? S.storm : 'off', mobile);
   stormFade = D.clamp(stormFade + (p.count ? dt / 2.5 : -dt / 1.5), 0, 1);
   if (!wantTod && stormFade <= 0) { fogPull = null; if (applied) restore(scene); return; }
   applied = true;
   const L = wantTod ? D.todLook(S.tod, { top: base.top, horizon: base.horizon, light: base.light, lightColor: base.lightColor, hemi: base.hemiI })
     : { top: base.top, horizon: base.horizon, fog: base.fogColor ?? base.horizon, light: base.light, lightColor: base.lightColor, hemi: base.hemiI, dir: null, sunVisible: true, stars: 0, day: 1 };
-  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.level?.split(':')[0] || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
+  const sp = D.stormParams(S.storm === 'off' ? (dust?.userData.last || 'light') : S.storm, mobile), mix = sp.mix * stormFade;
   const dustCol = D.mixHex(D.STORM_COLOR, 0x2a1a14, 1 - (L.day ?? 1)); // storms go dark brown at night
   const top = D.mixHex(L.top, dustCol, mix), hor = D.mixHex(L.horizon, dustCol, Math.min(1, mix * 1.15)), fogC = D.mixHex(L.fog ?? L.horizon, dustCol, Math.min(1, mix * 1.15));
   if (base.sky) { base.sky.material.uniforms.top.value.setHex(top); base.sky.material.uniforms.horizon.value.setHex(hor); }
@@ -133,7 +150,7 @@ function look(dt, ctx) {
   if (scene.fog && !scene.fog.isFogExp2 && !indoor && mix > 0) { scene.fog.near = Math.min(scene.fog.near, scene.fog.near + (sp.near - scene.fog.near) * stormFade); scene.fog.far = Math.min(scene.fog.far, scene.fog.far + (sp.far - scene.fog.far) * stormFade); }
   else if (scene.fog?.isFogExp2 && !indoor && mix > 0) scene.fog.density = Math.max(scene.fog.density, 0.05 * mix);
   fogPull = !indoor && mix > 0 ? { near: sp.near, far: sp.far, f: stormFade } : null; hookFog(scene); // re-applied right before render (time.js / street looks write fog after add-on ticks)
-  if (S.storm !== 'off' && (!dust || dust.userData.level !== S.storm + (mobile ? ':m' : ''))) makeDust(scene, sp);
+  if (S.storm !== 'off') { makeDust(scene); dust.userData.last = S.storm; }
   if (dust) { if (indoor) dust.visible = false; else updateDust(dt, ctx.camera, sp, stormFade); }
 }
 

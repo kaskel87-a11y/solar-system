@@ -7,11 +7,11 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 
 // ---- quality tiers: grit particle count (phone / desktop), peak fog distances, point size ----
-export const TIERS = {
-  low: { phone: 160, desktop: 320, near: 2, far: 30, size: 0.9 },
-  med: { phone: 420, desktop: 800, near: 3, far: 38, size: 0.75 },
-  high: { phone: 700, desktop: 1500, near: 3, far: 44, size: 0.6 },
-  ultra: { phone: 800, desktop: 2000, near: 3, far: 48, size: 0.55 }
+export const TIERS = { // v7.5.5 storm perf: phone counts ~halved (clamped to 10 px on screen, thinned further under 40 fps by SSX.stormGuard)
+  low: { phone: 100, desktop: 320, near: 2, far: 30, size: 0.9 },
+  med: { phone: 240, desktop: 800, near: 3, far: 38, size: 0.75 },
+  high: { phone: 360, desktop: 1500, near: 3, far: 44, size: 0.6 },
+  ultra: { phone: 420, desktop: 2000, near: 3, far: 48, size: 0.55 }
 };
 const ALIAS = { medium: 'med', m: 'med', l: 'low', h: 'high', u: 'ultra', classic: null, auto: null };
 export function normTier(t) { if (typeof t !== 'string') return null; const k = t.trim().toLowerCase(); const a = k in ALIAS ? ALIAS[k] : k; return a && TIERS[a] ? a : null; }
