@@ -61,7 +61,7 @@ const me = () => { const i = surf()?.info; return i && fin(i.x) && fin(i.z) ? i 
 
 // ---------- busy: any reason not to offer a job right now (null = idle) ----------
 const PANELS = ['sheet', 'jobPanel', 'beltPanel', 'farmPanel', 'cqPanel', 'cqScreen', 'logPanel', 'racePanel', 'duelPanel', 'labPanel', 'fcPanel', 'turfPanel', 'repPanel', 'cbPanel', 'actPanel',
-  'basePanel', 'empPanel', 'heistPanel', 'pokerPanel', 'flatsPanel', 'grimePanel', 'stPanel', 'colPanel', 'roverMenu'];
+  'basePanel', 'empPanel', 'heistPanel', 'pokerPanel', 'flatsPanel', 'grimePanel', 'stPanel', 'ssPanel', 'colPanel', 'roverMenu'];
 function panelOpen() {
   for (const id of PANELS) {
     const e = document.getElementById(id); if (!e) continue;
@@ -81,6 +81,7 @@ function busy() {
   if (tryB(() => x.smuggle?.state?.run)) return 'smuggle';
   if (tryB(() => window.__race?.state)) return 'race';
   if (tryB(() => x.heist?.active)) return 'heist';
+  if (tryB(() => x.fastTravel?.busy)) return 'travel';
   if (tryB(() => (w?.wanted | 0) > 0)) return 'wanted';
   if (tryB(() => w?.inDuel) || tryB(() => x.fight?.inPit?.())) return 'pit';
   if (tryB(() => { const c = x.consequences?.status?.(); return c && (c.custody || c.jail || c.pending); })) return 'custody';
