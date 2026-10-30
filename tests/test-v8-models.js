@@ -66,7 +66,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       // runtime: classic switch drops every model and restores the blocky rigs
       if (conf === 'med') {
         await G(() => window.SSX.look.set('classic')); await frames(8);
-        const off = await G(() => { let model = 0, hidden = 0; const sc = window.__v8models.S.ctx.scene; sc.traverse(o => { if (o.userData?.ssxModel && o.parent) model++; if (o.userData?.__ssxVis !== undefined || o.userData?.__ssxKitVis !== undefined) hidden++; }); return { on: window.SSX.models.enabled(), model, hidden }; });
+        const off = await G(() => { let model = 0, hidden = 0; const sc = window.__v8models.S.ctx.scene; sc.traverse(o => { if (o.userData?.ssxModel && o.parent) model++; if (o.userData?.__ssxL !== undefined || o.userData?.__ssxKitVis !== undefined) hidden++; }); return { on: window.SSX.models.enabled(), model, hidden }; });
         ok('switchClassicRestores_' + tag, off, !off.on && off.model === 0 && off.hidden === 0);
         await G(() => window.SSX.look.set('med')); await frames(8);
       }
@@ -74,7 +74,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     if (R.conf.classic && R.conf.med) R.ratio_vs_classic = Math.round(R.conf.med.fps / R.conf.classic.fps * 100) / 100;
     if (R.conf.med0 && R.conf.med) R.ratio_vs_35 = Math.round(R.conf.med.fps / R.conf.med0.fps * 100) / 100;
   } catch (e) { bad.push('EXC ' + e.message); }
-  const errsReal = errs.filter(e => !/favicon|ERR_|net::|Failed to load resource/i.test(e));
+  const errsReal = errs.filter(e => !/favicon|ERR_|net::|Failed to load resource|start the audio device/i.test(e)); // headless WebKit has no audio device
   ok('noErrors', errsReal.slice(0, 6), errsReal.length === 0);
   console.log(JSON.stringify(R, null, 1));
   console.log(bad.length ? 'FAIL ' + tag + ': ' + bad.join(' | ') : 'PASS ' + tag);
