@@ -216,3 +216,29 @@ export function summary(id) {
   const hidden = REGIONS.filter(r => k.pal[r] === null).concat(k.face ? ['helmet', 'visor'] : []);
   return { id, parts: k.parts.length, per, hidden: [...new Set(hidden)], face: !!k.face };
 }
+
+// ---------- Steve's player body API (PR #48, SSX.models.player()) ----------
+// blocky rig reference (look/models-player.js SIZES_BLOCKY / BLOCKY sockets): our parts are modelled on it
+export const BLOCKY_SIZES = { headRadius: 0.23, helmetRadius: 0.23, torso: { w: 0.56, h: 0.66, d: 0.36 }, armRadius: 0.085, upperArm: 0.35, forearmRadius: 0.08, forearm: 0.35,
+  handRadius: 0.077, handLength: 0.1, legRadius: 0.12, thigh: 0.44, shinRadius: 0.11, shin: 0.44, footWidth: 0.2, footLength: 0.32 };
+export const BLOCKY_SOCK = { arm: [0, -0.2, 0], forearm: [0, -0.5, 0], hand: [0, -0.7, 0], leg: [0, -0.24, 0], shin: [0, -0.6, 0], foot: [0, -0.86, -0.04] };
+export const FACE_R = 0.17; // our bare head's radius (face skins' hats / masks are modelled around it)
+export const SOCKETS = ['head', 'torso', 'armL', 'armR', 'forearmL', 'forearmR', 'handL', 'handR', 'legL', 'legR', 'shinL', 'shinR', 'footL', 'footR'];
+// a limb part goes on the upper arm / forearm / hand (thigh / shin / foot) by its height on the blocky limb (y down from the joint)
+const LIMB_CUT = { arm: [[-0.35, 'arm'], [-0.62, 'forearm'], [-Infinity, 'hand']], leg: [[-0.44, 'leg'], [-0.76, 'shin'], [-Infinity, 'foot']] };
+export function sockOf(slot, y) { const m = /^(arm|leg)([LR])$/.exec(slot); if (!m) return slot; const v = fin(y) ? y : 0; for (const [t, n] of LIMB_CUT[m[1]]) if (v > t) return n + m[2]; return slot; }
+const SZ = { arm: ['armRadius', 'upperArm'], forearm: ['forearmRadius', 'forearm'], hand: ['handRadius', 'handLength'], leg: ['legRadius', 'thigh'], shin: ['shinRadius', 'shin'], foot: ['footWidth', 'footLength'] };
+const ratio = (a, b) => { const v = +a / b; return fin(v) && v > 0 ? Math.min(2, Math.max(0.3, v)) : 1; };
+// scale + offset of one anchor on a socket of a body with sizes sz: blocky sizes -> scale 1, offset = -blocky socket position
+// (so the parts land exactly where they sit on main); other bodies scale by their sizes over the blocky ones
+export function sockFit(sock, sz, face) {
+  const R = BLOCKY_SIZES, z = sz || R, m = /^(arm|forearm|hand|leg|shin|foot)[LR]$/.exec(sock); let s;
+  if (sock === 'head') { const k = face ? (z.headRadius === R.headRadius ? 1 : ratio(z.headRadius, FACE_R)) : ratio(z.helmetRadius, R.helmetRadius); s = [k, k, k]; }
+  else if (sock === 'torso') s = [ratio(z.torso?.w, R.torso.w), ratio(z.torso?.h, R.torso.h), ratio(z.torso?.d, R.torso.d)];
+  else if (m) { const [rk, lk] = SZ[m[1]], a = ratio(z[rk], R[rk]), l = ratio(z[lk], R[lk]); s = m[1] === 'foot' ? [a, (a + l) / 2, l] : m[1] === 'hand' ? [a, (a + l) / 2, a] : [a, l, a]; }
+  else s = [1, 1, 1];
+  const b = m ? BLOCKY_SOCK[m[1]] : [0, 0, 0];
+  return { s, o: [-b[0] * s[0] || 0, -b[1] * s[1] || 0, -b[2] * s[2] || 0] };
+}
+// hats, masks, wigs and bare-head (face) skins hide the v8 body's hair
+export const hidesHair = k => !!k && (!!k.face || (k.parts || []).some(p => p[0] === 'head'));

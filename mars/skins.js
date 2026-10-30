@@ -5,10 +5,11 @@
 // and adds low-poly parts (hats, masks, chains, duster, mohawk, duffel...) to the rig's own limbs, so they swing with it.
 // Phone rule: every part of a skin is merged per slot + material once (cached, shared, never disposed), so a skin is ~8-14
 // extra draws; nothing is allocated per frame (the tick only compares a few references).
-// Steve's v8 realistic people (PR #48, look/models.js, window.SSX.models / window.__v8models): when the realistic body is
-// riding inside the player rig, the blocky parts are hidden and the head / torso parts are re-attached to its Head / Spine2
-// bones (feature-detected; when that body is swapped or dropped, the skin re-attaches by itself). A recolour goes through the
-// body's tint uniforms when present. Nothing here depends on #48 being merged.
+// Steve's player body API (PR #48, look/MODELS.md: SSX.models.player()), feature-detected: when it is there, every part
+// hangs on its sockets (head, torso, arm/forearm/hand, leg/shin/foot L/R; they follow the bones and carry over on body
+// swaps), scaled from P.sizes for the body in use; the v8 body is recoloured with P.setTint and the helmet / hair hidden
+// with P.hideHelmet / P.hideHair (all restored on unequip). Without it (main today) the parts sit on the blocky rig's own
+// group / limb meshes, as before. Nothing here depends on #48 being merged.
 // Taps are real taps only (same pointerId, < 10 px), so swiping the shop list never buys anything.
 // Hooks: one <script type="module"> line in index.html (+ import map), one sw.js precache line. Everything else via
 // window.__app (surface, toast, state) and window.SSX (registerSurfaceTick, registerMenuItem, minimap), all guarded.
@@ -54,20 +55,23 @@ function mat(spec) {
 const FACE = [['head', 'sph', [0.17, 12, 9], [0, 0, 0], 0, 'skin'], ['head', 'cyl', [0.075, 0.085, 0.16, 8], [0, -0.2, 0], 0, 'skin'],
   ['head', 'sph', [0.022, 6, 4], [-0.06, 0.03, -0.155], 0, 'eye'], ['head', 'sph', [0.022, 6, 4], [0.06, 0.03, -0.155], 0, 'eye']];
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+// sockets: a limb part goes on the upper arm / forearm / hand (thigh / shin / foot) by its height on the blocky limb, so
+// it bends with the right bone on the v8 body; the bare head + eyes of face skins ('face0') only show on the blocky rig
 function built(id) {
   let b = merged.get(id); if (b) return b; const k = C.BY_ID[id]; if (!k) return null;
   const by = new Map();
-  for (const p of [...(k.face ? FACE : []), ...k.parts]) {
-    const [slot, shape, dims, pos, rot, mk, sc] = p, spec = C.matSpec(k, mk); if (!spec || spec.hidden) continue;
+  for (const p of [...(k.face ? FACE.map(f => ['face0', ...f.slice(1)]) : []), ...k.parts]) {
+    const [slot0, shape, dims, pos, rot, mk, sc] = p, spec = C.matSpec(k, mk); if (!spec || spec.hidden) continue;
+    const slot = slot0 === 'face0' ? 'head' : slot0, sock = slot0 === 'face0' ? 'face0' : C.sockOf(slot, pos[1]);
     const g = geo(shape, dims).clone(); // the clone is baked into the merged slot geometry below, then dropped
     _e.set(rot ? rot[0] : 0, rot ? rot[1] : 0, rot ? rot[2] : 0); _q.setFromEuler(_e); _p.set(pos[0], pos[1], pos[2]); _s.set(sc ? sc[0] : 1, sc ? sc[1] : 1, sc ? sc[2] : 1);
-    g.applyMatrix4(_m.compose(_p, _q, _s)); const key = slot + '|' + C.matKey(spec);
-    if (!by.has(key)) by.set(key, { slot, mat: mat(spec), gs: [] }); by.get(key).gs.push(g.index ? g : g);
+    g.applyMatrix4(_m.compose(_p, _q, _s)); const key = sock + '|' + C.matKey(spec);
+    if (!by.has(key)) by.set(key, { slot, sock, mat: mat(spec), gs: [] }); by.get(key).gs.push(g);
   }
-  b = {}; for (const { slot, mat: m, gs } of by.values()) {
+  b = {}; for (const { slot, sock, mat: m, gs } of by.values()) {
     const all = gs.map(g => g.index ? g.toNonIndexed() : g); const mg = all.length > 1 ? mergeGeometries(all, false) : all[0];
     for (const g of gs) g.dispose(); for (const g of all) if (g !== mg) g.dispose();
-    mg.computeBoundingSphere(); shared(mg); (b[slot] ||= []).push({ geo: mg, mat: m });
+    mg.computeBoundingSphere(); shared(mg); (b[sock] ||= { slot, list: [] }).list.push({ geo: mg, mat: m });
   }
   merged.set(id, b); return b;
 }
@@ -94,9 +98,10 @@ function readRig(g) {
 const HEAD_Y = 1.72, TORSO_Y = 1.24;
 function clearSkin(rig) {
   const a = rig.applied; if (!a) return;
-  for (const o of a.anchors) o.removeFromParent();
+  for (const o of a.anchors) { if (o.userData.off) o.userData.off(); else o.removeFromParent(); }
   for (const [o, m] of a.orig) o.material = m;
-  rig.applied = null; v8Clear(rig);
+  if (a.via) tryv(() => { a.via.resetTint(); a.via.hideHelmet(false); a.via.hideHair(false); });
+  rig.applied = null;
 }
 // put a skin on a rig (the player, or a shop mannequin): recolour the regions, hang the merged parts on the limbs
 function applySkin(rig, id) {
@@ -107,77 +112,72 @@ function applySkin(rig, id) {
     const spec = (k.face && (reg === 'helmet' || reg === 'visor')) ? { hidden: true } : C.matSpec(k, reg); if (!spec) continue;
     for (const o of rig.reg[reg] || []) { if (!a.orig.has(o)) a.orig.set(o, o.material); o.material = mat(spec); }
   }
-  const b = built(id) || {};
-  for (const slot of C.SLOTS) {
-    const list = b[slot]; if (!list) continue;
-    const an = new THREE.Group(); an.name = 'ssxSkin:' + slot; an.userData.ssxSkin = true; an.userData.slot = slot;
+  const b = built(id) || {}, PA = rig.player ? bodyApi(rig) : null; a.via = PA;
+  for (const [sock, { slot, list }] of Object.entries(b)) {
+    const an = new THREE.Group(); an.name = 'ssxSkin:' + sock; an.userData.ssxSkin = true; an.userData.slot = slot; an.userData.sock = sock;
     for (const { geo: g, mat: m } of list) { const me = new THREE.Mesh(g, m); me.userData.ssxModel = true; me.userData.noV8 = true; me.castShadow = !!rig.player; an.add(me); }
-    if (slot === 'head') { an.position.set(0, HEAD_Y, 0); rig.group.add(an); }
-    else if (slot === 'torso') { an.position.set(0, TORSO_Y, 0); rig.group.add(an); }
-    else (rig.limbs[slot] || rig.group).add(an);
+    const off = PA ? tryv(() => PA.attach(sock === 'face0' ? 'head' : sock, an)) : null;
+    if (typeof off === 'function') an.userData.off = off;
+    else { an.userData.off = null; if (slot === 'head') { an.position.set(0, HEAD_Y, 0); rig.group.add(an); } else if (slot === 'torso') { an.position.set(0, TORSO_Y, 0); rig.group.add(an); } else (rig.limbs[slot] || rig.group).add(an); }
     a.anchors.push(an);
   }
+  if (a.via) fitBody(rig);
   return true;
 }
 
-// ---------- Steve's v8 realistic body (PR #48), feature-detected ----------
-// window.__v8models.S.player = { group (our rig group), inst: { root, bones: { Head, Neck, Spine2, ... }, meshes: { lod0, lod1 } } }
-const V8 = { headScale: 0.78, headUp: 0.09, torsoUp: 0.05, torsoScale: [0.68, 0.92, 0.62] }; // the v8 body is slimmer than the blocky rig
-function v8Inst(rig) {
-  const S = tryv(() => window.__v8models?.S); const e = S?.player;
-  if (!S?.on || !e || e.group !== rig.group || !e.inst?.bones) return null; return e.inst;
-}
-const _gi = new THREE.Matrix4(), _bw = new THREE.Vector3();
-function v8Attach(rig, inst) {
-  const a = rig.applied; if (!a) return; const k = C.BY_ID[a.id]; const b = built(a.id) || {};
-  rig.group.updateMatrixWorld(true); _gi.copy(rig.group.matrixWorld).invert();
-  const bones = inst.bones, find = re => Object.values(bones).find(o => re.test(o.name));
-  const map = { head: bones.Head || find(/head/i), torso: bones.Spine2 || bones.Spine1 || find(/spine|chest/i) };
-  const out = [];
-  for (const slot of ['head', 'torso']) {
-    const bone = map[slot], list = b[slot]; if (!bone || !list) continue;
-    // anchor on the bone, oriented like the rig group (faces -Z, upright) at the pose we attach in, so it follows the bone
-    bone.getWorldPosition(_bw); const p = _bw.applyMatrix4(_gi); p.y += slot === 'head' ? V8.headUp : V8.torsoUp;
-    const an = new THREE.Group(); an.name = 'ssxSkinV8:' + slot; an.userData.ssxSkin = true; an.matrixAutoUpdate = false;
-    for (const { geo: g, mat: m } of list) { const me = new THREE.Mesh(g, m); me.userData.ssxModel = true; me.userData.noV8 = true; an.add(me); }
-    const h = V8.headScale, sc = slot === 'head' ? [h, h, h] : V8.torsoScale;
-    _m.compose(p, _q.identity(), _s.set(sc[0], sc[1], sc[2])); an.matrix.copy(bone.matrixWorld).invert().multiply(rig.group.matrixWorld).multiply(_m);
-    bone.add(an); out.push(an);
+// ---------- Steve's player body API (PR #48, SSX.models.player()), feature-detected ----------
+// P.attach(slot, obj) -> detach; sockets are -Z forward, +Y up, unit scale, at each slot's centre, and follow the bones.
+// Our merged parts are modelled on the blocky rig (head parts around the head centre, torso parts around the chest centre,
+// limb parts in the limb mesh's frame), so each anchor is offset by the blocky socket position and scaled by P.sizes
+// against the blocky sizes. (If P.attach is missing or throws, that anchor goes on the blocky rig as on main.)
+// (sockets, sizes and fit maths: skinscore.js sockOf / sockFit)
+const bodyApi = rig => { const M = tryv(() => X().models); if (typeof M?.player !== 'function') return null; const P = tryv(() => M.player());
+  return P && typeof P.attach === 'function' && P.root === rig.group ? P : null; };
+// (re)fit a worn skin to the body in use: anchor offsets + scales from P.sizes, v8 tint, helmet / hair
+function fitBody(rig) {
+  const a = rig.applied, P = a?.via; if (!P) return; const k = C.BY_ID[a.id]; if (!k) return;
+  const body = P.body, v8 = body === 'v8', blocky = !v8, sz = blocky ? C.BLOCKY_SIZES : (P.sizes || C.BLOCKY_SIZES);
+  for (const an of a.anchors) {
+    if (!an.userData.off) continue; // attach() refused it: it sits on the blocky rig instead
+    const sock = an.userData.sock;
+    if (sock === 'face0') { an.visible = blocky; an.position.set(0, 0, 0); an.scale.set(1, 1, 1); continue; }
+    const f = C.sockFit(sock, sz, !!k.face); // [sx, sy, sz] and the anchor offset (blocky socket position, scaled)
+    an.scale.set(f.s[0], f.s[1], f.s[2]); an.position.set(f.o[0], f.o[1], f.o[2]);
   }
-  // recolour: the body's tint uniforms (garments flagged tintable), torso colour of the skin
-  const tint = C.matSpec(k, 'torso'), saved = [];
-  if (tint && !tint.hidden) for (const o of [...(inst.meshes?.lod0 || []), ...(inst.meshes?.lod1 || [])]) { const U = o.material?.userData?.U; if (U?.uTint && U?.uTintK) { saved.push([U, U.uTint.value.getHex(), U.uTintK.value]); U.uTint.value.setHex(tint.c); U.uTintK.value = 0.7; } }
-  rig.v8 = { inst, anchors: out, saved };
-  for (const an of a.anchors) an.visible = false; // the blocky parts sit where the hidden blocky rig is
-}
-function v8Clear(rig) {
-  const v = rig.v8; if (!v) return; rig.v8 = null;
-  for (const an of v.anchors) an.removeFromParent();
-  for (const [U, hex, kk] of v.saved) { U.uTint.value.setHex(hex); U.uTintK.value = kk; }
-  if (rig.applied) for (const an of rig.applied.anchors) an.visible = true;
-}
-// every frame: is the v8 body (still) riding in the rig? re-attach when it was swapped
-function v8Sync(rig) {
-  if (!rig.applied) { if (rig.v8) v8Clear(rig); return; }
-  const inst = v8Inst(rig);
-  if (inst === (rig.v8?.inst || null)) return;
-  if (rig.v8) v8Clear(rig); if (inst) v8Attach(rig, inst);
+  tryv(() => {
+    if (v8) { const t = {}; for (const [reg, key] of [['torso', 'torso'], ['arms', 'arms'], ['legs', 'legs'], ['boots', 'boots'], ['gloves', 'glove']]) { const sp = C.matSpec(k, key); if (sp && !sp.hidden) t[reg] = { color: sp.c, k: 0.85 }; }
+      P.resetTint(); P.setTint(t); } else P.resetTint();
+    P.hideHelmet(!!k.face); P.hideHair(C.hidesHair(k));
+  });
+  a.body = body; a.sizes = P.sizes;
 }
 
 // ---------- player tracking ----------
 let player = null, scanT = 0, sceneRef = null;
-const stats = { applies: 0, scans: 0, reattach: 0 };
+const stats = { applies: 0, scans: 0, reattach: 0, refits: 0 };
 function findPlayer(scene) {
   stats.scans++; for (const g of scene.children) if (isRig(g) && !g.userData.ssxMannequin) return g; return null;
 }
 function syncPlayer(tc) {
   const sc = tc.scene; if (!sc) return;
   if (player && (player.group.parent !== sc || sceneRef !== sc)) { player = null; }
-  if (!player) { if ((scanT -= 1) > 0) return; scanT = 30; const g = findPlayer(sc); if (!g) return; sceneRef = sc; player = readRig(g); player.player = true; if (!player.ok) { player = null; return; } stats.reattach++; }
+  const PR = tryv(() => X().models?.player?.()?.root); // #48 knows the player rig: no scan needed
+  if (PR && player && player.group !== PR && PR.parent === sc) player = null;
+  if (!player) { if (!PR && (scanT -= 1) > 0) return; scanT = 30; const g = PR?.parent === sc ? PR : findPlayer(sc); if (!g) return; sceneRef = sc; player = readRig(g); player.player = true; if (!player.ok) { player = null; return; } stats.reattach++; }
   const want = st.eq === C.STOCK ? null : st.eq;
   if ((player.applied?.id || null) !== want) { applySkin(player, want || C.STOCK); stats.applies++; }
-  else if (player.applied && player.applied.anchors.some(an => !an.parent)) { applySkin(player, want); stats.applies++; } // someone pulled our parts off
-  v8Sync(player);
+  else if (player.applied) {
+    const a = player.applied, P = a.via;
+    if (P ? (P.root === player.group && a.anchors.some(an => !an.parent)) : a.anchors.some(an => !an.parent)) { applySkin(player, want); stats.applies++; } // someone pulled our parts off
+    else if (P) { if (P.body !== a.body || P.sizes !== a.sizes) { fitBody(player); stats.refits++; } } // body swapped (the models:player event usually got here first)
+    else if (!(frameN % 30) && bodyApi(player)) { applySkin(player, want); stats.applies++; } // #48's handle showed up after we dressed the rig
+  }
+}
+// #48 fires this on every body swap / rig change: refit at once instead of waiting for the next tick
+let busHooked = null;
+function hookBus() {
+  const S = X(); if (busHooked === S || typeof S.on !== 'function' || typeof S.models?.player !== 'function') return; busHooked = S;
+  try { S.on('models:player', h => { if (player?.applied?.via && h === player.applied.via && h.root === player.group) { fitBody(player); stats.refits++; } }); } catch (e) { /* */ }
 }
 
 // ---------- the shop stall + mannequins (downtown Ares Junction, AJ-relative) ----------
@@ -293,7 +293,7 @@ function buy(id) {
 }
 function equip(id, quiet) {
   const r = C.equip(st, id); if (!r.ok) { toast('👕 Buy it at Threadbare first.'); return r; }
-  st = r.state; save(); if (player) { applySkin(player, id); stats.applies++; v8Sync(player); }
+  st = r.state; save(); if (player) { applySkin(player, id); stats.applies++; }
   if (!quiet) toast(id === C.STOCK ? '👕 Back in the stock suit.' : `👕 Wearing ${C.BY_ID[id].name}.`, 2000);
   emit('equip', { id }); render(); return { ok: true, id };
 }
@@ -308,7 +308,6 @@ let near = false, ticking = false, frameN = 0;
 function tick(dt, tc) {
   try {
     frameN++; syncPlayer(tc); if (tc.name === 'Mars') ensureStall(tc);
-    for (const r of mannequins) v8Sync(r);
     const n = tc.name === 'Mars' && nearShop(); if (n !== near) { near = n; ensureUi(); btn.classList.toggle('show', n); if (!n && mode === 'shop') close(); }
     if (!(frameN % 30) && panel?.classList.contains('open')) { const t = panel.querySelector('.cr'), v = `💰 ${C.fmt(credits())} cr`; if (t.textContent !== v) render(); }
   } catch (e) { console.warn('skins tick', e); }
@@ -319,11 +318,11 @@ function hookTick() { if (ticking) return true; const r = X().registerSurfaceTic
 const api = {
   list: () => C.SKINS.map(k => ({ id: k.id, name: k.name, price: k.price, icon: k.icon, owned: C.owns(st, k.id), worn: st.eq === k.id })),
   get owned() { return st.owned.slice(); }, get equipped() { return st.eq; }, buy, equip, open, close, at, near: nearShop,
-  state: () => ({ ...st, owned: st.owned.slice(), applied: player?.applied?.id || null, v8: !!player?.v8, parts: player?.applied ? player.applied.anchors.reduce((n, a) => n + a.children.length, 0) : 0 }),
+  state: () => ({ ...st, owned: st.owned.slice(), applied: player?.applied?.id || null, v8: player?.applied?.via?.body === 'v8', body: player?.applied?.via?.body || (player ? 'blocky' : null), viaApi: !!player?.applied?.via, parts: player?.applied ? player.applied.anchors.reduce((n, a) => n + a.children.length, 0) : 0 }),
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); }, __anywhere: false
 };
-window.__skins = { api, C, taps, stats, log, V8, player: () => player, mannequins, stall: () => stall, render, readRig, applySkin, built, geos, mats, merged };
-const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.skins !== api) w.SSX.skins = api; hookTick(); hookMenu(); };
+window.__skins = { api, C, taps, stats, log, fitBody, bodyApi, player: () => player, mannequins, stall: () => stall, render, readRig, applySkin, built, geos, mats, merged };
+const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.skins !== api) w.SSX.skins = api; hookTick(); hookMenu(); hookBus(); };
 attach(); (function boot(n = 0) { attach(); if (n < 150 && !(ticking && menuBtn?.isConnected && window.__app)) setTimeout(() => boot(n + 1), 100); })();
 setInterval(attach, 1500);
 export default api;

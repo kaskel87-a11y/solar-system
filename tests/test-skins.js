@@ -2,11 +2,14 @@
 // the counter, the shop refuses when you're short and takes credits when you're not, a swipe / scroll over the list never buys,
 // ☰ 👕 Wardrobe swaps owned outfits, everything survives a reload, and the parts really sit on the player rig.
 // BASE=http://localhost:8941/ BR=webkit DEV=393x852 SHOTS_DIR=... NODE_PATH=/workspace/pw/node_modules node tests/test-skins.js
+// V8=1 QS=models=1: on a build with Steve's #48 (SSX.models.player()), also checks the parts hang on its sockets, the v8 body is
+// tinted, face skins hide the helmet, and the stock suit restores tint / helmet / hair. Without V8 it checks the plain path.
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8941/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || '393x852';
 const out = (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const tag = `skins-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+const tag = `skins-${DEV}-${BR}${process.env.V8 === '1' ? '-v8' : ''}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+const V8 = process.env.V8 === '1', QS = process.env.QS ? process.env.QS + '&' : '';
 const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').split(',');
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });
@@ -26,6 +29,10 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
   const cr = () => G(() => window.__app.surface.game.progress.credits);
   const setCr = n => G(n => { window.__app.surface.game.progress.credits = n; }, n);
   const S = () => G(() => window.SSX.skins.state());
+  // #48's handle as the skin sees it: where every anchor hangs, and what tint / helmet / hair it asked for
+  const PB = () => G(() => { const P = window.SSX.models?.player?.(), p = window.__skins.player(), a = []; if (!p) return null;
+    p.group.traverse(o => { if (o.name?.startsWith?.('ssxSkin:')) { let s = o.parent; while (s && !s.userData?.ssxSocket) s = s.parent; a.push({ n: o.name, sock: s?.userData?.ssxSocket || null, vis: o.visible, sc: +o.scale.x.toFixed(2) }); } });
+    return { api: !!P, body: P?.body || null, st: P?.state?.() || null, anchors: a }; });
   const boot = async () => {
     await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
@@ -37,9 +44,11 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
   const atShop = async (d = 3) => { await G(d => { const p = window.SSX.skins.at(); window.__app.surface.debugPlace(p.x - Math.sin(p.yaw) * d, p.z - Math.cos(p.yaw) * d, p.yaw + Math.PI); }, d); await sleep(700); };
   const row = id => `#skPanel .row[data-id="${id}"] button`;
   try {
-    await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
+    await page.goto(base + '?' + QS + 't=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear()); await page.reload(); await boot();
     ok('api', await G(() => { const k = window.SSX?.skins; return !!k && k === window.__skins.api && k.list().length >= 10 && k.list().length <= 12; }));
+    if (V8) { ok('v8Body', await wait(() => window.SSX.models?.player?.()?.body === 'v8', 60000), true); }
+    else ok('noBodyApi', await G(() => !window.SSX.models?.player), true);
     const s0 = await S(); ok('freshState', s0, s0.owned.length === 1 && s0.owned[0] === 'rusty' && s0.eq === 'stock');
     ok('catalogue', await G(() => window.SSX.skins.list().map(k => `${k.name} ${k.price}`)));
     ok('playerRig', await G(() => !!window.__skins.player()));
@@ -92,7 +101,8 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     await tap(row('rusty')); await sleep(300);
     const w1 = await S(); ok('wardrobeWear', w1, w1.eq === 'rusty' && w1.applied === 'rusty');
     await tap(row('stock')); await sleep(300);
-    const w2 = await S(); ok('wardrobeStock', w2, w2.eq === 'stock' && w2.parts === 0 && await G(() => { const p = window.__skins.player(); let n = 0; p.group.traverse(o => { if (o.name?.startsWith?.('ssxSkin:')) n++; }); return n === 0; }));
+    const w2 = await S(); if (V8) { const pb = await PB(); ok('stockRestores', pb.st, !pb.st.tint.length && !pb.st.helmetHidden && !pb.st.hairHidden && pb.st.attached === 0); }
+    ok('wardrobeStock', w2, w2.eq === 'stock' && w2.parts === 0 && await G(() => { const p = window.__skins.player(); let n = 0; p.group.traverse(o => { if (o.name?.startsWith?.('ssxSkin:')) n++; }); return n === 0; }));
     await tap(row('punk')); await sleep(300);
     await tap('#skPanel button[data-a="x"]');
     // reload: owned + worn persist, the skin is back on
@@ -105,6 +115,10 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
       await atShop(4.5); // in the street in front of the stall, the camera turned round to face you
       await G(() => { const s = window.__app.surface; s.setView('third'); s.zoom(0.45); s.look(0, -10, 1); s.look(Math.PI, 1.45 + 0.22, 1); /* pitch clamps at 1.45: reset, then 0.22 down */ }); await sleep(900);
       const st = await S(); ok('worn:' + id, st.applied, st.applied === id && st.parts > 3);
+      const pb = await PB(), face = await G(id => !!window.__skins.C.BY_ID[id].face, id);
+      if (V8) ok('v8fit:' + id, { st: pb.st, socks: [...new Set(pb.anchors.map(x => x.sock))].join(), face0: pb.anchors.filter(x => /face0/.test(x.n)).map(x => x.vis) },
+        st.v8 && st.viaApi && pb.anchors.length > 0 && pb.anchors.every(x => x.sock) && pb.st.tint.length >= 3 && pb.st.helmetHidden === face && pb.anchors.filter(x => /face0/.test(x.n)).every(x => !x.vis));
+      else ok('plain:' + id, pb.anchors.length, !st.viaApi && !st.v8 && pb.anchors.length > 0 && pb.anchors.every(x => !x.sock));
       await shot('worn-' + id);
     }
     ok('stats', await G(() => window.__skins.stats));
