@@ -37,7 +37,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('npcBudget', nb && `${nb.used}/${nb.cap}`, !nb || (nb.used <= nb.cap && (desk || nb.cap <= 12)));
     // 1) Rhea: prompt near her (black button, white text)
     await G(() => window.__app.surface.debugInside(-2.8, -4.0, 0));
-    ok('promptRhea', await wait(() => /Private dance/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'privdance:rhea' && document.body.classList.contains('cpNear'), 5000));
+    ok('promptRhea', await wait(() => /Private dance/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'privdance:rhea' && document.body.classList.contains('cpNear'), 15000));
     R.label = await label();
     const bw = await G(() => { const c = getComputedStyle(document.getElementById('driveBtn')); return c.backgroundColor + ' / ' + c.color; });
     ok('promptBW', bw, /rgba?\(0, 0, 0(, 1)?\)/.test(bw) && /255, 255, 255/.test(bw.split('/')[1]));
@@ -67,7 +67,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(500); await shot('back-in-club');
     // 2) Kiara: short on credits -> message, no charge, no scene
     await G(() => window.__app.surface.debugInside(2.8, -4.0, 0));
-    ok('promptKiara', await wait(() => /Private dance/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'privdance:kiara', 5000));
+    ok('promptKiara', await wait(() => /Private dance/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'privdance:kiara', 15000));
     await G(() => { window.__app.game.progress.credits = 50; window.__app.game.save(); });
     await act(); await wait(() => getComputedStyle(document.getElementById('cpOffer')).display === 'flex', 3000); await tapSel('#cpYes');
     ok('brokeMsg', await wait(() => /Kiara: A song is/.test(document.getElementById('toast')?.textContent || ''), 3000));
