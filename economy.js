@@ -32,6 +32,8 @@ export function jobPay(n, src = 'job', opts = {}) {
 // knocked-out NPC: once per NPC object (p.ssxDrop is set by the caller or here); toasts are batched so a brawl is one pop-up
 export function npcDown(p) {
   if (p && typeof p === 'object') { if (p.ssxDropDone || p.kind === 'contact' || p.fighter) return 0; p.ssxDropDone = 1; }
+  // v7.5.10: a Rust Pit bout pays its purse; the opponent you knock down in the cage drops nothing extra
+  try { const X = globalThis.SSX; if (X?.arsenal?.inPit?.() || (() => { const f = X?.fightclub?.status?.(); return !!(f && (f.bout || f.inCage)); })()) return 0; } catch (e) { /* */ }
   const cr = dropCredits(Math.random()); if (!credit(cr)) return 0;
   S.dropped++; S.dropCr += cr; const P = S.pend; P.cr += cr; P.k++; P.who = p?.name || (p?.kind === 'guard' ? 'guard' : p?.kind === 'colonist' ? 'colonist' : p?.kind) || 'body';
   if (!P.t) P.t = setTimeout(() => { toast(dropLine(P.cr, P.who, P.k), 2600); P.cr = 0; P.k = 0; P.t = 0; }, 900);
