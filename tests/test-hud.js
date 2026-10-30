@@ -80,6 +80,7 @@ function measure() {
       // 4) menu open (overlay) + cinematic
       if (TAG !== 'before') {
         await page.tap('#menuBtn'); await sleep(300); R.menu = await page.isVisible('#roverMenu'); await shot('menu');
+        await page.evaluate(() => document.getElementById('hideHudBtn')?.scrollIntoView({ block: 'center' })); await sleep(250); // v7.6 tap guard ignores taps < 150 ms after a sheet scroll
         await page.tap('#hideHudBtn'); await sleep(300); const c = await check('cinematic'); R.cinematicWidgets = c.ids; await shot('cinematic');
         await page.tap('#hudShow'); await sleep(300); R.restored = await page.isVisible('#topBar');
         // v7.5.5: the minimap opens the full-screen map; its ☰ button still reaches the rover menu
