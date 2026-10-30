@@ -41,6 +41,7 @@ const PRECACHE = [
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
+  `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   `clubdancers.js${q}`, `privateshow.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
