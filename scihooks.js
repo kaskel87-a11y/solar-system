@@ -3,15 +3,19 @@
 // surface.js calls sciTick(dt, ctx) once per frame, next to raceTick. Everything else is new files:
 //   raccoon.js · scientists.js · portals.js · dimensions/*.js · scicore.js (pure, unit-tested)
 import * as THREE from 'three';
-import { COLONIES, registerVehicle, buildVehicle } from './world.js';
+import { COLONIES, registerVehicle, buildVehicle, VEHICLES } from './world.js';
 import { registerMission, SHOP } from './game.js';
 import { registerInterior, textTex } from './interiors.js';
 import { STORY } from './missions-data.js';
-import { LAB_BLOCK, PORTAL_AT, JUNK_AT, RACCOON_PARK, portalTrigger, hazardPos, makeRun, stepRun, stepLabel } from './scicore.js';
+import { LAB_BLOCK, PORTAL_AT, JUNK_AT, RACCOON_PARK, portalTrigger, makeRun, stepLabel } from './scicore.js';
 import { RACCOON_ID, RACCOON_SPEC, RACCOON_SHOP, raccoonBuilder } from './raccoon.js';
 import { SILAS, TAM, BARKS, sciMissions, LAB_INTERIOR, buildLab } from './scientists.js';
 import { DIMENSIONS } from './dimensions/index.js';
 import { roomKit, buildPortal, homeRing, geos } from './portals.js';
+import { DIMENSIONS2 } from './dimensions/index2.js';
+import { sci2Missions, BARKS2, DIM_HOSTS, barkCat } from './scientists2.js';
+import { stepRun2, hazardAt, clockLabel, raccoonArrived, rdriveHint, riftDrive, RIFT_TUNE } from './sci2core.js';
+const ALL = { ...DIMENSIONS, ...DIMENSIONS2 }; // sci-01..05 rooms + the sci-06..10 rooms
 
 const LIVE = {}; // dimension id -> { picks, hazards, tick } from the last build of that room
 
@@ -19,14 +23,14 @@ const LIVE = {}; // dimension id -> { picks, hazards, tick } from the last build
 registerVehicle(RACCOON_ID, RACCOON_SPEC, raccoonBuilder(THREE));
 if (!SHOP.some(s => s.id === RACCOON_ID)) SHOP.push({ ...RACCOON_SHOP });
 registerInterior('scilab', { ...LAB_INTERIOR, build(api) { buildLab(api, roomKit(THREE, api)); } });
-for (const [id, dim] of Object.entries(DIMENSIONS)) {
+for (const [id, dim] of Object.entries(ALL)) {
   registerInterior('sci-' + id, {
     name: dim.name, w: dim.w, d: dim.d, h: dim.h, wall: dim.wall, floor: dim.floor, ceil: dim.ceil, trim: dim.trim, light: dim.light,
     build(api) { const live = dim.build(api, roomKit(THREE, api)); homeRing(THREE, api); LIVE[id] = live; }
   });
 }
 { const k = Object.keys(STORY.barks).find(x => x.startsWith('Contacts')); if (k) Object.assign(STORY.barks[k], BARKS); }
-for (const m of sciMissions()) registerMission(m);
+for (const m of [...sciMissions(), ...sci2Missions()]) registerMission(m);
 export function ensureMars() {
   const C = COLONIES.Mars; if (!C) return false;
   C.blocks = C.blocks || []; C.inside = C.inside || {}; C.vehicles = C.vehicles || [];
@@ -56,9 +60,23 @@ const app = () => window.__app;
 const toast = (m, ms = 4200) => app()?.toast?.(m, ms);
 // Duo barks: Pumpkin's PR #5 (not merged) adds SSX.bark(npc, category) for captioned NPC barks. Feature-detect it
 // at call time (it may arrive after us); if absent or it throws/returns false, fall back to our own caption toast.
-export function bark(who, category, line) {
-  const B = window.SSX?.bark;
-  if (typeof B === 'function') { try { if (B(who, category, line) !== false) return 'ssx'; } catch (e) { console.warn('[sci] SSX.bark', e); } }
+// Categories are per speaker (sci_silas_idle, sci_tam_warn, sci_lien_dim...) and registered with SSX.registerBarks once
+// it exists, so SSX.bark gets a real category, never a raw key. `at` places the caption over the speaker.
+const REG = new Set();
+const sciBarks = () => { const o = {}; for (const [w, ls] of Object.entries(BARKS)) o[barkCat(w, 'idle')] = ls; return { ...o, ...BARKS2 }; };
+function regBarks() {
+  const X = window.SSX; if (typeof X?.registerBarks !== 'function') return false;
+  for (const [cat, lines] of Object.entries(sciBarks())) if (!REG.has(cat)) { try { X.registerBarks(cat, lines); REG.add(cat); } catch (e) { console.warn('[sci] registerBarks', e); return false; } }
+  return true;
+}
+export function bark(who, category, line, at) {
+  const B = window.SSX?.bark, cat = barkCat(who, category), pool = sciBarks()[cat];
+  if (!line && pool) line = pick(pool);
+  if (typeof B === 'function') {
+    regBarks();
+    const npc = at ? { x: at.x, z: at.z, name: who, kind: 'sci' } : who;
+    try { if (B(npc, REG.has(cat) ? cat : (line || category), { force: true }) !== false) return 'ssx'; } catch (e) { console.warn('[sci] SSX.bark', e); }
+  }
   if (line) toast(`💬 ${who}: "${line}"`, 3600);
   return 'caption';
 }
@@ -96,40 +114,56 @@ function tick(dt, ctx) {
   }
   const ins = world.inside;
   const inLab = ins?.kind === 'scilab';
-  if (inLab && !S.inLab) { const who = Math.random() < 0.65 ? SILAS : TAM; bark(who, 'idle', pick(BARKS[who])); }
+  if (inLab && !S.inLab) { const who = Math.random() < 0.65 ? SILAS : TAM, at = who === SILAS ? [-1.6, -2.4] : [1.9, -1.6]; bark(who, 'idle', null, ins.ax !== undefined ? { x: ins.ax + at[0], z: ins.az + at[1] } : null); }
   S.inLab = inLab;
   if (!ins) {
     S.run = null;
-    const dim = s?.type === 'portal' ? DIMENSIONS[s.dim] : null;
+    const dim = s?.type === 'portal' ? ALL[s.dim] : null;
     S.portal.visible = !!dim;
     if (dim) {
       S.portal.userData.spin(S.t);
-      const d = Math.hypot(player.x - S.px, player.z - S.pz);
-      if (ctx.car) { if (d < 4 && S.t - S.warnT > 5) { S.warnT = S.t; bark(TAM, 'warn', "It doesn't take cars! Get out and walk in. Please. Sorry."); } }
+      const d = Math.hypot(player.x - S.px, player.z - S.pz), kind = ctx.car?.kind || null;
+      if (ctx.car) {
+        if (riftDrive(s, kind, d, isDone(game, 'sci-09'))) { app()?.surface?.interact?.(); S.trig.armed = false; if (enterDim(s.dim)?.ok) toast('🦝 The rift carburettor screams. The Raccoon Mobile punches through and spits you out the other side.', 4200); }
+        else if (d < 4 && S.t - S.warnT > 5) { S.warnT = S.t; bark(TAM, 'warn', "It doesn't take cars! Get out and walk in. Please. Sorry."); }
+      } else if (s.raccoon === 'only') { if (d < 3 && S.t - S.warnT > 5) { S.warnT = S.t; bark(TAM, 'warn', 'Not without the carburettor! The car needs the carburettor!'); } }
       else if (portalTrigger(S.trig, d)) enterDim(s.dim);
     }
+    if (s?.type === 'rdrive') rdriveTick(ctx, s, q);
     raccoonTick(ctx);
   } else if (ins.kind.startsWith('sci-')) dimTick(dt, ctx, ins, s);
 }
 
 export function enterDim(id) {
-  const dim = DIMENSIONS[id], a = app(); if (!dim || !a?.surface) return null;
+  const dim = ALL[id], a = app(); if (!dim || !a?.surface) return null;
   const r = a.surface.enterBuilding({ i: 'sci-dim:' + id, kind: 'sci-' + id, name: dim.name, title: dim.name, color: 0xff2fa8, x: S.px, z: S.pz + 3.0 });
-  if (r?.ok) { S.run = null; toast(dim.intro, 6000); }
+  if (r?.ok) { S.run = null; toast(dim.intro, 6000); if (DIM_HOSTS[id]) S.hostBark = { who: DIM_HOSTS[id], t: S.t + 2.5 }; }
   return r;
+}
+const isDone = (game, id) => !!game?.progress?.quests?.[id]?.everDone;
+// 'rdrive' steps: be at the target in the Raccoon Mobile (owned or "borrowed"; any other ride doesn't count)
+function rdriveTick(ctx, s, q) {
+  const tg = ctx.game.debug.target?.(); if (!tg) return;
+  const kind = ctx.car?.kind || null, d = Math.hypot(ctx.player.x - tg.x, ctx.player.z - tg.z);
+  if (kind === 'raccoon_mobile' && S.driveBark !== S.key) { S.driveBark = S.key; bark(Math.random() < 0.5 ? SILAS : TAM, 'drive'); }
+  if (raccoonArrived(s, kind, d)) { ctx.game.debug.advance(); return; }
+  const hint = rdriveHint(s, kind, d);
+  if (hint && S.t - (S.hintT || -9) > 6) { S.hintT = S.t; const owned = (ctx.game.progress?.upgrades || []).includes(RACCOON_ID); toast('🦝 ' + hint + (owned || kind ? '' : ` It's ${RACCOON_SPEC.price} cr at Meridian Depot.`), 3000); }
+  void q;
 }
 
 function dimTick(dt, ctx, ins, s) {
-  const id = ins.kind.slice(4), dim = DIMENSIONS[id], live = LIVE[id]; if (!dim || !live) return;
+  const id = ins.kind.slice(4), dim = ALL[id], live = LIVE[id]; if (!dim || !live) return;
+  if (S.hostBark && S.t > S.hostBark.t) { const hb = S.hostBark; S.hostBark = null; bark(hb.who, 'dim', null, { x: ins.ax, z: ins.az - dim.d / 4 }); }
   if (!S.run || S.run.id !== id) {
     S.run = makeRun(dim, !(s?.type === 'portal' && s.dim === id));
     live.picks.forEach(o => { o.visible = !S.run.inert; });
   }
   const run = S.run, p = ctx.player, lx = p.x - ins.ax, lz = p.z - ins.az;
-  const ev = stepRun(run, dim, lx, lz, dt);
+  const ev = stepRun2(run, dim, lx, lz, dt);
   live.tick?.(run.t);
   dim.hazards.forEach((h, i) => {
-    const o = live.hazards[i]; if (!o) return; const hp = hazardPos(h, run.t);
+    const o = live.hazards[i]; if (!o) return; const hp = hazardAt(h, run, i);
     if (h.kind === 'geyser') return dim.place(o, hp, dim.h);
     const px = o.position.x, pz = o.position.z; o.position.x = hp.x; o.position.z = hp.z;
     if (live.roll) { o.rotation.z -= (hp.x - px) / 1.3; o.rotation.x += (hp.z - pz) / 1.3; } else if (hp.x !== px || hp.z !== pz) o.rotation.y = Math.atan2(hp.x - px, hp.z - pz) + Math.PI;
@@ -139,11 +173,14 @@ function dimTick(dt, ctx, ins, s) {
     else if (e.type === 'wrong') toast(`🎫 Wrong ticket. You need number ${e.want + 1} first.`, 2200);
     else if (e.type === 'hurt') { ctx.game.hurtPlayer(e.dmg, null); p.x += e.push[0]; p.z += e.push[1]; if (e.line) toast('💥 ' + e.line, 1800); }
     else if (e.type === 'done') { if (s) s.text = s.base || s.text; ctx.game.debug.advance(); toast(dim.done, 5000); }
+    else if (e.type === 'clock') { if (s) s.text = clockLabel(stepLabel(s.base || s.text, run), run, dim); if (e.left <= 10) toast(`⏳ ${e.left}s. It's closing.`, 1200); }
+    else if (e.type === 'collapse') { if (s) s.text = s.base || s.text; S.run = null; app()?.surface?.leaveBuilding?.(); toast('🤮 The Gut clenches shut and spits you back onto Mars. The portal is still open. Go again.', 5000); return; }
   }
 }
 
 function raccoonTick(ctx) {
   const { world, game } = ctx, owned = (game.progress?.upgrades || []).includes(RACCOON_ID);
+  if (!S.tuned && isDone(game, 'sci-10') && VEHICLES?.[RACCOON_ID]) { S.tuned = true; const v = VEHICLES[RACCOON_ID]; v.vmax += RIFT_TUNE.vmax; v.boost += RIFT_TUNE.boost; v.riftTuned = true; }
   if (S.sale) { S.sale.visible = !owned; }
   const car = ctx.car && ctx.car.kind === RACCOON_ID ? ctx.car : null;
   if (car && car !== S.prevCar && owned) {
@@ -157,4 +194,4 @@ function raccoonTick(ctx) {
 }
 
 // test/debug surface (read-mostly)
-window.__sci = { S, LIVE, DIMENSIONS, enterDim, ensureMars, bark, ids: () => sciMissions().map(m => m.id), dealer: () => S.dealer };
+window.__sci = { S, LIVE, DIMENSIONS: ALL, enterDim, ensureMars, bark, ids: () => sciMissions().map(m => m.id), ids2: () => sci2Missions().map(m => m.id), registered: () => [...REG], raccoonSpec: () => VEHICLES?.[RACCOON_ID] && { vmax: VEHICLES[RACCOON_ID].vmax, boost: VEHICLES[RACCOON_ID].boost, riftTuned: !!VEHICLES[RACCOON_ID].riftTuned }, dealer: () => S.dealer };

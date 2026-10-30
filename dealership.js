@@ -13,6 +13,7 @@ import { addMenuItem } from './racehooks.js';
 import * as GC from './garagecore.js';
 import { buildRide, decorate, shapeOf } from './rides.js';
 import { createMeet } from './carmeet.js';
+import { createMyRides } from './myrides.js';
 
 // ---------- registration: our models are ordinary vehicle kinds with a price (so they also show up for other mods) ----------
 for (const [kind, m] of Object.entries(GC.MODELS)) registerVehicle(kind, { ...m }, () => buildRide(kind));
@@ -77,7 +78,22 @@ export function grant(rideId, what, n) {
   if (typeof what === 'string' && what.includes(':')) { const [sl, v] = what.split(':'); return grantPart(rideId, sl, v); }
   return grantUpgrade(rideId, what, n);
 }
-export const GARAGE_API = { grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+// SSX.garage.respray({ reason, price }): pay for a respray + new plate on the active ride, and lose the wanted heat if a wanted API is there
+function respray({ reason = '', price } = {}) {
+  const P = app()?.game?.progress; if (!P) return { ok: false, reason: 'no-game' };
+  const r = GC.respray(garage(), 'current', { price, reason, credits: +P.credits || 0 });
+  if (!r.ok) {
+    if (r.reason === 'funds') toast(`🎨 A respray is ${r.price} cr. You’re ${r.need} cr short.`, 3000);
+    return { ok: false, reason: r.reason, ...(r.reason === 'funds' ? { need: r.need, price: r.price } : {}) };
+  }
+  P.credits -= r.price;
+  const w = C?.world || app()?.surface?.world; let heat = null;
+  if (typeof w?.setWanted === 'function') { const from = +w.wanted || 0; if (from > 0) w.setWanted(0, 'resprayed: ' + (reason || 'new plate')); heat = { from, to: +w.wanted || 0 }; }
+  save(); toast(`🎨 Fresh paint, new plate ${r.plate}.${heat?.from ? ' ColSec loses your description.' : ''}`, 3000);
+  try { window.dispatchEvent(new CustomEvent('ssx:respray', { detail: { plate: r.plate, old: r.old, ride: r.ride, price: r.price, reason, heat } })); } catch (e) { }
+  return { ok: true, plate: r.plate, price: r.price, ride: r.ride, heat };
+}
+export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), respray, get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
   upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
@@ -266,6 +282,7 @@ function setCtx(label, act) {
 }
 function updateCtx() {
   if (sheet || !here() || C.game.isDown() || window.__race?.state || app()?.surface?.info?.inside) return setCtx(null);
+  const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
   const me = meOf(), S = spots();
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
   if (dist(me, S.dealer) < 17) return setCtx('🚗 Dealer', () => openDealer());
@@ -335,7 +352,7 @@ export function buy(kind) {
   if (G.rep < s.rep) return { ok: false, msg: `🔒 ${s.name}: the dealer wants ${s.rep} rep before he’ll even let you sit in it.` };
   if (G.rides.length >= GC.MAX_RIDES) return { ok: false, msg: '🔧 Garage full. Sell something first.' };
   if (!spend(price)) return { ok: false, msg: `💸 ${s.name} is ${price} cr. You’re short, pal.` };
-  const r = GC.newRide('r' + G.nextId++, kind); r.spent = 0; G.rides.push(r); G.active = r.id; save();
+  const r = GC.newRide('r' + G.nextId++, kind); r.spent = 0; MR.parkOutgoing(); G.rides.push(r); G.active = r.id; save(); // live fix: the old ride stays parked where it is
   parkActiveAt('dealer');
   return { ok: true, id: r.id, msg: `🔑 ${s.name} is yours. Parked out front, keys in it. Customise it at the lock-ups next door.` };
 }
@@ -354,6 +371,15 @@ function openGarage() {
   const G = garage(); if (!gSel || !rideById(gSel)) gSel = G.active;
   openSheet('garage', renderGarage, () => lot.bay); showBay();
 }
+// SSX.garage.open(rideId?): the garage sheet from anywhere (Ben's base garage Customize button). No lock-up range check, no navTo.
+// The showroom camera and 3D bay only join in when you're actually at the lock-ups; elsewhere it's just the sheet.
+function openGarageAnywhere(rideId) {
+  const G = garage(), id = rideId === 'current' ? G.active : rideId;
+  if (id != null && rideById(id)) gSel = id; else if (!gSel || !rideById(gSel)) gSel = G.active;
+  gPrev = null; const atLot = here() && !!lot && dist(meOf(), spots().garage) < 40;
+  openSheet('garage', renderGarage, atLot ? () => lot.bay : null); if (atLot) showBay();
+  return !!sheet && sheet.kind === 'garage';
+}
 function clearBay() { if (bay) { bay.group.parent?.remove(bay.group); disposeRoot(bay.group); bay = null; } }
 function showBay() {
   const r = rideById(gSel); if (!r || !lot) return;
@@ -361,7 +387,7 @@ function showBay() {
   if (!bay) { let v = null; try { v = r.kind === 'rover' ? buildRover() : buildVehicle(r.kind); } catch (e) { v = null; } if (!v) return; bay = { ...v, kind: r.kind }; v.group.rotation.y = 0.7; lot.bay.add(v.group); }
   decorate(bay, r, r.kind === 'rover' ? { paint: false, dims: { w: 3.0, len: 6.2, y: 1.8, roof: 2.8, tail: 3.05, nose: -3.2 } } : {});
 }
-const TABS = [['perf', '⚙️ Performance'], ['paint', '🎨 Paint'], ['kit', '🧱 Body'], ['wheels', '🛞 Wheels'], ['glow', '💡 Underglow']];
+const TABS = [['perf', '⚙️ Performance'], ['paint', '🎨 Paint'], ['kit', '🧱 Body'], ['wheels', '🛞 Wheels'], ['glow', '💡 Underglow'], ['rides', '🅿️ My rides']];
 function renderGarage() {
   const G = garage(), r = rideById(gSel) || activeRide(), tier = tierOf(r), spec = specOf(r), stock = r.kind === 'rover';
   const tabs = TABS.filter(([k]) => !(stock && (k === 'paint' || k === 'kit')));
@@ -372,7 +398,8 @@ function renderGarage() {
             return `<button data-up="${k}" class="${gPrev === k ? 'on' : ''}" ${!p || credits() < p ? 'disabled' : ''}>${u.icon} ${u.name} ${'▮'.repeat(lv)}${'▯'.repeat(GC.MAX_LVL - lv)}<small>${!p ? 'MAXED' : gPrev === k ? `Tap again: buy Lv ${next} · ${p} cr` : `Lv ${next} · ${p} cr`}</small></button>`; }).join('')}</div>`;
     const pv = gPrev && GC.upgradePrice(gPrev, (r.up[gPrev] | 0) + 1, tier) ? specOf({ ...r, up: { ...r.up, [gPrev]: (r.up[gPrev] | 0) + 1 } }) : null;
     body += statBars(spec, pv) + `<div class="sub">${gPrev ? esc(GC.UPGRADES[gPrev].desc) : 'Upgrades change the real driving numbers. Yellow = the next level.'}</div>`;
-  } else {
+  } else if (gTab === 'rides') body = MR.listHTML(); // live fix: every ride you own, where it is, Deliver / Show on map
+  else {
     const tbl = GC.COSMETIC_SLOTS[gTab];
     body = `<div class="opt">${Object.entries(tbl).map(([id, c]) => { const own = r.owned[gTab]?.includes(id), on = r[gTab] === id, p = GC.cosmeticPrice(gTab, id, tier), sw = c.color != null ? `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#${c.color.toString(16).padStart(6, '0')};margin-right:4px"></span>` : '';
       return `<button data-cos="${gTab}:${id}" class="${on ? 'on' : ''}" ${!own && credits() < p ? 'disabled' : ''}>${sw}${esc(c.name)}<small>${on ? '✓ fitted' : own ? 'owned · fit' : p + ' cr'}${c.rep ? ` · +${c.rep} rep` : ''}</small></button>`; }).join('')}</div>`;
@@ -408,11 +435,11 @@ export function setActive(id) {
   const r = rideById(id); if (!r) return { ok: false, msg: 'Not in your garage.' };
   if (C?.car && C.car !== C.rover) return { ok: false, msg: 'Ditch the ride you’re in first.' };
   if (window.__race?.state) return { ok: false, msg: 'Not mid-race.' };
-  garage().active = id; save(); parkActiveAt('garage'); return { ok: true, msg: `🔑 ${rideName(r)} rolled out of the lock-up. It’s your ride now.` };
+  if (garage().active !== id) MR.parkOutgoing(); delete r.park; garage().active = id; save(); parkActiveAt('garage'); MR.sync(); return { ok: true, msg: `🔑 ${rideName(r)} rolled out of the lock-up. It’s your ride now.` };
 }
 export function sell(id) {
   const G = garage(), r = rideById(id); if (!r || id === 'stock') return { ok: false, msg: 'You can’t sell the colony’s rover.' };
-  const v = GC.tradeIn(r, listingOf(r.kind)); G.rides = G.rides.filter(x => x.id !== id); if (G.active === id) G.active = 'stock';
+  const v = GC.tradeIn(r, listingOf(r.kind)); G.rides = G.rides.filter(x => x.id !== id); if (G.active === id) { G.active = 'stock'; delete rideById('stock')?.park; } // the rover object becomes the stock rover right where it is
   const P = app()?.game?.progress; if (P) P.credits += v; save(); return { ok: true, msg: `💸 Dealer gives you ${v} cr for the ${rideName(r)} and doesn’t ask where the dents came from.` };
 }
 
@@ -422,19 +449,26 @@ function openHub() {
   openSheet('hub', renderHub);
 }
 function renderHub() {
-  const G = garage(), r = activeRide(), h = GC.colonyHour(Date.now(), G.clock), on = GC.isMeetHour(h), mins = GC.minsToMeet(Date.now(), G.clock);
-  if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>`;
+  const G = garage(), r = activeRide(), h = GC.colonyHour(Date.now(), G.clock), mins = GC.minsToMeet(Date.now(), G.clock), shared = typeof window.SSX?.time?.isNight === 'function';
+  const on = meet?.debug ? meet.debug.on : GC.isMeetHour(h); // follows SSX.time.isNight() when Steve's day/night cycle is in
+  const mine = `<div class="row"><button data-myrides="1">🅿️ My rides · ${G.rides.length}</button></div>`;
+  if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>` + mine;
   const me = meOf(), S = spots(), dd = n => Math.round(dist(me, S[n]));
   return head('🚗 Rides & meets', wallet()) +
     `<div>Your ride: <b>${esc(rideName(r))}</b> · ${G.rides.length}/${GC.MAX_RIDES} in the garage · drags ${G.wins}/${G.races} won</div>${statBars(r.kind === 'rover' ? specOf(r) : specOf(r))}
-    <div>🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}</div>
+    <div>${shared ? (on ? '🌙 <b style="color:#3cff8a">Car meet is ON</b> (till dawn)' : '☀️ Car meets start at nightfall') : `🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}`}</div>
     <div class="row"><button data-nav="dealer">📍 Dealer · ${dd('dealer')} m</button><button data-nav="garage">📍 Garage · ${dd('garage')} m</button><button data-nav="meet">📍 Meet · ${dd('meet')} m</button></div>
-    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>`;
+    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on || shared ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>` + mine;
 }
 handlers.nav = n => { closeSheet(true); navTo(n); };
+// live fix: My rides (myrides.js). The list is also the garage's 🅿️ tab; from the hub it opens on its own.
+handlers.myrides = () => openSheet('rides', () => head('🅿️ My rides', wallet()) + MR.listHTML());
+handlers.deliver = id => { const r = MR.deliver(id); toast(r.msg, 3000); rerender(); };
+handlers.showmap = id => { const r = MR.showOnMap(id); toast(r.msg, 3000); if (r.ok) closeSheet(); };
 handlers.open = n => n === 'dealer' ? openDealer() : openGarage();
 handlers.wait = () => { skipToMeet(); toast('⏩ You kill a few hours at the cantina. The neon’s on and the engines are warming up.', 3200); rerender(); };
-export function skipToMeet() { const G = garage(), now = Date.now(), m = GC.minsToMeet(now, G.clock); if (m > 0) G.clock += m + 0.05; save(); }
+export function skipToMeet() { const T = window.SSX?.time; if (typeof T?.isNight === 'function' && typeof T.set === 'function') { if (!T.isNight()) T.set(T.NIGHT_START ?? 21); return; } // v7.5.4: meets run on the shared Mars clock when SSX.time is loaded
+  const G = garage(), now = Date.now(), m = GC.minsToMeet(now, G.clock); if (m > 0) G.clock += m + 0.05; save(); }
 function navTo(n) { if (!here()) return; const p = spots()[n]; nav = { x: p.x, z: p.z, n }; toast(`📍 ${n === 'dealer' ? CFG.name : n === 'garage' ? 'Your lock-ups' : 'The car meet lot'}: ${Math.round(dist(meOf(), p))} m. Follow the marker on the radar.`, 3000); }
 const patched = new WeakSet();
 function patchGame(game) {
@@ -442,13 +476,17 @@ function patchGame(game) {
   const orig = game.mapGate; game.mapGate = () => { const o = orig ? orig.call(game) : null; if (o) return o; return nav ? { x: nav.x, z: nav.z } : null; };
 }
 
+// ---------- My rides (myrides.js): owned rides stay parked in the world, Deliver / Show on map ----------
+const MR = createMyRides({ ctx: () => C, garage, save, activeRide, rideById, rideName, toast, spend, credits, app, cfg: () => CFG, spots, here, esc,
+  setNav: p => { nav = p; }, syncNow: () => { if (C?.rover) syncRover(0); }, disposeRoot, sheetOpen: () => !!sheet });
+Object.assign(GARAGE_API, { deliver: id => MR.deliver(id), locate: id => MR.locate(id), showOnMap: id => MR.showOnMap(id) });
 // ---------- the tick (window.SSX_TICKS, called by surface.js once per surface frame) ----------
 export function dealerTick(dt, ctx) {
   C = ctx; last = performance.now();
   if (!root || !root.parent || planet !== ctx.name || (here() && !lot)) setupPlanet();
   ensureUI(); patchGame(ctx.game);
-  syncRover(dt);
-  if (!here()) { setCtx(null); return; }
+  syncRover(dt); MR.tick(dt);
+  if (!here()) { const mr = sheet ? null : MR.ctxAction(); setCtx(mr?.label || null, mr?.act); return; }
   if (nav && dist(meOf(), nav) < 14) nav = null;
   // turntables + showroom camera
   const me = meOf(), S = spots();
@@ -491,5 +529,6 @@ window.__dealer = {
   get brakeAssist() { return brakeAssist; }, get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  get myrides() { return MR; },
   tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };

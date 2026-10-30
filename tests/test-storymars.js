@@ -35,7 +35,7 @@ const PICK = { 'rook-04-crew': ['pros', 'ozzie', 'penny', 'self'], 'vesna-04-coo
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => { ['ssx.progress.v1', 'ssx.planets.v1', 'ssx.race.v1'].forEach(k => localStorage.removeItem(k)); localStorage.setItem('ssx.adult', '1'); window.__app.game?.reload?.(); });
     const meta = await G(async () => { const GM = await import('./game.js'); return { shipped: window.__storymars.shipped, deferred: GM.STORY_DEFERRED.filter(x => /^(rook|vesna|kestrel|ines|rusk)-/.test(x)), types: window.__storymars.types.filter(t => GM.AGENT_TYPES[t]) }; });
-    ok('shipped', meta.shipped.length, meta.shipped.length === 11); ok('deferredLeft', meta.deferred.join(','), meta.deferred.join(',') === 'rook-05-withdrawal'); ok('humanTypes', meta.types.join(','), meta.types.length === 5);
+    ok('shipped', meta.shipped.length, meta.shipped.length === 11); ok('deferredLeft', meta.deferred.join(','), meta.deferred.join(',') === ''); ok('humanTypes', meta.types.join(','), meta.types.length === 5);
     const plan = await G(async () => { const GM = await import('./game.js'); const by = {}; for (const id of window.__storymars.shipped) { const q = GM.QUESTS.find(x => x.id === id); (by[q.world] ||= []).push(id); } return by; });
     for (const w of ['Mars', 'Moon']) {
       const ids = (plan[w] || []).filter(id => !ONLY || ONLY.includes(id)); if (!ids.length) continue;

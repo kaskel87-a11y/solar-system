@@ -106,9 +106,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const fav = await G(() => { const c = window.SSX.contraband, w = window.__app.surface.world, out = {}, calls = []; const r0 = Math.random; Math.random = () => 0.99;
       try {
         w.setWanted(2); c.add('glowdust', 2); out.rusk = c.barter(null, null, 'rusk-wipe-1').ok && w.wanted === 1; w.setWanted(0);
-        out.heistMissing = (window.SSX.heist || window.heist) ? true : /heist/i.test(c.offer('porter-tip-voss-cameras').why); /* v7.5.1: Ben's heist.js ships alongside */ out.garageMissing = /garage/i.test(c.offer('torque-upgrade-armor').why);
+        out.heistMissing = (window.SSX.heist || window.heist) ? true : /heist/i.test(c.offer('porter-tip-voss-cameras').why); /* v7.5.1: Ben's heist.js ships alongside */ out.garageMissing = window.SSX.garage ? true : /garage/i.test(c.offer('torque-upgrade-armor').why); /* the dealer/garage module ships on main */
         window.SSX.heist = { applyTip: (id, t) => { calls.push(['tip', id, t.type]); return { id, type: t.type }; } };
         let tip = null; addEventListener('ssx:tip', e => { tip = e.detail; }, { once: true });
+        try { for (const f of ['helios_staff', 'torque', 'dustjaws', 'saltblood']) window.SSX.rep?.add?.(f, 30, 'test'); } catch (e) {} // v7.5.4: some favors need faction rep (SSX.rep)
         c.add('glowdust', 2); c.add('lungful', 6); out.heist = c.barter('glowdust', 2, 'porter-tip-voss-cameras').ok && calls.some(k => k[1] === 'lita-04-voss' && k[2] === 'cameras') && tip?.heistId === 'lita-04-voss';
         window.SSX.garage = { grantUpgrade: (v, u) => { calls.push(['up', v, u]); return { ok: true, msg: 'fitted' }; }, grantVehicle: (id, o) => { calls.push(['veh', id, !!o?.noPlates]); return { ok: true, msg: 'keys' }; } };
         c.add('salvage', 8); out.garageUp = c.barter('salvage', 8, 'torque-upgrade-armor').ok && calls.some(k => k[0] === 'up' && k[1] === 'current' && k[2] === 'roverarmor');

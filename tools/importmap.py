@@ -32,5 +32,10 @@ assert n == 1
 # keep the versioned bits in step: module script srcs + sw registration
 idx = re.sub(r'(src="\./[^"?]+\.js\?v=)[0-9.]+(")', lambda g: g.group(1) + V + g.group(2), idx)
 idx = re.sub(r"(sw\.js\?v=)[0-9.]+", lambda g: g.group(1) + V, idx)
+# visible version strings follow the release too: <meta app-version>, the title <span class="ver">, the credits line, __app.version
+idx = re.sub(r'(<meta name="app-version" content=")v[0-9.]+(")', lambda g: g.group(1) + 'v' + V + g.group(2), idx)
+idx = re.sub(r'(<span class="ver">)v[0-9.]+(</span>)', lambda g: g.group(1) + 'v' + V + g.group(2), idx)
+idx = re.sub(r'(three\.js</a> · )v[0-9.]+( · )', lambda g: g.group(1) + 'v' + V + g.group(2), idx)
+idx = re.sub(r"(\bversion: ')v[0-9.]+(')", lambda g: g.group(1) + 'v' + V + g.group(2), idx)
 open(os.path.join(ROOT, 'index.html'), 'w').write(idx)
 print(f"v={V}: {len(mods)} modules mapped; stripped ?v= in {len(changed)} files: {' '.join(changed)}")

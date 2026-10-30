@@ -50,20 +50,43 @@ export function resolveTrack(def, colony, blocked) {
   return { ...def, loop: def.loop !== false, laps: def.loop === false ? 1 : clampI(def.laps || 2, 1, 9), gates: g, props, length: trackLength(g, def.loop !== false) };
 }
 export const GATE_CLEAR = 4;                      // a gate centre keeps this much room (m) from any solid footprint
-export function clearGates(g, blocked, loop = true, clear = GATE_CLEAR) {
-  const n = g.length, isB = (x, z) => !!blocked(x, z, clear);
+export const GATE_ROOM = GATE_W / 2;              // v7.5.4: a MOVED gate wants its whole opening clear (Blue Lights P2 was still stuck at
+                                                  // Gate 4/8: the 4 m nudge parked it in a pocket between two domes and a kiosk)
+export function clearGates(g, blocked, loop = true, clear = GATE_CLEAR, room = GATE_ROOM) {
+  const n = g.length;
   for (let i = 0; i < n; i++) {
-    const p = g[i]; if (!isB(p.x, p.z)) continue;
+    const p = g[i]; if (!blocked(p.x, p.z, clear)) continue;
     const a = g[loop ? (i - 1 + n) % n : Math.max(0, i - 1)], b = g[loop ? (i + 1) % n : Math.min(n - 1, i + 1)];
-    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2; let best = null;
-    for (let r = 1; r <= 80 && !best; r += 1) for (let k = 0; k < 32; k++) {
-      const an = k / 32 * Math.PI * 2, x = p.x + Math.cos(an) * r, z = p.z + Math.sin(an) * r;
-      if (isB(x, z)) continue; const sc = Math.hypot(x - mx, z - mz);
-      if (!best || sc < best.sc) best = { x, z, sc };
-    }
+    // v7.5.4 (Collin, P2 stuck at Gate 4/8 again): the old "nearest free ring" pick parked gate 4 in a pocket between two domes,
+    // one arch leg inside the Olympus Row dome, behind a building - drive at the arrow and you hit a wall. Now: free spots with the
+    // whole opening clear (GATE_ROOM) come first, ranked by how little they bend the line a -> spot -> b, and the first one with a
+    // straight drivable run from the gate before AND to the gate after wins. Old 4 m rule as the fallback.
+    const best = pickSpot(p, a, b, blocked, room > clear ? [room, clear] : [clear]);
     if (best) { p.moved = { x: p.x, z: p.z }; p.x = Math.round(best.x * 10) / 10; p.z = Math.round(best.z * 10) / 10; }
   }
   return g;
+}
+// a straight run a -> b a car (radius LANE_R) can drive without touching a footprint
+export const LANE_R = 2.5;
+export function laneClear(a, b, blocked, r = LANE_R) {
+  const L = Math.hypot(b.x - a.x, b.z - a.z), n = Math.max(1, Math.ceil(L / 2));
+  for (let i = 1; i < n; i++) { const t = i / n; if (blocked(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, r)) return false; }
+  return true;
+}
+function pickSpot(p, a, b, blocked, needs, maxR = 60) {
+  for (const need of needs) {
+    const c = [];
+    for (let r = 1; r <= maxR; r += 1) for (let k = 0; k < 32; k++) {
+      const an = k / 32 * Math.PI * 2, x = p.x + Math.cos(an) * r, z = p.z + Math.sin(an) * r;
+      if (blocked(x, z, need)) continue;
+      c.push({ x, z, sc: Math.hypot(x - a.x, z - a.z) + Math.hypot(b.x - x, b.z - z) + 0.25 * r });
+    }
+    if (!c.length) continue;
+    c.sort((u, v) => u.sc - v.sc);
+    for (let i = 0; i < Math.min(c.length, 400); i++) { const q = c[i]; if ((a === p || laneClear(a, q, blocked)) && (b === p || laneClear(q, b, blocked))) return q; }
+    return c[0];
+  }
+  return null;
 }
 // footprint predicate for tests / node: solids [{x,z,r}|{x,z,box:[hx,hz]}] like world.js builds them
 export function footprintBlocked(solids) {
@@ -190,3 +213,50 @@ export function fmtTime(ms) {
   return `${m}:${String(s).padStart(2, '0')}.${String(c).padStart(2, '0')}`;
 }
 export function clampI(v, a, b) { v = Math.round(+v || 0); return Math.max(a, Math.min(b, v)); }
+
+// Race fixes (BUGS-v7.4 M1/M2). Prop frames: a prop's normal is f = (-sin yaw, -cos yaw) (the barrier's thin
+// axis / the ramp's climb direction) and its tangent is l = (cos yaw, -sin yaw) (the barrier's long axis).
+export const BARRIER = { half: 3, thick: 0.42, h: 1.1 };   // matches jersey(6, 1.1) in race.js
+export const RAMP = { halfW: 3, halfL: 4, h: 1.9 };        // matches wedge(6, 8, 1.9) in race.js
+const propFrame = p => { const fx = -Math.sin(p.yaw || 0), fz = -Math.cos(p.yaw || 0); return { fx, fz, lx: -fz, lz: fx }; };
+
+// M2: barrier contact that slides instead of pinning. ent = { x, z, yaw?, speed? } (a car when speed is a number),
+// r = its radius. Pushes the body out along the shallowest axis (sides or end caps) plus a small epsilon, removes the
+// velocity component going into the barrier and keeps the tangential part (scaled by `keep`), turning the heading to
+// match so the next frame doesn't drive straight back in. A near head-on hit slides toward the nearer end at
+// `headOn` x speed instead of stopping dead. Returns null when there's no contact, else the new state.
+export function barrierSlide(ent, p, r, { eps = 0.05, keep = 0.9, headOn = 0.35 } = {}) {
+  const { fx, fz, lx, lz } = propFrame(p), dx = ent.x - p.x, dz = ent.z - p.z;
+  const along = dx * fx + dz * fz, lat = dx * lx + dz * lz;
+  const penN = BARRIER.thick + r - Math.abs(along), penL = BARRIER.half + r - Math.abs(lat);
+  if (penN <= 0 || penL <= 0) return null;
+  // outward contact normal n and its tangent t
+  let nx, nz, push;
+  if (penN <= penL) { const s = Math.sign(along) || 1; nx = fx * s; nz = fz * s; push = penN + eps; }
+  else { const s = Math.sign(lat) || 1; nx = lx * s; nz = lz * s; push = penL + eps; }
+  const out = { x: ent.x + nx * push, z: ent.z + nz * push, yaw: ent.yaw, speed: ent.speed, hit: false, impact: 0 };
+  if (typeof ent.speed !== 'number' || !ent.speed) return out;
+  const hx = -Math.sin(ent.yaw || 0), hz = -Math.cos(ent.yaw || 0), vx = hx * ent.speed, vz = hz * ent.speed;
+  const vn = vx * nx + vz * nz; if (vn >= 0) return out;  // already moving away / along: just the push-out
+  const sp = Math.abs(ent.speed); out.hit = true; out.impact = -vn;
+  let tx = vx - vn * nx, tz = vz - vn * nz, tl = Math.hypot(tx, tz);
+  if (tl < headOn * sp) { // near head-on: pick the tangent toward the nearer end (or the way the nose already leans)
+    const ux = -nz, uz = nx; let side = Math.sign(tx * ux + tz * uz);
+    if (penN <= penL && Math.abs(lat) > 0.3) side = Math.sign((dx * ux + dz * uz)) || side;
+    side = side || 1; tl = headOn * sp; tx = ux * side * tl; tz = uz * side * tl;
+  }
+  const ns = tl * keep, dir = Math.sign(ent.speed);
+  out.speed = dir * ns; out.yaw = Math.atan2(-tx * dir, -tz * dir);
+  return out;
+}
+
+// M1: is the point (x, y, z) inside a race prop's solid (padded for the camera near plane)? gy = ground height under it.
+export function propCamHit(p, x, y, z, gy, pad = 0.45) {
+  if (p.t !== 'barrier' && p.t !== 'ramp') return false;
+  const { fx, fz, lx, lz } = propFrame(p), dx = x - p.x, dz = z - p.z, along = dx * fx + dz * fz, lat = dx * lx + dz * lz, dy = y - gy;
+  if (dy < -1) return false;
+  if (p.t === 'barrier') return Math.abs(lat) < BARRIER.half + pad && Math.abs(along) < BARRIER.thick + pad && dy < BARRIER.h + pad;
+  if (Math.abs(lat) > RAMP.halfW + pad || Math.abs(along) > RAMP.halfL + pad) return false;
+  const top = RAMP.h * Math.min(1, Math.max(0, (along + RAMP.halfL) / (2 * RAMP.halfL)));
+  return dy < top + pad;
+}

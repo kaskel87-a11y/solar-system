@@ -882,7 +882,9 @@ export function createGame(ctx) {
       H.down -= dt;
       if (H.down <= 0) {
         const busted = downWhy === 'busted';
-        const fee = Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
+        // v7.5.x (Marsmania): mars/consequences.js can own the outcome penalty (hospital bill / booking); then no core fee
+        let owned = false; try { owned = globalThis.SSX?.consequences?.ownsOutcome?.(downWhy) === true; } catch (e) { owned = false; }
+        const fee = owned ? 0 : Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
         P.credits -= fee; save();
         ctx.respawn(downWhy);
         H.hp = H.max; H.shield = H.smax; H.inv = 3; H.lastHit = time;
@@ -890,8 +892,8 @@ export function createGame(ctx) {
         for (const o of orbs) scene.remove(o.mesh); orbs = [];
         if (zone) { zone.active = false; zone.cool = Math.max(zone.cool, 20); }
         if (quest) { quest.wave = null; quest.killed = 0; if (busted && quest.def.contact) fail('You got pinched. Job\u2019s blown.'); }
-        onEvent('respawn', { why: downWhy, fee });
-        onEvent('radio', { text: busted
+        onEvent('respawn', { why: downWhy, fee, owned });
+        if (!owned) onEvent('radio', { text: busted
           ? `Colony Security: you\u2019ve been processed. Fine: ${fee} credits. Gear returned. Try not to make us do the paperwork again.`
           : `Control: med-evac dragged you back to the ship. That\u2019s ${fee} credits for the ride, and the doc says stop getting chewed on.` });
       }
@@ -957,6 +959,7 @@ export function createGame(ctx) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
     if (st.inside) { holster(); return false; }
+    if (!st.driving && typeof window !== 'undefined' && window.SSX?.fireHooks) for (const f of window.SSX.fireHooks) { try { if (f(aimAt) === true) return true; } catch (e) { /* an add-on hook (mars/harvest.js sickle) must never block a shot */ } }
     if (!st.driving && ((P.equip.weapon === 'blade' && hasBlade()) || (P.equip.weapon === 'cleaver' && hasCleaver()))) return melee();
     const wpn = curWeapon(); if (!wpn) return false;
     if (W.cd > 0 || (wpn.heat && W.over)) return false;
@@ -1299,7 +1302,7 @@ export function createGame(ctx) {
     const def = quest.def, qs = qState(def.id), first = !qs.everDone;
     clearQuestObjects();
     qs.status = 'done'; qs.everDone = true; qs.step = 0; qs.n = 0; delete P.active[world];
-    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25);
+    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = (globalThis.SSX?.economy?.job || (n => n))(first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25), 'quest:' + def.id); // money boost (economy.js)
     if (first) {
       if (r.badge && !P.badges.includes(r.badge)) { P.badges.push(r.badge); got.push(`🏅 Badge: ${r.badge}`); }
       if (r.unlock && !P.unlocks.includes(r.unlock)) { P.unlocks.push(r.unlock); const [k, v] = r.unlock.split(':'); got.push(COSMETICS[k]?.[v] ? `${k === 'paint' ? '🎨 Rover paint' : '🧣 Bandana'}: ${COSMETICS[k][v].name}` : k === 'contact' ? `💬 New contact: ${v}` : k === 'shop' ? `🔓 Ozzie\u2019s discount: ${v}` : `🔓 ${k}: ${v.replace(/_/g, ' ')}`); }
@@ -1325,7 +1328,7 @@ export function createGame(ctx) {
     const s = stepDef(); if (s?.type !== 'choice') return false;
     const o = (s.options || []).find(x => x.id === optId); if (!o) return false;
     if (o.flag) setFlag(o.flag); if (o.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, o.wanted), 'choice');
-    if (o.credits) gain(0, o.credits, true);
+    if (o.credits) gain(0, (globalThis.SSX?.economy?.job || (n => n))(o.credits, 'choice:' + o.id, { streak: false }), true); // money boost (economy.js)
     onEvent('choiceMade', { id: quest.def.id, option: o.id, flag: o.flag || null });
     if (o.radio) onEvent('radio', { text: o.radio });
     if (o.skip) quest.step += o.skip; // e.g. take Rhee's retainer: no fight
@@ -1440,7 +1443,7 @@ export function createGame(ctx) {
   function offerNext() {
     if (!world || quest || H.down > 0) return;
     const next = available()[0];
-    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${next.reward.credits || 0}. Want it?`, offer: next.id });
+    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${globalThis.SSX?.economy?.boost?.(next.reward.credits || 0) ?? (next.reward.credits || 0)} cr. Want it?`, offer: next.id });
   }
 
   // ----- rewards -----
