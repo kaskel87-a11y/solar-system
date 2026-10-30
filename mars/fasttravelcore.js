@@ -4,7 +4,8 @@ export const NEAR_M = 30;         // closer than this: you're already there
 export const MATCH_M = 15;        // a map marker this close to a known place counts as that place
 export const TAP_PX = 10;         // a real tap moves less than this between pointerdown and pointerup (same pointerId)
 export const FADE_MS = 260;       // fade to black, hop, hold, fade back
-export const HOLD_FRAMES = 3;     // frames kept black after the hop while the new chunks build (hides the hitch)
+export const HOLD_FRAMES = 3;     // at least this many frames kept black after the hop while the new chunks build (hides the hitch)
+export const SETTLE_MAX_MS = 1500; // ...and up to this long, until the frame times settle (see settled())
 
 // known places, in the order the map lists them
 export const KINDS = {
@@ -81,4 +82,11 @@ export function frameStats(dts) {
   if (!a.length) return { n: 0, max: 0, p95: 0, avg: 0, over50: 0 };
   const sum = a.reduce((s, v) => s + v, 0);
   return { n: a.length, max: Math.round(a[a.length - 1] * 10) / 10, p95: Math.round(a[Math.min(a.length - 1, Math.floor(a.length * 0.95))] * 10) / 10, avg: Math.round(sum / a.length * 10) / 10, over50: a.filter(v => v > 50).length };
+}
+
+// after the hop, stay black until the last HOLD_FRAMES frames are all smooth: under max(50 ms, 1.5x the p95 from before the hop)
+export function settled(after, before) {
+  const a = (after || []).filter(fin); if (a.length < HOLD_FRAMES) return false;
+  const lim = Math.max(50, 1.5 * (frameStats(before).p95 || 0));
+  return a.slice(-HOLD_FRAMES).every(v => v < lim);
 }

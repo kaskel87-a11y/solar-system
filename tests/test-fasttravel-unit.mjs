@@ -53,6 +53,7 @@ ok('tapPx', C.TAP_PX === 10);
 const fs = C.frameStats([16, 17, 16, 80, 16, 15, 'x', NaN]);
 ok('frameStats', fs.n === 6 && fs.max === 80 && fs.over50 === 1 && fs.avg > 16, JSON.stringify(fs));
 ok('frameStatsEmpty', C.frameStats([]).n === 0 && C.frameStats(null).max === 0);
+ok('settled', !C.settled([600, 40], [33, 35]) && !C.settled([600, 40, 40, 300], [33]) && C.settled([600, 40, 40, 45], [33, 35]) && !C.settled([60, 60, 60], [16]) && C.settled([60, 60, 60], [50, 50, 50]));
 ok('fade', C.FADE_MS >= 150 && C.FADE_MS <= 400 && C.HOLD_FRAMES >= 1);
 
 console.log(fails ? `${fails}/${n} FAILED` : `ALL PASS (${n})`); process.exit(fails ? 1 : 0);

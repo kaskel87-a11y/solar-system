@@ -66,12 +66,20 @@ function fade(on) {
   fadeEl.style.pointerEvents = on ? 'auto' : 'none'; void fadeEl.offsetWidth; fadeEl.style.opacity = on ? '1' : '0';
   return new Promise(r => setTimeout(r, C.FADE_MS + 20));
 }
-const nextFrames = n => new Promise(r => { const f = () => (--n <= 0 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
 // frame timer: dt of every frame from 1 s before the hop to 2 s after it, split at the arrival
 function frameRec() {
-  const rec = { before: [], after: [], arrivedAt: 0 }; let lastT = performance.now(), end = Infinity;
-  const f = t => { const dt = t - lastT; lastT = t; (rec.arrivedAt ? rec.after : rec.before).push(dt); if (t < end) requestAnimationFrame(f); };
-  requestAnimationFrame(f); rec.arrive = () => { rec.arrivedAt = performance.now(); end = rec.arrivedAt + 2000; }; return rec;
+  const rec = { before: [], black: [], after: [], arrivedAt: 0, shownAt: 0 }; let lastT = performance.now(), end = Infinity;
+  const f = t => { const dt = t - lastT; lastT = t; (rec.shownAt ? rec.after : rec.arrivedAt ? rec.black : rec.before).push(dt); if (t < end) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+  rec.arrive = () => { rec.arrivedAt = performance.now(); };
+  rec.shown = () => { rec.shownAt = performance.now(); end = rec.shownAt + 2000; };
+  return rec;
+}
+// stay black for HOLD_FRAMES frames, then until the frame times settle (cap SETTLE_MAX_MS; a setTimeout backstop if rAF stalls)
+function settle(rec) {
+  return new Promise(r => { const t0 = performance.now(); let done = false; const fin = () => { if (!done) { done = true; r(); } };
+    const f = () => { if (done) return; if (C.settled(rec.black, rec.before) || performance.now() - t0 > C.SETTLE_MAX_MS) fin(); else requestAnimationFrame(f); };
+    requestAnimationFrame(f); setTimeout(fin, C.SETTLE_MAX_MS + 300); });
 }
 function spot(p) {
   const s = surf(), drv = !!md()?.driving; let x = p.x, z = p.z;
@@ -95,8 +103,8 @@ async function travel(id) {
     if (p.kind !== 'base' && ['downtown', 'rough', 'gated'].includes(p.kind)) { const r = tryv(() => s.fastTravel?.(p.kind === 'downtown' ? 'mars-downtown' : p.kind === 'rough' ? 'mars-rough' : 'mars-gated')); moved = !!r?.ok; }
     if (!moved) moved = !!tryv(() => s.debugMove(x, z, Math.PI), false);
     frames.arrive();
-    await nextFrames(C.HOLD_FRAMES); // stay black while the new chunks and NPC slots settle in
-    await fade(false);
+    await settle(frames); // stay black while the new chunks and NPC slots settle in
+    frames.shown(); await fade(false);
     last = { id: p.id, name: p.name, fee: p.fee, x, z, driving: drv, moved, t: Date.now() };
     toast(`🚀 ${p.name}${p.fee ? ` · −${p.fee} cr` : ''}`, 2000); emit('travel', last);
     return { ok: moved, ...last };
@@ -177,7 +185,7 @@ const API = {
   places: () => places(true).map(p => ({ ...p })), mapPlaces, offer, travel, why: id => { const p = places(true).find(q => q.id === id || q.kind === id); return p ? why(p) : 'unknown'; },
   fee: C.FEE, get busy() { return busy; }, get last() { return last ? { ...last } : null; },
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); },
-  debug: { log: () => log.slice(), taps: () => ({ ...taps, ...guard }), frames: () => frames ? { before: C.frameStats(frames.before), after: C.frameStats(frames.after), afterRaw: frames.after.slice(0, 40).map(v => Math.round(v * 10) / 10) } : null, sheet: () => cur ? { id: cur.id, why: why(cur) } : null, hide }
+  debug: { log: () => log.slice(), taps: () => ({ ...taps, ...guard }), frames: () => frames ? { before: C.frameStats(frames.before), black: C.frameStats(frames.black), after: C.frameStats(frames.after), blackRaw: frames.black.slice(0, 40).map(v => Math.round(v)), afterRaw: frames.after.slice(0, 40).map(v => Math.round(v)) } : null, sheet: () => cur ? { id: cur.id, why: why(cur) } : null, hide }
 };
 // index.html replaces window.SSX = {...} after the module imports run, so re-attach until it sticks (and if it is ever replaced again)
 const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.fastTravel !== API) w.SSX.fastTravel = API; };

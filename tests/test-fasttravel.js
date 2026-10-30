@@ -89,32 +89,34 @@ const tag = `fasttravel-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
       await G(() => window.__smuggle.debug.reset());
     }
     ok('blockedNoTravel', `${c0} -> ${await credits()}`, !(await G(() => window.SSX.fastTravel.last)) && (await credits()) === c0);
-    // ---- real tap: go (on foot) ----
+    // ---- real tap: go (on foot) to the Xen-7 Trading Post (you start ~20 m from the farm, which counts as already there) ----
     await G(() => window.SSX.fastTravel.debug.hide()); await sleep(100);
     if (!(await mapOn())) await openMap();
-    const fr = await rowSel('Dustbowl Homestead'); await heldTap(fr); await sleep(200);
+    const pr = await rowSel('Xen-7'); ok('postRow', pr || 'missing', !!pr); await heldTap(pr); await sleep(200);
+    ok('postSheet', JSON.stringify(await sheet()), /post/.test((await sheet())?.id || '') && !(await sheet())?.why);
     ok('goTap', await heldTap('#ftGo'));
-    ok('arrived', await wait(() => /farm/.test(window.SSX.fastTravel.last?.id || '') && !window.SSX.fastTravel.busy, 15000));
-    const farm = pl.find(p => p.kind === 'farm'), h1 = await here();
-    ok('atFarm', `${Math.round(h0.x)},${Math.round(h0.z)} -> ${Math.round(h1.x)},${Math.round(h1.z)} (farm ${Math.round(farm.x)},${Math.round(farm.z)})`, Math.hypot(h1.x - farm.x, h1.z - farm.z) < 15);
+    ok('arrived', await wait(() => /post/.test(window.SSX.fastTravel.last?.id || '') && !window.SSX.fastTravel.busy, 15000));
+    const post = pl.find(p => p.kind === 'post'), h1 = await here();
+    ok('atPost', `${Math.round(h0.x)},${Math.round(h0.z)} -> ${Math.round(h1.x)},${Math.round(h1.z)} (post ${Math.round(post.x)},${Math.round(post.z)})`, Math.hypot(h1.x - post.x, h1.z - post.z) < 15);
     ok('paid25', `${c0} -> ${await credits()}`, c0 - (await credits()) === 25);
     ok('mapClosed', !(await mapOn()));
-    ok('fadeGone', await G(() => { const f = document.getElementById('ftFade'); return !!f && +getComputedStyle(f).opacity === 0 && getComputedStyle(f).pointerEvents === 'none'; }));
+    ok('fadeGone', await wait(() => { const f = document.getElementById('ftFade'); return !!f && +getComputedStyle(f).opacity === 0 && getComputedStyle(f).pointerEvents === 'none'; }, 3000));
     await sleep(2200); R.framesFoot = await G(() => window.SSX.fastTravel.debug.frames());
-    await shot('arrived-farm');
-    // ---- driving: the car comes along (Xen-7 Trading Post, via the API) ----
+    await shot('arrived-post');
+    // ---- driving: the car comes along (Dustbowl Homestead, via the API) ----
     await G(() => { const s = window.__app.surface; s.summonRover(); const i = s.info; s.debugPlace(i.roverX + 3.5, i.roverZ + 2, 0.9); s.interact(); });
     ok('driving', await wait(() => window.__app.surface.mapData().driving, 8000));
     const veh = await G(() => window.__app.surface.info.vehicle);
     await sleep(500);
-    const r2 = await G(() => window.SSX.fastTravel.travel('post'));
-    const post = pl.find(p => p.kind === 'post'), h2 = await here();
-    ok('postDriving', `${JSON.stringify({ ok: r2.ok, why: r2.why })} at ${Math.round(h2.x)},${Math.round(h2.z)} driving ${h2.driving}`, r2.ok && h2.driving && Math.hypot(h2.x - post.x, h2.z - post.z) < 18 && (await G(() => window.__app.surface.info.vehicle)) === veh);
+    const r2 = await G(() => window.SSX.fastTravel.travel('farm'));
+    const farm = pl.find(p => p.kind === 'farm'), h2 = await here();
+    ok('farmDriving', `${JSON.stringify({ ok: r2.ok, why: r2.why })} at ${Math.round(h2.x)},${Math.round(h2.z)} driving ${h2.driving}`, r2.ok && h2.driving && Math.hypot(h2.x - farm.x, h2.z - farm.z) < 18 && (await G(() => window.__app.surface.info.vehicle)) === veh);
     await sleep(2200); R.framesDriving = await G(() => window.SSX.fastTravel.debug.frames());
-    await shot('arrived-post-driving');
+    await shot('arrived-farm-driving');
     // ---- downtown (a district: the surface's own district hop, car along) ----
     const r3 = await G(() => window.SSX.fastTravel.travel('downtown')); const h3 = await here();
     ok('downtown', `${r3.ok} driving ${h3.driving}`, r3.ok && h3.driving);
+    await shot('arrived-downtown');
     await sleep(2200); R.framesDistrict = await G(() => window.SSX.fastTravel.debug.frames());
     ok('alreadyHere', await G(() => window.SSX.fastTravel.why('downtown')), /already here/.test(await G(() => window.SSX.fastTravel.why('downtown'))));
     R.taps = await G(() => window.SSX.fastTravel.debug.taps());
