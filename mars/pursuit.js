@@ -58,7 +58,11 @@ function emit(type, d = {}) {
 function on(a, b) { const s = typeof a === 'function' ? { fn: a } : { t: a, fn: b }; if (typeof s.fn !== 'function') return () => {}; subs.push(s); return () => { subs = subs.filter(x => x !== s); }; }
 const heat = () => { const w = world(); return onMars && w ? (w.wanted | 0) : 0; };
 const mobile = () => !!(isTouch() || window.innerWidth < 700);
-function tierOf(n) { const m = mobile(); return { stars: n, rovers: n <= 0 ? 0 : n === 1 ? 1 : m ? 1 : 2, spotlights: n >= 3, roadblocks: n >= 4 ? 2 : 0, swat: n >= 5 ? (m ? 1 : 2) : 0 }; }
+// v7.5.11 mission ease (mars/missionheat.js): SSX.policeEase() is 0.5 on a mission, else 1. About half the rovers / SWAT /
+// roadblocks, 2x slower dispatch and fire, half the damage, 2x longer to box you in, a half-length search, 75% chase speed on foot
+const ease = () => { try { const f = window.SSX?.policeEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
+const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
+function tierOf(n) { const m = mobile(); return { stars: n, rovers: ezN(n <= 0 ? 0 : n === 1 ? 1 : m ? 1 : 2), spotlights: n >= 3, roadblocks: ezN(n >= 4 ? 2 : 0), swat: ezN(n >= 5 ? (m ? 1 : 2) : 0) }; }
 function colony() { const c = surf()?.info?.colony; return c && fin(c.x) ? c : null; }
 function aj2w(p) { const c = colony(); return c ? { x: c.x + p[0], z: c.z + p[1] } : null; }
 function pitAt() { let a = null; try { const at = window.SSX?.fight?.status?.().at; if (Array.isArray(at)) a = aj2w(at); } catch (e) { /* no fight club */ } return a || aj2w(PIT_AJ); }
@@ -219,7 +223,7 @@ function tick(dt, tc) {
   if (stars <= 0 || down) { if (units.length) clearUnits(); if (blocks.length) syncBlocks(0); syncCones(false, [], P, dt); boxT = 0; hideT = 0; search = null; seenNow = false; marks(null); renderHud(P); return; }
   // dispatch
   spawnCd -= dt; const own = k => units.filter(u => u.kind === k).length;
-  if (spawnCd <= 0) { if (own('rover') < TI.rovers) { spawnUnit('rover'); spawnCd = 2.5; } else if (own('swat') < TI.swat) { spawnUnit('swat'); spawnCd = 3.5; } }
+  if (spawnCd <= 0) { if (own('rover') < TI.rovers) { spawnUnit('rover'); spawnCd = 2.5 / ease(); } else if (own('swat') < TI.swat) { spawnUnit('swat'); spawnCd = 3.5 / ease(); } }
   for (const u of [...units]) if ((u.kind === 'rover' && own('rover') > TI.rovers) || (u.kind === 'swat' && own('swat') > TI.swat)) { dropUnit(u); }
   syncBlocks(TI.roadblocks, P);
   const drones = coreUnits().filter(s => s.kind === 'drone' || s.kind === 'gunship');
@@ -229,7 +233,7 @@ function tick(dt, tc) {
   else if (forceLOS == null && spot) seenNow = true;
   if (forceLOS === false) seenNow = false;
   if (seenNow) { if (search) emit('spotted', { x: P.x, z: P.z }); search = null; lastSeen = { x: P.x, z: P.z }; lastSeenT = tNow; }
-  else if (!search) { const L = lastSeen || { x: P.x, z: P.z }, total = SEARCH_BASE + SEARCH_PER * stars; search = { x: L.x, z: L.z, r: 25 + 10 * stars, left: total, total }; emit('search', { x: search.x, z: search.z, left: total }); }
+  else if (!search) { const L = lastSeen || { x: P.x, z: P.z }, total = (SEARCH_BASE + SEARCH_PER * stars) * ease(); search = { x: L.x, z: L.z, r: 25 + 10 * stars, left: total, total }; emit('search', { x: search.x, z: search.z, left: total }); }
   if (search) { search.left -= dt; if (search.left <= 0) { lose('search', true); return; } }
   // units
   const pit = inPit(P.x, P.z), safe = pit || P.inside || P.floating;
@@ -239,7 +243,7 @@ function tick(dt, tc) {
   if (P.driving && !safe) for (const b of blocks) { const dx = P.x - b.x, dz = P.z - b.z, along = dx * b.fx + dz * b.fz, across = dx * b.fz - dz * b.fx; if (Math.abs(along) < 4.2 && Math.abs(across) < b.w && Math.abs(P.speed) > 6 && P.car) { P.car.speed *= 0.25; b.t = tNow; try { g.hurtPlayer(6 + stars, { x: b.x, z: b.z }); } catch (e) { /* */ } emit('ram', { by: 'roadblock', id: b.id }); stats.rams++; } }
   // boxed in: stopped with two of ours on you (or one on foot); core's own bust timer still runs for its units
   const stopped = P.driving ? Math.abs(P.speed) < 1.5 : true;
-  if (!safe && stopped && near >= (P.driving ? 2 : 1)) { boxT += dt; if (boxT > (P.driving ? 3 : 2.5)) { boxT = 0; emit('boxed', { units: near }); try { g.bust?.(); } catch (e) { console.warn('pursuit bust', e); } } }
+  if (!safe && stopped && near >= (P.driving ? 2 : 1)) { boxT += dt * ease(); if (boxT > (P.driving ? 3 : 2.5)) { boxT = 0; emit('boxed', { units: near }); try { g.bust?.(); } catch (e) { console.warn('pursuit bust', e); } } }
   else boxT = Math.max(0, boxT - dt);
   // hideouts: out of sight, parked or still inside one
   const h = nearSite(sites.hide, P);
@@ -257,7 +261,7 @@ function stepUnit(u, dt, P, stars, safe, pit) {
   u.hitCd -= dt; u.fireCd -= dt; u.chk += dt;
   const dx = P.x - u.x, dz = P.z - u.z, d = Math.hypot(dx, dz) || 0.01, pv = P.speed;
   const fwdX = -Math.sin(P.yaw), fwdZ = -Math.cos(P.yaw), rightX = Math.cos(P.yaw), rightZ = -Math.sin(P.yaw);
-  let gx = P.x, gz = P.z, vmax = (u.kind === 'swat' ? 27 : 29) + stars * 1.5;
+  const E = ease(); let gx = P.x, gz = P.z, vmax = ((u.kind === 'swat' ? 27 : 29) + stars * 1.5) * (E < 1 && !P.driving ? (1 + E) / 2 : 1);
   const others = units.filter(q => q !== u && Math.hypot(q.x - P.x, q.z - P.z) < 14).length;
   // modes: box (you're slow and there's backup), pit (closing from behind at speed), chase (lead the target)
   const behind = (u.x - P.x) * fwdX + (u.z - P.z) * fwdZ < -1;
@@ -282,16 +286,16 @@ function stepUnit(u, dt, P, stars, safe, pit) {
   const g = game(), dy = Math.abs((P.y ?? 0) - u.y - (P.driving ? 0 : 1.6));
   // contact: ram / PIT (cars) or run you down (on foot)
   if (d < (u.kind === 'swat' ? 3.8 : 3.4) && u.hitCd <= 0 && dy < 3 && u.speed > 5) {
-    u.hitCd = 1.6;
+    u.hitCd = 1.6 / E;
     if (P.driving && P.car) {
       if (u.mode === 'pit') { P.car.yaw += 0.85 * u.side; P.car.speed *= 0.55; stats.pits++; emit('pit', { id: u.id, kind: u.kind }); }
       else { P.car.speed *= u.kind === 'swat' ? 0.45 : 0.65; stats.rams++; emit('ram', { id: u.id, kind: u.kind }); }
-      try { g.hurtPlayer((u.kind === 'swat' ? 8 : 4) + stars, { x: u.x, z: u.z }); } catch (e) { /* */ }
-    } else { try { g.hurtPlayer(7 + stars, { x: u.x, z: u.z }); } catch (e) { /* */ } stats.rams++; emit('ram', { id: u.id, kind: u.kind, foot: true }); }
+      try { g.hurtPlayer(((u.kind === 'swat' ? 8 : 4) + stars) * E, { x: u.x, z: u.z }); } catch (e) { /* */ }
+    } else { try { g.hurtPlayer((7 + stars) * E, { x: u.x, z: u.z }); } catch (e) { /* */ } stats.rams++; emit('ram', { id: u.id, kind: u.kind, foot: true }); }
     u.speed *= 0.35;
   }
   // SWAT fire: hitscan with a tracer, only with sight; these rounds can kill (wasted)
-  if (u.kind === 'swat' && u.fireCd <= 0 && d < 40 && (u.seen || d < 12)) { u.fireCd = 1.5; fire(u, P, 5 + stars); }
+  if (u.kind === 'swat' && u.fireCd <= 0 && d < 40 && (u.seen || d < 12)) { u.fireCd = 1.5 / E; fire(u, P, (5 + stars) * E); }
 }
 function fire(u, P, dmg) {
   if (isDown || game()?.info?.down) return false;
