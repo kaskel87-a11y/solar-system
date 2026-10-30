@@ -11,6 +11,7 @@ import { newSeries, scoreRound, payout as seriesPay, seriesLine, roundOutcome, B
 import { heistTipTick, tipState } from '../mars/heisttip.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
 import { toAJ, toWorld } from './coords.js';
+import { jobPay, boost } from '../economy.js'; // money boost: payoutMult on side-job top-ups (the base pays through game.js complete)
 import { missionHelpTick } from '../help/stuck.js'; // Stuck? on the mission card + red ◆ over mission foes (every world) // pack coords are colony-relative; player x/z are world
 
 const LS = 'ssx.mars.act.v1';
@@ -371,10 +372,10 @@ function completeActivity(extra = {}) {
   // Mission accept already paid base via engine; top up scaling / market delta
   const baseCr = def.rewards?.base?.credits || 50;
   const top = Math.max(0, bonus.credits - baseCr);
-  if (top > 0 && !extra.purse) C.game.debug?.credits?.(top); // the Pit pays its own purse
+  if (top > 0 && !extra.purse) C.game.debug?.credits?.(jobPay(top, 'activity:' + def.id, { streak: false })); // the Pit pays its own purse
   setCooldown(def);
   const bark = def.bark?.complete || def.bark?.win;
-  if (extra.purse) toast(extra.purse, 4000); else sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
+  if (extra.purse) toast(extra.purse, 4000); else sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${extra.purse ? bonus.credits : boost(bonus.credits)} cr`);
   active = null;
   updateMenu();
   setChip(null);
@@ -382,7 +383,8 @@ function completeActivity(extra = {}) {
 }
 
 function finishSeries() {
-  const S = active.series, pay = seriesPay(S);
+  const S = active.series, pay = { ...seriesPay(S) };
+  if (pay.credits > 0) pay.credits = jobPay(pay.credits, 'pit:' + S.result, { streak: S.result !== 'lose' }); // v7.5.9: the Pit purse doubles too (Collin: always broke); the toasts below show it
   if (S.result === 'forfeit') return failActivity('You walked out of the ring. No purse.');
   if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
   active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;

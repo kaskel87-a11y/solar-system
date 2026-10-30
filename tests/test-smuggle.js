@@ -142,7 +142,7 @@ const tag = `smuggle-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     const hp = (await st()).run.hp, cA = await credits();
     ok('cashTap', await act('#dockSmg', 'Digit8'));
     ok('paid', await wait(() => !window.SSX.smuggle.state.run && window.SSX.smuggle.state.last?.got?.kind === 'cash', 5000));
-    const got = (await st()).last.got.cash; ok('cashAmount', `${got} cr (hp ${hp}, 1 flag)`, (await credits()) - cA === got && got === Math.round(480 * hp / 100 * 1.18 / 5) * 5);
+    const got = (await st()).last.got.cash; ok('cashAmount', `${got} cr (hp ${hp}, 1 flag)`, [0, 25, 50, 75, 100].includes((await credits()) - cA - got) && got === Math.round(Math.round(480 * hp / 100 * 1.18 / 5) * 5 * (await G(() => window.SSX.economy?.payoutMult ?? 1)))); // money boost: payoutMult x (+ streak bonus)
     ok('hudHiddenOnSurface', !(await shown('#smgHud')));
     // ---- favor: through SSX.contraband ----
     await D('cool'); await G(p => window.__app.surface.debugPlace(p.x + 2, p.z, 0.6), pad); await sleep(300);

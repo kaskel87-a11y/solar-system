@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
+import { jobPay, boost } from './economy.js'; // money boost: SSX.economy.payoutMult (boost() for the purses we list)
 import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
 
@@ -342,6 +343,7 @@ function finish(done, why) {
   const firstWin = won && !data.wins[id];
   data.runs[id] = (data.runs[id] || 0) + 1; if (won) data.wins[id] = (data.wins[id] || 0) + 1; RC.saveRace(LS, data);
   const pay = done ? RC.payout(r.t, { won, newBest: !!r.newBest, firstWin, custom: !!r.def.custom, broke: r.broke }) : { credits: 0, xp: 0, note: '' };
+  if (pay.credits > 0) pay.credits = jobPay(pay.credits, 'race:' + id); // money boost (economy.js); lastResult shows the doubled purse
   const P = C.game.progress; P.credits += pay.credits; P.xp += pay.xp; C.game.save();
   const rivalName = r.rival?.name || 'Rival';
   const line = !done ? why : r.practice ? `${rivalName}: "Practice laps don\u2019t pay. Build something longer and we\u2019ll talk money."` : won ? pick([`${rivalName}: "Lucky. Do it again and I\u2019ll call it skill."`, `${rivalName}: "Fine. Take the purse. I\u2019ll take your paint next time."`, `${rivalName}: "Cheater. I respect it."`])
@@ -499,7 +501,7 @@ function openPanel() {
   if (!ensureUI() || !planet) return; const P = C?.game?.progress, defs = defsHere();
   const items = defs.map(d => { const t = resolve(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
     const kind = t.loop ? `${t.laps}-lap loop` : 'sprint', far = C ? Math.round(Math.hypot(t.gates[0].x - C.player.x, t.gates[0].z - C.player.z)) : 0;
-    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${RC.payout(t, { won: true, custom: true }).credits} cr`) : `purse ${d.purse || 120} cr${wins ? '' : ' + 100 first win'}`;
+    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${boost(RC.payout(t, { won: true, custom: true }).credits)} cr`) : `purse ${boost(d.purse || 120)} cr${wins ? '' : ` + ${boost(100)} first win`}`; // v7.5.9: listed = paid
     return `<div class="item${d.custom ? ' custom' : ''}"><b>${d.custom ? '\ud83d\udee0' : d.fromQuest ? '\ud83d\udcfb' : '\ud83c\udfc1'} ${esc(d.name)}</b> \u00b7 ${kind} \u00b7 ${t.gates.length} gates \u00b7 ${Math.round(t.length)} m
       <small>${esc(d.blurb || 'Your own track.')}</small><small>Rival: ${esc(d.rival?.name || 'Pit Viper')} \u00b7 ${purse} \u00b7 buy-in ${RC.BUY_IN} cr \u00b7 best lap ${RC.fmtTime(best ?? NaN)} \u00b7 wins ${wins} \u00b7 ${far} m away</small>
       <div class="row"><button class="go" data-race="${esc(d.id)}">\ud83c\udfc1 Race</button>${d.custom ? `<button data-edit="${esc(d.id)}">\u270f\ufe0f Edit</button><button data-del="${esc(d.id)}">\ud83d\uddd1</button>` : `<button data-copy="${esc(d.id)}">\ud83d\udee0 Remix</button>`}</div></div>`; }).join('');

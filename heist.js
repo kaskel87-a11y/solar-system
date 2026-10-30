@@ -16,6 +16,7 @@ import { starFail, normHeist, createRun, escapePayload, heistFromMansion, SAFE_T
 import { safeCrack, safeState, safeOpen, cancelSafe } from './safecrack.js';
 import { createCameras } from './cameras.js';
 import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem, tap } from './heisthooks.js';
+import { boost } from './economy.js'; // v7.5.9: the 'Safe's open' line shows the boosted take (what the heist / its mission pays)
 import { createGuards } from './guards.js';
 import { losClear, boxHit, pushOut, losCache } from './heistlos.js';
 
@@ -128,7 +129,7 @@ function crackFlow() {
   return heist.safeCrack({ tier: d.safe.tier, ...tipSafeOpts(d.safe.tier, d.safe.time, TIPS.get(d.id)), title: d.title + ' safe', seed: d.safe.seed }).then(res => {
     if (!run || run.def !== d) return res;
     emit('safe:result', { id: d.id, ...res });
-    if (res.success) { run.loot = { ...d.loot }; emit('loot', { id: d.id, loot: run.loot }); run.advance('escape'); emitStage(); toast(`💰 Safe's open. ${d.loot.credits ? d.loot.credits + ' cr in the bag. ' : ''}Get away from the building.`, 3000); }
+    if (res.success) { run.loot = { ...d.loot }; emit('loot', { id: d.id, loot: run.loot }); run.advance('escape'); emitStage(); toast(`💰 Safe's open. ${d.loot.credits ? boost(d.loot.credits) + ' cr in the bag. ' : ''}Get away from the building.`, 3000); }
     else if (res.reason === 'noise' || res.reason === 'timeout') { heist.alarm(d.alarm.wanted, res.reason === 'noise' ? `${d.title}: safe alarm` : `${d.title}: safe timer tripped`); toast('🚨 The safe screamed. Try again or run.', 3000); }
     return res;
   });

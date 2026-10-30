@@ -4,6 +4,7 @@
 // alarms only raise the wanted level and Grok Bot's security (world.js) answers it.
 // Import with plain relative paths (no ?v=): index.html's import map adds the version, so every module loads once.
 import { alarmAction } from './heistcore.js';
+import { jobPay } from './economy.js'; // money boost: SSX.economy.payoutMult
 export { addMenuItem, tap } from './racehooks.js';
 
 // raise heat for an alarm. Returns what it did ({ op, n }) so callers / tests can see it.
@@ -27,7 +28,7 @@ export function toWorld(world, p, rel) {
 }
 export const isIndoors = world => !!world?.inside;
 // payout for self-contained heists (missions normally pay through their own reward block)
-export function payout(game, credits) { if (credits > 0 && typeof game?.bonus === 'function') game.bonus(credits); }
+export function payout(game, credits) { if (credits > 0 && typeof game?.bonus === 'function') game.bonus(jobPay(credits, 'heist')); }
 
 // v7.5.4 guards: make our guards hittable by the player's shots / melee / blasts and auto-aim, by wrapping the world's
 // hit functions once per world object (same pattern as dangerhooks.patchWorld; the two wrappers chain).
