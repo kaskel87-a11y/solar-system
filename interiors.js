@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { dress, DANNY_NAME } from './clubdancers.js';
 import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth (private show)
 import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
+import { addSlotMachines } from './slots.js'; // v7.6 slot machines in the club's south-west corner
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -453,6 +454,7 @@ export const INTERIORS = {
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
+      try { addSlotMachines?.(api, { x: -7.7, z: d / 2 - 0.4 }); } catch (e) { console.warn('slots', e); } // v7.6 slots (slots.js): south-west corner, past the bar's end, far from the poles / Danny / VIP / upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();
       // light show
