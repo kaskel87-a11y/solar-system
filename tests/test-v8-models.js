@@ -66,7 +66,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       // runtime: classic switch drops every model and restores the blocky rigs
       if (conf === 'med') {
         await G(() => window.SSX.look.set('classic')); await frames(8);
-        const off = await G(() => { let model = 0, hidden = 0; const sc = window.__v8models.S.ctx.scene; sc.traverse(o => { if (o.userData?.ssxModel && o.parent) model++; if (o.userData?.__ssxL !== undefined || o.userData?.__ssxKitVis !== undefined) hidden++; }); return { on: window.SSX.models.enabled(), model, hidden }; });
+        const off = await G(() => { let model = 0, hidden = 0; const sc = window.__v8models.S.ctx.scene; const skin = o => { for (let p = o; p; p = p.parent) if (p.userData?.ssxSkin) return true; return false; }; sc.traverse(o => { if (o.userData?.ssxModel && o.parent && !skin(o)) model++; /* mars/skins.js parts are ssxModel-tagged too (main v7.5.10): not ours */ if (o.userData?.__ssxL !== undefined || o.userData?.__ssxKitVis !== undefined) hidden++; }); return { on: window.SSX.models.enabled(), model, hidden }; });
         ok('switchClassicRestores_' + tag, off, !off.on && off.model === 0 && off.hidden === 0);
         await G(() => window.SSX.look.set('med')); await frames(8);
       }
