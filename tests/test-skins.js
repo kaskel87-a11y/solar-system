@@ -3,7 +3,9 @@
 // ☰ 👕 Wardrobe swaps owned outfits, everything survives a reload, and the parts really sit on the player rig.
 // BASE=http://localhost:8941/ BR=webkit DEV=393x852 SHOTS_DIR=... NODE_PATH=/workspace/pw/node_modules node tests/test-skins.js
 // V8=1 QS=models=1: on a build with Steve's #48 (SSX.models.player()), also checks the parts hang on its sockets, the v8 body is
-// tinted, face skins hide the helmet, and the stock suit restores tint / helmet / hair. Without V8 it checks the plain path.
+// tinted, face skins hide the helmet, and the stock suit restores tint / helmet / hair. Without V8 it checks the plain (non-v8) path:
+// bare rig when #48 is absent, #48's blocky body + sockets when it is there. #48's default look is the v8 body, so on a
+// build with #48 run plain mode with QS=models=0 (or use V8=1 QS=models=1).
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://localhost:8941/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || '393x852';
 const out = (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
@@ -50,7 +52,8 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     await G(V8 => { localStorage.clear(); if (V8) { localStorage.setItem('ssx.v8.nogov', '1'); localStorage.setItem('ssx.v8.nodrs', '1'); } }, V8); await page.reload(); await boot();
     ok('api', await G(() => { const k = window.SSX?.skins; return !!k && k === window.__skins.api && k.list().length >= 10 && k.list().length <= 12; }));
     if (V8) { ok('v8Body', await wait(() => window.SSX.models?.player?.()?.body === 'v8', 60000), true); }
-    else ok('noBodyApi', await G(() => !window.SSX.models?.player), true);
+    // plain mode: #48's player API may or may not be there (its blocky rig uses it too); either way the body must not be v8
+    else ok('plainBody', await G(() => { const P = window.SSX.models?.player?.(); return { api: !!P, body: P?.body || null }; }), await G(() => { const P = window.SSX.models?.player?.(); return !P || P.body !== 'v8'; }));
     const s0 = await S(); ok('freshState', s0, s0.owned.length === 1 && s0.owned[0] === 'rusty' && s0.eq === 'stock');
     ok('catalogue', await G(() => window.SSX.skins.list().map(k => `${k.name} ${k.price}`)));
     ok('playerRig', await G(() => !!window.__skins.player()));
@@ -120,7 +123,9 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
       const pb = await PB(), face = await G(id => !!window.__skins.C.BY_ID[id].face, id);
       if (V8) ok('v8fit:' + id, { st: pb.st, socks: [...new Set(pb.anchors.map(x => x.sock))].join(), face0: pb.anchors.filter(x => /face0/.test(x.n)).map(x => x.vis) },
         st.v8 && st.viaApi && pb.anchors.length > 0 && pb.anchors.every(x => x.sock) && pb.st.tint.length >= 3 && pb.st.helmetHidden === face && pb.st.hairHidden === await G(id => window.__skins.C.hidesHair(window.__skins.C.BY_ID[id]), id) && pb.anchors.filter(x => /face0/.test(x.n)).every(x => !x.vis));
-      else ok('plain:' + id, pb.anchors.length, !st.viaApi && !st.v8 && pb.anchors.length > 0 && pb.anchors.every(x => !x.sock));
+      // plain: no v8; without #48 the parts hang on the bare rig, with #48 (blocky body) they hang on its sockets via the API
+      else ok('plain:' + id, { api: pb.api, body: pb.body, via: st.viaApi, n: pb.anchors.length },
+        !st.v8 && pb.anchors.length > 0 && (pb.api ? pb.body !== 'v8' && st.viaApi && pb.anchors.every(x => x.sock) : !st.viaApi && pb.anchors.every(x => !x.sock)));
       await shot('worn-' + id);
     }
     ok('stats', await G(() => window.__skins.stats));
