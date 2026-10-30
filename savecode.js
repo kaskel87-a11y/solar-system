@@ -138,11 +138,23 @@
   const flush = () => { try { const g = game(); if (g && g.save) g.save(); } catch (e) { /* */ } };
   async function exportCode() { flush(); if (!LS) throw new Error('No storage on this browser.'); return encode(collect(LS), { app: ver() }); }
   async function inspect(code) { return decode(code); }
+  // v7.5.9: once an import is staged, this tab must not write game saves any more (its pagehide / autosave would land after the
+  // reload applies the code if anything delays it, and a 2nd tab with the game open would overwrite the import with its old state).
+  let locked = false;
+  function lockWrites() {
+    if (locked || typeof Storage === 'undefined') return; locked = true;
+    const P = Storage.prototype, set = P.setItem, rm = P.removeItem;
+    P.setItem = function (k, v) { if (this === LS && isGameKey(String(k))) return; return set.call(this, k, v); };
+    P.removeItem = function (k) { if (this === LS && isGameKey(String(k))) return; return rm.call(this, k); };
+  }
+  // another tab staged an import: stop saving here, then reload once that tab has applied it
+  try { window.addEventListener('storage', e => { if (e.key === PENDING && e.newValue && !locked) { lockWrites(); try { app() && app().toast && app().toast('💾 A save is loading in another tab. This tab reloads to match.', 3000); } catch (x) { /* */ } setTimeout(() => location.reload(), 2500); } }); } catch (e) { /* */ }
   function stage(keys, undo) {
     if (!LS) return fail('This browser won\u2019t let the game save. Nothing was changed.');
     try {
       if (!undo) LS.setItem(BAK, JSON.stringify({ t: Date.now(), app: ver(), keys: collect(LS) }));
       LS.setItem(PENDING, JSON.stringify({ t: Date.now(), undo: !!undo, keys }));
+      lockWrites();
     } catch (e) { try { LS.removeItem(PENDING); } catch (x) { /* */ } return fail('This device is out of save space. Nothing was changed.'); }
     return { ok: true };
   }
@@ -240,10 +252,12 @@ ${b ? `<h3>Changed your mind?</h3><div class="row"><button id="scUndo" type="but
     ui(); code = ''; pendingV = null; panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ }
     render(); say('');
     try { code = await exportCode(); } catch (e) { say('Couldn\u2019t read this device\u2019s save. ' + (e && e.message || '')); }
-    if (panel.classList.contains('show')) { const keep = body.querySelector('#scIn').value; render(); body.querySelector('#scIn').value = keep; }
+    // fill the code in place (a full render() here wiped a Load → confirm already on screen when the export finished late)
+    if (panel.classList.contains('show')) { const o = body.querySelector('#scOut'), z = body.querySelector('#scSize'); if (o) o.value = code; if (z) z.textContent = code ? `${code.length.toLocaleString('en-US')} characters` : '';
+      for (const id of ['#scCopy', '#scDl']) { const b = body.querySelector(id); if (b) b.disabled = !code; } }
   }
   function close() { if (panel) panel.classList.remove('show'); }
-  const API = { export: exportCode, import: importCode, inspect, undo, open, close, keys: () => (LS ? Object.keys(collect(LS)) : []), get backup() { const b = backup(); return b ? { t: b.t, count: Object.keys(b.keys).length } : null; }, get applied() { return applied; }, core };
+  const API = { get locked() { return locked; }, export: exportCode, import: importCode, inspect, undo, open, close, keys: () => (LS ? Object.keys(collect(LS)) : []), get backup() { const b = backup(); return b ? { t: b.t, count: Object.keys(b.keys).length } : null; }, get applied() { return applied; }, core };
   (function boot() {
     if (!window.SSX || !window.__app || !window.SSX.registerMenuItem) { setTimeout(boot, 200); return; }
     window.SSX.savecode = API;
