@@ -17,7 +17,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
   const center = sel => G(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); if (!r.width) return null; return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height, w: r.width, t: r.top, b: r.bottom, l: r.left, r: r.right }; }, sel);
   // tapSel waits (like a person would) until a button held by the sheet's settle window is tappable again
-  const tapSel = async sel => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(150); await wait(s => { const b = document.querySelector(s); return !b || !b.dataset.hold; }, 1500, sel); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
+  // WebKit sends pointercancel (no tap) for a touch that lands right after a programmatic scroll, so when scrollIntoView moved the sheet we let it settle first
+  const tapSel = async sel => { const moved = await G(s => { const e = document.querySelector(s); if (!e) return false; const ps = []; for (let p = e.parentElement; p; p = p.parentElement) ps.push([p, p.scrollTop]); e.scrollIntoView({ block: 'center' }); return ps.some(([p, t]) => p.scrollTop !== t); }, sel); await sleep(moved ? 1000 : 150); await wait(s => { const b = document.querySelector(s); return !b || !b.dataset.hold; }, 1500, sel); const b = await center(sel); if (!b) throw new Error('no ' + sel); if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); await sleep(350); return b; };
   // two taps in one frame: the same button twice, then whatever sits under that point now (a button that slid in after a re-render)
   const dbl = sel => G(([s, desk]) => { const b = document.querySelector(s); if (!b) return 'no ' + s; const r = b.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
     const fire = el => { if (!el) return; if (desk) { el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y })); return; }
@@ -104,11 +105,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const c0 = await cr(); await go('farm', 12); await tapSel('#farmAct'); await dbl('#farmPanel button[data-a="harvestAll"]'); await sleep(450);
     h = await HS(); const c1 = await cr();
     ok('hire', { jobs: h.jobs, fee: c0 - c1 }, h.jobs.length === 2 && c0 - c1 === 12);
-    await tapSel('#farmPanel button[data-a="close"]'); await sleep(400); R.farmPanelAfterClose = await shown(); if (R.farmPanelAfterClose) { await G(() => window.SSX.farm.close()); await sleep(300); }
+    await tapSel('#farmPanel button[data-a="close"]'); await sleep(400); ok('closeOneTap', !(await shown())); // one real tap closes the sheet
     const sb = (await St()).silo.potato | 0; await G(() => window.SSX.harvest.debug.rush()); fs = await St(); h = await HS();
     ok('hireDone', { before: sb, silo: fs.silo, jobs: h.jobs, stats: h.stats }, fs.silo.potato - sb === 2 + 6 && !fs.racks[1].crop && !fs.racks[2].crop && h.jobs.length === 0 && h.stats.hires === 2);
     // buy the harvester from the ☰ Harvest sheet: double tap = one 4,000 cr charge
-    R.farmPanelBeforeBuy = await shown(); await G(() => window.SSX.harvest.open()); const c2 = await cr();
+    await G(() => window.SSX.harvest.open()); const c2 = await cr();
     await dbl('#hvPanel button[data-a="buy"]'); await sleep(500); await dbl('#hvPanel button[data-a="buy"]'); await sleep(400);
     h = await HS(); const c3 = await cr(); const rides = await G(() => (window.__app.game.progress.garage?.rides || []).filter(r => r.kind === 'harvester').length);
     ok('buyOnce', { charged: c2 - c3, rides, rover: h.rover }, c2 - c3 === 4000 && rides === 1 && h.rover.owned && h.rover.spot);
@@ -116,14 +117,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await tapSel('#hvPanel button[data-a="close"]');
     // replant + ripen, then walk to it and take the 🔑 Drive
     await G(() => { const F = window.SSX.farm; F.plant(0, 'potato'); F.plant(1, 'algae'); F.plant(2, 'potato'); F.refill('water'); F.refill('power'); F.skip(10); F.refill('water'); F.refill('power'); }); fs = await St();
-    R.farmPanelBeforeDrive = await shown(); const hs = h.rover.spot; await G(([x, z]) => window.__app.surface.debugMove(x + 2.6, z, Math.PI / 2), [hs.x, hs.z]); await sleep(1300); await fr(6);
+    const hs = h.rover.spot; await G(([x, z]) => window.__app.surface.debugMove(x + 2.6, z, Math.PI / 2), [hs.x, hs.z]); await sleep(1300); await fr(6);
     const ctx = await G(() => { const a = window.__dealer?.myrides?.ctxAction?.(); if (!a) return null; const l = a.label; a.act(); return l; }); await fr(10); await sleep(500);
     h = await HS(); ok('drive', { ctx, driving: h.rover.driving, kind: await G(() => window.__app.surface.info.driving && window.__dealer?.ride?.kind) }, /Drive/.test(ctx || '') && h.rover.driving);
     // drive the header across both racks (east along the row)
     const sp2 = await G(() => window.SSX.farm.rackSpots());
     for (const r of sp2) { await G(([x, z]) => window.__app.surface.debugMove(x - 3.4 + 0.1, z, -Math.PI / 2), [r.x, r.z]); await wait(i => !window.SSX.farm.status().racks[i].crop, desk ? 45000 : 20000, r.i); }
     await fr(4); h = await HS(); fs = await St();
-    ok('hopperFill', { hopper: h.hopper, racks: fs.racks.map(r => r.crop), cap: h.ui.caption, dbg: { atFarm: h.atFarm, fl: h.floating, drv: h.rover.driving, pit: h.pit, sheets: await G(() => [!!document.querySelector('#farmPanel.show'), !!document.querySelector('#hvPanel.show'), !!document.getElementById('dlrSheet')]) } }, h.hopperN >= 8 && fs.racks.every(r => !r.crop) && /Hopper \d+\/40/.test(h.ui.caption));
+    ok('hopperFill', { hopper: h.hopper, racks: fs.racks.map(r => r.crop), cap: h.ui.caption }, h.hopperN >= 8 && fs.racks.every(r => !r.crop) && /Hopper \d+\/40/.test(h.ui.caption));
     await G(([x, z]) => window.__app.surface.debugMove(x, z + 9, 0.5), [silo.x, silo.z]); await fr(10); await sleep(300);
     await G(() => { try { window.SSX.time?.set?.(13); } catch (e) { /* daylight for the shot */ } }); await fr(6); await sleep(300);
     if (!desk) await page.screenshot({ path: out + `harvest-harvester-${tag}.png` });
