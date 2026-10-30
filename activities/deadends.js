@@ -21,6 +21,10 @@ export function prepTemplate(def, tpl, centre) {
       out.push({ type: 'goto', at: MARK.spots[0].slice(0, 2), r: 2.5, mark: MARK.id, text: MARK.text, ...(s.limit ? { limit: Math.max(s.limit, 180) } : {}) });
       continue;
     }
+    if (s.type === 'defeat' && /\(stand-in( wave)?\)\s*$/.test(s.text || '')) { // Door Shift troublemakers / Vale's muscle: people, not
+      // burrowed crawlers (an ambush crawler hid under the sand by The Static's door with no dot: Collin's "no red dots" bug)
+      const { ambush, ...rest } = s; out.push({ ...rest, wave: (s.wave?.length ? s.wave : [0, 0]).map(() => 'goon') }); continue;
+    }
     if (s.type === 'race' && !s.pts) {
       const pl = s.pts_local || L.pts_local;
       if (Array.isArray(pl) && pl.length) { out.push({ ...s, pts: pl.map(abs) }); continue; }

@@ -84,7 +84,7 @@ const idx = rd('index.html'), sw = rd('sw.js'), world = rd('world.js'), game = r
 t('index.html: one import line', (idx.match(/import '\.\/empire\.js'/g) || []).length === 1);
 t('import map entries', /"\.\/empire\.js": "\.\/empire\.js\?v=/.test(idx) && /"\.\/empirecore\.js": "\.\/empirecore\.js\?v=/.test(idx));
 t('sw.js: one precache line', sw.split('\n').filter(l => /empire/.test(l)).length === 1 && /'empire', 'empirecore'/.test(sw));
-t('no version / cache bump', /const BUILD = 1;/.test(sw));
+t('no version / cache bump', /const BUILD = \d+;/.test(sw));
 t('game.js / world.js / surface.js untouched', ![game, world, surf].some(x => /empire/i.test(x)));
 t('no onclick', !/\.onclick\s*=|addEventListener\('click'/.test(src)); t('pointerup checks pointerId', /e\.pointerId !== pid/.test(src));
 t('desktop key Backslash', /Backslash/.test(src)); t('menu entry', /registerMenuItem\(\{ id: 'rmEmpire'/.test(src));

@@ -10,7 +10,8 @@ import { markTick, pub as markPub, debugTip as markTip } from './mark.js';
 import { newSeries, scoreRound, payout as seriesPay, seriesLine, roundOutcome, BREAK_S } from './pitseries.js';
 import { heistTipTick, tipState } from '../mars/heisttip.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
-import { toAJ, toWorld } from './coords.js'; // pack coords are colony-relative; player x/z are world
+import { toAJ, toWorld } from './coords.js';
+import { missionHelpTick } from '../help/stuck.js'; // Stuck? on the mission card + red ◆ over mission foes (every world) // pack coords are colony-relative; player x/z are world
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -576,6 +577,7 @@ function watchActive() {
 export function activityTick(dt, ctx) {
   C = ctx; lastTick = performance.now();
   try { jobsTick(dt, ctx); } catch (e) { console.warn('jobsTick', e); }
+  try { missionHelpTick(dt, ctx); } catch (e) { console.warn('missionHelp', e); }
   if (ctx.name !== 'Mars') {
     if (ui) ui.ctx.style.display = 'none';
     if (active) { active = null; setChip(null); }
@@ -649,6 +651,7 @@ window.__activities = {
   poker: () => window.__poker,
   start: (id) => { const d = pack?.activities?.find(a => a.id === id); return d ? startActivity(d, { ignoreCooldown: true }) : { ok: false, why: 'unknown' }; },
   abandon: () => abandonActivity('debug abandon'),
+  quit: why => abandonActivity(why || 'Quit side job.'), // Stuck? -> Quit job (help/stuck.js): no penalty
   complete: () => completeActivity(),
   openPanel, closePanel,
   warp(id) {
