@@ -35,8 +35,25 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const PIT_AJ = [-292, -68], PIT_R = 12;
 
 // ---------- state ----------
-let S = (() => { try { return F.migrate(JSON.parse(localStorage.getItem(F.SAVE_KEY))); } catch (e) { return F.fresh(); } })();
-const save = () => { try { localStorage.setItem(F.SAVE_KEY, JSON.stringify(S)); } catch (e) { /* private mode */ } };
+// v7.5.7 hotfix: load takes the first owned state from the save, its mirror, or SSX.base's homestead record (F.recover),
+// so a bought farm never comes back as for sale. save() never lets an unowned state replace an owned one (only debug.reset),
+// mirrors owned states to F.BAK_KEY, and reports a full storage once instead of failing silently.
+const LS = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const lsGet = k => { try { return LS?.getItem(k) ?? null; } catch (e) { return null; } };
+function loadState() { const r = F.recover(lsGet(F.SAVE_KEY), lsGet(F.BAK_KEY), lsGet(F.BASE_SAVE_KEY)); restoredFrom = r.restored ? r.from : null; return r.s; }
+let restoredFrom = null, restoreSaid = false, saveErr = null, saveWarned = false;
+let S = loadState();
+function save(force) {
+  if (!LS) return false; const j = JSON.stringify(S);
+  if (!force && !F.mayOverwrite(S, lsGet(F.SAVE_KEY))) return false; // never downgrade a stored farm
+  const put = () => { LS.setItem(F.SAVE_KEY, j); if (S.owned) LS.setItem(F.BAK_KEY, j); else if (force) LS.removeItem(F.BAK_KEY); };
+  try { put(); saveErr = null; return true; } catch (e) {
+    try { LS.removeItem(F.BAK_KEY); LS.setItem(F.SAVE_KEY, j); saveErr = 'nobak'; return true; } catch (e2) { saveErr = String(e2?.name || e2); }
+    if (!saveWarned) { saveWarned = true; try { app()?.toast?.('⚠️ This browser\u2019s storage for the game is full, so farm progress can\u2019t be saved.', 4200); } catch (e3) { /* */ } }
+    return false;
+  }
+}
+if (restoredFrom) save();
 const subs = new Set();
 function emit(type, d = {}) {
   const ev = { type, ...d, t: Date.now() };
@@ -128,7 +145,7 @@ function hookBase() {
 function subBase() {
   const b = B(); if (!b?.on || baseSub === b) return; baseSub = b; rackIds = sortedRackIds();
   try { b.on('remove', e => onBaseRemove(e)); } catch (e) { /* */ }
-  try { b.on('lost', e => { if (e?.plotId === PLOT) refresh(true); }); } catch (e) { /* */ }
+  try { b.on('lost', e => { if (e?.plotId !== PLOT) return; if (S.owned) syncLot(); refresh(true); }); } catch (e) { /* */ } // never downgraded: a refresh that saw us unowned is put back
   syncBase(); emit('base', { plot: PLOT, registered: true });
 }
 // keep S and the base's pieces in step: pieces placed in base's own Build flow join the farm; old saves get their pieces placed (we pay)
@@ -557,6 +574,7 @@ function tick(dt, tc) {
   if (baseHook === 'api' && !synced && S.owned) syncBase();
   if (!onMars()) { if (G) teardown(); refresh(); guideTick(); return; }
   if (!G || G.parent !== tc.scene) build(tc.scene); else if (dirty) { dirty = false; rebuildFarm(); }
+  if (restoredFrom && !restoreSaid) { restoreSaid = true; say(`🌱 ${F.SITES.farm.name} is back: dome${S.dome ? '' : ' (none)'} and ${S.racks.length} rack${S.racks.length === 1 ? '' : 's'} restored from your save.`); emit('restore', { from: restoredFrom, dome: S.dome, racks: S.racks.length }); }
   raidTick(dt, dh);
   if ((uiT -= dt) <= 0) { uiT = 0.25; refresh(); guideTick(); }
   beaconTick(dt);
@@ -564,7 +582,7 @@ function tick(dt, tc) {
 function status() {
   return { owned: S.owned, dome: S.dome, domeHp: Math.round(S.domeHp), racks: S.racks.map(r => ({ crop: r.crop, growth: Math.round(r.growth * 1000) / 1000, health: Math.round(r.health * 10) / 10, ripe: !!r.crop && r.growth >= 1 })),
     water: S.water, power: S.power, silo: { ...S.silo }, siloCount: F.siloCount(S), favors: [...S.favors], hours: Math.round(S.hours * 100) / 100, day: F.day(S), clock: empOn ? 'SSX.empire.hour' : src, base: baseLot() ? { plot: PLOT, pieces: basePieces().map(p => ({ id: p.id, type: p.type, i: p.i, j: p.j, r: p.r })) } : (baseHook || null), empire: empHook ? { hook: empHook, live: empOn, hours: empHours } : null, hooks: { base: baseHook, baseRegistered: !!baseLot(), lotSync, empire: empHook, empireLive: empOn, yieldRaid: typeof EMP()?.yieldRaid === "function", raidSlot: (() => { try { return EMP()?.raidSlot?.() ?? null; } catch (e) { return null; } })() },
-    raid: raid ? { id: raid.id, via: raid.via, engineWhy: raid.engineWhy || null, slot: raid.slot || null, asked: raid.asked || null } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats } };
+    raid: raid ? { id: raid.id, via: raid.via, engineWhy: raid.engineWhy || null, slot: raid.slot || null, asked: raid.asked || null } : null, at: onMars() ? (at('farm') ? 'farm' : at('post') ? 'post' : null) : null, storm: stormI(), stats: { ...S.stats }, restored: restoredFrom, saveErr };
 }
 const API = {
   status, buy, buildDome, addRack, plant, harvest, refill, patch, sell, useFavor, raid: raid_, skip,
@@ -575,8 +593,8 @@ const API = {
   debug: {
     goto(id) { const s = surf(), p = W(F.SITES[id === 'post' ? 'post' : 'farm'].at); if (!s || !p) return false; s.debugMove(p.x + (id === 'post' ? 0 : 0), p.z + (id === 'post' ? 4 : 6), 0); return { x: p.x, z: p.z }; },
     storm(i = 1) { dbgStorm = F.clamp(+i || 0, 0, 1); return dbgStorm; }, raidEnd: (r = 'win') => endRaid(r), noRaids: v => { noRaids = v !== false; return noRaids; },
-    state: () => JSON.parse(JSON.stringify(S)), reset() { AG.reset(); const c0 = credits(); for (const p of basePieces()) { try { B().remove(PLOT, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(); synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
-    reload() { try { S = F.migrate(JSON.parse(localStorage.getItem(F.SAVE_KEY))); } catch (e) { S = F.fresh(); } rebuildFarm(true); emit('load', {}); return status(); },
+    state: () => JSON.parse(JSON.stringify(S)), reset() { AG.reset(); const c0 = credits(); for (const p of basePieces()) { try { B().remove(PLOT, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(true); restoredFrom = null; try { B()?.refresh?.(); } catch (e) { /* */ } synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
+    reload() { S = loadState(); restoreSaid = false; synced = false; if (restoredFrom) save(); rebuildFarm(true); emit('load', {}); return status(); },
     ground: (x, z) => ground(x, z), colony: () => { const c = colony(); return c ? { x: c.x, z: c.z } : null; },
     inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome') || basePieces().some(p => p.type === F.LOT.dome.type), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
   }

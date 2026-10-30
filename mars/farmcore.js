@@ -218,3 +218,28 @@ export function actStale(s, a, exp) {
   return null;
 }
 export const staleSale = (s, crop, exp) => (exp == null || exp === '' || !Number.isFinite(+exp)) ? null : ((s.silo[crop] | 0) !== +exp ? 'Already sold.' : null);
+
+// ---------- save recovery (v7.5.7 hotfix) ----------
+// A farm you paid for is never shown as for sale again because one read came back empty or broken. On load we take the
+// first owned state from: the save, its mirror (BAK_KEY, written on every owned save), then the homestead's record in
+// SSX.base's save (ssx.base.v1 keeps farm-dome / farm-rack pieces even when the lot shows unowned). raw* are the stored strings.
+export const BAK_KEY = 'ssx.farm.v1.bak', BASE_SAVE_KEY = 'ssx.base.v1';
+const parseJ = t => { if (typeof t !== 'string' || !t) return null; try { return JSON.parse(t); } catch (e) { return null; } };
+export function baseEvidence(rawBase) {
+  const p = parseJ(rawBase)?.plots?.[LOT.id]; if (!p || typeof p !== 'object') return null;
+  const pcs = Array.isArray(p.pieces) ? p.pieces : [], dome = pcs.filter(q => q?.type === LOT.dome.type).length, racks = pcs.filter(q => q?.type === 'farm-rack').length;
+  // boughtAt alone is not proof: debug.reset scraps the pieces and the lot syncs to unowned but keeps boughtAt
+  return (p.owned === true || dome + racks > 0) ? { owned: true, dome: dome > 0, racks: Math.min(racks, LIMITS.racks) } : null;
+}
+export function recover(rawSave, rawBak, rawBase) {
+  const j = parseJ(rawSave), s = migrate(j);
+  if (s.owned) return { s, from: 'save', restored: false };
+  const b = migrate(parseJ(rawBak));
+  if (b.owned) return { s: b, from: 'backup', restored: true };
+  const ev = baseEvidence(rawBase);
+  if (ev) { s.owned = true; s.dome = ev.dome; s.domeHp = 100; while (s.racks.length < ev.racks) s.racks.push(freshRack());
+    s.water = Math.max(s.water, 40); s.power = Math.max(s.power, 40); return { s, from: 'base', restored: true }; }
+  return { s, from: j ? 'save' : 'fresh', restored: false };
+}
+// may this state overwrite what is stored? an unowned state never replaces an owned one (only an explicit reset does)
+export function mayOverwrite(next, rawStored) { if (next?.owned) return true; return !migrate(parseJ(rawStored)).owned; }

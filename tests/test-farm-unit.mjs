@@ -82,4 +82,17 @@ ok('dirs', F.dirWord(0, 10) === 'south' && F.dirWord(10, 0) === 'east' && /Go to
     ok('econ:' + id, hv.n === c.yield && Math.abs(spent - F.growCost(id)) < 1 && q.cash > spent * 2.5 && worst > spent * 2.5 && avg > spent * 3 && avg < spent * 4.2, econ[id]);
   }
   if (process.env.ECON) console.log(JSON.stringify(econ, null, 1)); }
+// save recovery (v7.5.7 hotfix): a v7.5.5 save loads as is; a lost / broken / unowned save comes back from the mirror or SSX.base's record
+{ const v755 = '{"v":1,"owned":true,"dome":true,"domeHp":100,"racks":[{"crop":"potato","growth":0.0032,"health":100,"planted":0.11},{"crop":null,"growth":0,"health":100,"planted":0},{"crop":null,"growth":0,"health":100,"planted":0}],"water":40,"power":40,"silo":{},"favors":[],"hours":0.148,"lastRaidH":-99,"stats":{"planted":1,"harvested":0,"sold":0,"earned":0,"raids":0,"raidsWon":0,"stolen":0,"stormLoss":0,"wilted":0},"guide":{"on":true,"done":false,"off":false}}';
+  const base = owned => JSON.stringify({ v: 1, plots: { 'farm-homestead': { owned, pieces: [{ id: 1, type: 'farm-dome', i: 2, j: 0, r: 0, hp: 200 }, { id: 2, type: 'farm-rack', i: 3, j: 7, r: 0 }, { id: 3, type: 'farm-rack', i: 6, j: 7, r: 0 }, { id: 4, type: 'farm-rack', i: 2, j: 7, r: 0 }], stash: { credits: 0, medkits: 0 }, nextId: 5, boughtAt: 1 } } });
+  const unowned = JSON.stringify(F.fresh()), resetBase = JSON.stringify({ v: 1, plots: { 'farm-homestead': { owned: false, pieces: [], nextId: 5, boughtAt: 1 } } });
+  let r = F.recover(v755, null, null); ok('rec:v755', r.from === 'save' && r.s.owned && r.s.dome && r.s.racks.length === 3 && r.s.racks[0].crop === 'potato' && !r.restored, r);
+  r = F.recover(v755.replace('"v":1', '"v":1,"barter":{"x":1},"extra":[1]'), null, null); ok('rec:unknownFields', r.s.owned && r.s.racks.length === 3, r.from);
+  r = F.recover(null, v755, base(false)); ok('rec:mirror', r.from === 'backup' && r.restored && r.s.racks[0].crop === 'potato', r.from);
+  r = F.recover('{broken', null, base(false)); ok('rec:corruptFromBase', r.from === 'base' && r.s.owned && r.s.dome && r.s.racks.length === 3 && r.s.water >= 40, r);
+  r = F.recover(unowned, null, base(false)); ok('rec:unownedFromBase', r.from === 'base' && r.s.owned && r.s.racks.length === 3, r.from);
+  r = F.recover(null, null, base(true)); ok('rec:missingFromBase', r.from === 'base' && r.s.owned, r.from);
+  r = F.recover(unowned, null, resetBase); ok('rec:resetStaysReset', !r.s.owned && !r.restored, r.from);
+  r = F.recover(null, null, null); ok('rec:fresh', !r.s.owned && r.from === 'fresh');
+  ok('noDowngrade', !F.mayOverwrite(F.fresh(), v755) && F.mayOverwrite(F.fresh(), unowned) && F.mayOverwrite(F.migrate(JSON.parse(v755)), unowned) && F.mayOverwrite(F.fresh(), null)); }
 console.log(bad ? `farm unit: ${bad} FAIL` : 'farm unit OK'); process.exit(bad ? 1 : 0);
