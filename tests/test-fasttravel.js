@@ -99,7 +99,7 @@ const tag = `fasttravel-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
     ok('atFarm', `${Math.round(h0.x)},${Math.round(h0.z)} -> ${Math.round(h1.x)},${Math.round(h1.z)} (farm ${Math.round(farm.x)},${Math.round(farm.z)})`, Math.hypot(h1.x - farm.x, h1.z - farm.z) < 15);
     ok('paid25', `${c0} -> ${await credits()}`, c0 - (await credits()) === 25);
     ok('mapClosed', !(await mapOn()));
-    ok('fadeGone', await G(() => +getComputedStyle(document.getElementById('ftFade')).opacity === 0 && getComputedStyle(document.getElementById('ftFade')).pointerEvents === 'none'));
+    ok('fadeGone', await G(() => { const f = document.getElementById('ftFade'); return !!f && +getComputedStyle(f).opacity === 0 && getComputedStyle(f).pointerEvents === 'none'; }));
     await sleep(2200); R.framesFoot = await G(() => window.SSX.fastTravel.debug.frames());
     await shot('arrived-farm');
     // ---- driving: the car comes along (Xen-7 Trading Post, via the API) ----

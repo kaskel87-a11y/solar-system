@@ -44,7 +44,7 @@ function mapPlaces() { return onMars() ? places(true).map(p => ({ id: 'ft:' + p.
 function ctx(place) {
   const s = app()?.state || {}, m = md(), q = tryv(() => surf()?.game?.info?.quest);
   return {
-    onMars: onMars(), flying: !!s.flying, busy: !!busy || !!(surf()?.info?.intro > 0),
+    onMars: onMars(), flying: !!s.flying && !s.onSurface, // the space-flight flag stays on after you land busy: !!busy || !!(surf()?.info?.intro > 0),
     wanted: +(world()?.wanted || 0),
     smuggling: !!tryv(() => X().smuggle?.state?.run),
     heist: !!tryv(() => X().heist?.active),
@@ -108,7 +108,7 @@ let sheet = null, cur = null;
 const css = `#ftSheet{position:absolute;left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));z-index:3;display:none;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:600 14px system-ui,sans-serif;box-shadow:0 -4px 24px rgba(0,0,0,.6)}
 #ftSheet.on{display:flex} #ftSheet .nm{font:800 16px system-ui,sans-serif} #ftSheet .why{font-size:12px;color:#ffd400} #ftSheet .why:empty{display:none}
 #ftSheet .row{display:flex;gap:6px} #ftSheet button{min-height:44px;min-width:44px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 15px system-ui,sans-serif;touch-action:manipulation;padding:0 12px}
-#ftSheet #ftGo{flex:1} #ftSheet button[aria-disabled="true"]{border-color:#777;color:#bbb}`;
+#ftSheet #ftGo{flex:1} #ftSheet button[aria-disabled="true"]{border-style:dashed;border-color:#777}`;
 // real tap only: same pointerId, < TAP_PX moved (max over the gesture); keyboard / mouse click still work
 function realTap(el, fn) {
   let down = null, maxMove = 0, lastTouch = 0;
@@ -168,7 +168,7 @@ new MutationObserver(() => { const m = document.getElementById('hxMap'); if (cur
 
 // ---------- warm-up: build the place list once on landing so the first map tap costs nothing ----------
 let warmed = false;
-setInterval(() => { if (onMars()) { if (!warmed) { warmed = true; places(true); } } else warmed = false; }, 1000);
+setInterval(() => { attach(); if (onMars()) { if (!warmed) { warmed = true; places(true); } } else warmed = false; }, 1000);
 
 // ---------- API ----------
 const subs = new Set();
@@ -179,4 +179,6 @@ const API = {
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); },
   debug: { log: () => log.slice(), taps: () => ({ ...taps, ...guard }), frames: () => frames ? { before: C.frameStats(frames.before), after: C.frameStats(frames.after), afterRaw: frames.after.slice(0, 40).map(v => Math.round(v * 10) / 10) } : null, sheet: () => cur ? { id: cur.id, why: why(cur) } : null, hide }
 };
-window.SSX = window.SSX || {}; window.SSX.fastTravel = API;
+// index.html replaces window.SSX = {...} after the module imports run, so re-attach until it sticks (and if it is ever replaced again)
+const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.fastTravel !== API) w.SSX.fastTravel = API; };
+attach(); (function boot(n = 0) { attach(); if (n < 100 && !window.__app) setTimeout(() => boot(n + 1), 100); })();
