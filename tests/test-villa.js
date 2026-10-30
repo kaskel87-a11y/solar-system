@@ -46,6 +46,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => document.getElementById('radio') && (document.getElementById('radio').style.display = 'none'));
     await tapEl('#menuBtn'); await sleep(400); await tapEl('#heistMenu'); await wait(() => document.getElementById('heistPanel')?.classList.contains('on'), 5000);
     await tapEl('#heistPanel button[data-id="heist-halvorsen-villa"]'); ok('heist started', await wait(() => window.SSX.heist.active?.id === 'heist-halvorsen-villa' && !!window.SSX.heist.active.w, 8000));
+    await sleep(1500); const gc = await G(() => ({ villa: window.__villa.state.guards.length, extra: (window.SSX.heist.guards?.list?.() || []).length, reserved: window.__app.surface.world.npcBudget().reserved }));
+    ok('only the villa\'s own guards (no armed copies from guards.js)', gc, gc.extra === 0 && gc.villa >= 1 && gc.villa <= 2 && !gc.reserved['heist-guards']);
     // ---- cut the power out back first (real action button), out of sight of the porch camera
     await place(-6, -9.2, 0); await frames(4); const pw0 = await walkTo(-6, -8.2, 3000);
     ok('power box reachable', pw0, await wait(() => /Cut power/.test(window.SSX.heist.action || ''), 5000));

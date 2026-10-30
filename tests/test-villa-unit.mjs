@@ -58,6 +58,9 @@ ok('own layout, not the sample', def.layout === 'halvorsen' && def.sample === fa
 ok('colony-relative', def.rel === 'colony' && def.site.x === VILLA_AT[0] && def.door.z === VILLA_AT[1] + C.SPOTS.door[1]);
 ok('in Helios Heights (centre 320,80 r 95)', Math.hypot(VILLA_AT[0] - 320, VILLA_AT[1] - 80) < 95 - 12);
 ok('3 cameras, 2 guards', def.cameras.length === 3 && def.guards.length === 2);
+// villa.js walks its own 2 guards: guards.js must not spawn an armed second set (live v7.5.5 had 4 bodies, shot through walls)
+ok('villa owns its guards (ownGuards)', def.ownGuards === true);
+ok('guards.js skips def.guards when ownGuards is set', /def\.ownGuards \? \[\] : def\.guards/.test(src('guards.js')));
 ok('wall height one floor (~3.5 m) + cap', Math.abs(walls[0].h - (C.FLOOR_H + C.CAP)) < 1e-9 && C.FLOOR_H === 3.5);
 ok('roofs.js solid format', walls.every(w => Array.isArray(w.box) && w.box.length === 2 && Number.isFinite(w.top) && w.top === w.y0 + w.h));
 ok('colliders.js box format', walls.every(w => w.type === 'box' && w.id && Number.isFinite(w.hx) && Number.isFinite(w.hz)));

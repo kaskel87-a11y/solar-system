@@ -136,7 +136,7 @@ export function villaDef([x, z]) {
     id: 'heist-halvorsen-villa', title: 'Halvorsen Villa', world: 'Mars', rel: 'colony', sample: false, payout: true, layout: 'halvorsen',
     site: { x, z, r: 12 }, door: P(SPOTS.door), safe: { ...P(SPOTS.safe), tier: 'medium', time: 45 }, power: { ...P(SPOTS.power), s: 45 },
     cameras: CAMERAS.map(c => ({ ...c, x: x + c.x, z: z + c.z })),
-    guards: GUARDS.map(g => ({ id: g.id, ...P(g.path[0]) })),
+    guards: GUARDS.map(g => ({ id: g.id, ...P(g.path[0]) })), ownGuards: true, // villa.js walks these two; guards.js must not add armed copies
     alarm: { wanted: 2, responseS: 18 }, loot: { credits: 400, item: 'contraband' },
   };
 }
