@@ -500,6 +500,8 @@
   "ssx/citydata": "./citydata.js?v=7.5.6",
   "./clubdancers.js": "./clubdancers.js?v=7.5.6",
   "ssx/clubdancers": "./clubdancers.js?v=7.5.6",
+  "./clubprivate.js": "./clubprivate.js?v=7.5.6",
+  "ssx/clubprivate": "./clubprivate.js?v=7.5.6",
   "./controlmode.js": "./controlmode.js?v=7.5.6",
   "ssx/controlmode": "./controlmode.js?v=7.5.6",
   "./danger.js": "./danger.js?v=7.5.6",
@@ -830,7 +832,7 @@
     import { DEALER_API } from './dealership.js'; // Mars rover dealership, garages + car meets (adds SSX.registerDealerVehicle)
     import { CITY_DISTRICTS, CITY_MISSION_IDS } from './city.js'; // v7.5 Mars city (Steve's pack)
     import { registerInterior } from './interiors.js';
-    import { privateShow } from './privateshow.js'; import { DANNY_NAME } from './clubdancers.js'; // v7.5.4 Danny's upstairs private show
+    import { clubPrivate } from './clubprivate.js'; import { privateShow } from './privateshow.js'; import { DANNY_NAME } from './clubdancers.js'; // v7.5.4 Danny's upstairs private show
     import { phoneTexts } from './phonetexts.js'; // Danny's texts once you have her number
     import { createAudio7 } from './audio7.js';
     import './base.js'; // v7.5 Mars base building (lots, walls, garage, stash, turrets); self-registers via SSX.registerSurfaceTick + SSX.base
@@ -1701,6 +1703,7 @@
       updateSurfHud(true);
     }
     const pshow = privateShow({ surface, toast, onTap, fx: au7.fx, hud: () => updateSurfHud(true) }); // v7.5.4 (privateshow.js)
+    let cprivate = null; try { cprivate = clubPrivate({ surface, toast, onTap, fx: au7.fx, hud: () => updateSurfHud(true) }); } catch (e) { console.warn('clubprivate', e); } // v7.6 private dances from any dancer (clubprivate.js)
     phoneTexts({ toast, onTap, playing: () => onSurface }); // texts from Danny (phonetexts.js)
     function doSpot(s) {
       const g = surface.game;
@@ -1716,6 +1719,7 @@
       }
       else if (s.act === 'tip' || s.act === 'private' || s.act === 'companion') adultGate(() => clubAct(s));
       else if (s.act === 'show') adultGate(() => pshow.offer(s)); // v7.5.4
+      else if (s.act === 'privdance') { if (cprivate) adultGate(() => { try { cprivate.offer(s); } catch (e) { console.warn('clubprivate', e); } }); } // v7.6
       else if (s.act === 'stash') { if (g.stash(s.stash, s.perm, s.perm === 'maxhp' ? 'Stolen biomod' : 'Spare bandolier')) toast('📦 Somebody forgot this. 40 cr and something better.', 3000); }
       updateSurfHud(true);
     }
