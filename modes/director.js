@@ -308,7 +308,7 @@ function tick(dt, ctx) {
 const API = { version: 1, get state() { const T = TT(); return T ? { ...S, time: T.state() } : { ...S }; }, set(k, v) { if (!(k in D.DEFAULTS)) return false; S = D.sanitize({ ...S, [k]: v }); save(); return true; },
   cheats, rewardsBlocked: blocked, open, close, spawnVehicle, vehicles: vehicleList, on: (fn) => window.SSX?.on?.('director:change', fn) };
 window.__director = { pullFog, get S() { return S; }, get session() { return session; }, get base() { return base && { top: base.top, horizon: base.horizon, light: base.light }; }, get stormFade() { return stormFade; }, get clock() { return clock; },
-  get dust() { return dust ? { n: dust.geometry.attributes.position.count, visible: dust.visible, opacity: dust.material.opacity } : null; }, get stars() { return stars ? { visible: stars.visible, opacity: stars.material.opacity } : null; },
+  get dust() { if (!dust) return null; const lv = S.storm === 'off' ? (dust.userData.last || 'off') : S.storm; return { n: D.stormParams(lv, mobile).count, draw: dust.geometry.drawRange.count, buf: dust.geometry.attributes.position.count, visible: dust.visible, opacity: +dust.material.uniforms.uOpacity.value.toFixed(3) }; }, get stars() { return stars ? { visible: stars.visible, opacity: stars.material.opacity } : null; },
   get light() { return base?.dl ? { i: base.dl.intensity, c: base.dl.color.getHex() } : null; }, get fog() { const f = C?.scene?.fog; return f ? { near: f.near, far: f.far, c: f.color.getHex() } : null; }, get sky() { return base?.sky ? { top: base.sky.material.uniforms.top.value.getHex(), horizon: base.sky.material.uniforms.horizon.value.getHex() } : null; },
   set: API.set, open, close, render };
 
