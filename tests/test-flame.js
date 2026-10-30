@@ -114,10 +114,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('cropBurns', await wait(x => window.SSX.flame.state().crops.some(c => Math.round(c.x) === x && (c.gone || c.burn > 0)), 3000, crop.x));
       ok('cropGone', await wait(() => window.SSX.flame.state().stats.crops >= 1, 6000)); }
     // ---- airborne / jetpack: firing isn't blocked (guarded stub of the unmerged SSX.jetpack) ----
-    await G(() => { window.SSX.jetpack = { active: () => true }; window.__app.surface.world.setWanted?.(0); });
-    const fa = (await FS()).stats.shots; await fireDown(); await sleep(500); const sj = await FS(); await fireUp(); await sleep(700);
-    ok('airborneFires', { airborne: sj.airborne, firing: sj.firing }, sj.airborne && sj.firing && sj.stats.shots > fa);
-    await G(() => { delete window.SSX.jetpack; });
+    // v7.5.9: with Pumpkin's real jetpack merged (#85) it re-attaches SSX.jetpack every frame, so fly for real (hold Jump); stub only without it
+    const realJet = await G(() => !!window.__jetpack);
+    const jump = t => G(([t]) => { const e = document.getElementById('jumpBtn'), r = e.getBoundingClientRect(); e.dispatchEvent(new PointerEvent(t, { pointerId: 51, pointerType: 'touch', isPrimary: false, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true, composed: true, buttons: t === 'pointerdown' ? 1 : 0 })); }, [t]);
+    if (realJet) { await G(() => { window.__jetpack.give(); window.__app.surface.world.setWanted?.(0); }); await jump('pointerdown'); await wait(() => window.__jetpack.alt > 3, 15000); }
+    else await G(() => { window.SSX.jetpack = { active: () => true }; window.__app.surface.world.setWanted?.(0); });
+    const fa = (await FS()).stats.shots; await fireDown(); await sleep(500); const sj = await FS(); await fireUp(); await sleep(realJet ? 100 : 700);
+    ok('airborneFires', { realJet, airborne: sj.airborne, firing: sj.firing }, sj.airborne && sj.firing && sj.stats.shots > fa);
+    if (realJet) { await jump('pointerup'); await wait(() => !window.__jetpack.s.flying && window.__app.surface.info.grounded, 30000); await sleep(600); }
+    else await G(() => { delete window.SSX.jetpack; });
     // ---- fuel bar ----
     await G(() => window.SSX.flame.debug.setFuel(37)); await sleep(500);
     const fb = await G(() => { const e = document.getElementById('flameFuel'), r = e.getBoundingClientRect(); return { t: document.getElementById('flameFuelT').textContent, vis: getComputedStyle(e).display !== 'none', w: r.width, top: r.top }; });
