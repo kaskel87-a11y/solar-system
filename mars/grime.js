@@ -550,6 +550,7 @@ const api = {
   street: null
 };
 
+api.prebuild = (id, warm) => { if (warm) { if (!R) warmRes(); return !R; } if (!scene || built.has(id) || !cfg.enabled || mult() <= 0) return built.has(id); const d = app.surface.world.districts().find(q => q.id === id), g = d && siteGroups().find(o => o.userData.v8.site === id); if (!g) return false; res(); built.set(id, buildDistrict(id, g, d)); return true; }; // build a district now; warm = paint one more of the shared textures (warmRes) (mars/fasttravel.js; never called otherwise = no change)
 export function initGrime(a) {
   if (window.SSX?.grime) return window.SSX.grime;
   app = a; load();

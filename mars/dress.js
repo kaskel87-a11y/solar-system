@@ -191,6 +191,7 @@ const api = {
   state: () => ({ tier: TIER, failed, loaded: !!man, active, tris: totalTris(), draws: Object.values(built).reduce((s, r) => s + r.draws, 0),
     districts: Object.fromEntries(Object.entries(built).map(([id, r]) => [id, { ready: r.ready, tris: r.tris, draws: r.draws, counts: r.counts, signs: r.group.children.filter(o => o.name === 'dress:sign').map(o => o.userData.text), tags: r.group.children.filter(o => o.name === 'dress:tag').map(o => o.userData.text) }])) })
 };
+api.prebuild = id => { const s = man && worldRef && !built[id] && worldRef.districts().find(q => q.id === id), D = s && districtsOf('Mars').find(d => d.id === id); if (D) build(s, D).catch(e => console.warn('dress build', e)); return !!(D || built[id]); }; // build a district now (mars/fasttravel.js prebuilds the destination; never called otherwise = no change)
 const hook = () => { if (window.SSX) { window.SSX.dress = api; return true; } return false; };
 if (!hook()) { const t = setInterval(() => hook() && clearInterval(t), 300); }
 export default api;
