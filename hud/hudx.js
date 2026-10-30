@@ -318,10 +318,10 @@ const TAP_SLOP = 10, SCROLL_QUIET = 150;
 function scrollers(el) { const o = []; for (let e = el; e && e !== document.documentElement; e = e.parentElement) { if (e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1) { const cs = getComputedStyle(e); if (/(auto|scroll)/.test(cs.overflowY + cs.overflowX)) o.push([e, e.scrollTop, e.scrollLeft]); } } return o; }
 function installTapGuard() {
   if (window.__hxTapGuard) return; window.__hxTapGuard = true;
-  let down = null, blockClick = 0, blockSc = null; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
+  let down = null, blockClick = 0, blockSc = null, lastPtr = '', lastPtrT = -1e9; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
   const now = () => performance.now(), recent = sc => sc.some(([el]) => now() - (lastS.get(el) ?? -1e9) < SCROLL_QUIET);
   addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1) lastS.set(t, now()); }, true);
-  addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, quiet: recent(sc) } : null; }, true);
+  addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, quiet: recent(sc) } : null; }, true);
   addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) down.moved = true; }, true);
   addEventListener('pointerup', e => {
     if (!down || e.pointerId !== down.id || e.__hx) return; const d = down; down = null;
@@ -332,7 +332,10 @@ function installTapGuard() {
   }, true);
   addEventListener('pointercancel', e => { if (down && e.pointerId === down.id && !e.__hx) down = null; }, true);
   // v7.5.9: the late click of a guarded swipe is swallowed only inside that same sheet; a tap on ☰ (or anything else) right after a flick still lands
-  addEventListener('click', e => { if ((now() < blockClick && blockSc?.some(el => el.contains(e.target))) || (e.isTrusted && e.detail !== 0 && recent(scrollers(e.target)))) { blockClick = 0; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  // v7.5.10: a mouse / trackpad click is never a swipe. Trackpad momentum keeps firing scroll events after the wheel stops, and
+  // the Save Code sheet scrolls its Yes box into view, so a desktop click on 'Yes, replace' was swallowed and the import never ran.
+  const mouseClick = e => e.pointerType === 'mouse' || (lastPtr === 'mouse' && now() - lastPtrT < 1500);
+  addEventListener('click', e => { if (mouseClick(e)) return; if ((now() < blockClick && blockSc?.some(el => el.contains(e.target))) || (e.isTrusted && e.detail !== 0 && recent(scrollers(e.target)))) { blockClick = 0; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
 function tick(force) {
   const now = performance.now(); if (!force && now - lastT < 140) return; lastT = now;
