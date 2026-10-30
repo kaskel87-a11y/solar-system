@@ -293,11 +293,17 @@ function jobsTick() {
 }
 
 // ---------- FIRE hook (game.js runs SSX.fireHooks before an on-foot shot) ----------
+// claimsFire(): FIRE belongs to the sickle / silo right now (on foot and on the ground at your own farm, by a ripe rack or at the
+// silo with a bale). Everywhere else it's false, so guns and the flamethrower behave exactly as before. mars/flame.js asks this
+// first, so an equipped flamer hands FIRE to the sickle at a ripe rack instead of spraying (it never burns your own racks anyway).
+function claimsFire() {
+  if (!tcLast || driving || !atFarm || pit || tcLast.car || tcLast.world?.inside || tcLast.player?.grounded === false) return null;
+  if (H.count(S.carry) && nearSilo) return 'drop';
+  const me = playerPos(); return me && H.nearestRipe(spots, me, H.REACH) ? 'cut' : null;
+}
 function fireHook() {
-  if (!tcLast || driving || !atFarm || pit) return false;
-  if (H.count(S.carry) && nearSilo) { drop(); return true; }
-  const me = playerPos(); if (!me || !H.nearestRipe(spots, me, H.REACH)) return false; // nothing to cut: the gun fires as usual
-  swing(); return true;
+  const c = claimsFire(); if (!c) return false; // nothing to cut: the gun fires as usual
+  if (c === 'drop') drop(); else swing(); return true;
 }
 
 // ---------- UI: one context button, one caption, a small sheet ----------
@@ -426,7 +432,7 @@ function status() {
 }
 const api = {
   status, swing, drop, emptyHopper, buyHarvester, hire, hireText, open, close, on: f => { if (typeof f !== 'function') return () => {}; subs.add(f); return () => subs.delete(f); },
-  cropLeft: (k, r) => (r && r.crop ? H.cropLeft(S, { i: k, planted: r.planted }) : 1), fireHook,
+  cropLeft: (k, r) => (r && r.crop ? H.cropLeft(S, { i: k, planted: r.planted }) : 1), fireHook, claimsFire: () => !!claimsFire(),
   PRICES: { harvester: H.ROVER_PRICE, hire: H.HIRE.fee }, rules: { PATCHES: H.PATCHES, CARRY_CAP: H.CARRY_CAP, HOPPER_CAP: H.HOPPER_CAP, COMBO_S: H.COMBO_S, COMBO_EVERY: H.COMBO_EVERY, HIRE_SECS: H.HIRE.secs },
   debug: {
     reset() { AG.reset(); S = H.fresh(); save(); lastSwing = -9; capKey = ''; return status(); },

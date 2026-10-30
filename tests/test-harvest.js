@@ -99,8 +99,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // drop at the silo (double tap in one frame = one drop)
     await G(([x, z]) => window.__app.surface.debugMove(x, z + 3.2, 0), [silo.x, silo.z]); await fr(8); await sleep(300);
     h = await HS(); ok('dropButton', h.ui.act, h.nearSilo && /Drop bale/.test(h.ui.act));
+    // v7.5.10: an equipped flamethrower hands FIRE to the sickle/silo here (no spray), and gets it back once nothing claims it
+    if (await G(() => !!window.SSX.flame)) {
+      R.flameAtSilo = await G(() => { window.SSX.flame.debug.give(); window.SSX.flame.debug.hold(1.2); return window.SSX.harvest.claimsFire(); }); await fr(6);
+      R.flameAtSilo = { claims: R.flameAtSilo, firing: (await G(() => window.SSX.flame.state())).firing }; await G(() => window.SSX.flame.equip(false)); await fr(3);
+      ok('flamerYieldsToSilo', R.flameAtSilo, R.flameAtSilo.claims === true && R.flameAtSilo.firing === false);
+    }
     await dbl('#hvAct'); await sleep(400); h = await HS(); fs = await St();
     ok('banked', { carried, carry: h.carry, silo: fs.silo, stats: h.stats }, h.carryN === 0 && fs.silo.potato === carried && h.stats.banked === carried);
+    if (await G(() => !!window.SSX.flame)) { // bale banked, no ripe rack in reach: FIRE is the flamer's again
+      const c = await G(() => { window.SSX.flame.equip(true); window.SSX.flame.debug.hold(1.2); return window.SSX.harvest.claimsFire(); }); await fr(6);
+      R.flameAfter = { claims: c, firing: (await G(() => window.SSX.flame.state())).firing }; await G(() => { window.SSX.flame.debug.hold(0); window.SSX.flame.equip(false); }); await fr(3);
+      ok('flamerBackAfter', R.flameAfter, R.flameAfter.claims === false && R.flameAfter.firing === true);
+    }
     // hire a hand for rack 2 (the old one-tap way): charged once, slow, then in the silo
     const c0 = await cr(); await go('farm', 12); await tapSel('#farmAct'); await dbl('#farmPanel button[data-a="harvestAll"]'); await sleep(450);
     h = await HS(); const c1 = await cr();

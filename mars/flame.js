@@ -87,7 +87,9 @@ const indoors = () => document.body.classList.contains('indoors') || !!R.tc?.wor
 function onFoot() { const tc = R.tc; return !!tc && !tc.car && !indoors() && document.body.classList.contains('surface'); }
 function inPit() { try { return !!window.SSX?.arsenal?.inPit?.(); } catch (e) { return false; } }
 // equipped, owned and on foot: FIRE belongs to the flamer (even with an empty tank or in the pit, so the gun doesn't fire instead)
-function wants() { return S.eq && owned() && onFoot(); }
+function sickleTurn() { try { return !!window.SSX?.harvest?.claimsFire?.(); } catch (e) { return false; } }
+// at your own farm by a ripe rack (or the silo with a bale) FIRE swings the sickle instead (mars/harvest.js claimsFire)
+function wants() { return S.eq && owned() && onFoot() && !sickleTurn(); }
 function airborne() {
   try { const J = window.SSX?.jetpack; if (J) { const a = typeof J.active === 'function' ? J.active() : (J.flying ?? J.on ?? J.state?.flying); if (a) return true; } } catch (e) { /* guarded: jetpack not merged yet */ }
   const p = R.tc?.player; return !!p && p.grounded === false;
