@@ -287,6 +287,53 @@ function payImpound() {
   return { ok: true, msg: `🚧 Paid ${q.impound} cr. Your rover is released (walk to the lot or summon it).`, cost: q.impound };
 }
 
+// ---------- v7.5.8: summoning an impounded rover ----------
+// Summon used to fake success (dust puff, Drive flash) and then impoundTick dragged the rover back to the lot.
+// Now surface.summonRover() asks roverImpounded() first and ☰ Summon opens this card instead.
+const roverImpounded = () => !!S.impound && onMars();
+let impCard = null;
+const IMP_CSS = '#impCard{display:none;position:fixed;z-index:40;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);box-sizing:border-box;width:min(340px,calc(100vw - 20px));padding:12px;border-radius:12px;background:rgba(0,0,0,.94);color:#fff;border:2px solid #fff;font:700 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.6)}'
+  + '#impCard.show{display:block} #impCard p{margin:0 26px 10px 0} #impCard .why{margin:0 0 8px;font:600 13px/1.3 system-ui,sans-serif;color:#ffd27a;min-height:0}'
+  + '#impCard .row{display:flex;gap:8px;flex-wrap:wrap} #impCard .row button{flex:1 1 140px;min-height:48px;padding:6px 8px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px/1.2 system-ui,sans-serif;touch-action:manipulation}'
+  + '#impCard .row button:disabled{background:#000!important} #impCard #impX{position:absolute;right:6px;top:6px;width:44px;height:44px;border:0;background:none;color:#fff;font:700 22px/1 system-ui,sans-serif}'
+  + 'body.cinematic #impCard{display:none!important}';
+function impUi() {
+  if (impCard) return; const st = document.createElement('style'); st.id = 'impCss'; st.textContent = IMP_CSS; document.head.appendChild(st);
+  impCard = document.createElement('div'); impCard.id = 'impCard'; impCard.setAttribute('role', 'dialog'); impCard.setAttribute('aria-label', 'Rover impounded');
+  impCard.innerHTML = '<button id="impX" type="button" aria-label="Close">×</button><p>Your rover\u2019s impounded at ColSec (Olympus Row).</p><div class="why" id="impWhy"></div>'
+    + '<div class="row"><button id="impPay" type="button"></button><button id="impWay" type="button">Waypoint to impound</button></div>';
+  document.body.appendChild(impCard);
+  tap(impCard.querySelector('#impPay'), () => payAndSummon()); tap(impCard.querySelector('#impWay'), () => waypointImpound()); tap(impCard.querySelector('#impX'), () => hideImpCard());
+}
+function renderImpCard() {
+  if (!impCard) return; const q = quote(), have = credits(), short = have < q.impound, b = impCard.querySelector('#impPay');
+  b.textContent = `Pay fee (${q.impound} cr) & summon`; b.disabled = short;
+  impCard.querySelector('#impWhy').textContent = short ? `Not enough cash: you have ${have} cr, the fee is ${q.impound} cr.` : '';
+}
+function impoundCard() {
+  if (!roverImpounded()) { hideImpCard(); return false; }
+  impUi(); renderImpCard(); impCard.classList.add('show'); return true;
+}
+function hideImpCard() { impCard?.classList.remove('show'); }
+function payAndSummon() {
+  if (!S.impound) { hideImpCard(); return { ok: false, msg: 'Nothing of yours in the impound.' }; }
+  const r = payImpound(); if (!r.ok) { renderImpCard(); toast(r.msg, 2600); return r; }
+  hideImpCard(); const s = surf()?.summonRover?.();
+  toast(s?.ok ? `🚧 Paid ${r.cost} cr. 🚙 Your rover\u2019s out of the impound and right beside you.` : `${r.msg} (Summon: ${s?.why || 'not now'}.)`, 3200);
+  return { ok: true, cost: r.cost, summoned: !!s?.ok };
+}
+function waypointImpound() {
+  const I = W(PL.impound.at, BOOTH); if (!I) return false;
+  try { window.SSX?.hudx?.setWaypoint?.({ x: I.x, z: I.z, label: 'ColSec Impound (Olympus Row)' }); } catch (e) { /* no HUD */ }
+  hideImpCard(); return true;
+}
+let summonLbl = '';
+function summonLabel() { // ☰ "🚙 Summon rover here" says (impounded) while it is
+  const b = document.getElementById('rmSummon'); if (!b) return; if (!summonLbl) summonLbl = b.textContent;
+  const t = roverImpounded() ? `${summonLbl} (impounded)` : summonLbl; if (b.textContent !== t) b.textContent = t;
+  if (impCard?.classList.contains('show')) { if (!roverImpounded()) hideImpCard(); else renderImpCard(); }
+}
+
 // ---------- jailbreak ----------
 function jailbreak() {
   const n = needCell(); if (n) return n;
@@ -503,16 +550,17 @@ function refreshHud(force) {
 let hudT = 0;
 function tick(dt, tc) {
   lastTc = tc; if (!fin(dt)) return;
-  if (!onMars()) { if (G) teardown(); if (jail) endJail(false); refreshHud(); return; }
+  if (!onMars()) { if (G) teardown(); if (jail) endJail(false); refreshHud(); summonLabel(); return; }
   if (!G || G.parent !== tc.scene) build(tc.scene);
   custodyTick(tc); if (jail) jailTick(dt, tc); impoundTick(dt, tc);
-  if ((hudT -= dt) <= 0) { hudT = 0.25; refreshHud(); if (panel?.classList.contains('show') && pMode === 'legal') { /* live credits */ } }
+  if ((hudT -= dt) <= 0) { hudT = 0.25; refreshHud(); summonLabel(); if (panel?.classList.contains('show') && pMode === 'legal') { /* live credits */ } }
 }
 const API = {
   ownsOutcome, status: () => ({ custody: custody ? { stars: custody.stars, lawyer: custody.lawyer, refused: custody.refused, inCell: custody.inCell, extra: custody.extra, seized: { weapons: custody.weapons?.n | 0, contraband: custody.contraband?.n | 0 } } : null,
     jail: jail ? { spotted: jail.spotted, t: Math.round(jail.t * 10) / 10 } : null, strikes: S.strikes, evidence: S.evidence ? { n: S.evidence.n, lawyer: !!S.evidence.lawyer } : null, impound: S.impound ? { ...S.impound } : null,
     lawyer: lawyerOn(), clock: clock(), pending: pending ? { why: pending.why, stars: pending.stars } : null, stats: { ...S.stats } }),
   quote: () => quote(), serve, bail, bribe, lawyer, jailbreak, reclaim, payImpound, clearStrike, clock,
+  roverImpounded, impoundCard, payAndSummon, waypointImpound, hideImpoundCard: hideImpCard, // v7.5.8
   places: () => Object.values(PL).map(p => { const w = W(p.at); return { id: p.id, name: p.name, x: w?.x, z: w?.z, r: p.r }; }),
   ledger: () => S.ledger.map(l => ({ ...l })), lawyerInfo: { ...LAWYER }, open: m => showPanel(m || (custody?.inCell ? 'booking' : 'legal')), close: closePanel, on, key: HOTKEY,
   debug: {
@@ -520,7 +568,9 @@ const API = {
     reset: () => { S = fresh(); save(); custody = null; jail = null; pending = null; closePanel(); refreshHud(true); return true; },
     toLocal: (id, d) => W(PL[id].at, d || [0, 0]), layout: () => ({ YARD, CELL, FRONT, DESK, EXIT, GAP, LOT, LOT_SLOT, BOOTH, GUARDS, SIGHT }),
     freezeGuards: on => { if (jail) jail.freeze = on !== false; return !!jail; }, guards: () => jail ? jail.guards.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })) : [],
-    spot: () => { spotted('debug'); return !!jail?.spotted; }, inPit, impoundRover, skipClock, rover: () => { const r = lastTc?.rover; return r ? { x: r.x, y: r.y, z: r.z } : null; }, inLot
+    spot: () => { spotted('debug'); return !!jail?.spotted; }, inPit, impoundRover,
+    impound: () => { S.impound = { t: Date.now(), lawyer: false }; save(); return impoundRover(); }, // v7.5.8 tests: tow the rover as a bust would
+    skipClock, rover: () => { const r = lastTc?.rover; return r ? { x: r.x, y: r.y, z: r.z } : null; }, inLot
   }
 };
 (function boot() {
