@@ -1,4 +1,4 @@
-// v7.5.4 test: Danny Nova's private show (privateshow.js). Talk to her in the VIP room, 18+ gate, offer panel,
+// v7.5.4 test: Danny Alvarez's private show (privateshow.js). Talk to her in the VIP room, 18+ gate, offer panel,
 // pay 150, upstairs booth (cinematic camera, HUD hidden), three tips unlock her number, touching gets you thrown out.
 // Also renders FRONT / SIDE / PRIVATE SHOW screenshots and reports draw calls, textures, frame time and browser PSS.
 // v3: FACE close-up, LAP DANCE booth shots (250 cr chair dance: distance to the player, tip, leave), crossfade pops
@@ -69,7 +69,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     for (let i = 0; i < 3; i++) { if (desk) await page.keyboard.press('KeyT'); else await tapSel('#pshowTip'); await sleep(350); }
     ok('tips', await G(() => window.__pshow.state.tips), await G(c => window.__pshow.state.tips === 3 && window.__app.game.progress.credits === c - 60, c1));
     ok('tipBonus', await G(l => +(window.__pshow.state.left - l).toFixed(1), left0), await G(l => window.__pshow.state.left > l + 10, left0));
-    ok('number', await G(() => localStorage.getItem('ssx.contacts')), await G(() => /Danny Nova/.test(localStorage.getItem('ssx.contacts') || '') && /contacts/.test(document.getElementById('pshowCap').textContent)));
+    ok('number', await G(() => localStorage.getItem('ssx.contacts')), await G(() => /Danny Alvarez/.test(localStorage.getItem('ssx.contacts') || '') && !/Nova/.test(localStorage.getItem('ssx.contacts') || '') && /Danny Alvarez added to your contacts/.test(document.getElementById('pshowCap').textContent)));
     await page.screenshot({ path: `${out}danny-${tag}-number.png` });
     // FRONT / SIDE views of her in the booth light
     await G(() => window.__pshow.debugView('front')); await sleep(1500); await page.screenshot({ path: `${out}danny-${tag}-front.png` });
@@ -93,6 +93,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     if (!desk) for (let i = 0, p = null; i < 12; i++) { const c = await center('#dockTexts'); if (p && c && c.x === p.x && c.y === p.y && c.top === 'dockTexts') break; p = c; await sleep(400); } // the dock re-flows when the door/interact button pops in; tap once it has settled
     if (desk) await page.keyboard.press('Shift+KeyI'); else if (await G(() => document.body.classList.contains('hxFold'))) { await tapSel('#menuBtn'); await sleep(400); await G(() => document.getElementById('hxm_dockTexts')?.scrollIntoView({ block: 'center' })); await sleep(300); await tapSel('#hxm_dockTexts'); } else await tapSel('#dockTexts'); // v7.5.5: phones fold the dock into ☰ (hud/hudx.js); desktop texts moved to Shift+I
     ok('textsOpen', await wait(() => document.getElementById('ssxTexts').classList.contains('show') && document.querySelectorAll('#ssxTexts .b').length >= 3, 3000));
+    ok('textsName', await G(() => document.querySelector('#ssxTexts .hd span')?.textContent || ''), await G(() => /^Danny Alvarez/.test(document.querySelector('#ssxTexts .hd span')?.textContent || '')));
     const xb = await center('#ssxTextsClose'); ok('textsClose44', `${Math.round(xb.w)}x${Math.round(xb.h)} top=${xb.top}`, xb.h >= 44 && xb.top === 'ssxTextsClose');
     await page.screenshot({ path: `${out}danny-${tag}-texts.png` });
     ok('textsRead', await G(() => window.__texts.state.unread === 0));

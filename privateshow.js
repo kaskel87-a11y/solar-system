@@ -1,4 +1,4 @@
-// v7.5.4 Velvet Airlock: Danny Nova's private show in the upstairs VIP booth (adults only).
+// v7.5.4 Velvet Airlock: Danny Alvarez's private show in the upstairs VIP booth (adults only).
 // GTA-style and non-explicit: her costume stays on, there is no nudity, no sexual act and no contact. The player sits,
 // she dances a short teasing routine (CMU mocap: salsa sway 61_05, modern dance 05_12) and the camera does the rest.
 // Tips buy extra time and, after enough of them, her (fictional) number. Touching her gets you thrown out by Tiny.
