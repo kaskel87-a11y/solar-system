@@ -117,3 +117,21 @@ export const LINES = {
   home: ['💰 Home. Cash or a favor?']
 };
 export const line = (k, i = 0) => { const a = LINES[k] || ['']; return a[Math.abs(i | 0) % a.length]; };
+
+// heat routing (pure): SSX.pursuit exposes addHeat / spike (main), older builds had raise. A call that throws or answers
+// { ok: false } (spike refuses off Mars, e.g. a seizure in orbit) is queued as pendingWanted, applied on the next Mars
+// landing. 'pit' is the fight-club safe zone: no heat, nothing queued.
+export const HEAT_FNS = ['addHeat', 'spike', 'raise'];
+export function routeHeat(p, n, why) {
+  if (!p || typeof p !== 'object') return { via: 'local' };
+  for (const k of HEAT_FNS) {
+    if (typeof p[k] !== 'function') continue;
+    let r; try { r = p[k](n, why); } catch (e) { continue; }
+    if (r && typeof r === 'object' && r.ok === false) return r.why === 'pit' ? { via: 'pit', fn: k } : { via: 'pending', fn: k, why: r.why || 'refused' };
+    return { via: 'pursuit', fn: k };
+  }
+  return { via: 'pending', fn: null };
+}
+export const queueWanted = (pending, cur, n) => clamp(Math.max(+pending || 0, +cur || 0) + n, 0, 5);
+// what to set world.wanted to on landing: never lower it, round the queued stars, 0 = nothing to do
+export const landWanted = (pending, cur) => { const p = Math.round(+pending || 0); return p > 0 ? Math.max(+cur || 0, p) : 0; };

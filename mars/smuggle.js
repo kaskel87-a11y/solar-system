@@ -34,16 +34,18 @@ function heat() {
 function raiseHeat(n, why) {
   const p = SSX().pursuit;
   if (p) {
-    if (typeof p.raise === 'function') { try { p.raise(n, why); return 'pursuit'; } catch (e) { /* fall through */ } }
-    R.pendingWanted = C.clamp(Math.max(R.pendingWanted, heat()) + n, 0, 5); return 'pending'; // applied to world.wanted when you land on Mars
+    const r = C.routeHeat(p, n, why); R.heatFn = r.fn || null;
+    if (r.via === 'pending') R.pendingWanted = C.queueWanted(R.pendingWanted, heat(), n); // applied to world.wanted on the next Mars landing
+    return r.via;
   }
   S.heat = C.clamp(heat() + n, 0, 5); S.heatT = Date.now(); save(); return 'local';
 }
 function applyPending() {
-  if (!R.pendingWanted) return;
-  const w = app()?.surface?.world; if (!w?.setWanted) return;
-  try { w.setWanted(Math.max(w.wanted || 0, Math.round(R.pendingWanted)), 'smuggling: customs flagged your ship'); } catch (e) { /* */ }
-  R.pendingWanted = 0;
+  if (!R.pendingWanted) return false;
+  const w = app()?.surface?.world; if (!w?.setWanted) return false;
+  const to = C.landWanted(R.pendingWanted, w.wanted);
+  try { if (to > (w.wanted || 0)) w.setWanted(to, 'smuggling: customs flagged your ship'); } catch (e) { return false; }
+  R.pendingWanted = 0; return true;
 }
 
 // ---------- rolls: SSX.airRoll (#41, the ship counts) when it can, else the ship's own barrel roll ----------
@@ -174,6 +176,7 @@ function tick(now) {
   requestAnimationFrame(tick);
   const dt = Math.min(0.1, Math.max(0, (now - lastT) / 1000)); lastT = now; R.t += dt;
   const a = app(); if (!a) return;
+  if (R.pendingWanted && onMars() && !a.state?.transitioning) applyPending(); // any Mars landing, run or not
   const mm = marsMesh(); if (!mm) return;
   const mp = v3(mm.getWorldPosition(new THREE.Vector3())), prev = R.mp; R.mp = mp;
   const r = R.run;
@@ -329,7 +332,7 @@ function setup() {
 setup();
 
 const api = {
-  get state() { const r = R.run; return { run: r ? { ...r, cleared: [...R.cleared] } : null, saved: { ...S }, heat: heat(), heatVia: SSX().pursuit ? (typeof SSX().pursuit.raise === 'function' ? 'pursuit' : 'pending') : 'local', pendingWanted: R.pendingWanted,
+  get state() { const r = R.run; return { run: r ? { ...r, cleared: [...R.cleared] } : null, saved: { ...S }, heat: heat(), heatVia: SSX().pursuit ? (C.HEAT_FNS.some(k => typeof SSX().pursuit[k] === 'function') ? 'pursuit' : 'pending') : 'local', heatFn: R.heatFn || null, pendingWanted: R.pendingWanted,
     scanning: R.scanning, scan: Object.fromEntries(Object.entries(R.sc).map(([k, v]) => [k, Math.round(v.v * 100) / 100])), interceptors: R.icp.length, locked: R.locked, why: why(), last: R.last || null, t: R.t }; },
   start, bribe, dump, payout, roll,
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); },
@@ -342,6 +345,7 @@ const api = {
     placeInBeam(id = 'kestrel', k = 12) { const g = geo(), b = g.bs.find(x => x.id === id) || g.bs[0]; return api.debug.place(add3(b.pos, b.dir.map(v => v * k)), b.pos); },
     placeAtPhobos(off = 4) { const g = geo(); return api.debug.place(add3(g.ph, [0, off, 0]), [0, 0, 0]); },
     placeNearMars(k = 30) { const g = geo(), n = C.norm(g.ph); return api.debug.place([n[0] * k, 2, n[2] * k], [0, 0, 0]); },
+    applyPending: () => applyPending(), pending: () => R.pendingWanted,
     pause(v = true) { R.paused = !!v; }, flag: (id = 'kestrel') => flag(id), pauseDrop(v = true) { R.pauseDrop = !!v; }, hold: () => R.holdT,
     forceStart() { R.run = C.newRun(R.t); R.a0 = Math.random() * Math.PI * 2; R.sc = {}; R.cleared = new Set(); R.holdT = 0; clearIcp(); emit('start'); return true; },
     skipTo(ph) { if (R.run) { R.run.phase = ph; R.payT = 0; } }, cool() { R.cd = -1e9; }, setHp(v) { if (R.run) R.run.hp = v; },

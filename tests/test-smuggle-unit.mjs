@@ -71,4 +71,18 @@ ok('loadStateBad', C.loadState('{nope').runs === 0 && C.loadState(null).heat ===
 // chatter
 ok('lines', Object.values(C.LINES).every(a => a.length && a.every(l => typeof l === 'string' && l.length < 110)) && C.line('nope') === '' && C.line('scan', 3) === C.LINES.scan[1]);
 
+// heat routing: main's SSX.pursuit has addHeat + spike (no raise); spike refuses off Mars -> queue for landing
+{ const calls = []; const P = { addHeat: (n, w) => { calls.push(['addHeat', n, w]); return { ok: true, stars: 1 }; }, spike: () => calls.push(['spike']) };
+  const r = C.routeHeat(P, 1, 'smuggling: seized'); ok('routeAddHeatFirst', r.via === 'pursuit' && r.fn === 'addHeat' && calls.length === 1 && calls[0][1] === 1, JSON.stringify(r)); }
+ok('routeSpikeOnly', C.routeHeat({ spike: () => ({ ok: true }) }, 1).fn === 'spike');
+ok('routeRaiseLegacy', C.routeHeat({ raise: () => undefined }, 1).via === 'pursuit' && C.routeHeat({ raise: () => undefined }, 1).fn === 'raise');
+ok('routeNoFnPending', C.routeHeat({ heat: () => 0, on: () => {} }, 1).via === 'pending');
+ok('routeOffMarsPending', (r => r.via === 'pending' && r.why === 'off')(C.routeHeat({ addHeat: () => ({ ok: false, why: 'off', stars: 0 }) }, 1)));
+ok('routeThrowFallsThrough', C.routeHeat({ addHeat: () => { throw new Error('x'); }, spike: () => ({ ok: true }) }, 1).fn === 'spike');
+ok('routeAllThrowPending', C.routeHeat({ addHeat: () => { throw new Error('x'); } }, 1).via === 'pending');
+ok('routePitNoQueue', C.routeHeat({ addHeat: () => ({ ok: false, why: 'pit' }) }, 1).via === 'pit');
+ok('routeNoPursuitLocal', C.routeHeat(null, 1).via === 'local' && C.routeHeat(undefined, 1).via === 'local');
+ok('queueWanted', C.queueWanted(0, 0, 1) === 1 && C.queueWanted(1, 0, 1) === 2 && C.queueWanted(0, 2, 1) === 3 && C.queueWanted(5, 0, 1) === 5);
+ok('landWanted', C.landWanted(2, 0) === 2 && C.landWanted(1, 3) === 3 && C.landWanted(0, 3) === 0 && C.landWanted(1.4, 0) === 1 && C.landWanted(null, 1) === 0);
+
 console.log(fails ? `${fails}/${n} FAILED` : `ALL PASS (${n})`); process.exit(fails ? 1 : 0);

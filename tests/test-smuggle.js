@@ -93,7 +93,11 @@ const tag = `smuggle-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('bribeCleared', await wait(() => window.SSX.smuggle.state.run.cleared.includes('kestrel') && window.SSX.smuggle.state.run.flags === 0, 3000));
     ok('bribePaid', `${c0 - await credits()} cr`, c0 - await credits() > 0);
     // ---- warden: let the meter fill -> flagged -> interceptors ----
-    await G(() => { window.__raised = []; window.SSX.pursuit = window.SSX.pursuit || { heat: 0, raise(n, why) { this.heat += n; window.__raised.push(why); }, __fake: true }; });
+    // real SSX.pursuit on main (addHeat / spike, no raise): record every call, let it through. Off Mars spike answers
+    // { ok: false, why: 'off' } so orbit heat is queued (pendingWanted) and lands with you.
+    await G(() => { window.__raised = []; const p = window.SSX.pursuit;
+      if (!p) { window.SSX.pursuit = { heat: 0, addHeat(n, why) { this.heat += n; window.__raised.push(why); return { ok: true }; }, __fake: true }; return; }
+      for (const k of ['addHeat', 'spike', 'raise']) if (typeof p[k] === 'function' && !p[k].__wrapped) { const f = p[k]; p[k] = function (n, why) { window.__raised.push(k + ':' + why); return f.apply(this, arguments); }; p[k].__wrapped = true; } });
     await D('placeInBeam', ['warden', 10]);
     ok('flagged', await wait(() => window.SSX.smuggle.state.run.flags === 1, 30000));
     ok('flagToast', (await toasts()).some(t => /🚨/.test(t)));
@@ -131,6 +135,8 @@ const tag = `smuggle-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('hudHome', await G(() => document.querySelector('#smgHud .t').textContent), /Mars \d+/.test(await G(() => document.querySelector('#smgHud .t').textContent)));
     // ---- home: land on Mars, take the cash ----
     ok('landed', await landMars());
+    ok('flagWantedOnLanding', await G(() => `wanted ${window.__app.surface.world.wanted}, pending ${window.SSX.smuggle.state.pendingWanted}`), await wait(() => window.__app.surface.world.wanted >= 1 && window.SSX.smuggle.state.pendingWanted === 0, 8000));
+    await G(() => window.__app.surface.world.setWanted(0)); // keep the payout taps free of a chase
     ok('payoutPhase', await wait(() => window.SSX.smuggle.state.run?.phase === 'payout', 8000));
     if (touch) ok('dockCashFavor', await wait(() => /CASH/.test(document.getElementById('dockSmg').textContent) && getComputedStyle(document.getElementById('dockSmgF')).display !== 'none', 10000));
     const hp = (await st()).run.hp, cA = await credits();
@@ -159,11 +165,14 @@ const tag = `smuggle-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('seized', await wait(() => !window.SSX.smuggle.state.run, 30000));
     ok('seizedToast', (await toasts()).some(t => /seized/.test(t)));
     ok('failedCount', (await st()).saved.failed, (await st()).saved.failed === 2);
-    ok('seizedHeat', await G(() => window.__raised.length), (await G(() => window.__raised.length)) >= 2);
+    ok('seizedHeat', await G(() => window.__raised.join('|')), (await G(() => window.__raised.length)) >= 2 && (await G(() => window.__raised.some(r => /cargo seized/.test(r)))));
+    ok('seizedQueued', await G(() => `${window.SSX.smuggle.state.pendingWanted} via ${window.SSX.smuggle.state.heatFn}`), (await G(() => window.SSX.smuggle.state.pendingWanted)) >= 1 || (await G(() => !!window.SSX.pursuit.__fake)));
     ok('hudGone', !(await shown('#smgHud')));
     // ---- back on Mars: budget ----
     await G(() => window.__app.takeOff()).catch(() => {});
     ok('landed2', await landMars());
+    // the bug: a seizure in orbit never raised wanted. Now it lands with you, and the queue clears.
+    ok('seizedWantedOnLanding', await G(() => `wanted ${window.__app.surface.world.wanted}, pending ${window.SSX.smuggle.state.pendingWanted}`), await wait(() => window.__app.surface.world.wanted >= 1 && window.SSX.smuggle.state.pendingWanted === 0, 8000));
     const b = await G(() => window.SSX.city?.npcBudget?.() || null); ok('npcBudget', b ? `${b.used}/${b.cap}` : 'n/a', !b || (b.used <= b.cap && (!touch || b.cap <= 12)));
     ok('noErrors', errors.length ? errors.slice(0, 5).join(' | ') : 'none', errors.length === 0);
   } catch (e) { bad.push('EXC ' + e.message.slice(0, 300)); }
