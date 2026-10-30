@@ -38,6 +38,7 @@ const PRECACHE = [
   `brightness.js${q}`, `brightnesscore.js${q}`, // ☰ → ☀️ Brightness + night floor
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
+  `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   `clubdancers.js${q}`, `privateshow.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
