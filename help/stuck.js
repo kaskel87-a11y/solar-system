@@ -23,7 +23,7 @@ const tapOn = (el, fn) => {
 
 const CSS = `
 #hxStuck{display:none;flex:none;align-self:flex-start;min-width:44px;min-height:44px;padding:2px 4px;border-radius:9px;background:#000;color:#fff;border:2px solid #fff;font:800 10px/1.1 system-ui,sans-serif;touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:transparent}
-#hxStuck.vis{display:block} #hxStuck.hot{border-color:#ffd400} body.hidehud #hxStuck,body.cinematic #hxStuck{display:none!important}
+#hxStuck.vis{display:block} #hxStuck.hot{border-color:#ffd400} body.hidehud #hxStuck,body.cinematic #hxStuck,body:has(#roverMenu.show) #hxStuck{display:none!important}
 #farmGuide #hxStuck{width:auto;height:44px;font:800 12px/1 system-ui,sans-serif;background:#000;color:#fff}
 #stuckPop{position:fixed;z-index:30;display:none;box-sizing:border-box;max-width:min(340px,calc(100vw - 16px));padding:10px 12px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:700 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.6);pointer-events:auto}
 #stuckPop.on{display:block} #stuckPop .t{margin:0 0 8px} #stuckPop .row{display:flex;flex-wrap:wrap;gap:6px}
