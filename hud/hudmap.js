@@ -57,7 +57,7 @@ function choose(p) {
 function list() {
   const md = A.mapData(), L = el.querySelector('.lst'); if (!md) { L.innerHTML = '<div>Land somewhere first.</div>'; return; }
   const ob = A.objective(md), wp = A.S.wp, f = A.S.filters;
-  const items = [...A.pois(true), ...(window.SSX?.fastTravel?.mapPlaces?.() || [])].filter(p => f[p.cat] || p.ft) // + mars/fasttravel.js places (guarded).map(p => ({ ...p, d: Math.hypot(p.x - md.x, p.z - md.z) })).sort((a, b) => a.d - b.d);
+  const items = [...A.pois(true), ...(window.SSX?.fastTravel?.mapPlaces?.() || [])].filter(p => f[p.cat] || p.ft).map(p => ({ ...p, d: Math.hypot(p.x - md.x, p.z - md.z) })).sort((a, b) => a.d - b.d); // + mars/fasttravel.js places (guarded)
   const rows = [];
   if (ob) rows.push({ id: 'active', icon: '◆', name: ob.kind === 'quest' ? `${ob.label}` : ob.label, sub: ob.kind === 'quest' ? A.plainStep(A.app()?.surface?.game?.info?.quest?.text || '').text : 'Active objective', x: ob.x, z: ob.z, d: Math.hypot(ob.x - md.x, ob.z - md.z), active: true });
   shown = [...rows, ...items.slice(0, 60)];
