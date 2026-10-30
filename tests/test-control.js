@@ -26,6 +26,8 @@ require('fs').mkdirSync(OUT, { recursive: true });
   // Desktop answers the radio with its keyboard shortcuts (Enter / Backspace), which click the real buttons; touch taps them.
   const tap = async sel => { if (mobile) await page.tap(sel); else if (KEYS[sel]) await page.keyboard.press(KEYS[sel]); else await page.click(sel); };
   const openCard = async () => { if (await G(() => document.getElementById('radio').classList.contains('mini'))) { await tap('#radio .from'); await sleep(250); } };
+  // a toast or discovery pop can fold the card back to the mini pill right after it opens (index.html shrinkRadio): reopen and retry
+  const acceptCard = async () => { for (let i = 0; i < 4; i++) { await openCard(); if (!mobile) return tap('#radioAccept'); try { await page.tap('#radioAccept', { timeout: 2500 }); return; } catch (e) { if (i === 3) throw e; } await sleep(250); } };
   const quiet = async ms => { const o0 = (await st()).offers; await sleep(ms); return (await st()).offers === o0 && !(await offerUp()); };
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 240000);
@@ -78,7 +80,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
     await waitMine(12000);
     await G(() => window.SSX.control.later()); await sleep(200);
     ok('offerTaxi', (await G(() => window.SSX.control.offerNow('taxi'))).ok);
-    await openCard(); await tap('#radioAccept');
+    await acceptCard();
     ok('taxiStarted', await wait(() => window.SSX.jobs?.active?.()?.type === 'taxi', 4000));
     ok('busyJob', await G(() => window.SSX.control.busy()) === 'job');
     await sleep(800); await page.screenshot({ path: `${OUT}control-taxi-${tag}.png` });
@@ -90,11 +92,13 @@ require('fs').mkdirSync(OUT, { recursive: true });
     // 6) Door Shift (side activity) through Accept
     await G(() => window.SSX.control.later()); await sleep(200);
     const ds = await G(() => window.SSX.control.offerNow('act-static-bounce')); R.doorShiftOffer = ds.ok;
-    if (ds.ok) { await openCard(); await tap('#radioAccept'); ok('doorShiftStarted', await wait(() => window.__activities?.active?.id === 'act-static-bounce', 4000)); ok('busyActivity', /activity|quest/.test(await G(() => window.SSX.control.busy()) || '')); await G(() => window.__activities.abandon()); await sleep(300); }
+    if (ds.ok) { await acceptCard(); ok('doorShiftStarted', await wait(() => window.__activities?.active?.id === 'act-static-bounce', 4000)); ok('busyActivity', /activity|quest/.test(await G(() => window.SSX.control.busy()) || '')); await G(() => window.__activities.abandon()); await sleep(300); }
     // 7) wanted, Rust Pit duel, race: no offers while busy
-    await G(() => { window.SSX.control.later(); window.__app.surface.world.setWanted(2, 'test'); }); await sleep(300);
+    // keep the player standing through the wanted window: cops near the spawn can down you in 6 s and then busy() is down/custody, not pit
+    await G(() => { window.__ctlHeal = setInterval(() => { try { window.__app.game.restore(); } catch (e) { } }, 150); window.SSX.control.later(); window.__app.surface.world.setWanted(2, 'test'); }); await sleep(300);
     ok('busyWanted', await G(() => window.SSX.control.busy()) === 'wanted'); ok('quietWhileWanted', await quiet(6000));
-    await G(() => window.__app.surface.world.setWanted(0, 'test'));
+    await G(() => { window.__app.surface.world.setWanted(0, 'test'); clearInterval(window.__ctlHeal); });
+    R.custodyAfterWanted = await G(() => { const c = window.SSX.consequences?.status?.(); const was = !!(c && (c.custody || c.jail || c.pending)); if (was) window.SSX.consequences.debug.reset(); return was; }); // a bust in that window is the cops, not Control
     const home = await G(() => { const i = window.__app.surface.info; return { x: i.x, z: i.z }; });
     await G(() => window.SSX.fight.debug.goto()); await sleep(400);
     ok('busyPit', await G(() => window.SSX.control.busy()) === 'pit'); ok('quietInPit', await quiet(6000));

@@ -23,7 +23,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, h: r.height, bg: cs.backgroundColor, fg: cs.color, dis: e.disabled }; }, sel);
   const ready = sel => wait(s => { const b = document.querySelector(s); return b && !b.dataset.hold; }, 3000, sel);
   const press = async (b, n = 1) => { for (let k = 0; k < n; k++) { if (desk) await page.mouse.click(b.x, b.y); else await page.touchscreen.tap(b.x, b.y); if (k + 1 < n) await sleep(40); } };
-  const tapSel = async (sel, n = 1) => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(120); await ready(sel); const b = await box(sel); if (!b) throw new Error('no ' + sel); await press(b, n); await sleep(250); return b; };
+  const tapSel = async (sel, n = 1) => { await G(s => document.querySelector(s)?.scrollIntoView({ block: 'center' }), sel); await sleep(450); await ready(sel); const b = await box(sel); if (!b) throw new Error('no ' + sel); await press(b, n); await sleep(250); return b; };
   let shotN = 0; const shot = async name => { if (desk) return; await fr(3); const f = `starshop-${++shotN}-${name}-${tag}.png`; await page.screenshot({ path: out + f }); (R.shots ||= []).push(out + f); };
   const st = () => G(() => window.SSX.starshop.status());
   const xp = () => G(() => ({ xp: window.__app.game.progress.xp, rank: window.__app.game.info.rank }));

@@ -68,7 +68,7 @@ function hornUI(show) {
     const go = e => { e.preventDefault(); e.stopPropagation(); unlock(); honk(); hornBtn.animate?.([{ transform: 'scale(.88)' }, { transform: 'scale(1)' }], 160); };
     hornBtn.addEventListener('pointerdown', go); hornBtn.addEventListener('click', e => e.preventDefault());
     document.body.appendChild(hornBtn);
-    const st = document.createElement('style'); st.textContent = 'body:has(#roverMenu.show) #ssxMouthHorn, body.cinematic #ssxMouthHorn { display: none !important; }'; document.head.appendChild(st); // even if the tick pauses under the menu
+    const st = document.createElement('style'); st.textContent = 'body:has(#roverMenu.show) #ssxMouthHorn, body.cinematic #ssxMouthHorn { display: none !important; } @media (max-height: 440px) { #ssxMouthHorn { left: calc(140px + env(safe-area-inset-left)) !important; bottom: calc(24px + env(safe-area-inset-bottom)) !important; } }'; document.head.appendChild(st); // even if the tick pauses under the menu
   }
   const want = show && !document.body.classList.contains('cinematic') && !document.querySelector('#roverMenu.show') && !window.SSX?.hudx?.mapOpen?.() ? 'block' : 'none'; // v7.5.6: not over the open ☰ menu or the full map
   if (hornBtn.style.display !== want) hornBtn.style.display = want;
