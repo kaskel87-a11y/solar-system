@@ -26,9 +26,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       // v7.5.5 HUD pass: on phones the dock folds into the ☰ menu; the same panel opens from there
       ok('dockFolded', !(await box(dock[0]))?.vis);
       const word = { contraband: 'Stash', jobs: 'Jobs', turf: 'Turf' }[MODE];
-      await tapSel('#menuBtn'); await sleep(300);
-      ok('menuItem', await G(w => { const b = [...document.querySelectorAll('#roverMenu button')].find(e => e.textContent.includes(w) && getComputedStyle(e).display !== 'none'); if (b) b.dataset.td = '1'; return b ? b.textContent.trim() : false; }, word));
-      await tapSel('#roverMenu button[data-td="1"]'); ok('menuOpensPanel', await wait(sel => document.querySelector(sel).classList.contains('show'), 4000, dock[1]));
+      // v7.6: the folded column lives in the black ▤ More button (its ☰ twin is hidden while More is up); ☰ is the fallback
+      const more = await G(() => { const m = document.getElementById('hxMore'); return !!m && getComputedStyle(m).display !== 'none'; }); R.via = more ? 'more' : 'menu';
+      const host = more ? '#hxMoreP' : '#roverMenu';
+      if (more) { await checkBtn('moreBtn', '#hxMore'); if (!(await G(() => document.getElementById('hxMoreP').classList.contains('show')))) await tapSel('#hxMore'); } else await tapSel('#menuBtn'); await sleep(300);
+      ok('menuItem', await G(([w, h]) => { const b = [...document.querySelectorAll(h + ' button')].find(e => e.textContent.includes(w) && getComputedStyle(e).display !== 'none'); if (b) b.dataset.td = '1'; return b ? b.textContent.trim() : false; }, [word, host]));
+      if (more) await checkBtn('moreItemBtn', `${host} button[data-td="1"]`);
+      await tapSel(`${host} button[data-td="1"]`);
+      if (more) ok('moreClosesAfterPick', await G(() => !document.getElementById('hxMoreP').classList.contains('show'))); ok('menuOpensPanel', await wait(sel => document.querySelector(sel).classList.contains('show'), 4000, dock[1]));
       await shot('panel'); await tapSel(dock[2]); ok('panelClosed', !(await G(sel => document.querySelector(sel).classList.contains('show'), dock[1])));
     }
     else {
