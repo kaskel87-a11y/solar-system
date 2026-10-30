@@ -27,10 +27,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('one knob: SSX.economy.payoutMult = 2', await G(() => window.SSX.economy?.payoutMult), await G(() => window.SSX.economy?.payoutMult === 2));
     await G(() => window.SSX.economy.debug.reset());
     // ---- job 1: vigilante bounty
+    await G(() => { if (window.__tlog) return; window.__tlog = []; const a = window.__app, t = a.toast; a.toast = function (m, ...r) { window.__tlog.push(String(m)); return t.call(this, m, ...r); }; });
     const c0 = await cr(); const j1 = await job('vigilante'); const c1 = await cr();
     ok('vigilante pays 2x (bounty + speed bonus)', { ...j1, got: c1 - c0 }, !j1.err && j1.pay === 2 * (j1.base + j1.tip) && c1 - c0 === j1.pay);
     // v7.5.9: the bonus / tip figure in the same toast is the paid (boosted) one, not the base
-    { await wait(() => /quick-work bonus/.test(document.getElementById('toast')?.textContent || ''), j1.tip ? 3000 : 300); const tx = await G(() => document.getElementById('toast')?.textContent || ''); const m = /\+(\d+) quick-work bonus/.exec(tx);
+    { await wait(() => (window.__tlog || []).some(m => /quick-work bonus/.test(m)), j1.tip ? 3000 : 300); const tx = await G(() => (window.__tlog || []).find(m => /quick-work bonus/.test(m)) || document.getElementById('toast')?.textContent || ''); const m = /\+(\d+) quick-work bonus/.exec(tx);
       ok('toast bonus figure is boosted', { tip: j1.tip, shown: m && +m[1], tx: tx.slice(0, 120) }, j1.tip ? (m && +m[1] === 2 * j1.tip) : !m); }
     ok('toast shows the doubled pay', await wait(p => (document.getElementById('toast')?.textContent || '').includes(`+${p} cr`), 3000, j1.pay), await G(() => document.getElementById('toast')?.textContent));
     await sleep(300); await shot('doubled-payout');

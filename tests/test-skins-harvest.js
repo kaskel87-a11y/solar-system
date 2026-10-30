@@ -26,6 +26,7 @@ const out = process.env.OUT || './shots/', sleep = ms => new Promise(r => setTim
     const all = await G(async () => { const k = window.SSX.skins, o = {}; for (const s of k.list()) { if (!k.owned.includes(s.id)) k.buy(s.id); else k.equip(s.id, true); await new Promise(r => requestAnimationFrame(r)); const st = k.state(); o[s.id] = st.applied === s.id ? st.parts : -1; } k.close(); return o; });
     ok('allSkinsApply', all, Object.keys(all).length >= 10 && Object.entries(all).every(([id, n]) => n > 0 || id === 'rusty' && n >= 0));
     await G(() => { window.SSX.skins.equip('overalls'); window.SSX.skins.close(); });
+    await G(() => { const p = window.SSX.farm.places().find(q => q.id === 'farm'); window.__app.surface.debugMove(p.x, p.z + 12, 0); }); await fr(6); await sleep(500);
     for (const f of ['buy', 'buildDome', 'addRack']) { await G(f => window.SSX.farm[f](), f); await sleep(900); }
     await G(() => { const F = window.SSX.farm; F.plant(0, 'potato'); F.refill('water'); F.refill('power'); F.skip(10); F.refill('water'); F.refill('power'); });
     const r0 = (await G(() => window.SSX.farm.rackSpots()))[0];
