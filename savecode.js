@@ -30,7 +30,7 @@
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted',
-    'ssx.v8.v1', 'ssx.v8.nodrs', 'ssx.v8.nogov', 'ssx.models']; // v8 look tier / dev toggles + models on/off (#35/#48): per device
+    'ssx.v8.v1', 'ssx.v8.nodrs', 'ssx.v8.nogov', 'ssx.models', 'ssx.vehicles']; // v8 look tier / dev toggles + models / vehicles on/off (#35/#48/#54): per device
   const OWN = [PENDING, BAK, DONE];
   const MAX_CODE = 4e6, MAX_VAL = 2e6;
   const VERSIONED = /^ssx\.[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*\.v\d+$/;
