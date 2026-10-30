@@ -11,9 +11,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const browser = await pw[BR].launch(BR === 'chromium' ? { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } : {});
   const dev = desk ? { viewport: { width: 1366, height: 768 } } : { ...pw.devices[DEV], ...(DEV === 'iPhone 14' ? { viewport: { width: 393, height: 852 }, screen: { width: 393, height: 852 } } : {}) };
   delete dev.defaultBrowserType;
-  const tag = `${DEV}-${BR}`.replace(/\W+/g, '-').toLowerCase(), R = { tag }, bad = [], errors = [];
+  const tag = `${DEV}-${BR}${process.env.NOGZ ? '-nogz' + process.env.NOGZ : ''}`.replace(/\W+/g, '-').toLowerCase(), R = { tag }, bad = [], errors = [];
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
-  const mk = async name => { const ctx = await browser.newContext(dev); const page = await ctx.newPage();
+  // NOGZ=B (or A, or AB): that device has no CompressionStream / DecompressionStream, like iOS Safari / iOS Chrome before 16.4
+  const NOGZ = process.env.NOGZ || '';
+  const mk = async name => { const ctx = await browser.newContext(dev); if (NOGZ.includes(name)) await ctx.addInitScript(() => { try { delete window.CompressionStream; delete window.DecompressionStream; window.CompressionStream = undefined; window.DecompressionStream = undefined; } catch (e) { /* */ } }); const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(name + ' PE ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(name + ' CE ' + m.text()); }); return { ctx, page }; };
   const H = page => {
     const G = (f, a) => page.evaluate(f, a);
@@ -43,10 +45,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('builtA', { built, owned: fa.owned, racks: fa.racks.length, pa }, built.every(Boolean) && fa.owned && fa.dome && fa.racks.length === 2 && fa.racks[0].crop === 'potato');
     const code = await a.G(() => window.SSX.savecode.export());
     R.codeLen = code.length; R.keysA = await a.G(() => window.SSX.savecode.keys());
-    ok('codeShape', code.slice(0, 12), /^SSX1-g\.[A-Za-z0-9_-]+$/.test(code));
+    ok('codeShape', code.slice(0, 12), (NOGZ.includes('A') ? /^SSX1-j\.[A-Za-z0-9_-]+$/ : /^SSX1-g\.[A-Za-z0-9_-]+$/).test(code));
     // the panel on A shows the same kind of code
     await a.G(() => document.getElementById('rmSaveCode').click()); await a.wait(() => /^SSX1-/.test(document.getElementById('scOut')?.value || ''), 10000);
-    ok('panelCodeA', await a.G(() => /^SSX1-g\./.test(document.getElementById('scOut').value)));
+    ok('panelCodeA', await a.G(() => /^SSX1-[gj]\./.test(document.getElementById('scOut').value)));
     await A.ctx.close();
     // ---- device B: fresh browser ----
     const B = await mk('B'), b = H(B.page);
@@ -62,10 +64,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // copy (clipboard may be refused in a headless browser: either way a plain message)
     await b.tapSel('#scCopy'); ok('copyMsg', await b.G(() => document.getElementById('scMsg').textContent), /copied|selected/i.test(await b.G(() => document.getElementById('scMsg').textContent)));
     // bad code: friendly error, nothing changes
-    const before = await b.G(() => JSON.stringify(Object.keys(localStorage).sort().map(k => [k, localStorage.getItem(k)])));
+    // compare the saves an import would replace (progress, farm, credits) + our own staging keys. The game's own clock / ambient
+    // autosaves (ssx.time.v1 etc.) tick on their own, which made a WebKit run flake here; any change is listed in R.badCodeDiff.
+    const snap = () => b.G(() => { const o = {}; for (const k of Object.keys(localStorage).sort()) o[k] = localStorage.getItem(k); return o; });
+    const WATCH = /^ssx\.(progress\.v1|farm\.v1|stars\.v1|savecode\.)/;
+    const before = await snap();
     await b.G(() => { document.getElementById('scIn').value = 'SSX1-g.thisisnotarealcode'; }); await b.tapSel('#scLoad'); await b.wait(() => /Nothing was changed/.test(document.getElementById('scMsg').textContent), 5000);
     ok('badCode', await b.G(() => document.getElementById('scMsg').textContent), /Nothing was changed/.test(await b.G(() => document.getElementById('scMsg').textContent)) && !(await b.G(() => !!document.getElementById('scYes'))));
-    ok('badCodeNoChange', (await b.G(() => JSON.stringify(Object.keys(localStorage).sort().map(k => [k, localStorage.getItem(k)])))) === before);
+    { const after = await snap(), diff = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(k => before[k] !== after[k]); R.badCodeDiff = diff;
+      ok('badCodeNoChange', diff.filter(k => WATCH.test(k)), !diff.some(k => WATCH.test(k))); }
     await shot(B.page, 'bad-code');
     // paste the real code, Load, confirm
     await b.G(c => { const t = document.getElementById('scIn'); t.value = c; t.dispatchEvent(new Event('input')); }, code);

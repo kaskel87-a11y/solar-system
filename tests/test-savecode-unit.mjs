@@ -41,4 +41,16 @@ const walk = d => { for (const f of fs.readdirSync(d, { withFileTypes: true })) 
 walk(root);
 const miss = [...lits].filter(k => !C.KNOWN.includes(k) && !C.DEVICE.includes(k) && !C.PREFIXES.includes(k) && !C.OWN.includes(k));
 ok('allKeysCovered', !miss.length && lits.size > 30, { miss, n: lits.size });
+// v7.5.9: the pure-JS gunzip fallback (browsers without DecompressionStream, e.g. older iOS Safari / iOS Chrome) matches zlib
+{ const zlib = await import('zlib'); const rs = n => { let t = ''; for (let i = 0; i < n; i++) t += String.fromCharCode(32 + ((Math.random() * Math.random() * 94) | 0)); return t; };
+  for (const c of ['', 'a', rs(200), rs(60000), 'x'.repeat(100000), '💾 ünïcode '.repeat(500)]) for (const level of [0, 1, 6, 9]) {
+    const o = Buffer.from(C.gunzipJS(new Uint8Array(zlib.gzipSync(Buffer.from(c), { level })))).toString(); ok('gunzipJS ' + c.length + '@' + level, o === c); }
+  let threw = false; try { C.gunzipJS(new Uint8Array(zlib.gzipSync(rs(3000))).subarray(0, 80)); } catch (e) { threw = true; } ok('gunzipJS truncated throws', threw);
+  // a gzip code made where CompressionStream exists still loads where it doesn't
+  const g = await C.encode(C.collect(A)); ok('gzipCode', g.startsWith('SSX1-g.'), g.slice(0, 9));
+  const CS = globalThis.CompressionStream, DS = globalThis.DecompressionStream; globalThis.CompressionStream = undefined; globalThis.DecompressionStream = undefined;
+  try { const d = await C.decode(g); ok('gzipCodeWithoutDecompressionStream', d.ok && d.keys['ssx.farm.v1'] === farm, d);
+    const j = await C.encode(C.collect(A)); ok('plainCodeWithoutCompressionStream', j.startsWith('SSX1-j.') && (await C.decode(j)).keys['ssx.farm.v1'] === farm, j.slice(0, 9));
+    const cut = await C.decode(g.slice(0, g.length - 40)); ok('cutGzipCodeFriendly', !cut.ok && /damaged|cut short/.test(cut.msg), cut);
+  } finally { globalThis.CompressionStream = CS; globalThis.DecompressionStream = DS; } }
 console.log(bad ? `FAIL ${bad}` : `savecode unit OK (${lits.size} storage keys in source, all covered)`); process.exit(bad ? 1 : 0);

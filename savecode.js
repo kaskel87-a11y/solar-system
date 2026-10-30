@@ -44,6 +44,45 @@
   function b64u(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function unb64u(s) { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
   async function pipe(bytes, Stream, mode) { const s = new Blob([bytes]).stream().pipeThrough(new Stream(mode)); return new Uint8Array(await new Response(s).arrayBuffer()); }
+  // v7.5.9: tiny pure-JS gunzip (inflate after tiny-inflate's tinf, zlib licence) so a browser without DecompressionStream
+  // (older iOS Safari / iOS Chrome before 16.4) can still LOAD a gzip code made on a computer. Export there falls back to SSX1-j.
+  function gunzipJS(src) {
+    if (src.length < 18 || src[0] !== 0x1f || src[1] !== 0x8b || src[2] !== 8) throw new Error('not gzip');
+    const flg = src[3]; let pos = 10;
+    if (flg & 4) pos += 2 + (src[pos] | src[pos + 1] << 8);
+    if (flg & 8) { while (src[pos++]); } if (flg & 16) { while (src[pos++]); } if (flg & 2) pos += 2;
+    let tag = 0, cnt = 0, out = new Uint8Array(Math.max(1024, src.length * 4)), n = 0;
+    const need = k => { if (n + k > out.length) { const o = new Uint8Array(Math.max(out.length * 2, n + k)); o.set(out.subarray(0, n)); out = o; } };
+    const bit = () => { if (!cnt) { if (pos >= src.length) throw new Error('truncated'); tag = src[pos++]; cnt = 8; } const b = tag & 1; tag >>>= 1; cnt--; return b; };
+    const bits = k => { let v = 0; for (let i = 0; i < k; i++) v |= bit() << i; return v; };
+    const tree = () => ({ table: new Uint16Array(16), trans: new Uint16Array(288) });
+    const build = (t, L, off, num) => { t.table.fill(0); for (let i = 0; i < num; i++) t.table[L[off + i]]++; t.table[0] = 0; const offs = new Uint16Array(16);
+      for (let i = 0, sum = 0; i < 16; i++) { offs[i] = sum; sum += t.table[i]; } for (let i = 0; i < num; i++) if (L[off + i]) t.trans[offs[L[off + i]]++] = i; };
+    const sym = t => { let sum = 0, cur = 0, len = 0; do { cur = 2 * cur + bit(); if (++len > 15) throw new Error('bad code'); sum += t.table[len]; cur -= t.table[len]; } while (cur >= 0); return t.trans[sum + cur]; };
+    const LB = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258], LX = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
+    const DB = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577], DX = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
+    const CL = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+    const flt = tree(), fdt = tree(); { const L = new Uint8Array(320); L.fill(8, 0, 144); L.fill(9, 144, 256); L.fill(7, 256, 280); L.fill(8, 280, 288); L.fill(5, 288, 318); build(flt, L, 0, 288); build(fdt, L, 288, 30); }
+    const lt = tree(), dt = tree(), ct = tree();
+    let final;
+    do {
+      final = bit(); const type = bits(2);
+      if (type === 0) { cnt = 0; const len = src[pos] | src[pos + 1] << 8; pos += 4; if (pos + len > src.length) throw new Error('truncated'); need(len); out.set(src.subarray(pos, pos + len), n); n += len; pos += len; continue; }
+      let L1 = flt, D1 = fdt;
+      if (type === 2) {
+        const hlit = bits(5) + 257, hdist = bits(5) + 1, hclen = bits(4) + 4, L = new Uint8Array(320);
+        for (let i = 0; i < hclen; i++) L[CL[i]] = bits(3); build(ct, L, 0, 19); L.fill(0, 0, 19);
+        for (let i = 0; i < hlit + hdist;) { const c = sym(ct);
+          if (c < 16) L[i++] = c; else { let r, v = 0; if (c === 16) { if (!i) throw new Error('bad'); v = L[i - 1]; r = 3 + bits(2); } else if (c === 17) r = 3 + bits(3); else r = 11 + bits(7); if (i + r > hlit + hdist) throw new Error('bad'); while (r--) L[i++] = v; } }
+        build(lt, L, 0, hlit); build(dt, L, hlit, hdist); L1 = lt; D1 = dt;
+      } else if (type !== 1) throw new Error('bad block');
+      for (;;) { const c = sym(L1); if (c === 256) break;
+        if (c < 256) { need(1); out[n++] = c; continue; }
+        const li = c - 257; if (li > 28) throw new Error('bad'); const len = LB[li] + bits(LX[li]); const di = sym(D1); if (di > 29) throw new Error('bad'); const d = DB[di] + bits(DX[di]);
+        if (d > n) throw new Error('bad distance'); need(len); for (let k = 0; k < len; k++, n++) out[n] = out[n - d]; }
+    } while (!final);
+    return out.subarray(0, n);
+  }
   const hasGzip = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function' && typeof Response === 'function' && typeof Blob === 'function';
   async function encode(keys, meta = {}) {
     const json = JSON.stringify({ f: 'ssx-save', v: 1, t: meta.t || Date.now(), app: meta.app || '', keys });
@@ -62,7 +101,7 @@
     let obj;
     try {
       let bytes = unb64u(m[2]);
-      if (m[1] === 'g') { if (!hasGzip()) return fail('This browser can\u2019t unpack that code. Update the browser and try again. Nothing was changed.'); bytes = await pipe(bytes, DecompressionStream, 'gzip'); }
+      if (m[1] === 'g') { const z = bytes; bytes = null; if (hasGzip()) { try { bytes = await pipe(z, DecompressionStream, 'gzip'); } catch (e) { bytes = null; } } if (!bytes) bytes = gunzipJS(z); } // v7.5.9: JS fallback (older iOS)
       obj = JSON.parse(dec.decode(bytes));
     } catch (e) { return fail('That code is damaged or cut short. Copy the whole code again. Nothing was changed.'); }
     return validate(obj);
@@ -80,7 +119,7 @@
     for (const k of storageKeys(st)) if (isGameKey(k) && !(k in keys)) st.removeItem(k);
     for (const [k, v] of Object.entries(keys)) if (isGameKey(k)) st.setItem(k, v);
   }
-  const core = { PREFIX, KNOWN, PREFIXES, DEVICE, OWN, isGameKey, collect, encode, decode, validate, applyTo, b64u, unb64u };
+  const core = { gunzipJS, PREFIX, KNOWN, PREFIXES, DEVICE, OWN, isGameKey, collect, encode, decode, validate, applyTo, b64u, unb64u };
   globalThis.SSXSaveCore = core;
   if (typeof window === 'undefined' || typeof document === 'undefined') return; // node unit test
 
