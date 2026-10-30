@@ -36,6 +36,7 @@ const PRECACHE = [
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)
   `mars/raccoonrover.js${q}`, `mars/raccooncore.js${q}`, // Raccoon Rover (Pumpkin)
   `brightness.js${q}`, `brightnesscore.js${q}`, // ☰ → ☀️ Brightness + night floor
+  `mars/mouth.js${q}`, `mars/mouthcore.js${q}`, // foul-mouthed Mars locals (Steve)
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
