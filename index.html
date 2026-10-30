@@ -197,7 +197,7 @@
     @media (max-width: 430px) { #topBar { gap: 6px; } #topBar #heatRow { gap: 2px; } }
     #rankLine { flex: 0 0 auto; white-space: nowrap; opacity: 0.9; } body.wanted #rankLine .xp, body.driving #rankLine .xp, body.turret #rankLine .xp { display: none; } body.wanted #surfInfo .gv, body.driving #surfInfo .gv { display: none; }
     @media (max-width: 380px) { #rankLine .xp { display: none; } }
-    #menuBtn { flex: 0 0 auto; width: 46px; height: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: manipulation; }
+    #menuBtn { flex: 0 0 auto; width: 46px; height: 44px; position: relative; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem; line-height: 1; padding: 0; touch-action: none; /* v7.5.9: no browser pan/zoom gesture can steal (pointercancel) a ☰ tap, even with a second finger on the joystick */ }
     #miniMap { position: fixed; z-index: 7; top: calc(60px + var(--sat)); left: calc(8px + var(--sal)); width: 92px; height: 92px; border-radius: 50%; touch-action: manipulation; cursor: pointer; }
     #stackR { position: fixed; z-index: 9; top: calc(60px + var(--sat)); left: calc(108px + var(--sal)); right: calc(8px + var(--sar)); display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none; max-height: 40vh; overflow: hidden; }
     #stackR > * { pointer-events: auto; max-width: 100%; box-sizing: border-box; }
