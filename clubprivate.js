@@ -28,12 +28,12 @@ const first = n => n.split(' ')[0];
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const booths = new Set();
 
-// interiors.js (club build): one hotspot on the stage edge in front of each non-Danny dancer; booth = privateshow's addBooth() result
+// interiors.js (club build): one hotspot (short label: the phone action button is narrow; her name + price are on the offer card) on the stage edge in front of each non-Danny dancer; booth = privateshow's addBooth() result
 export function addDancerSpots(api, { booth = null, dancers = [] } = {}) {
   if (booth) booths.add(booth);
   for (const d of dancers) {
     const G = GIRLS[d.id]; if (!G) continue; // Danny (or any unknown dancer) gets no spot here
-    api.spot({ id: 'privdance:' + d.id, x: d.x, z: d.z, r: d.r || 0.95, label: `💃 Private dance · ${first(G.name)} ${PRICE}`, act: 'privdance', who: G.name });
+    api.spot({ id: 'privdance:' + d.id, x: d.x, z: d.z, r: d.r || 0.95, label: '💃 Private dance', act: 'privdance', who: G.name });
   }
 }
 
