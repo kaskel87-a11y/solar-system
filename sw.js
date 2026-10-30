@@ -42,6 +42,7 @@ const PRECACHE = [
   `mars/mouth.js${q}`, `mars/mouthcore.js${q}`, // foul-mouthed Mars locals (Steve)
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
+  `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
