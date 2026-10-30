@@ -91,6 +91,11 @@ function pending(x, z) {
       dress: ds ? { loaded: !!ds.loaded, failed: !!ds.failed, tier: ds.tier, districts: ds.districts || {} } : null });
   }, []);
 }
+// start building the destination district's dressing now (SSX.dress / SSX.grime .prebuild, guarded) -> how many started
+function kick(x, z, phase) {
+  let n = 0; for (const k of C.kicks(pending(x, z), phase)) if (tryv(() => X()[k.sys]?.prebuild?.(k.id), false)) n++;
+  return n;
+}
 // stay black until the destination is ready. The game loop keeps rendering it behind the black overlay, so the new chunks,
 // the district dressing (grime ~0.5 s, dress ~1.5 s after you arrive) and their GPU uploads all happen off-screen; once
 // nothing is pending we compile every visible material once (renderer.compile = the shader prewarm), then wait for the
@@ -98,6 +103,7 @@ function pending(x, z) {
 function settle(rec, x, z) {
   return new Promise(r => { const t0 = performance.now(); let done = false, compiled = false; const fin = why => { if (!done) { done = true; rec.release = why; rec.pendingLeft = pending(x, z); r(); } };
     const f = () => { if (done) return;
+      rec.kicked = (rec.kicked || 0) + kick(x, z, 'arrive'); // build whatever is still missing here (no-op once built)
       const pend = pending(x, z); rec.pend = pend;
       if (!pend.length && !compiled) { compiled = true; const c0 = performance.now(); const R = app()?.renderer, s = surf(); if (tryv(() => (R?.compile?.(s.scene, s.camera), true), false)) rec.compileMs = Math.round(performance.now() - c0); rec.j0 = rec.black.length; rec.c0 = rec.counts.length; } // judge only the frames after the prewarm
       if (compiled && C.ready(rec.black.slice(rec.j0), rec.counts.slice(rec.c0), rec.base, pend)) fin('ready'); else if (performance.now() - t0 > C.SETTLE_MAX_MS) fin('cap'); else requestAnimationFrame(f); };
@@ -117,6 +123,7 @@ async function travel(id) {
   busy = true; frames = frameRec();
   try {
     tryv(() => X().hudx?.closeMap?.());
+    tryv(() => { frames.kickFade = kick(p.x, p.z, 'fade'); }); // the dress props start loading while the screen fades out
     await fade(true);
     const { x, z, drv, s } = spot(p);
     // districts go through the surface's own district hop (moves your car with you); everything else through debugMove,
@@ -207,7 +214,7 @@ const API = {
   places: () => places(true).map(p => ({ ...p })), mapPlaces, offer, travel, why: id => { const p = places(true).find(q => q.id === id || q.kind === id); return p ? why(p) : 'unknown'; },
   fee: C.FEE, get busy() { return busy; }, get last() { return last ? { ...last } : null; },
   on(fn) { if (typeof fn !== 'function') return () => {}; subs.add(fn); return () => subs.delete(fn); },
-  debug: { log: () => log.slice(), taps: () => ({ ...taps, ...guard }), frames: () => frames ? { base: Math.round(frames.base), blackMs: frames.blackMs, release: frames.release, compileMs: frames.compileMs ?? null, pendingLeft: frames.pendingLeft || [], objects: frames.counts.length ? [frames.counts[0], frames.counts[frames.counts.length - 1]] : null, before: C.frameStats(frames.before), black: C.frameStats(frames.black), after: C.frameStats(frames.after), blackRaw: frames.black.slice(0, 40).map(v => Math.round(v)), afterRaw: frames.after.slice(0, 40).map(v => Math.round(v)) } : null, sheet: () => cur ? { id: cur.id, why: why(cur) } : null, hide }
+  debug: { log: () => log.slice(), taps: () => ({ ...taps, ...guard }), frames: () => frames ? { base: Math.round(frames.base), blackMs: frames.blackMs, release: frames.release, kickFade: frames.kickFade ?? 0, kicked: frames.kicked ?? 0, compileMs: frames.compileMs ?? null, pendingLeft: frames.pendingLeft || [], objects: frames.counts.length ? [frames.counts[0], frames.counts[frames.counts.length - 1]] : null, before: C.frameStats(frames.before), black: C.frameStats(frames.black), after: C.frameStats(frames.after), blackRaw: frames.black.slice(0, 40).map(v => Math.round(v)), afterRaw: frames.after.slice(0, 40).map(v => Math.round(v)) } : null, sheet: () => cur ? { id: cur.id, why: why(cur) } : null, hide }
 };
 // index.html replaces window.SSX = {...} after the module imports run, so re-attach until it sticks (and if it is ever replaced again)
 const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.fastTravel !== API) w.SSX.fastTravel = API; };
