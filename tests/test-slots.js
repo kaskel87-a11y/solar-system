@@ -51,7 +51,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.debugInside(-8.1, 1.5, 0)); await sleep(400); R.atBar = await G(() => window.__app.surface.info.spot?.id); ok('barSpot', R.atBar === 'bar');
     await G(() => window.__app.surface.debugInside(0, 7.0, 0)); await sleep(400); R.atDoor = await G(() => window.__app.surface.info.spot?.id); ok('doorSpot', R.atDoor === 'leave');
     // 1) the prompt at the machines
-    await G(() => window.__app.surface.debugInside(-7.7, 6.45, Math.PI));
+    await G(() => window.__app.surface.debugInside(-6.85, 6.4, Math.PI));
     ok('prompt', await wait(() => /🎰 Play/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'slots' && document.body.classList.contains('slNear'), 15000));
     const bw = await G(() => { const c = getComputedStyle(document.getElementById('driveBtn')); return c.backgroundColor + ' / ' + c.color; });
     ok('promptBW', bw, /rgba?\(0, 0, 0(, 1)?\)/.test(bw) && /255, 255, 255/.test(bw.split('/')[1]));

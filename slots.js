@@ -121,6 +121,7 @@ body.slNear #driveBtn{background:#000!important;color:#fff!important;border:1.5p
 #slPay{display:grid;grid-template-columns:1fr auto 1fr auto;gap:2px 8px;margin-top:10px;padding-top:8px;border-top:1px solid #333;font-size:12.5px;align-items:center}
 #slPay .m{text-align:right;font-weight:700;color:#ffd040;font-variant-numeric:tabular-nums} #slPay .jp{color:#ff3cc8}
 #slCard .ft{margin-top:6px;color:#999;font-size:11px;text-align:center} body.touch #slCard .keys{display:none}
+@media (orientation:landscape) and (max-height:520px){#slCard{width:min(760px,calc(100vw - 24px));display:grid;grid-template-columns:1.1fr 1fr;column-gap:14px;padding:8px 12px} #slCard .hd{grid-column:1/-1} #slPay{margin-top:6px;border-top:0;padding-top:0} .slReel{height:58px!important;font-size:34px!important} #slReels{margin:6px 0 4px} #slMsg{min-height:36px} #slCard .r{margin-top:6px}}
 @media (max-height:700px){.slReel{height:64px;font-size:38px} #slPay{font-size:11.5px} #slCard{padding:10px}}
 `;
 // opts: { surface, toast, onTap, fx, actx: () => AudioContext, hud }
@@ -129,12 +130,12 @@ export function clubSlots({ surface, toast = () => {}, onTap = (el, fn) => el.ad
   const el = document.createElement('div'); el.id = 'slPanel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   const pt = paytable().map(p => `<span${p.jackpot ? ' class="jp"' : ''}>${p.icons}</span><span class="m${p.jackpot ? ' jp' : ''}">${p.mult}×${p.jackpot ? ' JACKPOT' : ''}</span>`).join('');
   el.innerHTML = `<div id="slCard"><div class="hd"><b>🎰 RED PLANET SLOTS</b><span id="slCash"></span><button class="slBtn" id="slClose" aria-label="Close">✕</button></div>
-<div id="slReels"><div class="slReel" id="slR0">🌋</div><div class="slReel" id="slR1">🌋</div><div class="slReel" id="slR2">🌋</div></div>
+<div class="main"><div id="slReels"><div class="slReel" id="slR0">🌋</div><div class="slReel" id="slR1">🌋</div><div class="slReel" id="slR2">🌋</div></div>
 <div id="slMsg">Pick a bet and pull.</div>
 <div class="r" id="slBets">${BETS.map(b => `<button class="slBtn slBet" data-b="${b}">${b} cr</button>`).join('')}</div>
-<div class="r"><button class="slBtn" id="slSpin"></button><button class="slBtn" id="slLeave">Leave</button></div>
-<div id="slPay">${pt}</div>
-<div class="ft">Jackpot: 🌋🌋🌋 pays ${JACKPOT_AT[BETS[BETS.length - 1]].toLocaleString('en-US')} cr at ${BETS[BETS.length - 1]}. House cr only.<span class="keys"> · Space/E spin · 1 2 3 bet · Esc leave</span></div></div>`;
+<div class="r"><button class="slBtn" id="slSpin"></button><button class="slBtn" id="slLeave">Leave</button></div></div>
+<div class="side"><div id="slPay">${pt}</div>
+<div class="ft">Jackpot: 🌋🌋🌋 pays ${JACKPOT_AT[BETS[BETS.length - 1]].toLocaleString('en-US')} cr at ${BETS[BETS.length - 1]}. House cr only.<span class="keys"> · Space/E spin · 1 2 3 bet · Esc leave</span></div></div></div>`;
   document.body.appendChild(el);
   const $ = id => document.getElementById(id), card = $('slCard'), msg = $('slMsg'), R = [0, 1, 2].map(i => $('slR' + i)), spinBtn = $('slSpin');
   const game = () => surface?.game || window.__app?.surface?.game || window.__app?.game;
