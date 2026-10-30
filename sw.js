@@ -3,7 +3,7 @@
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
 // BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
-const BUILD = 2;
+const BUILD = 1;
 const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
