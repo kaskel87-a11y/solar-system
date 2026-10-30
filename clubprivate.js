@@ -33,12 +33,12 @@ export function addDancerSpots(api, { booth = null, dancers = [] } = {}) {
   if (booth) booths.add(booth);
   for (const d of dancers) {
     const G = GIRLS[d.id]; if (!G) continue; // Danny (or any unknown dancer) gets no spot here
-    api.spot({ id: 'privdance:' + d.id, x: d.x, z: d.z, r: d.r || 0.95, label: '💃 Private dance', act: 'privdance', who: G.name });
+    api.spot({ id: 'privdance:' + d.id, x: d.x, z: d.z, r: d.r || 0.95, label: 'Private dance', act: 'privdance', who: G.name });
   }
 }
 
 const CSS = `
-body.cpNear #driveBtn{background:#000!important;color:#fff!important;border:1.5px solid #fff!important}
+body.cpNear #driveBtn{background:#000!important;color:#fff!important;border:1.5px solid #fff!important;padding:2px 4px!important;line-height:1.15!important;overflow:hidden}
 #cpOffer{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
 #cpOffer .w{max-width:340px;margin:16px;padding:16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
 #cpOffer h3{margin:0 0 6px;font-size:17px} #cpOffer .r{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
