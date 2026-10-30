@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { dress, DANNY_NAME } from './clubdancers.js';
 import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth (private show)
+import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -436,7 +437,8 @@ export const INTERIORS = {
       api.privateDance = (sec = 9) => { privT = sec; return sec; };
       api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: DANNY_NAME });
       // v7.5.4 private show: talk to Danny for her upstairs booth (privateshow.js; adults only, costumed, hands off)
-      addBooth(api, { x: PX, z: PZ, sit: sitPose });
+      const booth = addBooth(api, { x: PX, z: PZ, sit: sitPose });
+      try { addDancerSpots?.(api, { booth, dancers: [{ id: 'rhea', x: poles[0][0], z: -4.0 }, { id: 'kiara', x: poles[2][0], z: -4.0 }] }); } catch (e) { console.warn('clubprivate spots', e); } // v7.6 (clubprivate.js)
       api.spot({ id: 'show', x: PX - 1.05, z: PZ + 1.3, r: 0.6, label: `💋 ${DANNY_NAME.split(' ')[0]} · Private show 150`, act: 'show', who: DANNY_NAME });
       // v7.4 upstairs: a door in the back wall and its host. Adults only; the game fades to black and never shows or describes anything.
       const UX = X1 - 1.6;
