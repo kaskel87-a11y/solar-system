@@ -31,7 +31,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       const host = more ? '#hxMoreP' : '#roverMenu';
       if (more) { await checkBtn('moreBtn', '#hxMore'); if (!(await G(() => document.getElementById('hxMoreP').classList.contains('show')))) await tapSel('#hxMore'); } else await tapSel('#menuBtn'); await sleep(300);
       ok('menuItem', await G(([w, h]) => { const b = [...document.querySelectorAll(h + ' button')].find(e => e.textContent.includes(w) && getComputedStyle(e).display !== 'none'); if (b) b.dataset.td = '1'; return b ? b.textContent.trim() : false; }, [word, host]));
-      if (more) await checkBtn('moreItemBtn', `${host} button[data-td="1"]`);
+      if (more) { await G(h => document.querySelector(h + ' button[data-td="1"]').scrollIntoView({ block: 'nearest' }), host); await sleep(250); await checkBtn('moreItemBtn', `${host} button[data-td="1"]`); } // the panel scrolls on short screens; the tap guard ignores taps < 150 ms after a scroll
       await tapSel(`${host} button[data-td="1"]`);
       if (more) ok('moreClosesAfterPick', await G(() => !document.getElementById('hxMoreP').classList.contains('show'))); ok('menuOpensPanel', await wait(sel => document.querySelector(sel).classList.contains('show'), 4000, dock[1]));
       await shot('panel'); await tapSel(dock[2]); ok('panelClosed', !(await G(sel => document.querySelector(sel).classList.contains('show'), dock[1])));
