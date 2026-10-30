@@ -64,10 +64,14 @@ export function todLook(h, base) {
 // ---- dust storms ----
 export const STORM_COLOR = 0xb9784a;
 export function stormParams(level, mobile) {
-  if (level === 'heavy') return { near: 1.5, far: 24, mix: 0.85, count: mobile ? 360 : 1400, size: mobile ? 0.5 : 0.38, wind: 15, opacity: 0.7 };
-  if (level === 'light') return { near: 6, far: 62, mix: 0.45, count: mobile ? 160 : 600, size: mobile ? 0.42 : 0.32, wind: 6, opacity: 0.5 };
+  // v7.5.5 storm perf: phones draw ~half the grains, smaller (the fog does the heavy lifting); sizes are world metres, clamped on screen by dustMaxPx
+  if (level === 'heavy') return { near: 1.5, far: 24, mix: 0.85, count: mobile ? 180 : 1400, size: mobile ? 0.3 : 0.38, wind: 15, opacity: mobile ? 0.6 : 0.7 };
+  if (level === 'light') return { near: 6, far: 62, mix: 0.45, count: mobile ? 80 : 600, size: mobile ? 0.26 : 0.32, wind: 6, opacity: 0.5 };
   return { near: Infinity, far: Infinity, mix: 0, count: 0, size: 0, wind: 0, opacity: 0 };
 }
+// biggest dust grain on screen (drawing-buffer px) and how many of a level's grains to draw at stormGuard density k (0..1)
+export const dustMaxPx = mobile => (mobile ? 10 : 22);
+export const dustDraw = (count, k = 1) => (count > 0 ? Math.max(1, Math.round(count * Math.min(1, Math.max(0, k)))) : 0);
 // gusting wind: slowly veering heading, speed pulses (m/s)
 export function windAt(t, level) {
   const p = stormParams(level, true); if (!p.wind) return { x: 0, z: 0, speed: 0, heading: 0 };

@@ -91,7 +91,7 @@ class Baker {
 }
 
 // ---------------------------------------------------------------- module state -------------------------------------------
-let app = null, cfg = GRIME_CONFIG, R = null, street = null, built = new Map(), scene = null, lastScan = 0, panel = null, post = null, fireLight = null;
+let warmWanted = false; let app = null, cfg = GRIME_CONFIG, R = null, street = null, built = new Map(), scene = null, lastScan = 0, panel = null, post = null, fireLight = null;
 const overrides = {};      // per-district overrides from SSX.grime.district(id, {...})
 const stats = { districts: 0, draws: 0, decals: 0, props: 0, particles: 0, buildMs: 0 };
 const mult = () => (cfg.enabled ? (typeof cfg.level === 'number' ? cfg.level : LEVELS[cfg.level] ?? 1) : 0);
@@ -99,22 +99,33 @@ const dcfg = id => ({ ...(cfg.districts[id] || cfg.districts.aj), ...(overrides[
 const surf = () => app?.surface;
 const onMars = () => !!(app?.state?.onSurface && surf()?.info?.name === 'Mars');
 
+// Steve (storm-perf): the procedural textures below cost ~250 ms in one frame on a loaded box (canvas painting + PMREM),
+// which was the freeze right as you walk towards a district. warmRes() paints them one per frame while a district is
+// still ~200 m outside stream-in range; res() then just picks them up (and still paints anything missing itself).
+const PRE = {}, PRE_MAKE = {
+  wall: () => T.wallAtlas(cfg.atlas, 7), graf: () => T.graffitiAtlas(cfg.atlas, 11), ground: () => T.groundAtlas(cfg.atlas, 23),
+  env: () => T.envTex(app.renderer), fab41: () => T.fabricTex(128, 41, [120, 118, 110]), fab43: () => T.fabricTex(128, 43, [105, 98, 88]),
+  fab47: () => T.fabricTex(128, 47, [150, 118, 80]), corr: () => T.corrugatedTex(256, 31), rust: () => T.rustMetalTex(128, 51),
+  soot: () => T.sootTex(128, 61), conc: () => T.concreteTex(256, 91), cart: () => T.cartTex(128), blanket: () => T.dirtBlanketTex(PHONE ? 256 : 512, 81),
+  glow: () => T.glowTex(128), puff: () => T.puffTex(64) };
+function pre(k) { if (k in PRE) return PRE[k]; try { return (PRE[k] = PRE_MAKE[k]()); } catch (e) { PRE[k] = null; if (k !== 'env') throw e; return null; } }
+function warmRes() { if (R) return; for (const k in PRE_MAKE) if (!(k in PRE)) { pre(k); return; } }
 // shared materials / textures, created once (flagged shared so surface.exit() leaves them alone)
 function res() {
   if (R) return R; const t0 = performance.now();
   const sh = m => { m.userData.shared = true; return m; }, A = cfg.atlas;
-  const wall = T.wallAtlas(A, 7), graf = T.graffitiAtlas(A, 11), ground = T.groundAtlas(A, 23);
+  const [wall, graf, ground] = ['wall', 'graf', 'ground'].map(pre);
   for (const t of [wall, graf, ground]) t.userData.shared = true;
-  let env = null; try { env = T.envTex(app.renderer); env.userData.shared = true; } catch (e) { /* no PMREM: puddles just stay dark */ }
+  let env = null; try { env = pre('env'); if (!env) throw new Error('no env'); env.userData.shared = true; } catch (e) { /* no PMREM: puddles just stay dark */ }
   const decal = (map, order, o = {}) => { const m = sh(new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, vertexColors: true, roughness: 0.92, metalness: 0,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 - order, ...o })); m.userData.order = -10 + order; return m; };
   const solid = (o) => sh(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, ...o }));
-  const fab = (seed, col) => { const t = T.fabricTex(128, seed, col); t.userData.shared = true; t.repeat.set(2, 2); return t; };
-  const corr = T.corrugatedTex(256, 31); corr.userData.shared = true; corr.repeat.set(3, 1);
-  const rust = T.rustMetalTex(128, 51); rust.userData.shared = true; const soot = T.sootTex(128, 61); soot.userData.shared = true;
-  const conc = T.concreteTex(256, 91); conc.userData.shared = true; const cart = T.cartTex(128); cart.userData.shared = true;
-  const blanket = T.dirtBlanketTex(PHONE ? 256 : 512, 81); blanket.userData.shared = true; const glow = T.glowTex(128); glow.userData.shared = true;
-  const puff = T.puffTex(64); puff.userData.shared = true;
+  const fab = (seed) => { const t = pre('fab' + seed); t.userData.shared = true; t.repeat.set(2, 2); return t; };
+  const corr = pre('corr'); corr.userData.shared = true; corr.repeat.set(3, 1);
+  const rust = pre('rust'); rust.userData.shared = true; const soot = pre('soot'); soot.userData.shared = true;
+  const conc = pre('conc'); conc.userData.shared = true; const cart = pre('cart'); cart.userData.shared = true;
+  const blanket = pre('blanket'); blanket.userData.shared = true; const glow = pre('glow'); glow.userData.shared = true;
+  const puff = pre('puff'); puff.userData.shared = true;
   R = {
     env, glow, puff,
     wall: decal(wall, 2), graf: decal(graf, 3, { roughness: 0.7 }), ground: decal(ground, 1),
@@ -274,6 +285,7 @@ function buildDistrict(id, siteGroup, info) {
   if (id === 'mars-highway') beltway(bk, r, rec, D, k, trash, barrelAt);
   mark('beltway'); const meshes = bk.build(root); scene.add(root); mark('bake');
   rec.fx = makeFx(root, rec, r); rec.meshes = meshes; mark('fx');
+  try { window.SSX?.stormGuard?.prewarm?.(root, { hide: true }); } catch (e) { /* storm perf: compile its shaders + upload textures over the next frames, then show it */ }
   rec.ms = performance.now() - t0; return rec;
 }
 
@@ -460,6 +472,7 @@ function stream() {
   const groups = siteGroups(), ds = app.surface.world.districts();
   for (const [id, rec] of built) if (rec.siteGroup && rec.siteGroup.parent !== scene) dispose(rec);
   if (!cfg.enabled || mult() <= 0) { rebuildAll(); return; }
+  warmWanted = !R && ds.some(d => Math.hypot(info.x - d.x, info.z - d.z) < cfg.streamIn + 200);
   for (const d of ds) { const dist = Math.hypot(info.x - d.x, info.z - d.z), have = built.get(d.id);
     if (!have && dist < cfg.streamIn) { res(); const g = groups.find(o => o.userData.v8.site === d.id); if (!g) continue; const rec = buildDistrict(d.id, g, d); built.set(d.id, rec); stats.buildMs = Math.round(rec.ms); stats.tm = { ...(stats.tm || {}), [d.id]: rec.tm }; }
     else if (have && dist > cfg.streamOut) dispose(have); }
@@ -481,6 +494,7 @@ function tick() {
   const s = surf(); if (scene !== s.scene) { scene = s.scene; built.clear(); fireLight = null; }
   if (!was) { was = true; street?.pause(false); }
   acc += dt; if (acc > 0.5) { acc = 0; try { stream(); } catch (e) { console.warn('grime stream', e); } }
+  if (warmWanted && !R) { try { warmRes(); } catch (e) { warmWanted = false; } }
   blendLook(dt);
   const cam = s.camera, scale = app.renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad((cam?.fov || 60) / 2))); let near = null, nd = 1e9;
   const info = s.info;
