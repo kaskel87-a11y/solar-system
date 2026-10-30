@@ -20,14 +20,22 @@ export function lotCentre(i, j, fp, r = 0) { const [w, d] = (r & 1) ? [fp[1], fp
 export const PRICES = { plot: 1200, dome: 900, rack: 300, patch: 120, water: 2, power: 3 };
 export const LIMITS = { racks: 6, water: 100, power: 100, silo: 120 };
 // hours = game hours to ripen; water / power = units per game hour per rack; yield at full health
+// v7.5.6 economy: price (Vell cash per unit at a 1.0 day) is ~3.5x a harvest's full grow cost (growCost: seed + water + power +
+// the rack's share of plot + dome + rack over AMORT_HARVESTS), so a full rack clears ~3-4x what it cost on any day.
+// barter = the old per-unit value; Oru items and Hush favors still ask the same number of crops as before.
 export const CROPS = {
-  potato:    { id: 'potato',    name: 'Potatoes',     icon: '🥔', seed: 20,  hours: 10, water: 1.0, power: 0.4, yield: 6, price: 18, storm: 1.0 },
-  algae:     { id: 'algae',     name: 'Algae mats',   icon: '🟢', seed: 15,  hours: 6,  water: 2.0, power: 0.8, yield: 8, price: 11, storm: 0.6 },
-  glowberry: { id: 'glowberry', name: 'Glow-berries', icon: '🫐', seed: 60,  hours: 14, water: 1.2, power: 1.0, yield: 5, price: 46, storm: 1.5 },
+  potato:    { id: 'potato',    name: 'Potatoes',     icon: '🥔', seed: 20,  hours: 10, water: 1.0, power: 0.4, yield: 6, price: 105, barter: 18, storm: 1.0 },
+  algae:     { id: 'algae',     name: 'Algae mats',   icon: '🟢', seed: 15,  hours: 6,  water: 2.0, power: 0.8, yield: 8, price: 80,  barter: 11, storm: 0.6 },
+  glowberry: { id: 'glowberry', name: 'Glow-berries', icon: '🫐', seed: 60,  hours: 14, water: 1.2, power: 1.0, yield: 5, price: 185, barter: 46, storm: 1.5 },
   // the contraband crop: dries into Glow-dust for SSX.contraband's stash (fiction)
-  lichen:    { id: 'lichen',    name: 'Ghost lichen', icon: '🍄', seed: 120, hours: 20, water: 0.8, power: 1.4, yield: 4, price: 90, storm: 1.2, contraband: 'glowdust' }
+  lichen:    { id: 'lichen',    name: 'Ghost lichen', icon: '🍄', seed: 120, hours: 20, water: 0.8, power: 1.4, yield: 4, price: 320, barter: 90, storm: 1.2, contraband: 'glowdust' }
 };
 export const CROP_IDS = Object.keys(CROPS);
+export const AMORT_HARVESTS = 5;
+// full cost of one harvest on one rack: seed + water + power used while growing + (plot + dome) / max racks + rack, over AMORT_HARVESTS
+export function growCost(crop) { const c = CROPS[crop]; if (!c) return 0; const inputs = c.seed + c.water * c.hours * PRICES.water + c.power * c.hours * PRICES.power;
+  return Math.round((inputs + ((PRICES.plot + PRICES.dome) / LIMITS.racks + PRICES.rack) / AMORT_HARVESTS) * 10) / 10; }
+const barterPrice = (d, crop, buyer) => { const c = CROPS[crop]; return Math.max(1, Math.round((c.barter ?? c.price) * dayMult(d, crop, buyer))); };
 // alien buyers at the trading post. pays: 'cash' | 'item' | 'favor'. wants: crop ids they buy.
 export const BUYERS = [
   { id: 'vell', name: 'Vell broker', icon: '👽', pays: 'cash', wants: ['potato', 'algae', 'glowberry', 'lichen'], line: 'Vell: Starch and green. We pay in your little numbers.' },
@@ -121,7 +129,7 @@ export function advance(s, dh, stormI = 0) {
 // ---------- trading post: prices shift with the game day ----------
 export function hash(n) { let x = (n | 0) ^ 0x9e3779b9; x = Math.imul(x ^ (x >>> 16), 0x85ebca6b); x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; }
 const cropIdx = c => CROP_IDS.indexOf(c) + 1;
-export function dayMult(d, crop, buyer = 'vell') { return Math.round((0.7 + 0.7 * hash(d * 131 + cropIdx(crop) * 17 + buyer.length * 7)) * 100) / 100; }
+export function dayMult(d, crop, buyer = 'vell') { return Math.round((0.85 + 0.3 * hash(d * 131 + cropIdx(crop) * 17 + buyer.length * 7)) * 100) / 100; }
 export function unitPrice(d, crop, buyer = 'vell') { const c = CROPS[crop]; return c ? Math.max(1, Math.round(c.price * dayMult(d, crop, buyer))) : 0; }
 export function buyersToday(d) {
   return BUYERS.map(b => ({ ...b, offers: b.wants.map(crop => ({ crop, unit: unitPrice(d, crop, b.id), mult: dayMult(d, crop, b.id) })) }));
@@ -133,8 +141,8 @@ export function quoteSale(s, buyerId, crop, qty) {
   if (!have) return { ok: false, why: `No ${CROPS[crop]?.name || crop} in your silo.` };
   const d = day(s), value = unitPrice(d, crop, b.id) * qty;
   if (b.pays === 'cash') return { ok: true, buyer: b.id, crop, qty, value, cash: value };
-  if (b.pays === 'item') { const it = ITEMS[Math.floor(hash(d * 7 + cropIdx(crop)) * ITEMS.length)]; const need = Math.ceil(it.worth / unitPrice(d, crop, b.id)); if (have < need) return { ok: false, why: `Oru wants ${need} ${CROPS[crop].name} for a ${it.name}.`, need }; return { ok: true, buyer: b.id, crop, qty: need, value: unitPrice(d, crop, b.id) * need, item: it.id }; }
-  const f = crop === 'lichen' ? FAVORS.cool : FAVORS.watch, need = Math.ceil(f.worth / unitPrice(d, crop, b.id));
+  if (b.pays === 'item') { const it = ITEMS[Math.floor(hash(d * 7 + cropIdx(crop)) * ITEMS.length)]; const need = Math.ceil(it.worth / barterPrice(d, crop, b.id)); if (have < need) return { ok: false, why: `Oru wants ${need} ${CROPS[crop].name} for a ${it.name}.`, need }; return { ok: true, buyer: b.id, crop, qty: need, value: unitPrice(d, crop, b.id) * need, item: it.id }; }
+  const f = crop === 'lichen' ? FAVORS.cool : FAVORS.watch, need = Math.ceil(f.worth / barterPrice(d, crop, b.id));
   if (have < need) return { ok: false, why: `The Hush wants ${need} ${CROPS[crop].name} for a favor.`, need };
   return { ok: true, buyer: b.id, crop, qty: need, value: unitPrice(d, crop, b.id) * need, favor: f.id };
 }

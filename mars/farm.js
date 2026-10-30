@@ -433,7 +433,7 @@ function render() {
       h += `<p><b>${b.icon} ${esc(b.name)}</b> <span class="sub">pays ${b.pays === 'cash' ? 'cash' : b.pays === 'item' ? 'rare items' : 'favors'}</span></p>`;
       for (const o of b.offers) { const have = S.silo[o.crop] | 0, c = F.CROPS[o.crop], q = have ? F.quoteSale(S, b.id, o.crop, have) : null;
         const label = b.pays === 'cash' ? `${c.icon} Sell ${have || ''} ${c.name} · ${o.unit} cr each` : `${c.icon} Trade ${q?.ok ? q.qty : ''} ${c.name}`.replace(/\s+/g, ' ');
-        const sub = b.pays === 'cash' ? `${o.mult >= 1.15 ? 'Good price today.' : o.mult <= 0.85 ? 'Low today.' : 'Fair today.'} You have ${have}.` : q?.ok ? (q.item ? `For ${F.ITEMS.find(i => i.id === q.item).name}.` : `For ${F.FAVORS[q.favor].name}.`) : (q?.why || `You have ${have}.`);
+        const sub = b.pays === 'cash' ? `${o.mult >= 1.07 ? 'Good price today.' : o.mult <= 0.93 ? 'Low today.' : 'Fair today.'} You have ${have}.` : q?.ok ? (q.item ? `For ${F.ITEMS.find(i => i.id === q.item).name}.` : `For ${F.FAVORS[q.favor].name}.`) : (q?.why || `You have ${have}.`);
         h += btn('sell', label, sub, { b: b.id, c: o.crop, q: have, dis: !here || !!bl || !q?.ok }); }
     }
     if (S.favors.length) { h += `<p><b>Your favors</b></p>`; for (const f of [...new Set(S.favors)]) { const n = S.favors.filter(x => x === f).length; h += btn('favor', `${F.FAVORS[f].icon} ${F.FAVORS[f].name}${n > 1 ? ' ×' + n : ''}`, F.FAVORS[f].blurb, { c: f, dis: f !== 'cool' }); } }
