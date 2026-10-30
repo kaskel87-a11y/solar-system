@@ -1327,7 +1327,7 @@ export function createGame(ctx) {
     const s = stepDef(); if (s?.type !== 'choice') return false;
     const o = (s.options || []).find(x => x.id === optId); if (!o) return false;
     if (o.flag) setFlag(o.flag); if (o.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, o.wanted), 'choice');
-    if (o.credits) gain(0, o.credits, true);
+    if (o.credits) gain(0, (globalThis.SSX?.economy?.job || (n => n))(o.credits, 'choice:' + o.id, { streak: false }), true); // money boost (economy.js)
     onEvent('choiceMade', { id: quest.def.id, option: o.id, flag: o.flag || null });
     if (o.radio) onEvent('radio', { text: o.radio });
     if (o.skip) quest.step += o.skip; // e.g. take Rhee's retainer: no fight
@@ -1442,7 +1442,7 @@ export function createGame(ctx) {
   function offerNext() {
     if (!world || quest || H.down > 0) return;
     const next = available()[0];
-    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${next.reward.credits || 0}. Want it?`, offer: next.id });
+    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${globalThis.SSX?.economy?.boost?.(next.reward.credits || 0) ?? (next.reward.credits || 0)} cr. Want it?`, offer: next.id });
   }
 
   // ----- rewards -----

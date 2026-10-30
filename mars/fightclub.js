@@ -32,6 +32,7 @@
 //  debug                    -> goto(), card(a, b, { fixed, winner }), runCard(), resolveCard(id), fix(id), defence(), expire(),
 //                              setRank(n), reset(), state(), inCage
 import * as THREE from 'three';
+import { boost } from '../economy.js'; // v7.5.9 money boost (SSX.economy.payoutMult)
 
 const KEY = 'ssx.fight.v1', HOTKEY = 'BracketRight';
 const CAGE_AT = [-292, -68], R_CAGE = 6.4, R_NEAR = 10;
@@ -103,7 +104,7 @@ function rec(id) { return id === 'you' ? S.you : S.rec[id]; }
 function climb(w, l) { const iw = S.order.indexOf(w), il = S.order.indexOf(l); if (iw < 0 || il < 0 || iw < il) return false; S.order.splice(iw, 1); S.order.splice(il, 0, w); return true; }
 function ladder() { return S.order.map((id, i) => ({ rank: id === 'you' && i === 8 ? null : i + 1, id, name: nameOf(id), rating: ratingOf(id), w: rec(id).w, l: rec(id).l, gang: FX[id]?.gang || null, champ: i === 0, you: id === 'you' })); }
 const fighterStats = id => { const r = ratingOf(id), k = (r - 1000) / 1000; return { tough: Math.round((0.7 + k * 1.5) * 100) / 100, dmg: Math.round((0.8 + k) * 100) / 100 }; };
-const purseFor = id => rankOf(id) === 1 ? 400 : 40 + (9 - rankOf(id)) * 30;
+const purseFor = id => boost(rankOf(id) === 1 ? 400 : 40 + (9 - rankOf(id)) * 30); // v7.5.9 money boost: the Rust Pit fight purse doubles (shown = paid)
 function eligible(id) {
   if (!FX[id]) return 'No such fighter.';
   const me = rankOf('you'), them = rankOf(id);

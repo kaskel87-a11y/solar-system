@@ -7,7 +7,7 @@
 // SSX.time.isNight (if a day/night cycle ever ships), window.__race (falls back to a built-in gate sprint).
 // Fiction only: invented colony, invented crews and cargo, no real brands.
 import * as THREE from 'three';
-import { jobPay } from '../economy.js'; // money boost: SSX.economy.payoutMult
+import { jobPay, boost } from '../economy.js'; // money boost: SSX.economy.payoutMult (boost() = the same × for the numbers we show)
 
 /**
  * window.SSX.beltway — public API (positions: world metres unless noted)
@@ -214,8 +214,8 @@ function grabCargo() {
 }
 function fenceOptions() {
   if (!run || run.phase !== 'fence') return [];
-  const c = run.cargo, C = window.SSX?.contraband, out = [{ id: 'cash', label: `💵 Sell it all to Kettle: ${c.cr} cr` }];
-  try { if (C && typeof C.add === 'function' && C.items?.().some(i => i.id === c.item)) { const cap = C.capacity?.(); const room = cap ? Math.max(0, cap.max - cap.used) : c.qty; const q = Math.min(c.qty, room); if (q > 0) out.push({ id: 'stash', label: `🎒 Keep ${q}× ${c.name} for the street (+${Math.round(c.cr * 0.25 * (q / c.qty))} cr finder\u2019s fee)`, qty: q }); } } catch (e) { /* contraband optional */ }
+  const c = run.cargo, C = window.SSX?.contraband, out = [{ id: 'cash', label: `💵 Sell it all to Kettle: ${boost(c.cr)} cr` }];
+  try { if (C && typeof C.add === 'function' && C.items?.().some(i => i.id === c.item)) { const cap = C.capacity?.(); const room = cap ? Math.max(0, cap.max - cap.used) : c.qty; const q = Math.min(c.qty, room); if (q > 0) out.push({ id: 'stash', label: `🎒 Keep ${q}× ${c.name} for the street (+${boost(Math.round(c.cr * 0.25 * (q / c.qty)))} cr finder\u2019s fee)`, qty: q }); } } catch (e) { /* contraband optional */ }
   return out;
 }
 function fence(choice = 'cash') {
@@ -235,12 +235,13 @@ function crack() {
 function loot() {
   run.phase = 'escape'; run.t = ESCAPE_T; run.gross = ARMOR_GROSS; if (run.target?.traffic) run.target.traffic.wreck = 8; if (run.target) delete run.target.__belt; run.target = null; clearMark(); minimap(null);
   if (wanted() < 3) setWanted(hasPerk('wren') ? 3 : 4, 'armored transport robbery');
-  emit('loot', { gross: run.gross }); toast(`💰 ${run.gross} cr in bullion chits. Lose the heat to get paid.`, 3200);
+  emit('loot', { gross: run.gross }); toast(`💰 ${boost(run.gross)} cr in bullion chits. Lose the heat to get paid.`, 3200);
 }
-function split() { const crew = CREW.filter(c => run?.crew?.includes(c.id)); const cuts = crew.map(c => ({ id: c.id, name: c.name, role: c.role, cut: c.cut, cr: Math.round(ARMOR_GROSS * c.cut / 100) })); const mine = ARMOR_GROSS - cuts.reduce((n, c) => n + c.cr, 0); return { gross: ARMOR_GROSS, crew: cuts, mine }; }
+// split(true) = the figures shown to the player, after the money boost (what is actually paid); split() = base (API, tests)
+function split(show) { const b = show ? boost : (n => n); const crew = CREW.filter(c => run?.crew?.includes(c.id)); const cuts = crew.map(c => ({ id: c.id, name: c.name, role: c.role, cut: c.cut, cr: Math.round(ARMOR_GROSS * c.cut / 100) })); const mine = ARMOR_GROSS - cuts.reduce((n, c) => n + c.cr, 0); return { gross: b(ARMOR_GROSS), crew: show ? cuts.map(c => ({ ...c, cr: b(c.cr) })) : cuts, mine: b(mine) }; }
 function payoutArmored() {
-  const sp = split(); pay(sp.mine, 120); S.stats.armored++; save();
-  emit('payout', { how: 'armored', ...sp });
+  const base = split(), got = pay(base.mine, 120), sp = split(true); sp.mine = got || sp.mine; S.stats.armored++; save();
+  emit('payout', { how: 'armored', ...base, paid: got });
   finish(`🛡️ Clean getaway. ${sp.gross} cr split: ${sp.crew.map(c => `${c.name.split(' ')[0]} ${c.cut}%`).join(', ') || 'no crew'} · you keep ${sp.mine} cr.`);
 }
 
@@ -249,11 +250,11 @@ function shake() {
   if (!run || run.type !== 'shakedown' || run.phase !== 'lean') return { ok: false };
   run.leanN = (run.leanN || 0) + 1; if (run.leanN < 3) { toast(['💢 You slam the booth glass. "Hey!"', '💢 You lean in. "Till. Now."'][run.leanN - 1], 1800); return { ok: true, msg: 'Again.' }; }
   const c = run.cp, f = c.faction || '', fx = c.x + 6, fz = c.z + 4; let till, msg;
-  if (/saltblood/i.test(f)) { till = 140 + Math.round(Math.random() * 60); hostiles(['thug', 'thug', 'goon'], fx, fz, 'Saltblood'); msg = `💢 ${till} cr out of the Saltblood till. Marrow\u2019s boys come running.`; game()?.setFlag?.('saltblood_ok', false); }
-  else if (/helios/i.test(f)) { till = 220 + Math.round(Math.random() * 80); hostiles(['guard', 'guard', 'sdrone'], fx, fz, 'Helios Private'); setWanted(Math.max(wanted(), 2), 'robbed the Helios gate'); msg = `💢 ${till} cr of Helios \u201cvisitor fees\u201d. Private security is not amused.`; }
-  else { till = 100 + Math.round(Math.random() * 60); setWanted(Math.max(wanted() + 2, 2), 'shook down a ColSec checkpoint'); msg = `💢 ${till} cr in fines nobody logged. ColSec wants it back.`; }
-  pay(till, 30); S.cool[c.id] = Date.now() + 8 * 60e3; S.stats.shakedowns++; save();
-  emit('shakedown', { checkpoint: c.id, faction: f, credits: till }); emit('payout', { how: 'shakedown', credits: till }); finish(msg); return { ok: true, msg };
+  if (/saltblood/i.test(f)) { till = 140 + Math.round(Math.random() * 60); hostiles(['thug', 'thug', 'goon'], fx, fz, 'Saltblood'); msg = cr => `💢 ${cr} cr out of the Saltblood till. Marrow\u2019s boys come running.`; game()?.setFlag?.('saltblood_ok', false); }
+  else if (/helios/i.test(f)) { till = 220 + Math.round(Math.random() * 80); hostiles(['guard', 'guard', 'sdrone'], fx, fz, 'Helios Private'); setWanted(Math.max(wanted(), 2), 'robbed the Helios gate'); msg = cr => `💢 ${cr} cr of Helios \u201cvisitor fees\u201d. Private security is not amused.`; }
+  else { till = 100 + Math.round(Math.random() * 60); setWanted(Math.max(wanted() + 2, 2), 'shook down a ColSec checkpoint'); msg = cr => `💢 ${cr} cr in fines nobody logged. ColSec wants it back.`; }
+  const paid = pay(till, 30) || till; msg = msg(paid); S.cool[c.id] = Date.now() + 8 * 60e3; S.stats.shakedowns++; save(); // the line shows what was paid (money boost)
+  emit('shakedown', { checkpoint: c.id, faction: f, credits: till, paid }); emit('payout', { how: 'shakedown', credits: till, paid }); finish(msg); return { ok: true, msg };
 }
 
 // -- night race (Pumpkin's race.js when present, else a minimal gate sprint) --
@@ -441,7 +442,7 @@ function hudLines() {
   if (r.phase === 'crack') return [`${A.icon} TRANSPORT DOWN · ${wanted()}★`, r.cracking ? `Cracking ${Math.round(r.crackT / (hasPerk('wren') ? 2 : CRACK_T) * 100)}% · stay close` : `On foot to the doors and crack them · ${fmtT(r.t)}`, true];
   if (r.phase === 'deliver') { const f = fenceAt(h); return [`📦 ${r.cargo.qty}× ${r.cargo.name.toUpperCase()}`, `Kettle's lot · ${far(f.x, f.z)} · ${fmtT(r.t)}`, r.t < 30]; }
   if (r.phase === 'fence') return ['🔧 KETTLE\u2019S LOT', 'Fence the cargo', false];
-  if (r.phase === 'escape') { const sp = split(); return [`💰 ${sp.gross} cr · you keep ${sp.mine}`, `Lose the heat: ${wanted()}★ · ⏱ ${fmtT(r.t)}`, true]; }
+  if (r.phase === 'escape') { const sp = split(true); return [`💰 ${sp.gross} cr · you keep ${sp.mine}`, `Lose the heat: ${wanted()}★ · ⏱ ${fmtT(r.t)}`, true]; }
   return [`${A.icon} ${A.name}`, '', false];
 }
 function renderHud() {
@@ -467,10 +468,10 @@ function render() {
       let extra = '', dis = !!run;
       if (a.id === 'shakedown') { const c = h ? nearestCheckpoint(h.x, h.z) : null; const cd = c ? (S.cool[c.id] || 0) - Date.now() : 0; extra = c ? `<small>Nearest: ${esc(c.name)} (${esc(c.faction)}) · ${Math.round(Math.hypot(c.x - h.x, c.z - h.z))} m${cd > 0 ? ` · cooling off ${fmtT(cd / 1000)}` : ''}</small>` : ''; }
       if (a.id === 'race' && !isNight()) { extra = `<small>After dark only. Night in ${fmtT(nightIn())}.</small>`; }
-      if (a.id === 'armored') { const sp = CREW.filter(c => S.crew[c.id]); extra = `<small>Crew: ${sp.length ? sp.map(c => `${esc(c.name)} ${c.cut}%`).join(', ') : 'none (you keep 100%)'} · gross ${ARMOR_GROSS} cr</small>`; }
+      if (a.id === 'armored') { const sp = CREW.filter(c => S.crew[c.id]); extra = `<small>Crew: ${sp.length ? sp.map(c => `${esc(c.name)} ${c.cut}%`).join(', ') : 'none (you keep 100%)'} · gross ${boost(ARMOR_GROSS)} cr</small>`; }
       html += `<div class="it"><b>${a.icon} ${esc(a.name)}</b><small>${esc(a.blurb)}</small>${extra}<button type="button" data-start="${a.id}" ${dis ? 'disabled' : ''}>Start ${esc(a.name.toLowerCase())}</button>${a.id === 'race' && !isNight() ? `<button type="button" data-dark="1" ${dis ? 'disabled' : ''}>🌙 Wait for dark</button>` : ''}</div>`;
     }
-    html += `<div class="it"><b>🛡️ Armored-transport crew</b><small>Tap to bring someone along. Cuts come out of the ${ARMOR_GROSS} cr gross.</small>`;
+    html += `<div class="it"><b>🛡️ Armored-transport crew</b><small>Tap to bring someone along. Cuts come out of the ${boost(ARMOR_GROSS)} cr gross.</small>`;
     for (const c of CREW) html += `<button type="button" data-crew="${c.id}" class="${S.crew[c.id] ? 'sel' : ''}" aria-pressed="${!!S.crew[c.id]}" ${run?.type === 'armored' ? 'disabled' : ''}>${S.crew[c.id] ? '✓ ' : ''}${esc(c.name)} · ${esc(c.role)} · ${c.cut}%<br><span style="font-weight:600;font-size:12px">${esc(c.perk)}</span></button>`;
     html += `</div><p class="sub" style="margin-top:8px">Keys: O Beltway panel, I action (grab, crack, shake down, fence). Phones: 🛣️ Belt in the dock and the action button on the left.</p>`;
   }

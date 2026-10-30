@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
-import { jobPay } from './economy.js'; // money boost: SSX.economy.payoutMult
+import { jobPay, boost } from './economy.js'; // money boost: SSX.economy.payoutMult (boost() for the purses we list)
 import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
 
@@ -501,7 +501,7 @@ function openPanel() {
   if (!ensureUI() || !planet) return; const P = C?.game?.progress, defs = defsHere();
   const items = defs.map(d => { const t = resolve(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
     const kind = t.loop ? `${t.laps}-lap loop` : 'sprint', far = C ? Math.round(Math.hypot(t.gates[0].x - C.player.x, t.gates[0].z - C.player.z)) : 0;
-    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${RC.payout(t, { won: true, custom: true }).credits} cr`) : `purse ${d.purse || 120} cr${wins ? '' : ' + 100 first win'}`;
+    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${boost(RC.payout(t, { won: true, custom: true }).credits)} cr`) : `purse ${boost(d.purse || 120)} cr${wins ? '' : ` + ${boost(100)} first win`}`; // v7.5.9: listed = paid
     return `<div class="item${d.custom ? ' custom' : ''}"><b>${d.custom ? '\ud83d\udee0' : d.fromQuest ? '\ud83d\udcfb' : '\ud83c\udfc1'} ${esc(d.name)}</b> \u00b7 ${kind} \u00b7 ${t.gates.length} gates \u00b7 ${Math.round(t.length)} m
       <small>${esc(d.blurb || 'Your own track.')}</small><small>Rival: ${esc(d.rival?.name || 'Pit Viper')} \u00b7 ${purse} \u00b7 buy-in ${RC.BUY_IN} cr \u00b7 best lap ${RC.fmtTime(best ?? NaN)} \u00b7 wins ${wins} \u00b7 ${far} m away</small>
       <div class="row"><button class="go" data-race="${esc(d.id)}">\ud83c\udfc1 Race</button>${d.custom ? `<button data-edit="${esc(d.id)}">\u270f\ufe0f Edit</button><button data-del="${esc(d.id)}">\ud83d\uddd1</button>` : `<button data-copy="${esc(d.id)}">\ud83d\udee0 Remix</button>`}</div></div>`; }).join('');

@@ -383,7 +383,8 @@ function completeActivity(extra = {}) {
 }
 
 function finishSeries() {
-  const S = active.series, pay = seriesPay(S);
+  const S = active.series, pay = { ...seriesPay(S) };
+  if (pay.credits > 0) pay.credits = jobPay(pay.credits, 'pit:' + S.result, { streak: S.result !== 'lose' }); // v7.5.9: the Pit purse doubles too (Collin: always broke); the toasts below show it
   if (S.result === 'forfeit') return failActivity('You walked out of the ring. No purse.');
   if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
   active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;

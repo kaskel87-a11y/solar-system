@@ -16,7 +16,7 @@ import * as W from './world.js';
 import { buildHuman, BARTER_STORY, DEFERRED } from './storymars.js';
 import { CITY_DISTRICTS } from './city.js';
 import { tap as hookTap } from './planets/hooks.js';
-import { jobPay } from './economy.js'; // money boost: SSX.economy.payoutMult
+import { jobPay, boost } from './economy.js'; // money boost: SSX.economy.payoutMult (boost() keeps the '+N cr' labels = what's paid)
 
 const MOBILE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const nextStep = g => (typeof g.advanceStep === 'function' ? g.advanceStep() : g.debug.advance());
@@ -409,7 +409,7 @@ function startRaid(app, g, q, s) {
 function pickSheet(app, g, q, s, def) {
   const credits = g.progress.credits;
   const key = S.key;
-  openSheet(s.who || def.contact || 'Choice', s.prompt || s.text, s.options.map(o => ({ id: o.id, label: o.label, disabled: !!(o.cost && credits < o.cost), on: () => {
+  openSheet(s.who || def.contact || 'Choice', s.prompt || s.text, s.options.map(o => ({ id: o.id, label: o.credits ? o.label.replace(/\+\d+ cr/, `+${boost(o.credits)} cr`) : o.label, disabled: !!(o.cost && credits < o.cost), on: () => {
     const q2 = g.debug.quest(); if (!q2 || `${q2.id}:${q2.step}` !== key) return false;
     if (o.cost && !g.spend(o.cost)) return false;
     for (const f of [].concat(o.flag || [])) g.setFlag(f.includes(':') ? f : `story:${q.id}:${f}`);
