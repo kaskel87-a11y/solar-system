@@ -120,11 +120,13 @@ export function pendingFor(w) {
   return out;
 }
 
-// which district builds to start now, from pendingFor()'s list. 'fade' (the screen is going black, you haven't moved yet):
-// only the dress props, whose models load async and place by the height function; the grime decals ray-cast onto the
-// ground, which isn't built until you arrive, so they start at 'arrive'. -> [{ sys: 'dress' | 'grime', id }]
+// which district builds to start now, from pendingFor()'s list -> [{ sys: 'dress' | 'grime', id, warm }]
+//   'fade' (the screen is going black, you haven't moved yet): the dress props (their models load async and sit on the
+//     height function, so they can build before you arrive) and a grime warm-up (warm: paint one of its shared textures
+//     per call, called every fade frame; the grime decals themselves ray-cast onto ground that only exists once you're there)
+//   'arrive': everything still missing, for real
 export function kicks(pending, phase) {
   const out = [];
-  for (const k of pending || []) { const m = /^(dress|grime):(.+)$/.exec(String(k)); if (!m) continue; if (phase === 'fade' && m[1] !== 'dress') continue; out.push({ sys: m[1], id: m[2] }); }
+  for (const k of pending || []) { const m = /^(dress|grime):(.+)$/.exec(String(k)); if (!m) continue; out.push({ sys: m[1], id: m[2], warm: phase === 'fade' && m[1] === 'grime' }); }
   return out;
 }

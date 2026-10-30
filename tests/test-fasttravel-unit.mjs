@@ -69,8 +69,8 @@ ok('readyPending', !C.ready([20, 20, 20, 20], [], 16, ['dress:mars-downtown']) &
   ok('pendOff', C.pendingFor({ x: 0, z: -560, sites, grime: { ...g, enabled: false }, dress: { ...d, failed: true } }).length === 0 && C.pendingFor({ x: 0, z: -560, sites, grime: null, dress: { ...d, loaded: false } }).length === 0);
   ok('pendDesktop', C.pendingFor({ x: 10, z: 26, sites, grime: null, dress: { ...d, tier: 'desktop' } }).length === 2);
   ok('pendBad', C.pendingFor(null).length === 0 && C.pendingFor({ x: NaN, z: 0 }).length === 0); }
-ok('kicksFade', JSON.stringify(C.kicks(['grime:mars-downtown', 'dress:mars-downtown'], 'fade')) === '[{"sys":"dress","id":"mars-downtown"}]');
-ok('kicksArrive', C.kicks(['grime:mars-downtown', 'dress:mars-downtown'], 'arrive').length === 2 && C.kicks(['bogus', null, 'grime:'], 'arrive').length === 0 && C.kicks(null, 'fade').length === 0);
+ok('kicksFade', JSON.stringify(C.kicks(['grime:mars-downtown', 'dress:mars-downtown'], 'fade')) === '[{"sys":"grime","id":"mars-downtown","warm":true},{"sys":"dress","id":"mars-downtown","warm":false}]');
+ok('kicksArrive', C.kicks(['grime:mars-downtown', 'dress:mars-downtown'], 'arrive').every(k => !k.warm) && C.kicks(['grime:mars-downtown', 'dress:mars-downtown'], 'arrive').length === 2 && C.kicks(['bogus', null, 'grime:'], 'arrive').length === 0 && C.kicks(null, 'fade').length === 0);
 ok('readyCap', C.SETTLE_MAX_MS >= 2000 && C.SETTLE_MAX_MS <= 3000 && C.SMOOTH_MS === 100);
 ok('fade', C.FADE_MS >= 150 && C.FADE_MS <= 400 && C.HOLD_FRAMES >= 1);
 

@@ -93,7 +93,7 @@ function pending(x, z) {
 }
 // start building the destination district's dressing now (SSX.dress / SSX.grime .prebuild, guarded) -> how many started
 function kick(x, z, phase) {
-  let n = 0; for (const k of C.kicks(pending(x, z), phase)) if (tryv(() => X()[k.sys]?.prebuild?.(k.id), false)) n++;
+  let n = 0; for (const k of C.kicks(pending(x, z), phase)) if (tryv(() => X()[k.sys]?.prebuild?.(k.id, k.warm), false)) n++;
   return n;
 }
 // stay black until the destination is ready. The game loop keeps rendering it behind the black overlay, so the new chunks,
@@ -123,8 +123,9 @@ async function travel(id) {
   busy = true; frames = frameRec();
   try {
     tryv(() => X().hudx?.closeMap?.());
-    tryv(() => { frames.kickFade = kick(p.x, p.z, 'fade'); }); // the dress props start loading while the screen fades out
-    await fade(true);
+    // while the screen fades out: the dress props start loading, and grime paints one shared texture per frame
+    let fading = true; frames.kickFade = 0; const kf = () => { if (!fading) return; frames.kickFade += tryv(() => kick(p.x, p.z, 'fade'), 0) ? 1 : 0; requestAnimationFrame(kf); }; kf();
+    try { await fade(true); } finally { fading = false; }
     const { x, z, drv, s } = spot(p);
     // districts go through the surface's own district hop (moves your car with you); everything else through debugMove,
     // which moves the car when you're driving and you when you're on foot
