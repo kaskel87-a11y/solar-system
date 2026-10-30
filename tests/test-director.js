@@ -71,10 +71,10 @@ function measureHud() {
     // dust storm: light then heavy
     await pick('storm', 'light'); await wait(() => window.__director.stormFade >= 0.99, 20000); await sleep(200);
     const sL = await D(); R.stormLightInfo = { fog: sL.fog, dust: sL.dust, fade: sL.fade };
-    ok('stormLight', null, sL.S.storm === 'light' && sL.dust?.n === (touch ? 160 : 600) && sL.fog.far <= 63 && sL.fog.far < d0.fog.far);
+    ok('stormLight', null, sL.S.storm === 'light' && sL.dust?.n === (touch ? 80 : 600) && sL.dust.draw <= sL.dust.n && sL.fog.far <= 63 && sL.fog.far < d0.fog.far);
     await pick('storm', 'heavy'); await settle(0.3);
     const sH = await D(); R.stormHeavyInfo = { fog: sH.fog, dust: sH.dust };
-    ok('stormHeavy', null, sH.S.storm === 'heavy' && sH.dust?.n === (touch ? 360 : 1400) && sH.fog.far <= 25 && sH.dust.visible);
+    ok('stormHeavy', null, sH.S.storm === 'heavy' && sH.dust?.n === (touch ? 180 : 1400) && sH.dust.draw <= sH.dust.n && sH.fog.far <= 25 && sH.dust.visible);
     ok('stormMobileCheap', sH.dust?.n, !touch || sH.dust.n <= 400);
     await closePanel(); await sleep(600);
     const hudS = await G(measureHud); if (hudS.overlaps.length || hudS.off.length) bad.push('hudStorm:' + hudS.overlaps.concat(hudS.off).join(','));
