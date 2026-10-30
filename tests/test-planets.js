@@ -43,7 +43,10 @@ function measure() {
   const shot = s => page.screenshot({ path: `${out}${PFX}-${tag}-${s}.png` });
   const tapAt = async sel => { const r = await G(s => { const e = document.querySelector(s); if (!e) return null; e.scrollIntoView({ block: 'center', behavior: 'instant' }); return true; }, sel) && await (async () => { await sleep(250); return G(s => { const b = document.querySelector(s).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, sel); })(); if (r) await page.touchscreen.tap(r.x, r.y); return !!r; };
   const landed = w => wait(w => { const s = window.__app.state; return s.onSurface && !s.transitioning && s.info?.name === w && window.__app.surface.info?.intro === 0; }, 120000, w);
-  const calls = () => G(async () => { await new Promise(r => setTimeout(r, 600)); return window.__app.renderer.info.render.calls; });
+  // v7.5.4: Mars runs a post-FX composite pass after the scene render, so info.render.calls (auto-reset per render) read 1 there;
+  // count every render in a frame instead (max over ~600 ms of frames)
+  const calls = () => G(async () => { const i = window.__app.renderer.info, ar = i.autoReset; i.autoReset = false; i.reset(); let mx = 0; const end = performance.now() + 600;
+    await new Promise(res => { const f = () => { mx = Math.max(mx, i.render.calls); i.reset(); if (performance.now() < end) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); }); i.autoReset = ar; return mx; });
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => { ['ssx.game.v1', 'ssx.planets.v1'].forEach(k => localStorage.removeItem(k)); });

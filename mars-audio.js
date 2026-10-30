@@ -63,9 +63,32 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
   // ---------- radio ----------
   const mine = appendStations(STATIONS, MARS_STATIONS);
   for (const [id, lines] of Object.entries(STOCK_DJ)) addDjLines(STATIONS.find(s => s.id === id), lines);
+  // Radio banner: one slim black/white line just above the joystick, ~3 s, never over the minimap / objective card.
+  // Modes: 'off' | 'stations' (station + song changes) | 'all' (+ news, ads, DJ lines). Phones default to off.
   const ticker = document.createElement('div'); ticker.id = 'ssxTicker'; ticker.setAttribute('aria-live', 'polite'); document.body.appendChild(ticker);
   let tickT = 0;
-  const radio = createRadio(gctx, () => (wire(), M.music), { voices, onCaption: (line, st) => { ticker.innerHTML = `<b>📻 ${st.name}</b> ${esc(line)}`; ticker.classList.add('on'); tickT = Math.min(6.5, 2.5 + line.length * 0.06); captions.push(line); } });
+  const BANNER_KEY = 'ssx.radioBanner', BANNER_MODES = ['off', 'stations', 'all'];
+  const bannerPhone = () => { try { return matchMedia('(pointer: coarse)').matches || innerWidth < 800; } catch (e) { return innerWidth < 800; } };
+  const bannerMode = () => { const v = settings()?.radioBanner ?? (() => { try { return localStorage.getItem(BANNER_KEY); } catch (e) { return null; } })(); return BANNER_MODES.includes(v) ? v : bannerPhone() ? 'off' : 'stations'; };
+  const setBannerMode = m => {
+    if (!BANNER_MODES.includes(m)) return bannerMode(); const s = settings(); if (s) { s.radioBanner = m; save(); } try { localStorage.setItem(BANNER_KEY, m); } catch (e) { /* */ }
+    if (m === 'off') hideBanner(); renderPanel(); return m;
+  };
+  const vis = e => { if (!e) return null; const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
+  function placeBanner() { // just above the joystick, clear of the right-hand thumb buttons; desktop: bottom centre
+    const W = innerWidth, H = innerHeight, joy = vis(document.getElementById('joy')), st = ticker.style;
+    if (!joy) { st.left = '50%'; st.transform = 'translateX(-50%)'; st.bottom = 'calc(72px + var(--sab, 0px))'; st.maxWidth = 'min(560px, calc(100vw - 24px))'; return; }
+    const y1 = joy.top - 6, y0 = y1 - 24; let right = W - 8;
+    for (const e of document.querySelectorAll('#surfBtns > *, #flyBtns > *, #fireBtn, #meleeBtn, #radioBtn, #driveBtn')) { const r = vis(e); if (r && r.left > joy.left && r.top < y1 && r.bottom > y0) right = Math.min(right, r.left - 6); }
+    st.transform = 'none'; st.left = Math.round(joy.left) + 'px'; st.bottom = Math.round(H - y1) + 'px'; st.maxWidth = Math.max(120, Math.round(right - joy.left)) + 'px';
+  }
+  function hideBanner() { tickT = 0; ticker.classList.remove('on'); }
+  // kind: 'station' | 'song' (shown unless off) | 'talk' (news / ads / DJ, only in 'all')
+  function showBanner(name, text = '', kind = 'station') {
+    const m = bannerMode(); if (m === 'off' || (kind === 'talk' && m !== 'all')) return false;
+    ticker.innerHTML = `<b>📻 ${esc(name)}</b>${text ? ' ' + esc(text) : ''}`; placeBanner(); ticker.classList.add('on'); tickT = 3; return true;
+  }
+  const radio = createRadio(gctx, () => (wire(), M.music), { voices, onCaption: (line, st) => { showBanner(st.name, line, 'talk'); captions.push(line); } });
   const captions = []; // talk + bark log for tests
   // keep the save's index in step with its station id (mods may register stations in a different order)
   const syncSaved = () => { const s = settings(); if (s && s.radioId) { const i = resolveStation(STATIONS, s); if (s.radio !== i) s.radio = i; } };
@@ -139,12 +162,12 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
     if (s && s !== lastSettings) { lastSettings = s; syncSaved(); if (s.mix) { mix = normMix(s.mix); applyMix(); } }
     // radio: our stations play while audio7's radio is on, in a vehicle, outside venues
     const idx = au7?.stationIndex ?? -1, S = STATIONS[idx];
-    if (info?.driving && idx !== lastIdx && idx >= 0) { if (lastIdx >= 0 && s && rememberStation(s, STATIONS, idx)) save(); lastIdx = idx; }
+    if (info?.driving && idx !== lastIdx && idx >= 0) { if (lastIdx >= 0) { if (s && rememberStation(s, STATIONS, idx)) save(); if (S) S.id === 'off' ? showBanner('Radio off') : showBanner(S.name, S.tag ? '· ' + S.tag : ''); } lastIdx = idx; }
     if (!info?.driving) lastIdx = -1;
     const want = info?.driving && au7?.playing && !au7?.venue && S && typeof S.step === 'function' ? S : null;
-    if (want !== radio.station) { radio.play(want); if (!want || !want.talk) ticker.classList.remove('on'); }
+    if (want !== radio.station) radio.play(want);
     radio.tick(dt);
-    if (tickT > 0) { tickT -= dt; if (tickT <= 0 || !want) ticker.classList.remove('on'); }
+    if (tickT > 0) { tickT -= dt; if (tickT <= 0 || !info?.driving) hideBanner(); else placeBanner(); }
     // ambience
     zonesT -= dt; if (zonesT <= 0) { zonesT = 2; try { zones = zonesFrom(districtsOf(AMBIENCE_CONFIG.world)); } catch (e) { zones = zonesFrom([]); } }
     const col = info && info.name === AMBIENCE_CONFIG.world ? app.surface?.world?.colony : null;
@@ -162,9 +185,10 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
       background: rgba(8,10,20,0.72); border: 1px solid rgba(255,255,255,0.22); text-shadow: 0 1px 2px #000; transition: opacity .3s; will-change: transform; white-space: normal; }
     .ssxBark::after { content: ''; position: absolute; left: 50%; bottom: -5px; margin-left: -4px; border: 4px solid transparent; border-top-color: rgba(8,10,20,0.72); border-bottom: 0; }
     .ssxBark.hot { border-color: rgba(255,90,70,0.7); }
-    #ssxTicker { position: fixed; z-index: 7; left: calc(8px + var(--sal, 0px)); top: calc(58px + var(--sat, 0px)); max-width: min(62vw, 360px); display: none; padding: 4px 8px; border-radius: 9px;
-      font: 600 11px/1.3 system-ui, -apple-system, sans-serif; color: #fff; background: rgba(60,20,90,0.72); border: 1px solid rgba(200,140,255,0.4); pointer-events: none; }
-    #ssxTicker b { color: #e0b0ff; margin-right: 4px; } #ssxTicker.on { display: block; } body:not(.driving) #ssxTicker { display: none; } body.hidehud #ssxTicker { display: none; }
+    #ssxTicker { position: fixed; z-index: 7; left: calc(8px + var(--sal, 0px)); bottom: calc(150px + var(--sab, 0px)); max-width: calc(100vw - 16px); box-sizing: border-box; display: none; padding: 2px 7px; border-radius: 6px;
+      font: 600 11px/16px system-ui, -apple-system, sans-serif; color: #fff; background: rgba(0,0,0,0.9); border: 1px solid #fff; pointer-events: none;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: none; }
+    #ssxTicker b { color: #fff; font-weight: 800; margin-right: 2px; } #ssxTicker.on { display: block; } body:not(.driving) #ssxTicker { display: none; } body.hidehud #ssxTicker { display: none; }
     #sndPanel { position: fixed; z-index: 13; top: calc(60px + var(--sat, 0px)); right: calc(8px + var(--sar, 0px)); width: min(330px, calc(100vw - 16px)); max-height: calc(100vh - 150px - var(--sat, 0px) - var(--sab, 0px));
       overflow-y: auto; box-sizing: border-box; display: none; padding: 8px; border-radius: 12px; background: rgba(10,14,30,0.94); border: 1px solid rgba(120,160,255,0.35); color: #fff; font: 13px system-ui, -apple-system, sans-serif; touch-action: manipulation; }
     #sndPanel.show { display: block; } #sndPanel .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; } #sndPanel .hd b { font-size: 14px; }
@@ -178,6 +202,7 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
   const panel = document.createElement('div'); panel.id = 'sndPanel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Sound and radio');
   panel.innerHTML = `<div class="hd"><b>🔊 Sound &amp; radio</b><button id="sndClose" aria-label="Close">✖</button></div>
     <button id="sndMute" style="width:100%"></button>
+    <button id="sndBanner" style="width:100%;margin-top:5px" aria-label="Radio banner"></button>
     ${[['master', 'Master'], ['music', 'Music'], ['amb', 'Ambience']].map(([k, l]) => `<label class="row"><span>${l}</span><input type="range" id="snd_${k}" min="0" max="100" step="5" aria-label="${l} volume"><output id="snd_${k}_v"></output></label>`).join('')}
     <div class="note" id="sndNote"></div><div class="sts" id="sndStations"></div>`;
   document.body.appendChild(panel);
@@ -192,6 +217,7 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
   };
   onTap(panel.querySelector('#sndClose'), () => panel.classList.remove('show'));
   onTap(panel.querySelector('#sndMute'), () => setMix({ mute: !mix.mute }));
+  onTap(panel.querySelector('#sndBanner'), () => setBannerMode(BANNER_MODES[(BANNER_MODES.indexOf(bannerMode()) + 1) % BANNER_MODES.length]));
   for (const k of ['master', 'music', 'amb']) {
     const r = panel.querySelector('#snd_' + k); r.addEventListener('input', () => setMix({ [k]: r.value / 100 }));
     r.addEventListener('keydown', e => e.stopPropagation()); // arrow keys adjust the slider, not the rover
@@ -208,6 +234,7 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
   function renderPanel() {
     if (!panel.classList.contains('show')) return;
     const m = panel.querySelector('#sndMute'); m.textContent = mix.mute ? '🔇 Muted · tap to unmute' : '🔊 Sound on · tap to mute'; m.classList.toggle('on', mix.mute); m.setAttribute('aria-pressed', String(mix.mute));
+    panel.querySelector('#sndBanner').textContent = '📻 Radio banner: ' + { off: 'Off', stations: 'Station changes', all: 'Stations + news & ads' }[bannerMode()] + ' · tap to change';
     for (const k of ['master', 'music', 'amb']) { const r = panel.querySelector('#snd_' + k); if (document.activeElement !== r) r.value = Math.round(mix[k] * 100); panel.querySelector(`#snd_${k}_v`).textContent = Math.round(mix[k] * 100); }
     const driving = !!app.surface?.info?.driving, s = settings(), cur = driving ? au7.stationIndex : resolveStation(STATIONS, s || {});
     panel.querySelector('#sndNote').textContent = driving ? '📻 Stations' : '📻 Radio plays in vehicles. Pick one for your next drive:';
@@ -245,6 +272,8 @@ export function initMarsAudio(app, { au7, audio, ctx } = {}) {
     setRideFlash(fn) { rideFlash = typeof fn === 'function' ? fn : null; }, // garage/dealership: () => 0..1 "how flashy is this ride"
     registerSoundscape(id, def) { AMBIENCE_CONFIG.zones = AMBIENCE_CONFIG.zones.filter(z => z.id !== id).concat([{ id, name: def.name || id, centre: def.centre, r: def.r || 80, profile: PROFILES.includes(def.profile) ? def.profile : 'junction' }]); zonesT = 0; return id; },
     mix: { get: () => ({ ...mix }), set: setMix },
+    // radio banner: show(name, text, kind) for other radio code (kind 'song' on a track change); mode 'off' | 'stations' | 'all'
+    banner: { get mode() { return bannerMode(); }, set: setBannerMode, show: (name, text, kind = 'song') => showBanner(name, text, kind), hide: hideBanner },
     open: openPanel, close: () => panel.classList.remove('show'),
     get state() { return { wired: !!M, shadow: !!M?.shadow, ctxState: M?.a.state || ctx?.()?.state || 'none', station: radio.station?.id || null, tuned: STATIONS[au7?.stationIndex]?.id || null, radioOn: !!au7?.playing, talking: radio.speaking, beds: amb.beds, weights: { ...mixState.w }, district: mixState.district?.id || null, aj: ajPos, barks: live.map(b => b.line), voices: voices.active(), zones: zones.map(z => ({ id: z.id, centre: z.centre, r: z.r, registered: !!z.registered })) }; },
     captions, stationIds: mine.map(i => STATIONS[i].id)

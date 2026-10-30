@@ -61,9 +61,10 @@ ok('fmtHour', GC.fmtHour(21.5) === '21:30' && GC.fmtHour(3) === '03:00');
 // ---------- save migration ----------
 for (const old of [undefined, null, 5, 'x', [], {}]) { const g = GC.migrateGarage(old); ok('migrate ' + JSON.stringify(old), g.v === 1 && g.rides.length === 1 && g.rides[0].id === 'stock' && g.active === 'stock' && g.rep === 0); }
 const partial = GC.migrateGarage({ rides: [{ id: 'r4', kind: 'olympus_gt', paint: 'gold', up: { engine: 7, boost: '2' } }, { kind: 'nope' }, null], active: 'r4', rep: '33', nextId: 2 });
-ok('migrate partial: stock restored', partial.rides[0].id === 'stock' && partial.rides.length === 2);
+// live fix: a ride with no id is kept (fresh id), not dropped; null entries are skipped
+ok('migrate partial: stock restored', partial.rides[0].id === 'stock' && partial.rides.length === 3 && partial.rides[2].kind === 'nope' && partial.rides[2].id === 'r5');
 ok('migrate partial: ride fields', (() => { const x = partial.rides[1]; return x.up.engine === 3 && x.up.boost === 2 && x.up.brakes === 0 && x.owned.paint.includes('gold') && x.kit === 'stock' && x.spent === 0; })());
-ok('migrate partial: scalars', partial.active === 'r4' && partial.rep === 33 && partial.nextId === 5);
+ok('migrate partial: scalars', partial.active === 'r4' && partial.rep === 33 && partial.nextId === 6);
 ok('migrate bad active', GC.migrateGarage({ rides: [], active: 'ghost' }).active === 'stock');
 const rt = GC.migrateGarage(JSON.parse(JSON.stringify(partial))); ok('migrate idempotent', JSON.stringify(rt) === JSON.stringify(partial));
 // a whole old v7.4 progress save (no garage key) round-trips without touching other keys

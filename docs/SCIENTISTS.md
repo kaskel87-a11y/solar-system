@@ -54,3 +54,39 @@ block, inside the flat zone (< 62 m), clear of Rook [36,-26] and Vesna [8,24].
 3. **sci-03 Take a Number** (Tam): portal to the Waiting Room for the pistol's permit → lab. 160 / 240.
 4. **sci-04 Where's My Flask** (Silas): check the cantina (it's not there) → portal to the Giant's Pantry → lab. 190 / 300.
 5. **sci-05 Last Call at the End of Everything** (Silas): portal to the Last Bar for the notes → 2★ ColSec getaway (fires `ssx:getaway`) → lab. 300 / 600 + badge *Interdimensional Delinquent*.
+
+## Part 2: sci-06..10 (darker, weirder; the Raccoon Mobile earns its keep)
+
+New files only (no core hooks): `scientists2.js` (cast, barks, missions, pure) · `sci2core.js` (stalkers, collapse
+timer, Raccoon legs, rift drive, pure) · `dimensions/{orchard,hum,pawn,rehearsal,gut}.js` + `dimensions/index2.js`.
+`scihooks.js` registers them next to part 1 (`DIMENSIONS2` is kept separate so part 1's checks are unchanged).
+Unit: `tests/test-scientists2-unit.mjs` · e2e: `tests/test-scientists2.js` / `tests/run-scientists2.sh`.
+
+New mechanics:
+- **`rdrive` step**: drive the Raccoon Mobile (bought, or stolen) to the marker. On foot, or in any other car, it
+  doesn't count; a hint tells you where the Depot sells it (900 cr). Silas or Tam bark once per leg.
+- **Rift drive**: portal steps marked `raccoon: 'only'` (sci-09, sci-10) refuse you on foot (Tam warns) and take you
+  through in the Raccoon Mobile. After sci-09 the Raccoon Mobile can drive into *any* portal.
+- **Stalkers**: a dimension resident that walks toward you (clamped inside the room) instead of sweeping a lane.
+- **Collapse timer**: the Gut has `limit: 60`; the step text counts down, and at 0 you're spat back onto Mars with the
+  step kept. The Raccoon Mobile is still parked in the portal mouth, so getting in punches straight back through.
+- **Barks**: every line goes through `SSX.bark(npc, category)` with per-speaker categories registered once via
+  `SSX.registerBarks` (`sci_silas_idle`, `sci_tam_idle`, `sci_tam_warn`, `sci_tam_drive`, `sci_silas_drive`,
+  `sci_<host>_dim`), positioned over the speaker; a caption toast is the fallback if SSX isn't loaded.
+
+| id | name | host (original) | objective | hazards |
+|---|---|---|---|---|
+| orchard | The Tooth Orchard | Mother Ossery | 4 molars | pruner lanes, root geyser |
+| hum | The Hum | The Lineman | answer lines 1-2-3 in order | linemen lanes, stalker *Dial Tone* |
+| pawn | Lien & Sons Organ Pawn | Mr. Lien | ticket → jar → receipt, in order | repo men, stalker *Mr. Lien* |
+| rehearsal | The Rehearsal | The Understudy (a waxen Silas) | 3 script pages | stagehand lane, stalker *Understudy* |
+| gut | The Gut | The Hungry Quiet | 4 anchors in 60 s | clenching lumps, stalker *Hungry Quiet* |
+
+1. **sci-06 Root Canal** (Silas): Raccoon to the lab yard → portal to the Tooth Orchard → Raccoon to the Dust Cemetery within 150 s → lab. 320 xp / 650 cr.
+2. **sci-07 Dead Air** (Tam): portal to the Hum (answer lines 1-2-3) → kill what came down the line (peaceful mode: scan) → lab. 340 / 700.
+3. **sci-08 Collateral** (Silas): portal to Lien & Sons Organ Pawn for Silas's pawned liver (ticket, jar, receipt) → 2★ getaway → Raccoon to the Back Lot → lab. 380 / 800.
+4. **sci-09 The Understudy** (Tam): pull the rift carburettor out of the wreck pile → Raccoon to the lab yard → rift-drive into the Rehearsal (Raccoon only) → lab. 420 / 900.
+5. **sci-10 Closing Time** (Silas, finale): Raccoon to the far scrap heap → rift-drive into the Gut (60 s collapse) → kill what followed → 3★ getaway → lab. 650 / 1500 + badge *Closed the Door Behind Me*; the Raccoon Mobile gets rift-tuned (+3 top speed, +4 boost).
+
+Originality guard (unit test): no lookalike names, catchphrases or brand names; M-rated tone (dread, swearing,
+violence) with no sexual content.

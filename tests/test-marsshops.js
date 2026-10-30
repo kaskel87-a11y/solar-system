@@ -70,7 +70,7 @@ const tag = (DEV + (VP ? '-' + VP : '')).replace(/[^a-z0-9]+/gi, '-').toLowerCas
         await G(id => { const s = window.__app.surface, w = s.world.wareList().find(x => x.id === id), b = s.world.inside; s.debugInside(w.x - (b.x0 + b.x1) / 2, w.z - (b.z0 + b.z1) / 2, 0); }, p.extra); await sleep(900);
         const scr = await G(id => { const s = window.__app.surface, t = s.world.wareTargets().find(m => m.userData.ware === id && m.geometry.type === 'PlaneGeometry'); if (!t) return null; const v = t.getWorldPosition(t.position.clone()).project(s.camera); return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight, on: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 }; }, p.extra);
         let how = 'tap';
-        if (scr?.on) { await press(scr.x, scr.y); await sleep(700); }
+        if (scr?.on && await G(p => document.elementFromPoint(p.x, p.y)?.tagName === 'CANVAS', scr)) { await press(scr.x, scr.y); await sleep(700); } // v7.5.4: a tag under a dock button (Stash) is not tappable; use the button
         let a2 = await G(() => { const P = window.__app.game.progress; return { cr: P.credits }; });
         if (a2.cr === b2.cr) { how = 'button'; await waitBtn(/Buy|🛒/, 6000); await tapBtn(); await sleep(700); }
         a2 = await G(() => { const g = window.__app.game, P = g.progress; return { cr: P.credits, med: P.inv.medkits || 0, ammo: { ...P.inv }, u: P.unlocks.slice(), toast: document.getElementById('toast')?.textContent || '' }; });

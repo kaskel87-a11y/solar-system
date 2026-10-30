@@ -5,6 +5,7 @@
 // without depending on it: activities/runner.js calls jobsTick(dt, ctx) each frame; our own throttled rAF tick is the fallback.
 // Fiction only: invented colony, invented people, no real brands.
 import * as THREE from 'three';
+import { jobPay, boost } from '../economy.js'; // money boost: SSX.economy.payoutMult (boost() for the tip / bonus figures we show)
 
 /**
  * window.SSX.jobs — public API
@@ -217,12 +218,12 @@ function complete(opts = {}) {
   if (type === 'taxi') { const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5, over = Math.max(0, -run.t);
     pay = Math.max(5, Math.round(run.base * (over ? Math.max(0.3, 1 - over / 40) : 1)));
     tip = over ? 0 : Math.round(run.base * (0.3 + 0.05 * L) * frac * Math.max(0, run.smooth) / 100);
-    note = `${run.fare.name}: ${run.crashes ? `${run.crashes} crash${run.crashes > 1 ? 'es' : ''}` : 'smooth ride'}${tip ? `, +${tip} tip` : over ? ', late, no tip' : ''}.`; }
-  else if (type === 'paramedic') { const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.5 * frac); note = `${run.patient.name} made it to ${run.clinic?.name || 'the clinic'}${tip ? `, +${tip} speed bonus` : ''}.`; }
+    note = `${run.fare.name}: ${run.crashes ? `${run.crashes} crash${run.crashes > 1 ? 'es' : ''}` : 'smooth ride'}${tip ? `, +${boost(tip)} tip` : over ? ', late, no tip' : ''}.`; }
+  else if (type === 'paramedic') { const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.5 * frac); note = `${run.patient.name} made it to ${run.clinic?.name || 'the clinic'}${tip ? `, +${boost(tip)} speed bonus` : ''}.`; }
   else { const coll = Math.max(0, (world()?.wanted || 0) - run.wanted0); const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.4 * frac);
     if (coll) { pay = Math.round(pay * 0.6); note = ' Collateral cut your bounty.'; } else { const w = world(); if (w?.wanted > 0) w.setWanted?.(w.wanted - 1, 'bounty paid'); }
-    note = `${run.mark.name} (${run.mark.crime}) taken down${tip ? `, +${tip} quick-work bonus` : ''}.${note}`; }
-  const total = pay + tip;
+    note = `${run.mark.name} (${run.mark.crime}) taken down${tip ? `, +${boost(tip)} quick-work bonus` : ''}.${note}`; }
+  const total = jobPay(pay + tip, 'jobs:' + type); // money boost (economy.js)
   try { game()?.reward?.(xp, total); } catch (e) { console.warn('jobs reward', e); }
   const before = levelOf(type); S[type].done++; S[type].earned += total; S[type].best = Math.max(S[type].best, total); S.earned += total; save();
   const after = levelOf(type);
@@ -354,7 +355,7 @@ function stepRun(dt, h) {
       else if (r.t <= 0) fail(`${P.name} didn\u2019t make it. Dispatch is not impressed.`);
     } else if (r.stage === 'transport') {
       r.target = r.clinic.at; r.text = `Drive to ${r.clinic.name}`;
-      if (!i.driving) { const c = nearestClinic(p); if (dist(p, c.at) < R_DROP) { r.clinic = c; complete(); return; } r.text = `Carry on: ${r.clinic.name}`; }
+      if (!i.driving) { const c = nearestClinic(p); if (dist(p, c.at) < R_DROP) { r.clinic = c; complete(); return; } r.text = `Get in and drive to ${r.clinic.name}`; }
       if (dist(p, r.clinic.at) < R_DROP && sp < 7) { complete(); return; }
       if (r.t <= 0) fail(`${P.name} flatlined in your back seat. Rough night.`);
     }
@@ -384,7 +385,7 @@ function actStabilise() {
   const h = here(); if (!run || run.type !== 'paramedic' || run.stage !== 'stabilise' || !h) return false;
   if (dist([h.x, h.z], run.patient.at) > STAB_R) { toast(`🩺 Get close to ${run.patient.name} (within ${STAB_R} m) and ${isTouch() ? 'tap Stabilise' : 'press G'}.`, 1800); return false; }
   run.taps++; emit('stage', { stage: 'stabilise', taps: run.taps });
-  if (run.taps >= run.patient.need) { toast(`🩺 ${run.patient.name} is stable. Get them in a vehicle.`, 2400); setStage('load', Math.max(25, 40 - 2 * run.L), { text: 'Load patient' }); }
+  if (run.taps >= run.patient.need) { toast(`🩺 ${run.patient.name} is stable. Pull up next to them in any vehicle.`, 2400); setStage('load', Math.max(25, 40 - 2 * run.L), { text: `Drive up to ${run.patient.name}` }); }
   renderHud(); return true;
 }
 
@@ -464,7 +465,7 @@ function renderHud() {
   if (!hud) return; refreshAct();
   if (!run) { if (hud.classList.contains('show')) { hud.classList.remove('show'); hudKey = ''; } if (panel?.classList.contains('show')) renderPanelThrottled(); return; }
   const h = here(), M = META[run.type], d = h && run.target ? Math.round(dist([h.x, h.z], run.target)) : null;
-  const pay = run.base || 0, warn = run.t < 10;
+  const pay = boost(run.base || 0), warn = run.t < 10;
   const l1 = `${M.icon} ${M.name.toUpperCase()} · L${run.L} · ⏱ ${run.t < 0 ? '+' + fmtT(-run.t) : fmtT(run.t)} · 💰 ${pay} cr${run.type === 'taxi' && run.stage === 'drop' ? ` · ${Math.max(0, Math.round(run.smooth))}% smooth` : ''}`;
   const l2 = `${run.text || ''}${d != null && h ? ` · ${d} m ${dirTo([h.x, h.z], run.target)}` : ''}`;
   const k = l1 + '|' + l2 + warn;

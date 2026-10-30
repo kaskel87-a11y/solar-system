@@ -5,7 +5,14 @@
 // Does NOT build an ambient event spawner (CoS encounter director owns random-events.json).
 import { addMenuItem, tap, panelTap } from '../racehooks.js';
 import { openPokerTable, closePoker, pokerIsOpen, tryBark } from './poker.js';
+import { prepTemplate, nudgeSteps } from './deadends.js';
+import { markTick, pub as markPub, debugTip as markTip } from './mark.js';
+import { newSeries, scoreRound, payout as seriesPay, seriesLine, roundOutcome, BREAK_S } from './pitseries.js';
+import { heistTipTick, tipState } from '../mars/heisttip.js';
 import { jobsTick } from '../mars/jobs.js'; // v7.5.2: Marsmania's taxi / paramedic / vigilante jobs ride the activity tick
+import { toAJ, toWorld } from './coords.js';
+import { jobPay, boost } from '../economy.js'; // money boost: payoutMult on side-job top-ups (the base pays through game.js complete)
+import { missionHelpTick } from '../help/stuck.js'; // Stuck? on the mission card + red ◆ over mission foes (every world) // pack coords are colony-relative; player x/z are world
 
 const LS = 'ssx.mars.act.v1';
 const DISTRICTS = {
@@ -80,6 +87,8 @@ function sayNpc(npc, category, fallbackText) {
   if (fallbackText) toast(fallbackText);
 }
 function app() { return typeof window !== 'undefined' ? window.__app : null; }
+// player (or car) position in the pack's AJ-relative frame; null until the colony exists
+function ajHere(c = C) { const p = c?.car || c?.player; return p ? toAJ(p.x, p.z, c.world?.colony) : null; }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function districtAt(x, z) {
@@ -117,7 +126,7 @@ function compileSteps(def) {
   if (!tpl.length && def.loop?.alley_pts_local) {
     const c = DISTRICTS[def.district]?.centre || [0, 0];
     const pts = def.loop.alley_pts_local.map(([x, z]) => [c[0] + x, c[1] + z]);
-    tpl = [{ type: 'take', text: 'Grab a ride' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Run the alley' }];
+    tpl = [{ type: 'take', text: 'Get in any vehicle' }, { type: 'race', pts, limit: def.loop.limit_s || 55, text: 'Drive through every alley checkpoint' }];
   }
   // Resolve at_aj_from pools (taxi)
   const poolPick = (key, i) => {
@@ -126,17 +135,18 @@ function compileSteps(def) {
     return pool[i % pool.length];
   };
   let poolIdx = 0;
+  tpl = prepTemplate(def, tpl, DISTRICTS[def.district]?.centre);
   for (const s of tpl) {
     if (s.type === 'duel') {
       // Handled by runner (v7.4 challenge); emit a goto stand-in so registerMission stays valid
       const at = s.at || def.location?.at_aj || [0, 0];
-      steps.push({ type: 'goto', at, r: 5, text: s.text || 'Win the bout (duel)' });
+      steps.push({ type: 'goto', at, r: 5, text: s.text || 'Win the fist fight' });
       continue;
     }
     if (s.type === 'enter') {
       // District buildings aren't in the live colony yet — clock-in is a goto at the activity start
       const at = def.location?.at_aj || s.at || [0, 0];
-      steps.push({ type: 'goto', at, r: 5, text: s.text || `Clock in (${s.building || 'spot'})` });
+      steps.push({ type: 'goto', at, r: 5, text: s.text || `Go to ${s.building || 'the job spot'} to clock in` });
       continue;
     }
     const out = { type: s.type, text: s.text };
@@ -157,6 +167,7 @@ function compileSteps(def) {
     if (s.limit != null) out.limit = s.limit;
     if (s.item) out.item = s.item;
     if (s.keep) out.keep = true;
+    if (s.mark) out.mark = s.mark;
     if (s.n != null) out.n = s.n;
     if (s.building) out.building = s.building;
     // drop unsupported types quietly
@@ -179,17 +190,22 @@ function compileSteps(def) {
     steps.push({ type: 'goto', at, r: 8, text: 'Pick up the fare' });
     steps.push({ type: 'goto', at: [at[0] + 40, at[1] - 80], r: 8, text: 'Drop them off' });
   }
-  return steps;
+  return nudgeSteps(steps, C);
 }
 
 function missionId(def) { return `act-${def.id}`; }
 
 function registerAll() {
   if (registered || !pack || !C?.game?.registerMission) return;
-  for (const def of pack.activities || []) {
-    if (DEFERRED.has(def.id)) continue;
+  for (const def of pack.activities || []) registerOne(def);
+  registered = true;
+}
+
+function registerOne(def) {
+  {
+    if (DEFERRED.has(def.id)) return;
     const steps = compileSteps(def);
-    if (!steps.length) continue;
+    if (!steps.length) return;
     try {
       C.game.registerMission({
         id: missionId(def),
@@ -207,7 +223,6 @@ function registerAll() {
       });
     } catch (e) { console.warn('[activities] register', def.id, e.message); }
   }
-  registered = true;
 }
 
 function clears(id) { return (data.clears ||= {})[id] || 0; }
@@ -286,14 +301,15 @@ function startActivity(def, opts = {}) {
     return { ok: true };
   }
   if (mode === 'duel_ladder') {
-    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, roundsLeft: def.loop.rounds || 1, wager: def.loop.wager_default || 100 };
+    active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: true, series: newSeries(), wager: 0, duelWatch: C.world?.lastDuel, rearmAt: performance.now() + 4000 }; // best of 3, purse at the end (pitseries.js)
     armDuel(def);
-    sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: wager ${active.wager} cr. Fists only.`);
+    sayNpc('Marrow', 'pit_crowd', `🥊 ${def.name}: best of 3, fists only. Purse paid at the end.`);
     tryBark({ name: 'crowd', kind: 'colonist' }, 'pit_cheer');
     updateMenu();
     return { ok: true };
   }
 
+  registerOne(def); // recompile now the colony is up so markers get nudged out of buildings
   const ok = C.game.accept(mid);
   if (!ok) return { ok: false, why: 'Could not start job (engine refused).' };
   active = { def, missionId: mid, startedAt: performance.now(), mode, duelArmed: false };
@@ -323,8 +339,7 @@ function abandonActivity(why) {
     setChip(null);
     return;
   }
-  try { C.game.abandon?.(); } catch (e) {}
-  resetMissionProgress(id);
+  if (active.mode !== 'duel_ladder') { try { C.game.abandon?.(); } catch (e) {} resetMissionProgress(id); } // the Pit holds no quest slot
   if (C.world?.inDuel) C.world.yieldDuel?.();
   toast(why || 'Side job dropped.');
   active = null;
@@ -357,15 +372,26 @@ function completeActivity(extra = {}) {
   // Mission accept already paid base via engine; top up scaling / market delta
   const baseCr = def.rewards?.base?.credits || 50;
   const top = Math.max(0, bonus.credits - baseCr);
-  if (top > 0) C.game.debug?.credits?.(top);
+  if (top > 0 && !extra.purse) C.game.debug?.credits?.(jobPay(top, 'activity:' + def.id, { streak: false })); // the Pit pays its own purse
   setCooldown(def);
   const bark = def.bark?.complete || def.bark?.win;
-  sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${bonus.credits} cr`);
+  if (extra.purse) toast(extra.purse, 4000); else sayNpc(def.contact || 'Board', 'activity_complete', bark || `✅ ${def.name} +${extra.purse ? bonus.credits : boost(bonus.credits)} cr`);
   active = null;
   updateMenu();
   setChip(null);
   save();
 }
+
+function finishSeries() {
+  const S = active.series, pay = { ...seriesPay(S) };
+  if (pay.credits > 0) pay.credits = jobPay(pay.credits, 'pit:' + S.result, { streak: S.result !== 'lose' }); // v7.5.9: the Pit purse doubles too (Collin: always broke); the toasts below show it
+  if (S.result === 'forfeit') return failActivity('You walked out of the ring. No purse.');
+  if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
+  active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;
+  if (S.result === 'lose') return failActivity(`🥊 Lost the series ${S.me}–${S.them}. Marrow tosses you ${pay.credits} cr for the show.`);
+  completeActivity({ purse: `🥊 ${S.result === 'sweep' ? 'Clean sweep' : 'Series won'} ${S.me}–${S.them}. Purse +${pay.credits} cr.` });
+}
+let lastPit = null;
 
 function failActivity(why) {
   if (!active) return;
@@ -415,7 +441,7 @@ function setChip(html) {
 
 function openPanel() {
   if (!ensureUI() || !pack) return;
-  const px = C?.car ? C.car.x : C?.player?.x || 0, pz = C?.car ? C.car.z : C?.player?.z || 0;
+  const aj = ajHere() || { x: 0, z: 0 }, px = aj.x, pz = aj.z;
   const here = districtAt(px, pz);
   const items = (pack.activities || []).map(def => {
     const deferred = DEFERRED.has(def.id);
@@ -459,9 +485,10 @@ function onPanelClick(e) {
   const def = pack?.activities?.find(a => a.id === id); if (!def) return;
   if (t.dataset.warp) {
     const at = def.location?.at_aj || DISTRICTS[def.district]?.centre || [0, -200];
-    C?.player && (C.player.x = at[0], C.player.z = at[1]);
+    const w = toWorld(at, C?.world?.colony); if (!w) { toast('Land on Mars first'); return; }
+    C?.player && (C.player.x = w.x, C.player.z = w.z);
     // surface debugMove if available
-    app()?.surface?.debugMove?.(at[0], at[1], 0);
+    app()?.surface?.debugMove?.(w.x, w.z, 0);
     toast(`Warped to ${def.name}`);
     closePanel();
     return;
@@ -483,8 +510,7 @@ function updateChip() {
   const q = info?.quest;
   let line = esc(def.name);
   if (active.mode === 'duel_ladder') {
-    line += `<br>Rounds left ${active.roundsLeft} · wager ${active.wager}`;
-    if (C.world?.inDuel) line += ' · <b>DUEL</b>';
+    line += `<br>${esc(seriesLine(active.series, { inDuel: !!C.world?.inDuel, breakS: ((active.breakUntil || 0) - performance.now()) / 1000 }))}`;
   } else if (q && q.id === active.missionId) {
     line += `<br>${esc(q.text || q.title || '')}`;
   } else {
@@ -500,22 +526,22 @@ function watchActive() {
   const def = active.def;
   if (active.mode === 'poker') return; // modal owns the loop
 
-  // Duel ladder: watch world.lastDuel
+  // Duel ladder: best of 3 (pitseries.js). world.lastDuel tells us how each bout ended.
   if (active.mode === 'duel_ladder') {
     if (C.world?.inDuel) return;
-    const L = C.world?.lastDuel;
+    const L = C.world?.lastDuel, S = active.series, t = performance.now();
     if (L && active.duelWatch !== L) {
       active.duelWatch = L;
-      if (L.win || L.why === 'win' || L.credits > 0 && /win/i.test(L.why || '')) {
-        active.roundsLeft--;
-        if (active.roundsLeft <= 0) completeActivity();
-        else { toast(`🥊 Round won. ${active.roundsLeft} left.`); armDuel(def); }
-      } else if (L.why && /yield|lose|fail/i.test(L.why)) {
-        failActivity('You lost the bout.');
+      const o = roundOutcome(L);
+      if (o === 'rearm') { toast('🥊 They bottled it. Next fighter.'); active.breakUntil = t + 1500; }
+      else if (o) {
+        scoreRound(S, o);
+        if (S.over) return finishSeries();
+        active.breakUntil = t + BREAK_S * 1000;
+        toast(o === 'win' ? `🥊 Round to you, ${S.me}–${S.them}. Next bout in ${BREAK_S} s.` : `🥊 Round to them, ${S.me}–${S.them}. Shake it off. ${BREAK_S} s.`, 3000);
       }
-    }
-    // Fail if wanted spikes hard or gun used — soft check
-    if ((C.world?.wanted || 0) >= 3) failActivity('Stars. Pit closed.');
+    } else if (t > (active.breakUntil || 0) && t > (active.rearmAt || 0)) { active.rearmAt = t + 4000; armDuel(def); } // next round, or no fighter was free
+    if (active && (C.world?.wanted || 0) >= 3) failActivity('You got 3 wanted stars, so the Pit shut the fight down.');
     return;
   }
 
@@ -545,7 +571,7 @@ function watchActive() {
 
   // Fail conditions from def.fail (wanted)
   if ((C.world?.wanted || 0) >= 3 && (def.fail || []).some(f => /wanted/i.test(f))) {
-    failActivity('Wanted 3+. Job blown.');
+    failActivity('You got 3 wanted stars. Job failed.');
   }
 }
 
@@ -553,6 +579,7 @@ function watchActive() {
 export function activityTick(dt, ctx) {
   C = ctx; lastTick = performance.now();
   try { jobsTick(dt, ctx); } catch (e) { console.warn('jobsTick', e); }
+  try { missionHelpTick(dt, ctx); } catch (e) { console.warn('missionHelp', e); }
   if (ctx.name !== 'Mars') {
     if (ui) ui.ctx.style.display = 'none';
     if (active) { active = null; setChip(null); }
@@ -565,6 +592,7 @@ export function activityTick(dt, ctx) {
   }
   if (!registered) registerAll();
 
+  try { markTick(dt, ctx); heistTipTick(dt, ctx); } catch (e) { console.warn('[activities] mark/heist tip', e); }
   watchActive();
   updateChip();
 
@@ -582,7 +610,8 @@ export function activityTick(dt, ctx) {
   if (window.__race?.state) { ui.ctx.style.display = 'none'; return; }
 
   ctxT -= dt; if (ctxT > 0) return; ctxT = 0.25;
-  const px = ctx.car ? ctx.car.x : ctx.player.x, pz = ctx.car ? ctx.car.z : ctx.player.z;
+  const aj = ajHere(ctx); if (!aj) { ui.ctx.style.display = 'none'; return; }
+  const px = aj.x, pz = aj.z;
   let best = null, bd = 18;
   for (const def of pack.activities || []) {
     if (DEFERRED.has(def.id)) continue;
@@ -606,13 +635,13 @@ setInterval(() => {
 
 // ---------- test / debug ----------
 window.__activities = {
+  get mark() { return markPub(); }, markTip: () => markTip(), get pit() { return active?.mode === 'duel_ladder' ? { ...active.series, breakUntil: active.breakUntil || 0 } : null; }, get pitPay() { return lastPit; }, get heistTip() { return tipState(); },
   get pack() { return pack; },
   get active() { return active ? { id: active.def.id, mode: active.mode, missionId: active.missionId } : null; },
   get data() { return data; },
   get district() {
-    if (!C) return null;
-    const px = C.car ? C.car.x : C.player.x, pz = C.car ? C.car.z : C.player.z;
-    return districtAt(px, pz);
+    const aj = ajHere(); if (!aj) return null;
+    return districtAt(aj.x, aj.z);
   },
   list: () => (pack?.activities || []).map(a => ({
     id: a.id, name: a.name, district: a.district,
@@ -624,15 +653,17 @@ window.__activities = {
   poker: () => window.__poker,
   start: (id) => { const d = pack?.activities?.find(a => a.id === id); return d ? startActivity(d, { ignoreCooldown: true }) : { ok: false, why: 'unknown' }; },
   abandon: () => abandonActivity('debug abandon'),
+  quit: why => abandonActivity(why || 'Quit side job.'), // Stuck? -> Quit job (help/stuck.js): no penalty
   complete: () => completeActivity(),
   openPanel, closePanel,
   warp(id) {
     const d = pack?.activities?.find(a => a.id === id); if (!d) return false;
-    const at = d.location?.at_aj || [0, -200];
-    app()?.surface?.debugMove?.(at[0], at[1], 0);
+    const w = toWorld(d.location?.at_aj || [0, -200], C?.world?.colony || app()?.surface?.info?.colony); if (!w) return false;
+    app()?.surface?.debugMove?.(w.x, w.z, 0);
     return true;
   },
   reload: async () => { pack = null; registered = false; data = load(); await ensurePack(); registerAll(); },
+  startWorld: (id) => { const d = pack?.activities?.find(a => a.id === id); return d ? toWorld(d.location?.at_aj, C?.world?.colony || app()?.surface?.info?.colony) : null; },
   counts: () => ({ ctx: ui?.ctx?.style?.display, chip: ui?.chip?.classList?.contains('on'), registered }),
 };
 

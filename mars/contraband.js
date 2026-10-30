@@ -145,13 +145,18 @@ function buyerPrice(item, d = curDistrict(), pos) {
   let v = I.base * D.mult; // built-in model: base x district multiplier
   if (I.vals) { const V = I.vals, mid = ((V['red-tape-flats'] ?? I.base) + (V['olympus-row'] ?? I.base)) / 2; // Steve's per-district values (barter.json items[])
     v = V[d] ?? (d === 'ares-junction' ? mid : d === 'ares-beltway' ? mid * 1.05 : I.base * D.mult); }
-  return Math.max(1, Math.round(v * (D.taste?.[item] || 1) * satMult(item, d) * freshMult(item) * turfMult(d, pos)));
+  return Math.max(1, Math.round(v * (D.taste?.[item] || 1) * satMult(item, d) * freshMult(item) * turfMult(d, pos) * repMult(d, pos) * labMult(item)));
 }
 // Turf wars (marsmania/turf, PR #15): selling on blocks you hold pays more. Guarded: 1 when SSX.turf is absent or throws.
 // pos = AJ-relative { x, z } of the sale; defaults to the player when pricing the district you're standing in.
-function turfMult(d, pos) {
+function turfMult(d, pos) { return modMult(window.SSX?.turf?.priceMultiplier, d, pos); }
+// Faction rep (marsmania/rep, PR #20): gang corners pay more when they like you, less when they don't. Same guard.
+function repMult(d, pos) { return modMult(window.SSX?.rep?.priceMultiplier, d, pos); }
+// Vat House (marsmania/lab, PR #27): lab-made product sells by its purity. Same guard; stash qty passed so lab never re-enters stash().
+function labMult(item) { try { const m = Number(window.SSX?.lab?.qualityMult?.(item, S.stash[item]?.qty | 0) ?? 1); return Number.isFinite(m) && m > 0 ? m : 1; } catch (e) { return 1; } }
+function modMult(f, d, pos) {
   try {
-    const f = window.SSX?.turf?.priceMultiplier; if (typeof f !== 'function') return 1;
+    if (typeof f !== 'function') return 1;
     if (!pos && d === curDistrict()) { const h = here(); if (h) pos = { x: h.x, z: h.z }; }
     const m = Number(f(d, pos) ?? 1); return Number.isFinite(m) && m > 0 ? m : 1;
   } catch (e) { return 1; }

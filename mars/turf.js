@@ -369,7 +369,7 @@ function ui() {
   dockButton('dockTurf', '🚩\nTurf', 'Turf (K)', 3, () => panel.classList.contains('show') ? close() : open());
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
-    if (e.code === 'KeyK') { panel.classList.contains('show') ? close() : open(); }
+    if (e.code === 'KeyK') { if (!panel.classList.contains('show') && document.getElementById('baseBtn')?.style.display === 'block') return; panel.classList.contains('show') ? close() : open(); } // v7.5.4: at your base plot K is the base action (#24)
     else if (e.code === 'KeyY' && actBtn.classList.contains('show')) { e.preventDefault(); doAction(); }
   });
 }

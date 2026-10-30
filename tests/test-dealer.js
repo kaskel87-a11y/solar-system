@@ -44,7 +44,9 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
   };
   const tap = async sel => {
     if (!touch) { const c = await center(sel); if (!c) throw new Error('no ' + sel); await page.mouse.click(c.x, c.y); await sleep(250); return; }
-    await holdStick(); const c = await center(sel); if (!c) throw new Error('no ' + sel);
+    await holdStick(); let c = await center(sel); if (!c) throw new Error('no ' + sel);
+    // v7.5.3 #ssxDock (mars/turf.js) steps left of #surfBtns on a 300 ms tick once a ctx button grows the column: wait for it like a thumb would
+    await wait(s => { const e = document.querySelector(s), b = e?.getBoundingClientRect(); return !!b && e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }, 1500, sel).catch(() => null); c = await center(sel) || c;
     const id = tid++, j = stick;
     if (BR === 'chromium') { const pts = j ? [{ x: j.x, y: j.y, id: 1 }] : []; await T('touchStart', [...pts, { x: c.x, y: c.y, id }]); await sleep(60); await T('touchEnd', [{ x: c.x, y: c.y, id }]); }
     else await G(([c, id]) => { const el = document.elementFromPoint(c.x, c.y); const o = { bubbles: true, cancelable: true, pointerId: id, pointerType: 'touch', isPrimary: false, clientX: c.x, clientY: c.y };
@@ -62,7 +64,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     ok('ssxHooks', null, await G(() => ['registerDealerVehicle', 'dealerStock', 'configureDealer'].every(k => typeof window.SSX[k] === 'function') && typeof window.SSX.registerVehicle === 'function'));
     // a mod vehicle with just a price shows up (the Raccoon Mobile path), hidden ones don't
-    await G(async () => { window.SSX.registerVehicle('test_mod', { name: 'Test Mod', vmax: 22, boost: 33, acc: 11, bacc: 16, turn: 1.6, r: 2.3, price: 3100, icon: '🦝' }); if (!(await import('./world.js?v=7.5.1')).VEHICLES.raccoon_mobile) window.SSX.registerVehicle('raccoon_mobile', { name: 'Raccoon Mobile', icon: '🦝', price: 900, vmax: 21, boost: 33, acc: 13.5, bacc: 19, turn: 2.2, wy: 0.48, wr: 0.48, r: 2.1, airTurn: 1.3, offroad: 0.9, blurb: 'Scrappy, quick on its feet, smells faintly of bins.', dealer: { venue: 'depot', world: 'Mars', colony: 'Ares Junction' } }); /* Ben's PR #11 shape (stub when #11 isn't merged) */ window.SSX.registerVehicle('test_hidden', { name: 'Hidden', vmax: 22, price: 10, hidden: true }); });
+    await G(async () => { window.SSX.registerVehicle('test_mod', { name: 'Test Mod', vmax: 22, boost: 33, acc: 11, bacc: 16, turn: 1.6, r: 2.3, price: 3100, icon: '🦝' }); if (!(await import('./world.js')).VEHICLES.raccoon_mobile) window.SSX.registerVehicle('raccoon_mobile', { name: 'Raccoon Mobile', icon: '🦝', price: 900, vmax: 21, boost: 33, acc: 13.5, bacc: 19, turn: 2.2, wy: 0.48, wr: 0.48, r: 2.1, airTurn: 1.3, offroad: 0.9, blurb: 'Scrappy, quick on its feet, smells faintly of bins.', dealer: { venue: 'depot', world: 'Mars', colony: 'Ares Junction' } }); /* Ben's PR #11 shape (stub when #11 isn't merged) */ window.SSX.registerVehicle('test_hidden', { name: 'Hidden', vmax: 22, price: 10, hidden: true }); });
     const stock = await G(() => window.SSX.dealerStock().map(s => s.kind));
     ok('modVehicleListed', stock.join(','), stock.includes('test_mod') && stock.includes('raccoon_mobile') && !stock.includes('test_hidden') && stock.length >= 6);
     await toMars();
@@ -72,7 +74,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 1. ☰ hub ----------
     await G(() => window.__app.toggleMenu(true)); await sleep(250);
     await tap('#rmRides'); ok('hubOpens', null, await sheetIs('hub'));
-    ok('hubText', null, await G(() => /Colony time/.test(document.getElementById('dlrSheet').innerText) && /Dealer/.test(document.getElementById('dlrSheet').innerText)));
+    ok('hubText', null, await G(() => /Colony time|Car meet/.test(document.getElementById('dlrSheet').innerText) /* SSX.time shared clock shows the meet line instead */ && /Dealer/.test(document.getElementById('dlrSheet').innerText)));
     await tap('[data-nav="dealer"]'); ok('navMarker', null, await G(() => !document.getElementById('dlrSheet') && !!window.__app.surface.game.mapGate?.()));
     // ---------- 2. dealer ----------
     await releaseStick();

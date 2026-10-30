@@ -88,6 +88,15 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     const gotStabbed = await wait(() => window.__danger.state.stats.lastOutcome?.result === 'stabbed', 60000); R.timeoutOutcome = (await D()).stats.lastOutcome?.result;
     const h1 = await G(() => { const H = window.__app.surface.game.debug.H(); return { hp: H.hp + H.shield, hit: H.lastHit, inv: H.inv }; });
     ok('stabbedOnTimeout', `${JSON.stringify(h0)}->${JSON.stringify(h1)}`, gotStabbed && (h1.hit !== h0.hit || h1.hp < h0.hp));
+    // ---------- 5b. public API: SSX.danger.startMugging / isMugging / mugging + SSX.time night override ----------
+    await G(() => { window.__danger.clear(); window.__danger.skipGrace(); }); await rough(4); await sleep(200);
+    const api = await G(() => { const D = window.SSX.danger, P = window.__app.surface.info; const r = { fns: typeof D.startMugging === 'function' && typeof D.isMugging === 'function', idle: D.isMugging() === false && D.mugging === null };
+      r.started = D.startMugging({ near: { x: P.x + 8, z: P.z + 8 }, armed: 'pipe', night: true }); r.busy = D.startMugging({ force: true }) === false && D.lastMugRefusal === 'busy';
+      r.view = D.mugging; r.isMugging = D.isMugging(); r.legacy = !!window.__danger.state.mug; window.__danger.clear(); r.cleared = D.isMugging() === false;
+      window.__danger.setClock(null); window.SSX.time = { hour: () => 22.5, isNight: () => true, phase: () => 'night' }; r.nightSrc = window.__danger.state.nightSource; r.night = window.__danger.state.night; r.hour = window.__danger.state.hour;
+      window.SSX.time = { isNight: () => false }; r.nightSrc2 = window.__danger.state.nightSource; delete window.SSX.time; r.nightSrc3 = window.__danger.state.nightSource; return r; });
+    ok('apiMugging', JSON.stringify(api), api.fns && api.idle && api.started === true && api.busy && api.isMugging && api.legacy && api.view?.phase === 'approach' && api.view?.npc?.armed === 'pipe' && api.cleared);
+    ok('apiNightOverride', JSON.stringify(api), api.nightSrc === 'SSX.time.hour' && api.night === true && api.hour === 22.5 && api.nightSrc2 === 'SSX.time.isNight' && api.nightSrc3 === 'clock');
     // ---------- 6. ambient street fight ----------
     await G(() => { window.__danger.clear(); window.__danger.skipGrace(); }); await rough(5); await sleep(200);
     await G(() => window.__danger.force('fight', { dist: 14 }));

@@ -4,6 +4,7 @@
 // no real-time lights except one per colony, small unit caps on phones.
 import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
+import * as ROOF from './roofs.js';
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -354,16 +355,35 @@ export function createWorld(ctx) {
   }
 
   // ----- collisions: circles for domes/vehicles, boxes for blocks -----
-  function collide(x, z, r, skip) {
+  function collide(x, z, r, skip, yb) {
+    // live fix (roofs.js): height-aware for vehicles. A driven vehicle passes itself as `skip`, so its bottom (skip.y) is
+    // known; solids and parked cars it is above (minus ROOF.CLEAR) don't block it, so flying over a building no longer
+    // crashes. Callers without a vehicle (people, NPC buggies, the 0.45 m exit probe) keep the old 2-D behaviour.
+    if (yb === undefined && skip && skip.spec && Number.isFinite(skip.y) && r > 0.6) yb = skip.y;
+    ROOF.setMover(yb, height); // #44 add-on colliders (SSX.colliders.resolve, wrapped in roofs.js when present) use the same bottom
+    const vehicles = yb === undefined ? allVehicles() : allVehicles().filter(v => !(v.parked && ROOF.clearsCar(v, yb, height))); // cars it's above don't block
     let hit = false;
     for (const s of solids) {
+      if (yb !== undefined && ROOF.overlaps(s, x, z, r) && ROOF.clears(s, x, z, r, yb, height)) continue;
       if (s.box) { const dx = x - s.x, dz = z - s.z, ex = s.box[0] + r, ez = s.box[1] + r;
         if (Math.abs(dx) < ex && Math.abs(dz) < ez) { hit = true; if (ex - Math.abs(dx) < ez - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * ex; else z = s.z + Math.sign(dz || 1) * ez; } continue; }
       const dx = x - s.x, dz = z - s.z, d = Math.hypot(dx, dz), m = s.r + r;
       if (d < m) { hit = true; const k = m / (d || 1); x = s.x + dx * k; z = s.z + dz * k; }
     }
     for (const v of vehicles) { if (v === skip || !v.parked) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
+    const xc = globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
     return hit ? { x, z } : null;
+  }
+  function allVehicles() { return vehicles; } // collide() shadows `vehicles` with the cars a flying vehicle can't clear
+  function roofGround(car) {
+    if (!C || !car) return height;
+    const r = (car.spec?.r || 2) * 0.75;
+    return (x, z) => {
+      const { g, src } = ROOF.groundUnder(solids.concat(ROOF.colliderSolids(x, z, r, height)), x, z, r, car.y, height, vehicles, car);
+      // stepping on/off a roof: reset updateRover's ground-velocity history so the height jump doesn't launch the car
+      if (x === car.x && z === car.z && src !== car.roofSrc) { car.roofSrc = src; if (car.prevG != null) car.prevG = g; }
+      return g;
+    };
   }
   function solidAt(x, y, z) {
     if (!C) return false;
@@ -376,6 +396,7 @@ export function createWorld(ctx) {
     if (!C) return false;
     for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
+      if (s.nocam) continue; // v7.5.4: street dressing never pulls the camera in
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
       const r = s.r - 0.1; if (Math.hypot(x - s.x, (y - gy) * (r / Math.max(0.5, s.h || r)), z - s.z) < r) return true;
@@ -426,7 +447,7 @@ export function createWorld(ctx) {
     }
     const foot = security.filter(s => s.foot).length, hum = ctx.game()?.humanCount?.() || 0;
     const resv = Object.values(npcReserved).reduce((a, b) => a + b, 0);
-    const cap = isMobile ? Math.max(4, 12 - foot - hum - resv) : 40 - resv;
+    const cap = isMobile ? Math.max(globalThis.SSX?.npcSlots?.floor?.() ?? 4, 12 - foot - hum - resv) : 40 - resv; // floor 0 while mission NPCs hold slots (mars/npcslots.js)
     const live = people.filter(p => p.zone === actZone).sort((a, b) => (a.kind === 'contact' ? -1e4 : 0) + Math.hypot(a.x - player.x, a.z - player.z) - (b.kind === 'contact' ? -1e4 : 0) - Math.hypot(b.x - player.x, b.z - player.z));
     const on = new Set(live.slice(0, cap)); if (duel) on.add(duel.p);
     for (const p of people) { const v = on.has(p); if (p.on !== v) { p.on = v; p.group.visible = v; } }
@@ -441,11 +462,11 @@ export function createWorld(ctx) {
       const p = H.pts[i], ok = !inCore(p.x, p.z), rx = -p.fz, rz = p.fx;
       const lx = p.x - rx * W, lz = p.z - rz * W, qx = p.x + rx * W, qz = p.z + rz * W;
       pos.push(lx, height(lx, lz) + 0.07, lz, qx, height(qx, qz) + 0.07, qz);
-      if (ok && prevOk) { const a = (n - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      if (ok && prevOk) { const a = (n - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } // v7.5.5 buildRoad fix: counter-clockwise from above, so FrontSide shows the road (was culled from above)
       n++; prevOk = ok;
       if (ok && i % 2 === 0 && i + 1 < H.pts.length) { const q2 = H.pts[i + 1], k = spos.length / 3, sw = 0.11;
         for (const [px, pz] of [[p.x - rx * sw, p.z - rz * sw], [p.x + rx * sw, p.z + rz * sw], [q2.x - rx * sw, q2.z - rz * sw], [q2.x + rx * sw, q2.z + rz * sw]]) spos.push(px, height(px, pz) + 0.1, pz);
-        sidx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+        sidx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
     }
     const mk = (P, I, m, part) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setIndex(I); geo.computeVertexNormals(); const me = new THREE.Mesh(geo, m); me.userData.v8 = { site: 'highway', part }; me.userData.slot = part === 'road' ? 'asphalt' : 'stripe'; g.add(me); return me; };
     mk(pos, idx, R.asphalt, 'road'); if (sidx.length) mk(spos, sidx, R.stripe, 'stripe');
@@ -574,13 +595,21 @@ export function createWorld(ctx) {
   const behindCover = (s, from) => s.crouch && s.cover && Math.hypot(from.x - s.x, from.z - s.z) > 4 && ((s.cover.sx - s.x) * (from.x - s.x) + (s.cover.sz - s.z) * (from.z - s.z)) > 0;
 
   // ----- wanted level -----
+  // v7.5.11 mission ease: SSX.policeEase() is 0.5 while a mission is running (mars/missionheat.js), else 1. Scales heat gain
+  // (rises that carry a reason; a bare setWanted(n) or 'debug' sets the level as-is), dispatch, fire rate, damage, bust time and decay below; footK slows chasers when you're on foot
+  const ease = () => { try { const f = globalThis.SSX?.policeEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
+  const footK = () => { const E = ease(); return E < 1 && !ctx.st().driving ? (1 + E) / 2 : 1; };
+  const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
+  let easeCarry = 0;
   const distC = () => { if (!C) return 1e9; const h = sites.length ? hubAt(player.x, player.z) : null; return h ? h.d : Math.hypot(player.x - cx, player.z - cz); }; // v7.5: distance to the nearest hub (colony or district)
   function setWanted(n, why) {
+    if (n > wanted && why && why !== 'debug') { const E = ease(); if (E < 1) { const k = (n - wanted) * E + easeCarry, add = Math.floor(k + 1e-9); easeCarry = k - add; n = wanted + (wanted === 0 ? Math.max(1, add) : add); if (wanted === 0 && add < 1) easeCarry = 0; } else easeCarry = 0; } // mission ease: half the heat gain
+    if (n > wanted && typeof globalThis.SSX?.heatFilter === 'function') { try { const f = globalThis.SSX.heatFilter(wanted, n, why); if (Number.isFinite(f)) n = f; } catch (e) { console.warn('heatFilter', e); } } // v7.5.5 add-on heat filter (mars/storm.js: dust storms cut heat gain)
     n = Math.max(0, Math.min(5, Math.round(n)));
     if (n === wanted) return;
     const up = n > wanted; wanted = n; evade = 0;
     if (up) onEvent('wanted', { stars: n, why: why || '' });
-    else if (n === 0) { onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
+    else if (n === 0) { easeCarry = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
   }
   let crimeCd = 0;
   function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; setWanted(wanted > 0 ? Math.min(5, Math.max(wanted + 1, min)) : min, why); }
@@ -613,16 +642,20 @@ export function createWorld(ctx) {
     return o;
   }
   function recall(s) { scene.remove(s.group); security.splice(security.indexOf(s), 1); }
+  // v7.5.4: ColSec never fires inside the Rust Pit (#34): drones, buggies, officers, heavies, the gunship and guards all hold
+  // fire while SSX.fight.inPit() (cage + 12 m apron, or a live bout); rounds already in the air do no damage there
+  let pitHold = false;
   function secShoot(s, dmg) {
+    if (pitHold) return;
     const from = new THREE.Vector3(s.x, s.y + (s.kind === 'drone' || s.kind === 'gunship' ? 0 : 1.6), s.z), st = ctx.st(), ty = st.driving ? st.car.y + 1.2 : player.y - 0.4;
     const to = new THREE.Vector3(player.x + (Math.random() - 0.5) * 2.5, ty, player.z + (Math.random() - 0.5) * 2.5);
     const m = new THREE.Mesh(R.bolt, R.boltM); m.position.copy(from); m.lookAt(to); scene.add(m);
-    shots.push({ m, v: to.sub(from).normalize().multiplyScalar(38), life: 2.2, dmg });
+    shots.push({ m, v: to.sub(from).normalize().multiplyScalar(38), life: 2.2, dmg: dmg * ease() });
     onEvent('secShot', {});
   }
   // officers: pick cover between them and you, crouch behind it, pop up to shoot. Heavies: no cover, 3-round bursts while advancing
   function footStep(s, dt, d, dx, dz, tx, tz) {
-    s.cd -= dt; s.ct -= dt; s.phase += dt; let gx = s.x, gz = s.z, move = false; const sp = s.kind === 'heavy' ? 2.6 : 5.4;
+    s.cd -= dt * ease(); s.ct -= dt; s.phase += dt; let gx = s.x, gz = s.z, move = false; const sp = (s.kind === 'heavy' ? 2.6 : 5.4) * footK();
     if (inside) { s.crouch = false; }
     else if (s.kind === 'officer') {
       if (s.ct <= 0) { s.cover = d < 50 ? coverNear(s.x, s.z, tx, tz, 24) : null; s.ct = 4.5 + Math.random() * 3; }
@@ -639,22 +672,24 @@ export function createWorld(ctx) {
   }
   function updateSecurity(dt) {
     const st = ctx.st(), game = ctx.game(), down = game.isDown();
+    try { pitHold = !!globalThis.SSX?.fight?.inPit?.(); } catch (e) { pitHold = false; }
     // how many units the current heat calls for
     if (wanted > 0 && !down) {
       respawnCd -= dt;
-      const wantD = Math.min(caps.drones, wanted >= 1 ? Math.ceil(wanted / 2) + (wanted >= 4 ? 1 : 0) : 0), wantB = wanted >= 2 ? Math.min(caps.buggies, wanted - 1) : 0;
+      const wantD0 = Math.min(caps.drones, wanted >= 1 ? Math.ceil(wanted / 2) + (wanted >= 4 ? 1 : 0) : 0), wantD = Math.max(wantD0 ? 1 : 0, ezN(wantD0)), wantB = ezN(wanted >= 2 ? Math.min(caps.buggies, wanted - 1) : 0);
       // v7.5: officers on foot from 2★ (+1 backup for 25 s after an officer goes down), armoured heavies at 4-5★, a gunship at 5★
-      const wantO = wanted >= 2 ? Math.min(caps.officers, wanted - 1 + (backupT > 0 ? 1 : 0)) : 0, wantH = wanted >= 4 ? Math.min(caps.heavies, wanted - 3) : 0, wantG = wanted >= 5 ? 1 : 0;
+      const wantO = ezN(wanted >= 2 ? Math.min(caps.officers, wanted - 1 + (backupT > 0 ? 1 : 0)) : 0), wantH = ezN(wanted >= 4 ? Math.min(caps.heavies, wanted - 3) : 0), wantG = ezN(wanted >= 5 ? 1 : 0); // mission ease: about half
       const cnt = k => security.filter(s => s.kind === k).length;
       if (respawnCd <= 0) {
-        if (cnt('drone') < wantD) { spawnSecurity('drone'); respawnCd = 3; }
-        else if (cnt('buggy') < wantB) { spawnSecurity('buggy'); respawnCd = 4; onEvent('siren', {}); }
-        else if (cnt('officer') < wantO) { spawnSecurity('officer'); respawnCd = 3.5; }
-        else if (cnt('heavy') < wantH) { spawnSecurity('heavy'); respawnCd = 5; onEvent('heavy', {}); }
-        else if (cnt('gunship') < wantG) { spawnSecurity('gunship'); respawnCd = 6; onEvent('gunship', {}); }
+        const slow = 1 / ease(); // mission ease: respawns 2x slower
+        if (cnt('drone') < wantD) { spawnSecurity('drone'); respawnCd = 3 * slow; }
+        else if (cnt('buggy') < wantB) { spawnSecurity('buggy'); respawnCd = 4 * slow; onEvent('siren', {}); }
+        else if (cnt('officer') < wantO) { spawnSecurity('officer'); respawnCd = 3.5 * slow; }
+        else if (cnt('heavy') < wantH) { spawnSecurity('heavy'); respawnCd = 5 * slow; onEvent('heavy', {}); }
+        else if (cnt('gunship') < wantG) { spawnSecurity('gunship'); respawnCd = 6 * slow; onEvent('gunship', {}); }
       }
     }
-    const tx = player.x, tz = player.z, pv = st.driving ? Math.abs(st.car.speed) : 0;
+    const tx = player.x, tz = player.z, pv = st.driving ? Math.abs(st.car.speed) : 0, E = ease(), FK = footK();
     let nearest = 1e9, close = false;
     for (const s of [...security]) {
       s.phase += dt; const dx = tx - s.x, dz = tz - s.z, d = Math.hypot(dx, dz) || 0.01;
@@ -666,22 +701,22 @@ export function createWorld(ctx) {
       } else if (s.kind === 'gunship') {
         const keep = 16, sp = 20; s.x += dx / d * Math.min(sp, (d - keep) * 1.5) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 1.5) * dt;
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 9 + Math.sin(s.phase) - s.y) * Math.min(1, dt * 2);
-        s.cd -= dt; if (!inside && d < 60 && s.cd <= 0) { s.burst = (s.burst || 0) + 1; s.cd = s.burst % 4 ? 0.14 : 1.8; secShoot(s, 6 + wanted); }
+        s.cd -= dt * E; if (!inside && d < 60 && s.cd <= 0) { s.burst = (s.burst || 0) + 1; s.cd = s.burst % 4 ? 0.14 : 1.8; secShoot(s, 6 + wanted); }
       } else if (s.kind === 'drone') {
-        const keep = 9, sp = 26; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
+        const keep = 9, sp = 26 * FK; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 5 + Math.sin(s.phase * 2) - s.y) * Math.min(1, dt * 3);
-        s.cd -= dt; if (!inside && d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
+        s.cd -= dt * E; if (!inside && d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
       } else {
         // patrol buggy: chase, cut you off, ram; shoots from the window at 3+ stars
         const lead = st.driving ? 0.6 : 0, gx = tx - Math.sin(st.car?.yaw || 0) * pv * lead, gz = tz - Math.cos(st.car?.yaw || 0) * pv * lead;
         const want = Math.atan2(-(gx - s.x), -(gz - s.z)); s.yaw += Math.atan2(Math.sin(want - s.yaw), Math.cos(want - s.yaw)) * Math.min(1, dt * 2.6);
-        const vmax = d < 8 ? Math.max(4, pv * 0.9) : 25 + wanted; s.speed += (vmax - s.speed) * Math.min(1, dt * 1.5);
+        const vmax = d < 8 ? Math.max(4, pv * 0.9) : (25 + wanted) * FK; s.speed += (vmax - s.speed) * Math.min(1, dt * 1.5);
         let nx = s.x - Math.sin(s.yaw) * s.speed * dt, nz = s.z - Math.cos(s.yaw) * s.speed * dt;
         const c = collide(nx, nz, 1.8); if (c) { nx = c.x; nz = c.z; s.speed *= 0.6; }
         s.x = nx; s.z = nz; s.y = height(s.x, s.z);
         s.group.rotation.set(0, s.yaw, 0); s.wheels.forEach(w => { w.spin.rotation.x -= s.speed * dt / 0.48; w.pivot.position.y = 0.48; });
-        if (!inside && d < 4.2 && s.speed > 6) { s.speed *= 0.3; game.hurtPlayer(6 + wanted * 2, { x: s.x, z: s.z, security: true }); onEvent('crash', {}); }
-        s.cd -= dt; if (!inside && d < 35 && s.cd <= 0 && wanted >= 3) { s.cd = 1.3; secShoot(s, 6 + wanted); }
+        if (!inside && d < 4.2 && s.speed > 6) { s.speed *= 0.3; game.hurtPlayer((6 + wanted * 2) * E, { x: s.x, z: s.z, security: true }); onEvent('crash', {}); }
+        s.cd -= dt * E; if (!inside && d < 35 && s.cd <= 0 && wanted >= 3) { s.cd = 1.3; secShoot(s, 6 + wanted); }
         // v7.5: at 3★+ a buggy that gets close and slow drops officers (backup)
         if (!inside && wanted >= 3 && !s.deployed && d < 26 && s.speed < 10 && security.filter(q => q.foot).length < caps.officers + caps.heavies) { s.deployed = true; for (let k = 0; k < (isMobile ? 1 : 2); k++) spawnSecurity('officer', { x: s.x + Math.cos(s.yaw) * (k ? -2.2 : 2.2), z: s.z - Math.sin(s.yaw) * (k ? -2.2 : 2.2) }); onEvent('backup', { deploy: true }); }
         if (d > 260) { recall(s); continue; } // left behind
@@ -695,18 +730,18 @@ export function createWorld(ctx) {
     // busted: they get hands on you (on foot or boxed in while stopped)
     if (wanted > 0 && !down) {
       if (inside) close = false; // they can't see you in here
-      bustT = close ? bustT + dt : Math.max(0, bustT - dt * 0.5);
+      bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
       if (bustT > (st.driving ? 3 : 2)) { bustT = 0; game.bust(); }
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
       const lyingLow = !st.driving && (player.moving || 0) < 0.05;
       if (inside) evade += dt * 1.5; // hiding indoors: the heat cools off (faster at low stars)
       else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else evade = Math.max(0, evade - dt * 0.5);
-      if (evade > 5 + wanted * 2.5) setWanted(0);
+      if (evade > (5 + wanted * 2.5) * E) setWanted(0); // mission ease: heat cools twice as fast
     }
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
       const p = s.m.position, ty = st.driving ? st.car.y + 1.2 : player.y - 0.6;
-      if (!inside && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
+      if (!inside && !pitHold && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
       if (p.y < height(p.x, p.z) || s.life <= 0) { scene.remove(s.m); shots.splice(shots.indexOf(s), 1); }
     }
   }
@@ -717,6 +752,7 @@ export function createWorld(ctx) {
     for (const p of people) {
       if (p.on === false) continue; // v7.5: only the hub you're at is live
       p.phase += dt;
+      if (p.stun > 0 && !p.ssxDrop && (p.hp <= 0 || p.stun > 6)) { p.ssxDrop = 1; globalThis.SSX?.economy?.npcDown?.(p); } // money boost: a knocked-out NPC drops 20-80 cr, once (economy.js)
       if (p.stun > 0) { p.stun -= dt; p.group.rotation.x = -Math.PI / 2 * Math.min(1, p.stun * 2); p.group.position.y = height(p.x, p.z) + 0.3; if (p.stun <= 0) { p.group.rotation.x = 0; p.hp = p.kind === 'guard' ? 6 : 3; } continue; }
       if (duel && p === duel.p) { duelStep(p, dt); continue; }
       let gx = p.x, gz = p.z, sp = 0;
@@ -729,8 +765,8 @@ export function createWorld(ctx) {
       }
       if (car && d < 9 && pv > 5) { p.flee = 1.2; p.fx = -dx / d; p.fz = -dz / d; if (d < 2.8 && pv > 9) { p.stun = 8; onEvent('thud', {}); if (p.kind === 'colonist') civHits++; ctx.game().gore?.(p.x, height(p.x, p.z) + 1, p.z, { n: 1 }); if (witnessed(p.x, p.z)) crime(1, 'hit-and-run'); continue; } }
       if (p.flee > 0) { p.flee -= dt; gx = p.x + p.fx * 5; gz = p.z + p.fz * 5; sp = 6; }
-      else if (p.kind === 'guard' && wanted > 0 && !ctx.game().isDown() && d < 60) { gx = player.x; gz = player.z; sp = d > 3 ? 5.5 : 0;
-        p.cd -= dt; if (wanted >= 2 && d < 30 && d > 3 && p.cd <= 0) { p.cd = 1.4; secShoot({ x: p.x, y: height(p.x, p.z) - 0.2, z: p.z, kind: 'guard' }, 5 + wanted); } }
+      else if (p.kind === 'guard' && wanted > 0 && !ctx.game().isDown() && d < 60) { gx = player.x; gz = player.z; sp = d > 3 ? 5.5 * footK() : 0;
+        p.cd -= dt * ease(); if (wanted >= 2 && d < 30 && d > 3 && p.cd <= 0) { p.cd = 1.4; secShoot({ x: p.x, y: height(p.x, p.z) - 0.2, z: p.z, kind: 'guard' }, 5 + wanted); } }
       else if (p.kind === 'contact') { gx = p.home.x + Math.sin(p.phase * 0.3) * 1.2; gz = p.home.z; sp = 0.6; if (d < 6) { p.yaw = Math.atan2(-dx, -dz); } }
       else if (p.pts) {
         if (p.wait > 0) { p.wait -= dt; }
@@ -853,11 +889,19 @@ export function createWorld(ctx) {
     return best;
   }
   const duelPub = p => p && { name: p.name, champion: !!p.fighter, minWager: p.fighter?.minWager || 0, record: p.duels || 0, rematch: !!p.duels };
-  function challenge(type = 'fists', wager = 0, who = null) {
-    const p = who ? people.find(q => q.name === who && q.kind === 'colonist') : nearDuelist(4.5), T = DUEL_TYPES[type], g = ctx.game();
-    if (!C || !p || !T) return { ok: false, msg: 'Nobody close enough to call out.' };
+  // opts.as (v7.5 fight club, mars/fightclub.js): a named ring fighter { name, tough, dmg, purse, label } borrows the nearest
+  // free colonist's body for the bout (renamed, restored after). opts.tag rides along on the result.
+  const borrowBody = () => { let best = null, bd = Infinity; for (const p of people) { if (p.kind !== 'colonist' || p.stun || p.fighter || p.flee > 0) continue; const d = Math.hypot(p.x - player.x, p.z - player.z) + (p.on === false ? 1e4 : 0); if (d < bd) { bd = d; best = p; } }
+    if (best && best.on === false) { best.on = true; best.group.visible = true; } return best; };
+  function challenge(type = 'fists', wager = 0, who = null, opts = null) {
+    const as = opts?.as || null;
+    const p = as ? (duel ? null : borrowBody()) : who ? people.find(q => q.name === who && q.kind === 'colonist') : nearDuelist(4.5), T = DUEL_TYPES[type], g = ctx.game();
+    if (!C || !p || !T) return { ok: false, msg: duel ? 'One fight at a time.' : 'Nobody close enough to call out.' };
     if (duel) return { ok: false, msg: 'One fight at a time.' };
-    if (wanted > 0) return { ok: false, msg: `${p.name}: With the law on you? No chance.` };
+    if (wanted > 0) return { ok: false, msg: `${as ? as.name : p.name}: With the law on you? No chance.` };
+    let restore = null;
+    if (as) { restore = { name: p.name, fighter: p.fighter, label: null }; p.name = as.name; p.fighter = { purse: as.purse | 0, minWager: 0, tough: as.tough || 1 };
+      if (as.label) { restore.label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(as.label), transparent: true, depthWrite: false })); restore.label.position.y = 2.6; restore.label.scale.set(2.8, 0.7, 1); p.group.add(restore.label); } }
     wager = Math.max(0, Math.round(wager)); const F = p.fighter;
     if (F && wager < F.minWager) return { ok: false, msg: `${p.name}: I don’t get out of bed for less than ${F.minWager}.` };
     if (!F && p.temper < 0.2) return { ok: false, refused: true, msg: `${p.name}: ` + ['Not today, spacer. I just got this suit cleaned.', 'Fight you? I’ve seen you drive. Pass.', 'Nope. Go bother somebody tougher.'][(p.duels || 0) % 3] };
@@ -866,7 +910,7 @@ export function createWorld(ctx) {
     const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
     p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
     duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,
-      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0 };
+      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null };
     // the ring, and a crowd (guards too, but they only watch)
     if (!ringM) { ringM = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.0, 48), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ringM.rotation.x = -Math.PI / 2; }
     ringM.position.set(duel.cx, height(duel.cx, duel.cz) + 0.06, duel.cz); scene.add(ringM);
@@ -889,9 +933,9 @@ export function createWorld(ctx) {
     } else if (D.phase === 'fight') {
       if (Math.hypot(player.x - D.cx, player.z - D.cz) > 11) return endDuel('forfeit');
       D.ocd -= dt;
-      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.2 : 1)); } }
+      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
       else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
-      else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (p.fighter ? 1.4 : 1)); }
+      else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1))); }
     }
     if (!duel) return;
     const w = moving ? Math.sin(p.phase * 12) * 0.6 : 0; p.legs[0].rotation.x = w; p.legs[1].rotation.x = -w;
@@ -908,12 +952,13 @@ export function createWorld(ctx) {
     else if (why === 'chicken' || why === 'abandon') { cr = D.wager; if (cr) g.reward?.(0, cr); }
     if (why === 'ko-win') { p.stun = 5; p.hp = 0; } else if (why === 'chicken') { p.flee = 4; p.fx = (p.x - player.x) || 1; p.fz = (p.z - player.z) || 1; const l = Math.hypot(p.fx, p.fz); p.fx /= l; p.fz /= l; }
     if (why !== 'ko-win') p.hp = 3;
-    const res = { end: true, why, win, name: p.name, type: D.type, pot: D.pot, wager: D.wager, credits: win ? cr : 0, xp, refund: !win && cr ? cr : 0, champion: !!F };
+    const res = { end: true, why, win, name: p.name, type: D.type, pot: D.pot, wager: D.wager, credits: win ? cr : 0, xp, refund: !win && cr ? cr : 0, champion: !!F, tag: D.tag, hits: D.hits, taken: D.taken };
+    if (D.restore) { const o = D.restore; p.name = o.name; if (o.fighter) p.fighter = o.fighter; else delete p.fighter; if (o.label) { p.group.remove(o.label); o.label.material.map?.dispose(); o.label.material.dispose(); } }
     if (!quiet) onEvent('duel', res);
     lastDuel = res; return res;
   }
   let lastDuel = null;
-  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
@@ -980,6 +1025,9 @@ export function createWorld(ctx) {
   function wareList() { return inside ? inside.room.wares.map(w => ({ id: w.id, x: w.spot.x + inside.ax, z: w.spot.z + inside.az })) : []; }
 
   return {
+    // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
+    // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
+    vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
@@ -994,6 +1042,8 @@ export function createWorld(ctx) {
     npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
     coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
+    // v7.5.4 API: add-on solids (street dressing). nocam defaults to true. Cleared on world exit; returns a remover.
+    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },
     highway: () => HW ? { name: HW.def.name, len: HW.len, closed: HW.closed, checkpoints: cps.map(c => ({ id: c.id, name: c.name, faction: c.faction, x: c.x, z: c.z })), ramps: HW.ramps.map(r => ({ x: r.x, z: r.z, len: r.len, h: r.h })), at: s2 => roadAt(s2), project: (x, z) => projectRoad(x, z) } : null,
