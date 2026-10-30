@@ -35,7 +35,7 @@ function raceOn(tc) {
 }
 function why(tc) { // null = gravity modes allowed right now
   const st = app()?.state; if (!st?.onSurface) return 'Land on Mars first';
-  if (!tc?.car) return 'Get in a vehicle first';
+  if (!tc?.car && !window.SSX?.jetpack?.ready) return 'Get in a vehicle first'; // jetpack (mars/jetpack.js): the toggle works on foot too
   if (tc.name !== 'Mars') return 'Gravity modes are Mars only';
   if (tc.world?.inside) return 'Not indoors';
   const r = raceOn(tc); if (r) return `Locked to MARS during a ${r}`;

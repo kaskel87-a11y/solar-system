@@ -12,6 +12,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const ctx = await b.newContext(m ? { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] } } : DEV === 'desktop' ? { viewport: { width: 1280, height: 800 } } : { ...pw.devices[DEV], defaultBrowserType: undefined });
   const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e).slice(0, 160))); page.on('console', m => { if (/wpbeam/i.test(m.text())) errs.push('console: ' + m.text().slice(0, 200)); });
   const G = (f, a) => page.evaluate(f, a), R = {}, bad = [], ok = (k, v, c) => { R[k] = v; if (!c) bad.push(k); };
+  // wait for N rendered frames (a fixed sleep missed the toggle on the live site in a storm, where frames are slow)
+  const frames = async n => { const f0 = await G(() => window.__frames); await page.waitForFunction(([f0, n]) => window.__frames >= f0 + n, [f0, n], { timeout: 15000, polling: 30 }).catch(() => {}); await sleep(60); };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 100 }); return true; } catch (e) { return false; } };
   const tag = `wpbeam-${DEV.replace(/\s/g, '-')}-${BR}`;
   const st = () => G(() => window.SSX.wpbeam.state());
@@ -21,8 +23,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const blue = async name => {
     const col = await G(() => { const A = window.__app, o = window.SSX.wpbeam.object(), cam = A.surface.camera || A.camera; if (!o || !cam) return null;
       const v = o.position.clone(); v.y += 25; v.project(cam); return { x: (v.x + 1) / 2 }; });
-    await G(() => window.SSX.wpbeam.setEnabled(false)); await sleep(250); const off = await shotPx(name + '-off');
-    await G(() => window.SSX.wpbeam.setEnabled(true)); await sleep(250); const on = await shotPx(name);
+    await G(() => window.SSX.wpbeam.setEnabled(false)); await frames(3); const off = await shotPx(name + '-off');
+    await G(() => window.SSX.wpbeam.setEnabled(true)); await frames(3); const on = await shotPx(name);
     const n = await G(async ({ on, off, col }) => { const px = async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
         const x = c.getContext('2d'); x.drawImage(img, 0, 0); const cx = Math.round((col?.x ?? 0.5) * c.width), w = Math.round(c.width * 0.12); return x.getImageData(Math.max(0, cx - w), 0, Math.min(c.width, 2 * w), c.height).data; };
       const A = await px(on), B = await px(off); let k = 0; for (let i = 0; i < A.length; i += 4) if (A[i + 2] - B[i + 2] > 25) k++; return k; }, { on, off, col });

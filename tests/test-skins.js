@@ -82,9 +82,10 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     // ☰ 👕 Wardrobe: owned outfits only (+ the stock suit), Wear swaps
     await G(() => { const p = window.SSX.skins.at(); window.__app.surface.debugPlace(p.x + 30, p.z + 30, 0); }); await sleep(500);
     await tap('#menuBtn'); await wait(() => document.getElementById('roverMenu').classList.contains('show'), 4000);
-    await G(() => document.getElementById('rmWardrobe')?.scrollIntoView({ block: 'center' })); await sleep(250);
+    await G(() => document.getElementById('rmWardrobe')?.scrollIntoView({ block: 'center' })); await sleep(700);
     ok('wardrobeItem', await G(() => document.getElementById('rmWardrobe')?.textContent || ''), /Wardrobe/.test(await G(() => document.getElementById('rmWardrobe')?.textContent || '')));
-    await tap('#rmWardrobe');
+    await G(() => { window.__skEv = []; window.SSX.skins.on(e => window.__skEv.push([e.type, document.getElementById('skPanel').className, document.querySelector('#skPanel .t').textContent.slice(0, 12)])); });
+    await tap('#rmWardrobe'); await sleep(300); R.wEv = await G(() => ({ ev: window.__skEv, menu: document.getElementById('roverMenu').classList.contains('show'), top: document.getElementById('roverMenu').scrollTop, cls: document.getElementById('skPanel').className }));
     ok('wardrobeOpens', await wait(() => document.getElementById('skPanel').classList.contains('open') && /Wardrobe/.test(document.querySelector('#skPanel .t').textContent), 4000));
     ok('wardrobeRows', await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id)), (await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id).join())) === 'stock,rusty,punk,hustler');
     await sleep(200); await shot('wardrobe');
