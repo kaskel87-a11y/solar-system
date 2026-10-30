@@ -63,10 +63,10 @@ body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF):not([style*="di
 @media (orientation:portrait){body.hudx #stackR{max-height:calc(25vh - 62px - var(--sat))} body.hudx #stackR:has(> #radio[style*="block"]:not(.mini)){max-height:44vh}}
 /* v7.6 ▤ More (phones): the dock items that aren't already in ☰ live here, left side under the minimap, clear of FIRE/Pet/Jump/Run/joystick */
 #hxMore{display:none;position:fixed;z-index:9;left:calc(10px + var(--sal,0px));top:calc(196px + var(--sat,0px));min-width:44px;min-height:44px;padding:0 12px;border-radius:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.55);font:700 13px/1 system-ui,sans-serif;touch-action:manipulation}
-#hxMore.on{display:block} #hxMore[aria-expanded="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#hxMore.avail{display:block} #hxMore[aria-expanded="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
 #hxMoreP{display:none;position:fixed;z-index:9;left:calc(10px + var(--sal,0px));top:calc(246px + var(--sat,0px));width:min(214px,calc(100vw - 20px - var(--sal,0px) - var(--sar,0px)));max-height:max(96px,calc(100vh - 246px - 196px - var(--sat,0px) - var(--sab,0px)));overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;box-sizing:border-box;padding:6px;border-radius:12px;background:rgba(0,0,0,.92);border:1px solid rgba(255,255,255,.3);grid-template-columns:1fr 1fr;gap:6px}
 #hxMoreP.show{display:grid} body.hxMoreOn #roverMenu button.hxDup{display:none!important}
-#hxMore:not(.on) + #hxMoreP{display:none!important}
+#hxMore:not(.avail) + #hxMoreP{display:none!important}
 #hxMoreP button{min-height:44px;padding:4px 6px;border-radius:9px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.45);font:700 12px/1.15 system-ui,sans-serif;white-space:normal;text-align:left}
 #hxMoreP button:not(.show){display:none}
 @media (max-height:440px){#hxMore{top:calc(140px + var(--sat,0px))} #hxMoreP{top:calc(190px + var(--sat,0px));max-height:calc(100vh - 190px - 140px - var(--sat,0px) - var(--sab,0px));width:min(300px,40vw)}}
@@ -303,13 +303,13 @@ function morePanel() {
   onTap(moreBtn, () => setMore(!moreP.classList.contains('show')));
   return moreP;
 }
-function setMore(open) { if (!moreP) return; if (open && !moreBtn.classList.contains('on')) open = false; moreP.classList.toggle('show', !!open); moreBtn.setAttribute('aria-expanded', String(!!open)); try { localStorage.setItem(MORE_KEY, open ? '1' : '0'); } catch (e) { /* private mode */ } }
+function setMore(open) { if (!moreP) return; if (open && !moreBtn.classList.contains('avail')) open = false; moreP.classList.toggle('show', !!open); moreBtn.setAttribute('aria-expanded', String(!!open)); try { localStorage.setItem(MORE_KEY, open ? '1' : '0'); } catch (e) { /* private mode */ } }
 function updMore() {
   if (!moreP) return; const b = document.body;
   const avail = touch() && b.classList.contains('surface') && !b.classList.contains('cinematic') && !b.classList.contains('indoors') && !!moreP.querySelector('button.show');
   b.classList.toggle('hxMoreOn', avail); // ☰ hides the twins of More's items only while More is reachable
   const on = avail && !document.getElementById('roverMenu')?.classList.contains('show');
-  if (moreBtn.classList.contains('on') !== on) { moreBtn.classList.toggle('on', on); let open = false; try { open = localStorage.getItem(MORE_KEY) === '1'; } catch (e) { /* none */ } moreP.classList.toggle('show', on && open); moreBtn.setAttribute('aria-expanded', String(on && open)); }
+  if (moreBtn.classList.contains('avail') !== on) { moreBtn.classList.toggle('avail', on); let open = false; try { open = localStorage.getItem(MORE_KEY) === '1'; } catch (e) { /* none */ } moreP.classList.toggle('show', on && open); moreBtn.setAttribute('aria-expanded', String(on && open)); }
 }
 // ---------- v7.6 tap guard for scrolling sheets (☰, shop, farm, any panel): a swipe never fires the button it started on ----------
 // Capture phase on window runs before every handler (window.__onTap, registerMenuItem, the modules' own tap helpers, plain click).
