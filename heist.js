@@ -12,7 +12,7 @@
 //   heist.on(evt, fn) / off(evt, fn); every event is also window CustomEvent `heist:<evt>` with the same detail.
 //   v7.5.4: def.guards [{ id, x, z, route:[{x,z}] }] patrol and answer alarms (guards.js); heist.guards.* / heist.camBlocked / heist.los
 import * as THREE from 'three';
-import { normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts, heistCovers } from './heistcore.js';
+import { starFail, normHeist, createRun, escapePayload, heistFromMansion, SAFE_TIERS, applyTipTo, tipSafeOpts, heistCovers } from './heistcore.js';
 import { safeCrack, safeState, safeOpen, cancelSafe } from './safecrack.js';
 import { createCameras } from './cameras.js';
 import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem, tap } from './heisthooks.js';
@@ -154,7 +154,7 @@ export function heistTick(dt, ctx) {
   run.t += dt; const w = run.w, H = heat(ctx.world);
   const dist = p => Math.hypot(P.x - p.x, P.z - p.z);
   if (ctx.game?.isDown?.()) return finish(false, 'downed');
-  if (d.alarm.failAt && H.wanted >= d.alarm.failAt && STAGE_IDX(run.stage) < STAGE_IDX('clean')) return finish(false, `${d.alarm.failAt}★ before you got clean`);
+  { const [blown, f] = starFail(d.alarm.failAt, H.wanted, run.starFloor); run.starFloor = f; if (blown && STAGE_IDX(run.stage) < STAGE_IDX('clean')) return finish(false, `${d.alarm.failAt}★ before you got clean`); }
   // alarm response: after responseS, if you're still on site, private security calls it in (+1 star). Units are Grok Bot's.
   if (run.alarm && !run.responded && run.t - run.alarmT >= d.alarm.responseS) { // (guards usually radio it in first: guards.js onBackup)
     run.responded = true;
