@@ -90,6 +90,12 @@ export function alarmAction(level, wanted, { escalate = true, cap = 5 } = {}) {
 }
 
 // ---------- heist flow ----------
+// failAt counts only heat this job raised: stars you walked in with (or a lower level you got down to) set the floor, so
+// starting Wolde's impound job already at 4★ no longer blows it on the first frame. Returns [failNow, newFloor].
+export function starFail(failAt, wanted, floor) {
+  const w = wanted | 0, f = Math.min(Number.isFinite(floor) ? floor : w, w);
+  return [!!failAt && w >= failAt && w > f, f];
+}
 export const STAGES = ['idle', 'case', 'breakin', 'crack', 'escape', 'clean', 'done', 'failed'];
 const NEXT = { idle: 'case', case: 'breakin', breakin: 'crack', crack: 'escape', escape: 'clean', clean: 'done' };
 // def (colony-relative or world coords, metres): { id, title, world, site:{x,z,r}, door:{x,z}, safe:{x,z,tier,time?},
