@@ -83,6 +83,27 @@ export const SKINS = [
       ['armL', 'cyl', [0.1, 0.1, 0.14, 8], [0, -0.63, 0], 0, 'glove'], ['armR', 'cyl', [0.1, 0.1, 0.14, 8], [0, -0.63, 0], 0, 'glove'],
       ['legL', 'cyl', [0.13, 0.13, 0.28, 8], [0, -0.74, 0], 0, 'glove'], ['legR', 'cyl', [0.13, 0.13, 0.28, 8], [0, -0.74, 0], 0, 'glove']
     ] }),
+  // prop: palette keys that make up a hand-held prop (the cane): skins.js hides those meshes while a weapon is out
+  S('mack', 'Velvet Mack', 1000, 'Crushed purple velvet, fur collar, feathered brim, gold chains and a jeweled cane.', {
+    icon: '🪶', face: true, prop: ['cane', 'knob', 'jewel'],
+    pal: { skin: 0x7a4a30, torso: { c: 0x5a1460, r: 0.95, e: 0x14021c }, arms: { c: 0x5a1460, r: 0.95, e: 0x14021c }, legs: { c: 0x5a1460, r: 0.95, e: 0x14021c }, pack: null, chest: 0xd04a9a, boots: 0xf0eee8,
+      velvet: { c: 0x5a1460, r: 0.95, e: 0x14021c }, fur: { c: 0xf4efe6, r: 1 }, hat: { c: 0x48104e, r: 0.9, e: 0x0e0012 }, band: { c: 0xf2c84a, r: 0.3, m: 0.65, e: 0x2a1e00 }, plume: { c: 0xff5ac8, r: 0.9, e: 0x3a0a2a },
+      shade: { c: 0x120a18, r: 0.1, m: 0.6 }, cane: { c: 0x120a0e, r: 0.25, m: 0.3 }, knob: { c: 0xf6cc50, r: 0.25, m: 0.75, e: 0x2e2000 }, jewel: { c: 0xe0103a, r: 0.15, m: 0.4, e: 0x6a0010 }, silk: 0xff5ac8 },
+    parts: [
+      ['head', 'cyl', [0.37, 0.37, 0.02, 16], [0, 0.12, 0], [-0.1, 0, 0.06], 'hat', [1, 1, 0.9]], ['head', 'cyl', [0.14, 0.165, 0.2, 12], [0, 0.23, 0], [-0.06, 0, 0.05], 'hat'],
+      ['head', 'cyl', [0.168, 0.168, 0.04, 12], [0, 0.15, 0], [-0.06, 0, 0.05], 'band'],
+      ['head', 'sph', [0.028, 6, 4], [0.165, 0.27, 0.05], [0, 0, -0.45], 'plume', [1, 5.5, 1.2]], ['head', 'sph', [0.02, 6, 4], [0.19, 0.25, 0.08], [0, 0, -0.7], 'plume', [1, 4, 1]],
+      ['head', 'box', [0.27, 0.055, 0.03], [0, 0.03, -0.165], 0, 'shade'], ['head', 'box', [0.28, 0.012, 0.035], [0, 0.058, -0.166], 0, 'gold'],
+      ['head', 'tor', [0.13, 0.03, 6, 16], [0, -0.22, -0.05], [Math.PI / 2 - 0.65, 0, 0], 'gold'],
+      ['torso', 'tor', [0.17, 0.022, 6, 16], [0, 0.17, -0.09], [Math.PI / 2 - 0.95, 0, 0], 'gold'], ['torso', 'cyl', [0.06, 0.06, 0.025, 12], [0, 0.0, -0.205], [Math.PI / 2, 0, 0], 'gold'],
+      ['torso', 'tor', [0.22, 0.07, 6, 14], [0, 0.31, 0], [Math.PI / 2, 0, 0], 'fur', [1.15, 0.85, 1]],
+      ['torso', 'box', [0.08, 0.44, 0.03], [-0.12, 0.06, -0.19], [0, 0, 0.22], 'fur'], ['torso', 'box', [0.08, 0.44, 0.03], [0.12, 0.06, -0.19], [0, 0, -0.22], 'fur'],
+      ['torso', 'box', [0.62, 0.26, 0.4], [0, -0.4, 0], 0, 'velvet'], ['torso', 'box', [0.06, 0.05, 0.02], [0.2, 0.14, -0.19], 0, 'silk'],
+      ['armL', 'cyl', [0.11, 0.11, 0.08, 8], [0, -0.58, 0], 0, 'fur'], ['armR', 'cyl', [0.11, 0.11, 0.08, 8], [0, -0.58, 0], 0, 'fur'],
+      ['armR', 'cyl', [0.018, 0.018, 0.8, 6], [0, -1.08, -0.05], 0, 'cane'], ['armR', 'sph', [0.05, 10, 8], [0, -0.67, -0.05], 0, 'knob'],
+      ['armR', 'cyl', [0.03, 0.03, 0.03, 8], [0, -0.72, -0.05], 0, 'knob'], ['armR', 'sph', [0.022, 8, 6], [0, -0.66, -0.098], 0, 'jewel'], ['armR', 'sph', [0.02, 8, 6], [0, -0.62, -0.05], 0, 'jewel'],
+      ['legL', 'cyl', [0.14, 0.16, 0.16, 8], [0, -0.78, 0], 0, 'velvet'], ['legR', 'cyl', [0.14, 0.16, 0.16, 8], [0, -0.78, 0], 0, 'velvet']
+    ] }),
   S('hustler', 'Neon Street Hustler', 1200, 'Purple tracksuit, glow stripes, backwards cap, shades at night.', {
     icon: '🕶️', face: true,
     pal: { skin: 0x8a5a3c, torso: 0x4a167a, arms: 0x4a167a, legs: 0x4a167a, pack: null, chest: { c: 0x39ffea, e: 0x0a8a80 }, boots: 0xf0f0f0, neon: { c: 0x39ffea, e: 0x14b0a4, r: 0.5 }, pink: { c: 0xff2ad4, e: 0x8a0a70 }, cap: 0x111111 },

@@ -334,6 +334,25 @@ function wardrobeBuy(id) {
   if (!nearShop() && !api.__anywhere) { toast('👕 Buy it at Threadbare, downtown Ares Junction.'); render(); return { ok: false, why: 'far' }; }
   return buy(id);
 }
+// ---------- hand props (Velvet Mack's cane): hidden while a weapon is out, back after (all feature-detected) ----------
+// A skin's prop: [palette keys] are the materials of its hand-held prop; those meshes hide while you fire (2.5 s after the
+// last shot, game.progress.stats.shots), hold the flamer (SSX.flame.state().eq) or have the machete / cleaver equipped.
+const PROP = { out: null, shots: -1, shotT: -9, n: 0 };
+function weaponOut() {
+  const P = tryv(() => game()?.progress), now = performance.now() / 1000, sh = +tryv(() => P.stats.shots, NaN);
+  if (Number.isFinite(sh)) { if (PROP.shots >= 0 && sh > PROP.shots) PROP.shotT = now; PROP.shots = sh; }
+  if (now - PROP.shotT < 2.5) return 'firing';
+  if (tryv(() => X().flame?.state?.().eq)) return 'flamer';
+  const w = tryv(() => P.equip.weapon); if (w === 'blade' || w === 'cleaver') return 'melee';
+  return null;
+}
+function syncProp() {
+  const a = player?.applied, k = a && C.BY_ID[a.id]; if (!k?.prop) { PROP.out = null; PROP.n = 0; return; }
+  const out = weaponOut(), ms = new Set(k.prop.map(key => mat(C.matSpec(k, key)))); let n = 0;
+  for (const an of a.anchors) for (const o of an.children) if (ms.has(o.material)) { o.visible = !out; n++; }
+  PROP.out = out; PROP.n = n;
+}
+setInterval(() => { try { syncProp(); } catch (e) { /* */ } }, 120);
 // walking up to / away from the counter with the Wardrobe open shows / hides the Buy buttons
 setInterval(() => { try { if (panel?.classList.contains('open') && mode === 'wardrobe' && !!(nearShop() || api.__anywhere) !== wNear) render(); } catch (e) { /* */ } }, 500);
 
@@ -361,4 +380,4 @@ const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.skins
 attach(); (function boot(n = 0) { attach(); if (n < 150 && !(ticking && menuBtn?.isConnected && window.__app)) setTimeout(() => boot(n + 1), 100); })();
 setInterval(attach, 1500);
 export default api;
-Object.assign(api, { goShop, wardrobeBuy, locked: () => C.locked(st, credits(), nearShop()) });
+Object.assign(api, { goShop, wardrobeBuy, locked: () => C.locked(st, credits(), nearShop()), prop: () => (syncProp(), { out: PROP.out, meshes: PROP.n, shown: !PROP.out && PROP.n > 0 }) });
