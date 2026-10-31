@@ -54,7 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const sh = await wait(() => window.SSX.pursuit.seen() && !window.SSX.pursuit.searching(), 8000); ok('seenHolds', await G(() => { const s = window.SSX.pursuit.debug.state(); return { stars: s.stars, seen: s.seen, search: !!s.search, forceLOS: s.forceLOS }; }), sh);
     await G(() => window.SSX.pursuit.debug.los(false));
     ok('searchStarts', await wait(() => !!window.SSX.pursuit.searching(), 8000));
-    R.search = await G(() => ({ s: window.SSX.pursuit.searching(), marks: window.SSX.minimap.list().filter(k => k.startsWith('pursuit')), hud: (() => { const h = document.getElementById('puHud'), cs = getComputedStyle(h); return { show: cs.display !== 'none', t: h.textContent, bg: cs.backgroundColor, color: cs.color }; })() }));
+    R.search = await G(() => ({ s: window.SSX.pursuit.searching(), marks: window.SSX.minimap.list().filter(k => k.startsWith('pursuit')), hud: (() => { const h = document.getElementById(document.body.classList.contains('hxSlim') ? 'hxStat' : 'puHud'), /* v7.5.12 phones: slim status row */ cs = getComputedStyle(h); return { show: cs.display !== 'none', t: h.textContent, bg: cs.backgroundColor, color: cs.color }; })() }));
     ok('searchRing', R.search, R.search.s && R.search.s.r >= 35 && R.search.marks.includes('pursuit:search') && R.search.hud.show && /SEARCH/.test(R.search.hud.t) && R.search.hud.bg === 'rgb(0, 0, 0)' && R.search.hud.color === 'rgb(255, 255, 255)');
     if (!desk) await page.screenshot({ path: out + `pursuit-search-${tag}.png` });
     await G(() => window.SSX.pursuit.debug.los(true));

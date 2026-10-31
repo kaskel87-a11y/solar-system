@@ -72,5 +72,9 @@ function tick() {
   place(); status(); idleTick(dt);
 }
 ensure(); setInterval(tick, 250); tick();
+// mirror #puHud / #mhChip text changes right away (the 250 ms poll lagged a SEEN -> SEARCH flip)
+try { let mq = 0; const mo = new MutationObserver(() => { if (S.on && !mq) { mq = 1; queueMicrotask(() => { mq = 0; try { status(); } catch (e) { /* */ } }); } });
+  const watch = () => { for (const id of ['puHud', 'mhChip']) { const e = document.getElementById(id); if (e && !e.__hxMo) { e.__hxMo = 1; mo.observe(e, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } } };
+  watch(); setInterval(watch, 2000); } catch (e) { /* */ }
 window.SSX = window.SSX || {};
 window.SSX.hudSlim = { showStuck: (ms = 30000) => { S.forceT = performance.now() + ms; document.getElementById('hxStuck')?.classList.add('hxShow'); }, on: () => S.on, idleS: () => S.idle, state: () => ({ on: S.on, idle: +S.idle.toFixed(1), stat: S.stat?.textContent || '', statOn: !!S.stat?.classList.contains('on') }) };
