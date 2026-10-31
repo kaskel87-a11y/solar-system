@@ -27,6 +27,7 @@
     'ssx.onboard.v1', 'ssx.planets.v1', 'ssx.pursuit.v1', 'ssx.r2r.v1', 'ssx.raccoonRover.v1', 'ssx.race.v1', 'ssx.radioBanner', 'ssx.rep.v1',
     'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1',
     'ssx.still.v1', 'ssx.still.v1.bak', // moonshine still (mars/still.js) + its #83-style mirror
+    'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1' // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
   ];
   const PREFIXES = ['ssx.race.ghost.'];
