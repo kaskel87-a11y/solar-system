@@ -61,7 +61,13 @@ function drawKey(R, l) {
   const tx = new Set(); texOf(m, tx); const ts = [...tx].map(t => [t.format, t.type, t.minFilter, t.magFilter, t.generateMipmaps ? 'm' : '', t.colorSpace, t.wrapS, t.wrapT, t.anisotropy, t.isCanvasTexture ? 'c' : t.isDataTexture ? 'd' : t.isCompressedTexture ? 'z' : ''].join(',')).sort().join(';'); // sampler states
   return [pr.id, m.side, ts, m.transparent ? 't' : '', m.blending, m.depthWrite ? 'w' : '', m.depthTest ? 'd' : '', m.alphaToCoverage ? 'c' : '', l.isInstancedMesh ? 'i' : '', l.isSkinnedMesh ? 's' : '', g.index ? g.index.array.constructor.name[4] : '-', at, l.isPoints ? 'p' : l.isLine ? 'l' : ''].join('|');
 }
-const _sc = { t: false, mw: new THREE.Matrix4(), p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3(), d: new THREE.Vector3(), c: new THREE.Vector3(), o: new THREE.Vector3() };
+const _an = new WeakMap();
+function avgNormal(g) { // mean vertex normal in object space, null for closed / mixed shapes
+  if (_an.has(g)) return _an.get(g); let r = null; const a = g.attributes?.normal;
+  if (a && a.count) { const v = new THREE.Vector3(), step = Math.max(1, Math.floor(a.count / 256)); let n = 0; for (let i = 0; i < a.count; i += step) { v.x += a.getX(i); v.y += a.getY(i); v.z += a.getZ(i); n++; } v.divideScalar(n); if (v.length() > 0.5) r = v.normalize(); }
+  _an.set(g, r); return r;
+}
+const _sc = { n: new THREE.Vector3(), nd: new THREE.Vector3(), qa: new THREE.Quaternion(), t: false, mw: new THREE.Matrix4(), p: new THREE.Vector3(), q: new THREE.Quaternion(), s: new THREE.Vector3(), d: new THREE.Vector3(), c: new THREE.Vector3(), o: new THREE.Vector3() };
 function borrow(l, scene) {
   const rec = { l, parent: l.parent, idx: l.parent.children.indexOf(l), vis: l.visible, fc: l.frustumCulled, br: l.onBeforeRender, ar: l.onAfterRender, mw: l.matrixWorldAutoUpdate };
   const R = app().renderer;
@@ -75,6 +81,8 @@ function borrow(l, scene) {
       l.matrixWorld.decompose(_sc.p, _sc.q, _sc.s); const sc = Math.max(_sc.s.x, _sc.s.y, _sc.s.z) || 1, r = (bs?.radius || 1) * sc;
       const W = R.domElement.width || 1, H = R.domElement.height || 1; _sc.d.set(-1 + 1 / W, -1 + 1 / H, 0.5).unproject(cam);
       cam.getWorldPosition(_sc.c); _sc.d.sub(_sc.c).normalize();
+      const an = avgNormal(g); // a one-sided plane facing away (or edge-on) covers no pixel, and a pipeline that rasterizes
+      if (an && !l.isInstancedMesh) { _sc.n.copy(an).applyQuaternion(_sc.q); _sc.qa.setFromUnitVectors(_sc.n, _sc.nd.copy(_sc.d).negate()); _sc.q.premultiply(_sc.qa); } // nothing isn't warm: turn it to face the pixel
       _sc.o.copy(bs?.center || _sc.o.set(0, 0, 0)).multiply(_sc.s).applyQuaternion(_sc.q); // centre offset in world units
       _sc.p.copy(_sc.c).addScaledVector(_sc.d, (cam.near || 0.1) * 2 + r * 1.2).sub(_sc.o);
       l.matrixWorld.compose(_sc.p, _sc.q, _sc.s);
