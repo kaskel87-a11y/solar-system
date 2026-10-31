@@ -591,6 +591,7 @@ export function createWorld(ctx) {
       if (gib) scene.remove(s.group); else { s.group.scale.y = s.group.scale.x; corpse(s.group, s.x, s.z); }
       backupT = 25; onEvent('backup', { officerDown: true, kind: s.kind }); }
     else { scene.remove(s.group); g.gore?.(s.x, s.y + 0.5, s.z, { mech: true, n: 2 }); }
+    if (s.foot) { s.ssxCop = 1; s.ssxDropDone = 1; } // v7.5.12: never also a 20-80 cr KO drop (economy.js npcDown)
     let bounty = bountyFor(s); if (bounty) { try { bounty = g.copBounty?.(bounty) || null; } catch (e) { bounty = null; } } // v7.5.12: once per kill (spliced above)
     onEvent('secDown', { kind: s.kind, bounty }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
   }

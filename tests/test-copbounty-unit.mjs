@@ -29,4 +29,12 @@ const sk = wsrc.slice(wsrc.indexOf('function secKill('), wsrc.indexOf('function 
 ok('spliced before pay', sk.indexOf('security.splice(i, 1)') > 0 && sk.indexOf('security.splice(i, 1)') < sk.indexOf('bountyFor(s)'));
 ok('heat unchanged', sk.includes("crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security')"));
 ok('toast wired', /ev\.bounty\.cr/.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
+// no #88 KO cash drop on a cop: economy.npcDown pays 0 for one, still pays a colonist
+globalThis.SSX = {}; let credited = 0;
+try { const E = await import('../economy.js'); const nd = E.npcDown;
+  globalThis.__app = { game: { progress: { credits: 0 }, save() {} } };
+  const cop = nd({ kind: 'officer', foot: true, x: 0, z: 0 }), cop2 = nd({ kind: 'officer', ssxCop: 1 }), heavy = nd({ kind: 'heavy', foot: true });
+  ok('no KO drop on cops', cop === 0 && cop2 === 0 && heavy === 0, { cop, cop2, heavy }); credited = 1;
+} catch (e) { ok('economy import', false, e.message); }
+ok('secKill marks the cop', sk.includes('s.ssxCop = 1; s.ssxDropDone = 1;'));
 console.log(fails ? `copbounty unit: ${fails} FAILED` : 'copbounty unit OK'); process.exit(fails ? 1 : 0);
