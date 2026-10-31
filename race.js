@@ -187,16 +187,27 @@ function defsHere() { return allDefs().filter(d => d.world === planet); }
 // gates never sit inside a dome or building: world.collide(x, z, r) is the same test the cars use
 function blockedFn() { const w = C?.world; return w?.collide ? (x, z, r) => !!w.collide(x, z, r) : null; }
 function resolve(def) { return RC.resolveTrack(def, C?.world?.colony, blockedFn()); }
+// v7.5.16 (Collin: "lags every 2-3 seconds, even on a laptop"): the minimap's POI list (hudx pois, refreshed every 1 s) called
+// tracks(), which re-resolved every track against the live world: clearGates/pickSpot probe up to 1,920 spots x world.collide per
+// blocked gate, ~40-230 ms of main thread, once a second. Views (minimap, race list) now reuse one resolve per track per world;
+// a race start still resolves fresh against the live world.
+const viewCache = new Map();
+function viewKey(def) { const w = C?.world, c = w?.colony; return `${planet}|${c?.x}|${c?.z}|${def.custom ? 1 : 0}|${def.anchor || ''}|${JSON.stringify(def.gates)}`; }
+function resolveView(def) {
+  const k = viewKey(def), e = viewCache.get(def.id);
+  if (e && e.k === k && e.w === C?.world) return e.t;
+  const t = resolve(def); viewCache.set(def.id, { k, w: C?.world, t }); return t;
+}
 
 function setupPlanet() {
-  disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
+  viewCache.clear(); disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
   idleG = new THREE.Group(); root.add(idleG); raceG = null; planet = C.name;
   rebuildIdle();
 }
 function rebuildIdle() {
   if (!idleG) return; for (const c of [...idleG.children]) disposeGroup(c);
   for (const d of defsHere()) {
-    const t = resolve(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
+    const t = resolveView(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
     const lab = labelSprite('\ud83c\udfc1 ' + d.name.toUpperCase(), d.custom ? '#7dd3fc' : '#ffd25a', d.pit ? 18 : 13); lab.position.set(0, o.userData.top + 3.2, 0); o.add(lab);
     o.userData.def = d; idleG.add(o);
   }
@@ -499,7 +510,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 // ---------- race list panel ----------
 function openPanel() {
   if (!ensureUI() || !planet) return; const P = C?.game?.progress, defs = defsHere();
-  const items = defs.map(d => { const t = resolve(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
+  const items = defs.map(d => { const t = resolveView(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
     const kind = t.loop ? `${t.laps}-lap loop` : 'sprint', far = C ? Math.round(Math.hypot(t.gates[0].x - C.player.x, t.gates[0].z - C.player.z)) : 0;
     const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${boost(RC.payout(t, { won: true, custom: true }).credits)} cr`) : `purse ${boost(d.purse || 120)} cr${wins ? '' : ` + ${boost(100)} first win`}`; // v7.5.9: listed = paid
     return `<div class="item${d.custom ? ' custom' : ''}"><b>${d.custom ? '\ud83d\udee0' : d.fromQuest ? '\ud83d\udcfb' : '\ud83c\udfc1'} ${esc(d.name)}</b> \u00b7 ${kind} \u00b7 ${t.gates.length} gates \u00b7 ${Math.round(t.length)} m
@@ -588,7 +599,7 @@ window.__race = {
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
   gates: () => R ? R.t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })) : null, // the RUNNING race's gates (tracks() re-resolves against the live world)
-  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
+  tracks: () => defsHere().map(d => { const t = resolveView(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
   start: (id, o) => startRace(id, o), quit: () => quitRace(null), openPanel, closePanel, openBuilder: (id, copy) => openBuilder(id ? allDefs().find(d => d.id === id) : null, copy),
   get builder() { return builder; }, reload() { data = RC.loadRace(LS); rebuildIdle(); },
   skipCountdown() { if (R && R.phase === 'grid') R.count = 0.001; },
