@@ -203,6 +203,11 @@ export function rows(s, credits, mode = 'shop') {
   const stock = { id: STOCK, name: 'Colony Issue (stock suit)', icon: '⚪', price: 0, blurb: 'The plain white suit you landed in.', owned: true, worn: s.eq === STOCK, afford: true };
   return mode === 'wardrobe' ? [stock, ...list.filter(r => r.owned)] : list;
 }
+// Wardrobe extras: the outfits you don't own yet (cheapest first), shown as compact locked rows under your own;
+// canBuy only when you stand at the Threadbare counter (the wardrobe never sells from afar)
+export function locked(s, credits, near = false) {
+  return SKINS.filter(k => !owns(s, k.id)).map(k => ({ id: k.id, name: k.name, icon: k.icon, price: k.price, afford: fin(credits) && credits >= k.price, canBuy: !!near }));
+}
 
 // real tap: the same pointer, and it never moved TAP_PX or more during the gesture
 export function isRealTap(down, up, maxMove = 0) {
