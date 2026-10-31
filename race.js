@@ -584,6 +584,7 @@ setInterval(() => {
 
 // ---------- test/debug hooks ----------
 window.__race = {
+  showResult: res => showResult(res), // v7.5.15 test hook (card-fit screenshots)
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
   gates: () => R ? R.t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })) : null, // the RUNNING race's gates (tracks() re-resolves against the live world)

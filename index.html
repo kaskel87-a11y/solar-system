@@ -685,6 +685,8 @@
   "ssx/hud/hudmap": "./hud/hudmap.js?v=7.5.14",
   "./hud/hudslim.js": "./hud/hudslim.js?v=7.5.14",
   "ssx/hud/hudslim": "./hud/hudslim.js?v=7.5.14",
+  "./hud/cardfit.js": "./hud/cardfit.js?v=7.5.14",
+  "ssx/hud/cardfit": "./hud/cardfit.js?v=7.5.14",
   "./hud/hudx.js": "./hud/hudx.js?v=7.5.14",
   "ssx/hud/hudx": "./hud/hudx.js?v=7.5.14",
   "./hud/wpbeam.js": "./hud/wpbeam.js?v=7.5.14",
@@ -2567,6 +2569,7 @@
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./hud/wpbeam.js').catch(e => console.warn('wpbeam', e)); // v7.5.8 blue light beam + ground ring over the active waypoint
     import('./perfgov.js').catch(e => console.warn('perfgov', e)); // v7.5.12 phone perf governor: far-fog cull, adaptive pixel ratio, frees space textures while landed
+    import('./hud/cardfit.js').catch(e => console.warn('cardfit', e)); // v7.5.15 popup/result/toast cards fit the screen, black ✕ + tap-to-close, clear of the action buttons
     import('./hud/hudslim.js').catch(e => console.warn('hudslim', e)); // v7.5.12 phone HUD: one slim wanted/search/mission row, Stuck? after 20 s idle
     import('./hud/hudx.js').catch(e => console.warn('hudx', e)); // v7.5.5 HUD declutter: plain directions, ➤ waypoint, lite minimap + full map, one context button
     import('./mars-audio.js').then(m => m.initMarsAudio(window.__app, { au7, audio, ctx: () => actx })).catch(e => console.warn('mars-audio', e)); // Mars city ambience: radio, districts, barks
