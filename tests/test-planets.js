@@ -11,7 +11,7 @@ const WORLDS = [
   { w: 'Venus', colony: 'Sulfur Gate', veh: 'acid_crawler', contact: 'Dee Varga', permit: 'mars-hotcargo' },
   { w: 'Mercury', colony: 'Shadowline Array', veh: 'sun_skimmer', contact: 'Dr. Takacs', permit: 'mars-salvage' },
   { w: 'Titan', colony: 'Kraken Landing', veh: 'methane_skiff', contact: 'Lark', permit: 'moon-invitational' },
-  { w: 'Europa', colony: 'Conamara Station', veh: 'crevasse_sled', contact: 'Juno Reyes', permit: 'titan-wetwork' },
+  { w: 'Europa', colony: 'Conamara Station', veh: 'crevasse_sled', contact: 'Nadia Reyes', permit: 'titan-wetwork' },
   { w: 'Io', colony: 'Loki Forge', veh: 'lava_runner', contact: 'Cinder', permit: 'europa-transfer' }
 ];
 function measure() {

@@ -331,7 +331,7 @@ export function createWorld(ctx) {
     m.position.set(x, y, z); m.rotation.y = yaw; add(m); signs.push(m);
     if (Math.random() < 0.5) flick.push({ m, sign: true });
   }
-  const DUEL_NAMES = ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Juno Reyes', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan'];
+  const DUEL_NAMES = ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Kit Arden', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan'];
   function spawnPerson(kind, p, i, pts, style = null) {
     const b = buildPerson(kind, i, style); b.group.position.set(p.x, height(p.x, p.z), p.z); scene.add(b.group);
     const o = { ...b, kind, zone: curZone, on: true, style, x: p.x, z: p.z, home: { x: p.x, z: p.z }, yaw: Math.random() * 6, pts, ti: i, phase: Math.random() * 6, hp: kind === 'guard' ? 6 : 3, stun: 0, cd: 1, flee: 0, wait: Math.random() * 3 };

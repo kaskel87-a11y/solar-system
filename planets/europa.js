@@ -17,7 +17,7 @@ export default {
     shop: [-6, 21.5],
     contacts: [
       { name: 'Foreman Brask', at: [36, -27], blurb: 'Company man. Fines you for breathing loud.' },
-      { name: 'Juno Reyes', at: [-26, 28], blurb: 'Drift union organizer. Water smuggler.' },
+      { name: 'Nadia Reyes', at: [-26, 28], blurb: 'Drift union organizer. Water smuggler.' },
       { name: 'Old Henrik', at: [12, 28], blurb: 'Retired driller. Says the ice sings.' }
     ],
     vehicles: [['crevasse_sled', -14, 33, 0.4], ['crevasse_sled', 46, 2, 2.0], ['hoverbike', 20, 34, -0.3], ['buggy', -52, -26, 1.6]],
@@ -26,8 +26,8 @@ export default {
   vehicles: ['crevasse_sled'],
   cosmetics: { paint: { glacier: { name: 'Glacier White', color: 0xe8eef4 } } },
   quests: [
-    { id: 'europa-store', world: 'Europa', contact: 'Juno Reyes', title: 'Company store', fiction: true,
-      intro: 'Juno: Halvorsen is cooking the ration books, and the manifest proves it. It\u2019s in the company store. Grab it, get it to my people at the old drill site, then lose Brask\u2019s goons. They don\u2019t arrest, they disappear you.',
+    { id: 'europa-store', world: 'Europa', contact: 'Nadia Reyes', title: 'Company store', fiction: true,
+      intro: 'Nadia: Halvorsen is cooking the ration books, and the manifest proves it. It\u2019s in the company store. Grab it, get it to my people at the old drill site, then lose Brask\u2019s goons. They don\u2019t arrest, they disappear you.',
       steps: [{ type: 'goto', at: [30, -13], r: 3, item: 'camera', text: 'Lift the manifest from the company store' }, { type: 'take', text: 'Steal a ride' },
         { type: 'goto', a: 120, d: 320, r: 14, vehicle: 'stolen', limit: 100, wanted: 2, text: 'Get it to the old drill site' }, { type: 'clean', text: 'Lose the company security' }],
       reward: { xp: 180, credits: 380, badge: 'Drift', unlock: 'paint:glacier' } },
@@ -39,8 +39,8 @@ export default {
       intro: 'Brask: Team-building exercise. Six gates down the ice road, seventy seconds. Winners get a bonus. Losers get a fine. Everybody gets a fine, actually.',
       steps: [{ type: 'take', text: 'Grab a sled (or anything with grip)' }, { type: 'race', pts: [[-50, -60], [-130, -50], [-170, 20], [-120, 90], [-40, 80], [0, 40]], limit: 70, text: 'Hit every gate' }],
       reward: { xp: 130, credits: 260 } },
-    { id: 'europa-transfer', world: 'Europa', contact: 'Juno Reyes', title: 'Transfer papers', fiction: true,
-      intro: 'Juno: They shipped my brother to the Loki Forge on Io. I forged you a visitor transfer. Pick it up from the infirmary and get to the outbound pad. Then go get him out.',
+    { id: 'europa-transfer', world: 'Europa', contact: 'Nadia Reyes', title: 'Transfer papers', fiction: true,
+      intro: 'Nadia: They shipped my brother to the Loki Forge on Io. I forged you a visitor transfer. Pick it up from the infirmary and get to the outbound pad. Then go get him out.',
       steps: [{ type: 'goto', at: [-22, -6], r: 3, item: 'capsule', text: 'Pick up the transfer at the infirmary' }, { type: 'goto', a: -100, d: 300, r: 14, limit: 90, wanted: 1, text: 'Reach the outbound pad' }],
       reward: { xp: 160, credits: 300, badge: 'Visitor' } }
   ],
