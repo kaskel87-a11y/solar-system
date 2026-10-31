@@ -94,15 +94,30 @@ function onKey(e) {
   const m = map.find(m => !m.own && m.key === want); if (!m) return; // own keys (race Enter, G, K ...) stay with their modules
   e.preventDefault(); e.stopPropagation(); press(m.el);
 }
+// v7.5.16: the 🦝 / smuggling dock actions lived on number keys (5, 8, 9) because #ssxDock is hidden on desktop. With the
+// number keys now menu-only, desktop gets a mirror button in the #surfBtns column (clicks the real one), so the action
+// is visible, clickable and gets a context key + label like every other one. Touch keeps the real dock button.
+const DOCK_ACT = ['dockRcn', 'dockSmg', 'dockSmgF'];
+function mirrorDock() {
+  const touch = document.body.classList.contains('touch'), col = document.getElementById('surfBtns');
+  for (const id of DOCK_ACT) {
+    const src = document.getElementById(id); let m = document.getElementById('kbp_' + id);
+    const want = !touch && !!col && !!src && src.style.display !== 'none' && !vis(src);
+    if (!want) { if (m) m.remove(); continue; }
+    if (!m) { m = document.createElement('button'); m.type = 'button'; m.id = 'kbp_' + id; m.className = 'kbMirror'; m.addEventListener('click', () => document.getElementById(id)?.click()); col.prepend(m); }
+    const t = (src.textContent || '').replace(/\s*\n\s*/g, ' ').trim(); if (m.textContent !== t) m.textContent = t;
+    const al = src.getAttribute('aria-label') || t; if (m.getAttribute('aria-label') !== al) m.setAttribute('aria-label', al);
+  }
+}
 let lastCard = null;
 function tick() {
-  if (!document.body) return; assign();
+  if (!document.body) return; mirrorDock(); assign();
   const c = document.body.classList.contains('touch') ? null : openCard();
   if (c !== lastCard) { if (lastCard) for (const b of lastCard.querySelectorAll('.kbNum')) { b.classList.remove('kbNum'); delete b.dataset.kbn; } lastCard = c; }
   if (c) decorate(c);
 }
 function audit() {
-  assign(); const out = [];
+  mirrorDock(); assign(); const out = [];
   for (const m of ctxMap) out.push({ id: m.el.id || null, label: label(m.el).slice(0, 40), key: m.key, own: m.own, kind: 'context' });
   const c = openCard(); if (c) { const bs = decorate(c); bs.forEach((b, i) => out.push({ id: b.id || null, label: label(b).slice(0, 40), key: i < 9 ? String(i + 1) : null, kind: 'card', card: c.id || c.className })); out.push({ kind: 'cardClose', card: c.id || c.className, key: 'Esc' }); }
   return out;
