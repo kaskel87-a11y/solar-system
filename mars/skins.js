@@ -239,7 +239,11 @@ body.surface:not(.indoors) #skBtn.show{display:block}
 #skPanel .row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #2a2a2a} #skPanel .row:first-child{border-top:0}
 #skPanel .row .ic{font-size:24px;width:30px;text-align:center} #skPanel .row .nm{flex:1;font-weight:800} #skPanel .row .nm small{display:block;font-weight:400;color:#bbb;font-size:12px;line-height:1.25}
 #skPanel button{min-height:44px;min-width:44px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px system-ui,sans-serif;touch-action:manipulation;padding:0 12px;white-space:nowrap}
-#skPanel button.on{background:#fff;color:#000} #skPanel button.no{border-style:dashed;border-color:#777;color:#aaa}`;
+#skPanel button.on{background:#fff;color:#000} #skPanel button.no{border-style:dashed;border-color:#777;color:#aaa}
+#skPanel .lh{display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid #444;margin-top:2px;font:800 12px system-ui,sans-serif;color:#bbb;text-transform:uppercase;letter-spacing:.04em} #skPanel .lh span{flex:1}
+#skPanel .lh button{min-height:34px;font-size:13px;padding:0 10px;text-transform:none;letter-spacing:0}
+#skPanel .lk{display:flex;align-items:center;gap:6px;min-height:30px;padding:2px 0;color:#fff;font-size:13px} #skPanel .lk .nm{flex:1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#skPanel .lk .pr{color:#bbb;white-space:nowrap;font-weight:600} #skPanel .lk button{min-height:32px;font-size:13px;padding:0 12px} #skPanel .lk button.no{border:2px solid #555;color:#777}`;
 let btn = null, panel = null, mode = 'shop', menuBtn = null;
 const taps = { fired: 0, swipes: 0, buys: 0, refused: 0 };
 // real tap only: same pointerId, < TAP_PX moved over the gesture; mouse / keyboard click still work
@@ -261,7 +265,7 @@ function ensureUi() {
   panel.innerHTML = '<div class="hd"><div class="t"></div><div class="cr"></div><button type="button" data-a="x" aria-label="Close">✕</button></div><div class="list"></div>';
   document.body.appendChild(panel);
   realTap(panel, t => { const b = t?.closest?.('button[data-a]'); if (!b || !panel.contains(b)) return; const a = b.dataset.a, id = b.dataset.id;
-    if (a === 'x') close(); else if (a === 'buy') buy(id); else if (a === 'wear') equip(id); });
+    if (a === 'x') close(); else if (a === 'buy') buy(id); else if (a === 'wear') equip(id); else if (a === 'goshop') goShop(); else if (a === 'wbuy') wardrobeBuy(id); });
 }
 function render() {
   if (!panel) return; const cr = credits(), shop = mode === 'shop';
@@ -273,7 +277,7 @@ function render() {
       : r.owned ? `<button type="button" data-a="wear" data-id="${r.id}">Wear</button>`
       : `<button type="button" class="${r.afford ? '' : 'no'}" data-a="buy" data-id="${r.id}">Buy · ${C.fmt(r.price)} cr</button>`;
     return `<div class="row" data-id="${r.id}"><div class="ic">${r.icon}</div><div class="nm">${esc(r.name)}<small>${r.owned || !r.price ? '' : C.fmt(r.price) + ' cr · '}${esc(r.blurb)}</small></div>${b}</div>`;
-  }).join('');
+  }).join('') + (shop ? '' : lockedHtml(cr, esc));
 }
 function open(m = 'shop') {
   ensureUi(); if (m === 'shop' && !nearShop() && !api.__anywhere) { toast('👕 Threadbare is in downtown Ares Junction.'); return false; }
@@ -303,6 +307,55 @@ function hookMenu() {
   return true;
 }
 
+// ---------- Wardrobe extras: locked outfits, 'Shop all outfits' waypoint, buy at the counter ----------
+// Away from the stall the unowned outfits are compact 🔒 rows (name + price); 'Shop all outfits' sets the HUD waypoint
+// (SSX.hudx.setWaypoint -> ➤ arrow + blue beam; else SSX.waypoint/nav/gps, guarded) to the Threadbare counter and closes.
+// At the counter each row gets a Buy button that goes through buy() (same spend / ownership / auto-wear as the shop).
+let wNear = false;
+function lockedHtml(cr, esc) {
+  const near = wNear = !!(nearShop() || api.__anywhere), L = C.locked(st, cr, near); if (!L.length) return '';
+  return `<div class="lh"><span>🔒 More at Threadbare · ${L.length}</span><button type="button" data-a="goshop">${near ? '👕 Open shop' : '📍 Shop all outfits'}</button></div>` + L.map(r =>
+    `<div class="lk" data-id="${r.id}"><span>🔒</span><span class="nm">${r.icon} ${esc(r.name)}</span><span class="pr">${C.fmt(r.price)} cr</span>${r.canBuy ? `<button type="button" class="${r.afford ? '' : 'no'}" data-a="wbuy" data-id="${r.id}"${r.afford ? '' : ' aria-disabled="true"'}>Buy</button>` : ''}</div>`).join('');
+}
+function setNav(t) {
+  try { const h = X().hudx; if (typeof h?.setWaypoint === 'function') { h.setWaypoint(t); return 'hudx'; } } catch (e) { /* */ }
+  for (const k of ['waypoint', 'nav', 'gps']) { const n = X()[k]; for (const f of ['set', 'to', 'add']) if (typeof n?.[f] === 'function') { try { n[f](t); return k; } catch (e) { /* */ } } }
+  return null;
+}
+function goShop() {
+  if (nearShop()) return open('shop');
+  const p = at(), onMars = tryv(() => surf()?.info?.name) === 'Mars' && !!app()?.state?.onSurface;
+  if (!p || !onMars) { toast('👕 Threadbare is in downtown Ares Junction on Mars.'); return null; }
+  const f = front(p, 1.5), via = setNav({ x: f.x, z: f.z, label: 'Threadbare (clothes)' });
+  if (!via) toast('👕 Threadbare is in downtown Ares Junction (white dot on the map).');
+  close(); emit('waypoint', { via }); return via;
+}
+function wardrobeBuy(id) {
+  if (!nearShop() && !api.__anywhere) { toast('👕 Buy it at Threadbare, downtown Ares Junction.'); render(); return { ok: false, why: 'far' }; }
+  return buy(id);
+}
+// ---------- hand props (Velvet Mack's cane): hidden while a weapon is out, back after (all feature-detected) ----------
+// A skin's prop: [palette keys] are the materials of its hand-held prop; those meshes hide while you fire (2.5 s after the
+// last shot, game.progress.stats.shots), hold the flamer (SSX.flame.state().eq) or have the machete / cleaver equipped.
+const PROP = { out: null, shots: -1, shotT: -9, n: 0 };
+function weaponOut() {
+  const P = tryv(() => game()?.progress), now = performance.now() / 1000, sh = +tryv(() => P.stats.shots, NaN);
+  if (Number.isFinite(sh)) { if (PROP.shots >= 0 && sh > PROP.shots) PROP.shotT = now; PROP.shots = sh; }
+  if (now - PROP.shotT < 2.5) return 'firing';
+  if (tryv(() => X().flame?.state?.().eq)) return 'flamer';
+  const w = tryv(() => P.equip.weapon); if (w === 'blade' || w === 'cleaver') return 'melee';
+  return null;
+}
+function syncProp() {
+  const a = player?.applied, k = a && C.BY_ID[a.id]; if (!k?.prop) { PROP.out = null; PROP.n = 0; return; }
+  const out = weaponOut(), ms = new Set(k.prop.map(key => mat(C.matSpec(k, key)))); let n = 0;
+  for (const an of a.anchors) for (const o of an.children) if (ms.has(o.material)) { o.visible = !out; n++; }
+  PROP.out = out; PROP.n = n;
+}
+setInterval(() => { try { syncProp(); } catch (e) { /* */ } }, 120);
+// walking up to / away from the counter with the Wardrobe open shows / hides the Buy buttons
+setInterval(() => { try { if (panel?.classList.contains('open') && mode === 'wardrobe' && !!(nearShop() || api.__anywhere) !== wNear) render(); } catch (e) { /* */ } }, 500);
+
 // ---------- per frame (SSX.registerSurfaceTick) ----------
 let near = false, ticking = false, frameN = 0;
 function tick(dt, tc) {
@@ -327,3 +380,4 @@ const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.skins
 attach(); (function boot(n = 0) { attach(); if (n < 150 && !(ticking && menuBtn?.isConnected && window.__app)) setTimeout(() => boot(n + 1), 100); })();
 setInterval(attach, 1500);
 export default api;
+Object.assign(api, { goShop, wardrobeBuy, locked: () => C.locked(st, credits(), nearShop()), prop: () => (syncProp(), { out: PROP.out, meshes: PROP.n, shown: !PROP.out && PROP.n > 0 }) });
