@@ -7,7 +7,7 @@
 // window.SSX.raccoon (also window.__raccoon for tests)
 //   state            -> { owned, how, garage, loot, picks, busts, cr, driving, near, pick, blocked }
 //   buy()            -> { ok, msg }  1200 cr at the junkyard (on foot, next to it)
-//   pickpocket()     -> { ok, msg }  send Rocket at the nearest NPC (key 5 or the 🦝 dock button)
+//   pickpocket()     -> { ok, msg }  send Rocket at the nearest NPC (the 🦝 dock button; Enter-family key on desktop)
 //   on(fn)           -> unsubscribe; fn({ type: 'buy'|'steal'|'loot'|'pick'|'bark', ... })
 // Buy or steal: getting in without paying is grand theft (heat via world.setWanted). Either way the ride is granted
 // to the garage with SSX.garage.grantVehicle (feature-detected; stolen = noPlates). Loot and pickpocket pause while
@@ -288,7 +288,7 @@ function tick(dt, tc) {
   ui();
 }
 
-// ---------- UI: one dock button (🦝 BUY / PICK), key 5. Black and white, only shown when it does something ----------
+// ---------- UI: one dock button (🦝 BUY / PICK), context key. Black and white, only shown when it does something ----------
 const CSS = `#dockRcn{order:6}
 .ssxBark.rcnBark{left:50%!important;top:calc(26% + env(safe-area-inset-top))!important;transform:translate(-50%,0)!important;opacity:1!important;background:#000!important;color:#fff!important;border:2px solid #fff!important}`;
 let dockBtn = null;
@@ -301,7 +301,7 @@ function dockButton() {
     b = document.createElement('button'); b.id = 'dockRcn'; b.type = 'button'; b.style.order = '6'; b.style.display = 'none'; d.appendChild(b); tap(b, act); dockBtn = b; R.ui = ''; return true;
   };
   if (attach()) return;
-  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no dock: key 5 only */ }
+  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no dock */ }
 }
 function ui() {
   if (!dockBtn) return;
@@ -311,18 +311,13 @@ function ui() {
   if (k === R.ui) return; R.ui = k;
   dockBtn.style.display = mode ? '' : 'none';
   dockBtn.textContent = mode === 'buy' ? `🦝\nBUY ${RC.PRICE}` : R.run ? '🦝\nOUT' : '🦝\nPICK';
-  dockBtn.setAttribute('aria-label', mode === 'buy' ? `Buy the Raccoon Rover for ${RC.PRICE} credits (5)` : 'Send Rocket to pickpocket the nearest person (5)');
+  dockBtn.setAttribute('aria-label', mode === 'buy' ? `Buy the Raccoon Rover for ${RC.PRICE} credits` : 'Send Rocket to pickpocket the nearest person');
 }
 function setup() {
   if (!document.body) return addEventListener('DOMContentLoaded', setup, { once: true });
   const st = document.createElement('style'); st.id = 'rcnCss'; st.textContent = CSS; document.head.appendChild(st);
   dockButton();
-  addEventListener('keydown', e => {
-    if (e.code !== RC.PICK_KEY || e.repeat || e.defaultPrevented || document.body.classList.contains('basebuild') /* v7.5.5: 5 is a base build tool in build mode */ || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
-    if (!app()?.state?.onSurface || window.__race?.builder?.open || document.body.classList.contains('danger-standoff')) return;
-    if (!S.owned && !R.near) return; // nothing to do: leave the key alone
-    e.preventDefault(); act();
-  });
+  // v7.5.16: no number key; hud/keys.js binds the 🦝 dock button to a free context key and shows it
 }
 setup();
 

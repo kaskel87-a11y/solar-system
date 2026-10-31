@@ -5,7 +5,7 @@ export const KIND = 'raccoon_rover';
 export const PRICE = 1200;
 export const COPILOT = 'Rocket';
 export const SAVE_KEY = 'ssx.raccoonRover.v1';
-export const PICK_KEY = 'Digit5'; // free on main and every remote branch (danger uses 1-4, gravity 2, marsmania I/`/;/[/]/,/.)
+export const PICK_KEY = null; // v7.5.16: no number key; the 🦝 dock button gets a context key from hud/keys.js
 // Red Tape Flats (mars-rough) centre is [-280, -40] AJ-relative; junkyard offsets are district-local metres.
 export const DISTRICT = 'mars-rough';
 export const FLATS = [-280, -40];

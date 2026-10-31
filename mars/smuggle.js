@@ -272,7 +272,7 @@ function dockButtons() {
     dockBtn = mk('dockSmg', dockAct); dockFav = mk('dockSmgF', () => payout('favor')); R.ui = ''; return true;
   };
   if (attach()) return;
-  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no dock: keys 8 / 9 only */ }
+  try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no dock */ }
 }
 function buildHud() {
   hud = document.createElement('div'); hud.id = 'smgHud'; hud.setAttribute('role', 'status');
@@ -290,7 +290,7 @@ function ui() {
     if (k !== R.ui) {
       R.ui = k; dockBtn.style.display = mode ? '' : 'none'; dockFav.style.display = mode === 'pay' ? '' : 'none';
       dockBtn.textContent = mode === 'pay' ? '💰\nCASH' : '📦\nRUN'; dockFav.textContent = '🤝\nFAVOR';
-      dockBtn.setAttribute('aria-label', mode === 'pay' ? 'Take the cash payout (8)' : 'Pick up a smuggling run (8)'); dockFav.setAttribute('aria-label', 'Take a favor from Gutter Pell instead (9)');
+      dockBtn.setAttribute('aria-label', mode === 'pay' ? 'Take the cash payout' : 'Pick up a smuggling run'); dockFav.setAttribute('aria-label', 'Take a favor from Gutter Pell instead');
     }
   }
   if (!hud) return;
@@ -320,11 +320,7 @@ function setup() {
   addEventListener('keydown', e => {
     if (e.repeat || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     const r = R.run;
-    if (e.code === C.RUN_KEY || e.code === C.FAVOR_KEY) {
-      if (r?.phase === 'payout' && onMars()) { e.preventDefault(); payout(e.code === C.FAVOR_KEY ? 'favor' : 'cash'); return; }
-      if (e.code === C.RUN_KEY && !r && onMars() && atPad()) { e.preventDefault(); start(); }
-      return;
-    }
+    // v7.5.16: RUN / CASH / FAVOR are dock buttons; hud/keys.js binds them to the free context keys (Enter, Shift+Enter, ...) and labels them
     if (!r || !inSpace()) return; // B / X stay the stash / medkit on the surface
     if (e.code === C.BRIBE_KEY && R.scanning) { e.preventDefault(); bribe(); }
     else if (e.code === C.DUMP_KEY) { e.preventDefault(); dump(); }

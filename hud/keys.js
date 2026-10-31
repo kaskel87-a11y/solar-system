@@ -2,17 +2,17 @@
 // One layer over all modules, no module edits needed when a new button appears:
 //  - Context buttons (the #surfBtns column and the floating *Act / *CtxBtn buttons): a module that already owns a key keeps
 //    it (OWN map, or a "(X)" already in its label); every other visible one gets Enter (the first / main one) and then
-//    Shift+Enter, Shift+1.. for the rest, in on-screen order. The key shows after the label ("🚗 Dealer (Enter)").
+//    Shift+Enter, = and - for the rest (never a number key), in on-screen order. The key shows after the label ("🚗 Dealer (Enter)").
 //  - Open cards / sheets / panels / the ☰ menu: 1-9 press the listed options in order, Enter the main one (a .go / the
 //    first option), Esc closes (the card's own ✕ / Close / Later, else hides it).
 //  - Labels are desktop only (body.touch hides them). Never while typing (Save Code, names, chat).
 // SSX.keys.audit() lists visible action buttons and their binding (tests/test-keys.js fails on any without one).
 const OWN = { // id -> key the owning module already handles
   driveBtn: 'E', petBtn: 'P', radioBtn: 'N', heistBtn: 'G', jobAct: 'G', barContactBtn: 'G', baseBtn: 'K', turfAct: 'Y',
-  beltAct: '8', stAct: '7', airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '6',
+  airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '/',
 };
 const TOUCH_ONLY = new Set(['jumpBtn', 'runBtn', 'fireBtn', 'meleeBtn', 'hudShow']);
-const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn, #hxStuck';
+const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn, #hxStuck, #dockRcn, #dockSmg, #dockSmgF'; // v7.5.16: the 🦝 / smuggling dock buttons lost their number keys
 // HUD furniture that is never a "card": the right stack, dock, minimap, joystick, the context column itself
 const NOT_CARD = new Set(['surfHud', 'surfBtns', 'stackR', 'ssxDock', 'miniMap', 'hudShow', 'fireBtn', 'meleeBtn', 'joy', 'flyBtns', 'hud', 'crosshair', 'toast', 'loading', 'fireHint', 'kbLayerCss', 'radio', 'ctlPanel', 'topBar']); // radio offer + controls panel: own keys (Enter/⌫, Esc)
 const OWNKEY_RE = /\((?:[A-Z0-9]|Enter|Esc|Space|Tab|Shift[^)]*|⇧[^)]*|[[\]\\.,';/`-])\)\s*$/;
@@ -35,7 +35,7 @@ function contextButtons() {
   // on-screen order: top to bottom (the column grows upward, so the top one is the newest / main action)
   return out.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 }
-const FREE = ['Enter', '⇧Enter', '⇧1', '⇧2', '⇧3', '⇧4', '⇧5'];
+const FREE = ['Enter', '⇧Enter', '=', '-']; // v7.5.16 (Ben): no number keys outside numbered menus; = and - are only used inside the track builder
 function assign() {
   const btns = contextButtons(), used = new Set(), map = [];
   for (const el of btns) { const k = ownKey(el); if (k) { used.add(k); map.push({ el, key: k, own: true }); } }
@@ -79,7 +79,7 @@ function press(b) {
 function onKey(e) {
   if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || typing()) return;
   if (!document.body || document.body.classList.contains('touch') && !e.isTrusted) return;
-  const code = e.code; if (!/^(Enter|NumpadEnter|Escape|Digit[1-9]|Numpad[1-9])$/.test(code)) return;
+  const code = e.code; if (!/^(Enter|NumpadEnter|Escape|Digit[1-9]|Numpad[1-9]|Equal|Minus)$/.test(code)) return;
   const c = openCard();
   if (c) {
     if (code === 'Escape') { if (e.repeat) return; if (closeCard(c)) { e.preventDefault(); e.stopPropagation(); } return; }
@@ -88,7 +88,8 @@ function onKey(e) {
     if ((code === 'Enter' || code === 'NumpadEnter') && !e.shiftKey) { if (e.repeat || (document.activeElement?.tagName === 'BUTTON' && c.contains(document.activeElement)) ) return; /* a focused option presses natively */ const b = c.querySelector('button.go:not([disabled]), #raceAgain, #radioAccept') || bs[0]; if (b && vis(b)) { e.preventDefault(); e.stopPropagation(); press(b); } return; }
   }
   if (e.repeat) return;
-  const map = assign(), want = (code === 'Enter' || code === 'NumpadEnter') ? (e.shiftKey ? '⇧Enter' : 'Enter') : (e.shiftKey && /Digit[1-9]/.test(code) ? '⇧' + code.slice(-1) : null);
+  const map = assign(), want = (code === 'Enter' || code === 'NumpadEnter') ? (e.shiftKey ? '⇧Enter' : 'Enter') : code === 'Equal' && !e.shiftKey ? '=' : code === 'Minus' && !e.shiftKey ? '-' : null;
+  if (want && want.length === 1 && window.__race?.builder?.open) return; // the track builder zooms with - / =
   if (!want) return;
   const m = map.find(m => !m.own && m.key === want); if (!m) return; // own keys (race Enter, G, K ...) stay with their modules
   e.preventDefault(); e.stopPropagation(); press(m.el);

@@ -45,6 +45,11 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     ok('dealerCtx', await wait(() => window.__dealer.ctx?.shown, 8000));
     const da = await auditAt(G, 'dealer');
     const dl = da.find(e => e.id === 'dlrCtxBtn'); ok('dealerKey', dl ? `${dl.label} -> ${dl.key}` : null, dl?.key === 'Enter');
+    // v7.5.16 (Ben): number keys only act inside a numbered sheet/menu/card; no context button is on a digit
+    ok('noDigitContext', da.filter(e => e.kind === 'context' && /^[0-9]/.test(e.key || '') && !/^dz/.test(e.id || '')).map(e => e.id), !da.some(e => e.kind === 'context' && /^[0-9]/.test(e.key || '') && !/^dz/.test(e.id || '')));
+    { const g0 = await G(() => window.SSX.gravity?.mode); for (let n = 1; n <= 9; n++) await page.keyboard.press('Digit' + n); await sleep(400);
+      ok('digitsIdleOutsideMenus', await G(g0 => ({ sheet: !!window.__dealer.sheet, card: !!window.SSX.keys.openCard(), grav: window.SSX.gravity?.mode === g0, stuck: !!document.querySelector('#hxStuckPop.on, .hxStuckPop.on') }), g0), await G(g0 => !window.__dealer.sheet && !window.SSX.keys.openCard() && window.SSX.gravity?.mode === g0, g0)); }
+    ok('stuckKeySlash', await G(() => window.SSX.keys.own.hxStuck === '/' && !Object.values(window.SSX.keys.own).some(k => /^[5-9]$/.test(k))));
     R.dealerLabel = await G(() => { const b = document.getElementById('dlrCtxBtn'); return b.textContent + getComputedStyle(b, '::after').content; });
     await page.keyboard.press('Enter');
     ok('enterOpensDealer', await wait(() => !!window.__dealer.sheet, 4000));
@@ -79,7 +84,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     ok('typingIgnored', await G(() => !window.__dealer.sheet));
     await G(() => document.getElementById('kbTypeProbe').remove());
     R.hintBar = await G(() => document.getElementById('surfHelp').textContent);
-    ok('hintBar', /Enter main action/.test(R.hintBar) && /1-9/.test(R.hintBar) && /Esc close/.test(R.hintBar));
+    ok('hintBar', /Enter main action/.test(R.hintBar) && /1-9 menu/.test(R.hintBar) && /\/ Stuck\?/.test(R.hintBar) && /Esc close/.test(R.hintBar));
     await page.screenshot({ path: '/tmp/keys-desktop.png' });
     await page.context().close();
     // touch: labels hidden

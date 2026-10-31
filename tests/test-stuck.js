@@ -72,8 +72,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('no skip / quit before 3 min', p1, !p1.skip && !p1.quit);
     const pinged = await G(() => window.SSX.missionHelp.markers());
     await shot('stuck-hint'); try { await page.locator('#miniMap').screenshot({ path: `${out}${tag}-stuck-minimap.png` }); } catch (e) {}
-    await page.keyboard.press('Digit6'); await frames(3); ok('key 6 closes it', !(await popOpen()));
-    await page.keyboard.press('Digit6'); await frames(3); ok('key 6 opens it', await popOpen());
+    await page.keyboard.press('Slash'); await frames(3); ok('key / closes it', !(await popOpen()));
+    await page.keyboard.press('Slash'); await frames(3); ok('key / opens it', await popOpen());
     await page.keyboard.press('KeyH'); await frames(2); // H is still ship travel (untouched); just make sure nothing of ours breaks
     await G(() => window.SSX.missionHelp.close());
     if (await G(() => !!window.__app.state.onSurface && window.__app.surface.info?.name !== 'Mars')) ok('H did not move us off Mars', false);

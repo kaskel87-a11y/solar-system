@@ -69,5 +69,5 @@ ok('load tolerates junk', (() => { const s = RC.loadState('{oops'); return s.own
 ok('load keeps fields', (() => { const s = RC.loadState(JSON.stringify({ owned: true, how: 'stole', garage: 1, loot: 3, picks: 2, busts: 1, cr: 99 })); return s.owned && s.how === 'stole' && s.garage && s.loot === 3 && s.cr === 99; })());
 // key: free on main (danger 1-4, gravity 2, everything else letters)
 const src = ['index.html', 'surface.js', 'danger.js', 'dangerhooks.js', 'mars/jobs.js', 'mars/turf.js', 'race.js', 'trackbuilder.js', 'controlmode.js', 'heist.js', 'carmeet.js', 'dealership.js'].map(f => { try { return readFileSync(new URL('../' + f, import.meta.url), 'utf8'); } catch (e) { return ''; } }).join('\n');
-ok('Digit5 unused by core files', RC.PICK_KEY === 'Digit5' && !/['"]Digit5['"]/.test(src) && !/key === ['"]5['"]/.test(src));
+ok('no number key (v7.5.16: digits are menu-only)', RC.PICK_KEY === null && !/['"]Digit5['"]/.test(src) && !/key === ['"]5['"]/.test(src));
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASS'); process.exit(fails ? 1 : 0);

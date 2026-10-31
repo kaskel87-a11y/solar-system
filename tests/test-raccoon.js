@@ -21,7 +21,8 @@ const tag = `raccoon-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
   const toastTx = () => G(() => document.getElementById('toast')?.textContent || '');
   const P = (t, sel, id, dx = 0, dy = 0) => G(([t, sel, id, dx, dy]) => { const e = document.querySelector(sel); const r = e.getBoundingClientRect(); e.dispatchEvent(new PointerEvent(t, { pointerId: id, pointerType: 'touch', isPrimary: id === 41, clientX: r.left + r.width / 2 + dx, clientY: r.top + r.height / 2 + dy, bubbles: true, cancelable: true, composed: true, buttons: t === 'pointerup' ? 0 : 1 })); return r.width > 0; }, [t, sel, id, dx, dy]);
   const heldTap = async sel => { await P('pointerdown', '#joy', 41); await P('pointermove', '#joy', 41, 0, -20); const v = await P('pointerdown', sel, 42); await P('pointerup', sel, 42); await P('pointerup', '#joy', 41, 0, -20); return v; };
-  const act = async () => { if (touch) { await wait(() => getComputedStyle(document.getElementById('dockRcn')).display !== 'none', 30000); return heldTap('#dockRcn'); } await page.keyboard.press('Digit5'); return true; };
+  const kbKey = async sel => { await page.waitForFunction(s => !!document.querySelector(s)?.dataset.kb, sel, { timeout: 20000 }).catch(() => {}); const k = await page.evaluate(s => document.querySelector(s)?.dataset.kb || '', sel); return ({ 'Enter': 'Enter', '⇧Enter': 'Shift+Enter', '=': 'Equal', '-': 'Minus' })[k] || 'Enter'; }; // v7.5.16: context key from hud/keys.js
+  const act = async () => { if (touch) { await wait(() => getComputedStyle(document.getElementById('dockRcn')).display !== 'none', 30000); return heldTap('#dockRcn'); } await page.keyboard.press(await kbKey('#dockRcn')); return true; };
   const st = () => G(() => window.SSX.raccoon.state);
   const junk = () => G(() => window.__raccoon.debug.junkers()[0] || null);
   const faceFrom = (j, dx, dz) => ({ x: j.x + dx, z: j.z + dz, yaw: Math.atan2(dx, dz) }); // fwd = (-sin, -cos): look back at j
