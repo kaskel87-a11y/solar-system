@@ -199,7 +199,7 @@ function target(id, i) {
       try { const f = x.fight?.status?.(); if (Array.isArray(f?.at)) return aj(f.at, '🥊 Rust Pit'); } catch (e) { /* optional */ }
       // the activities runner checks its pins against raw world x/z: aim where its 📋 The Pit button actually shows
       const a = window.__activities?.list?.().find(v => v.id === 'act-pit-fight'); if (Array.isArray(a?.at)) return { x: a.at[0], z: a.at[1], label: '📋 The Pit' };
-      return aj([-316, -58], '📋 The Pit');
+      return aj([-320, -49], '📋 The Pit');
     }
     case 'club': {
       const d = x.city?.world?.doorFor?.('velvet'); if (d && Number.isFinite(d.x)) return { x: d.x, z: d.z, label: '🍸 Velvet Airlock' };

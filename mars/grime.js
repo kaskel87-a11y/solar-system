@@ -45,6 +45,8 @@ export const GRIME_CONFIG = {
   },
   baseGrade: { sat: 0.84, con: 1.07, lift: [0.02, 0.022, 0.025], hi: [1.0, 0.94, 0.86], vig: 0.36, grain: 0.045, crush: 0.01 },
   // corrugated shacks added to Red Tape Flats as real (collidable) blocks: [x, z, w, d, h] hub-local
+  // open lots no junk, camps or hulks may land on: [x, z, r] hub-local (v7.5.20: The Pit ring, act-pit-fight at_local [-40,-9])
+  keepClear: { 'mars-rough': [[-40, -9, 9]] },
   shanties: [[-10, 44, 7, 4, 3.2], [50, 18, 4, 9, 3.6], [-20, -40, 10, 4, 3.4], [-30, 38, 8, 4, 3], [12, -42, 6, 5, 4]],
   // broken neon, made-up brands; dead = letters that never light, flicker = letters that buzz
   neon: {
@@ -192,6 +194,7 @@ function buildDistrict(id, siteGroup, info) {
   if (k <= 0) { scene.add(root); return rec; }
   const { blocks, domes } = id === 'mars-highway' ? { blocks: [], domes: [] } : readSite(siteGroup);
   const y0 = blocks[0]?.y0 ?? domes[0]?.y0 ?? surf().info?.y ?? 0, cx = info.x, cz = info.z, rr = Math.min(info.r || 58, 60);
+  for (const [kx, kz, kr] of cfg.keepClear?.[id] || []) domes.push({ X: cx + kx, Z: cz + kz, r: kr, y0, clear: true }); // freeOf() treats a kept-clear lot like a dome footprint
   const wallDecal = (f, cell, mat, u, v, sx, sy, col, layer, flip) => { // u along the face, v = height of the decal centre
     if (Math.abs(u) + sx / 2 > f.L / 2) sx = Math.max(0.3, (f.L / 2 - Math.abs(u)) * 2); if (sx < 0.3) return;
     if (v + sy / 2 > f.h) { sy = (f.h - v) * 2; if (sy < 0.2) return; }
