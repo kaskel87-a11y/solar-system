@@ -258,12 +258,20 @@ function blob() {
   if (!blobTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     gr.addColorStop(0, 'rgba(0,0,0,0.75)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); blobTex = new THREE.CanvasTexture(c); }
   blobGM ??= [new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })]; // shared, never disposed (v7.5.17)
-  const mesh = new THREE.Mesh(blobGM[0], blobGM[1]);
+  const mesh = new THREE.Mesh(blobGM[0], blobGM[1].clone()); // own opacity; the shared original keeps the program
   mesh.rotation.x = -Math.PI / 2; mesh.renderOrder = 1; mesh.userData.ssxDancer = true; return mesh;
 }
-// leaving the club releases every live dancer (textures, geometry, skeletons); the next visit reloads from cache
+// v7.5.17: leaving the club no longer releases the dancers (rebuilding them on entry uploaded ~40 buffers and bone
+// textures in the reveal frame, 117 ms on a phone). They stay built in the hidden room; only a stage dancer whose look
+// changes for the next visit (Danny's alternate every third visit) is rebuilt, in idle time while you're outside.
 const live = new Set(); let hooked = false, stageVisits = 0;
-function hook() { if (hooked || !window.SSX?.on) return; hooked = true; window.SSX.on('game:indoor', e => { if (!e?.on) for (const st of [...live]) st.release(); }); }
+const stageLook = () => (stageVisits % 3 === 2) ? 'string' : 'aqua';
+const idle = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
+function hook() {
+  if (hooked || !window.SSX?.on) return; hooked = true;
+  window.SSX.on('game:indoor', e => { if (e?.on) return; stageVisits++;
+    for (const st of [...live]) if (st.stage && st.look !== stageLook()) { st.release(); idle(() => { if (st.released && !st.disposed && !window.__app?.surface?.info?.inside) st.start(); }); } });
+}
 
 const _v = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _pq = new THREE.Quaternion();
 const DOWN = new THREE.Vector3(0, -1, 0), UP = new THREE.Vector3(0, 1, 0), V1 = new THREE.Vector3();
@@ -335,7 +343,7 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   let look = outfit;
   st.start = () => {
     // Danny's stage outfit: the aqua crochet bikini, with the white string bikini + cover-up as the alternate every third visit
-    if (outfit === 'stage') look = (stageVisits++ % 3 === 2) ? 'string' : 'aqua';
+    if (outfit === 'stage') look = stageLook(); st.stage = outfit === 'stage';
     st.look = look; st.released = false; hook(); const f = st.file = load(D.file);
     f.p.then(({ gltf, aux: auxTex }) => {
       if (st.released || st.file !== f) return;
@@ -352,12 +360,12 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   st.release = () => {
     if (st.released) return; st.released = true; live.delete(st);
     if (st.ready) { st.p.group.remove(st.m); st.dispose(); blocky(true);
-      if (st.shadow) st.shadow.removeFromParent(); }
+      if (st.shadow) { st.shadow.removeFromParent(); st.shadow.material.dispose(); } }
     Object.assign(st, { m: null, B: null, mixer: null, mats: null, geos: null, skel: null, card: null, shadow: null, aIdle: null, aDance: null, ready: false });
     if (st.file) { unload(D.file, st.file); st.file = null; }
   };
   st.setLook = (l) => setLook(st.lu, l);
-  api.disposables.push({ dispose: st.release });
+  api.disposables.push({ dispose: () => { st.disposed = true; st.release(); } });
   st.start();
   // runs after the dancer's own anim tick (ticks run in order)
   api.ticks.push((t, dt = 0.016) => {
