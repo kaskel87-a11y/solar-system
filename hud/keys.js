@@ -9,12 +9,12 @@
 // SSX.keys.audit() lists visible action buttons and their binding (tests/test-keys.js fails on any without one).
 const OWN = { // id -> key the owning module already handles
   driveBtn: 'E', petBtn: 'P', radioBtn: 'N', heistBtn: 'G', jobAct: 'G', barContactBtn: 'G', baseBtn: 'K', turfAct: 'Y',
-  beltAct: '8', stAct: '7', airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', radioAccept: 'Enter', radioLater: '⌫',
+  beltAct: '8', stAct: '7', airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '6',
 };
 const TOUCH_ONLY = new Set(['jumpBtn', 'runBtn', 'fireBtn', 'meleeBtn', 'hudShow']);
-const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn';
+const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn, #hxStuck';
 // HUD furniture that is never a "card": the right stack, dock, minimap, joystick, the context column itself
-const NOT_CARD = new Set(['surfHud', 'surfBtns', 'stackR', 'ssxDock', 'miniMap', 'hudShow', 'fireBtn', 'meleeBtn', 'joy', 'flyBtns', 'hud', 'crosshair', 'toast', 'loading', 'fireHint', 'kbLayerCss', 'radio', 'ctlPanel']); // radio offer + controls panel: own keys (Enter/⌫, Esc)
+const NOT_CARD = new Set(['surfHud', 'surfBtns', 'stackR', 'ssxDock', 'miniMap', 'hudShow', 'fireBtn', 'meleeBtn', 'joy', 'flyBtns', 'hud', 'crosshair', 'toast', 'loading', 'fireHint', 'kbLayerCss', 'radio', 'ctlPanel', 'topBar']); // radio offer + controls panel: own keys (Enter/⌫, Esc)
 const OWNKEY_RE = /\((?:[A-Z0-9]|Enter|Esc|Space|Tab|Shift[^)]*|⇧[^)]*|[[\]\\.,';/`-])\)\s*$/;
 const CSS = `body:not(.touch) [data-kb]::after{content:' (' attr(data-kb) ')';opacity:.85;font-weight:600}
 body:not(.touch) .kbNum[data-kbn]::before{content:attr(data-kbn) ' · ';opacity:.7;font-weight:700}`;
@@ -54,10 +54,13 @@ function openCard() {
   const cands = [];
   const consider = el => { if (!el || NOT_CARD.has(el.id) || el.id === 'cfLayer') return; if (!vis(el)) return; const r = el.getBoundingClientRect(); if (r.width * r.height < 9000) return;
     const cs = getComputedStyle(el); if (cs.position !== 'fixed' && cs.position !== 'absolute' && !el.parentElement?.id?.match(/cfLayer/)) return; if (cs.pointerEvents === 'none' && !el.querySelector('button')) return;
-    if (!cardButtons(el).length && !el.querySelector('.cfX, .close, [data-close]')) return; cands.push({ el, z: +cs.zIndex || 0 }); };
+    if (!cardButtons(el).length && !el.querySelector('.cfX, .close, [data-close]')) return;
+    // only real sheets / result cards / dialogs, not HUD cards (the 📜 mission card with its Stuck? button)
+    const modal = el.parentElement?.id === 'cfLayer' || r.width * r.height >= 40000 || el.getAttribute('role') === 'dialog' || /sheet|panel|result|dialog|modal|menu|pop/i.test(el.id + ' ' + el.className);
+    if (modal) cands.push({ el, z: +cs.zIndex || 0 }); };
   for (const el of document.body.children) consider(el);
   for (const el of document.getElementById('cfLayer')?.children || []) consider(el);
-  for (const el of document.getElementById('surfHud')?.children || []) if (el.id !== 'surfBtns') consider(el); // radio card, dialogue, popups inside the HUD
+  for (const el of document.getElementById('surfHud')?.children || []) if (el.id !== 'surfBtns' && (el.querySelector('.cfX, .close, [data-close]') || cardButtons(el).length >= 2)) consider(el); // HUD chips with one button (Stuck?) are not cards // radio card, dialogue, popups inside the HUD
   if (!cands.length) return null;
   cands.sort((a, b) => b.z - a.z); return cands[0].el;
 }
