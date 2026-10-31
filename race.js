@@ -457,7 +457,16 @@ function ensureUI() {
   const res = document.createElement('div'); res.id = 'raceResult'; chip.after(res);
   const count = document.createElement('div'); count.id = 'raceCount'; document.getElementById('surfHud')?.appendChild(count);
   const ctx = document.createElement('button'); ctx.id = 'raceCtxBtn'; ctx.className = 'glass'; ctx.style.display = 'none'; ctx.textContent = '\ud83c\udfc1 Race';
-  btns?.prepend(ctx); tapButton(ctx, () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } });
+  btns?.prepend(ctx); const goNear = () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } }; tapButton(ctx, goNear);
+  // v7.5.16 (Collin): Enter starts the race at a start pad, and Rematch / Next on the result card. Never while typing
+  // (Save Code, track name, chat) or when another handler already took Enter (radio offer, controls panel).
+  window.addEventListener('keydown', e => {
+    if ((e.code !== 'Enter' && e.code !== 'NumpadEnter') || e.repeat || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = document.activeElement; if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+    if (panel.classList.contains('on') || builder?.open) return;
+    if (ui.res.classList.contains('on')) { const b = ui.res.querySelector('#raceNext') || ui.res.querySelector('#raceAgain'); if (b) { e.preventDefault(); b.click(); /* detail 0 -> tapButton's keyboard path, once */ } return; }
+    if (ui.ctx.style.display !== 'none' && ui.near) { e.preventDefault(); goNear(); }
+  });
   const mRace = addMenuItem(app(), { id: 'rmRaces', label: '\ud83c\udfc1 Street races', onTap: () => { if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); } });
   const mBuild = addMenuItem(app(), { id: 'rmBuilder', label: '\ud83d\udee0 Track builder', onTap: () => openBuilder() });
   const panel = document.createElement('div'); panel.id = 'racePanel'; document.body.appendChild(panel);
@@ -498,7 +507,7 @@ function showResult(res) {
   const head = !res.done ? '\ud83c\udff3 DNF' : res.won ? '\ud83c\udfc6 YOU WIN' : '\ud83e\udd48 SECOND';
   const money = res.done ? `${res.buyIn ? `Buy-in \u2212${res.buyIn} \u00b7 ` : ''}Purse +${res.credits} cr \u00b7 +${res.xp} XP${res.firstWin ? ' \u00b7 first win bonus' : ''}${res.note ? `<br><small>${esc(res.note)}</small>` : ''}` : (res.buyIn ? `Buy-in \u2212${res.buyIn} cr lost` : '');
   ui.res.innerHTML = `<h4>${head} \u00b7 ${esc(res.name)}</h4>${res.done ? `Time ${RC.fmtTime(res.time)} \u00b7 best lap ${RC.fmtTime(res.best ?? NaN)}${res.newBest ? ' \u2b50 NEW' : ''}<br>` : ''}${res.rivalTime ? `Rival ${RC.fmtTime(res.rivalTime)}<br>` : ''}${money}<br><i>${esc(res.line || '')}</i>
-    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch</button><button id="raceResClose">\u2716</button></div>`;
+    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch${document.body.classList.contains('touch') ? '' : ' (Enter)'}</button><button id="raceResClose">\u2716</button></div>`;
   ui.res.classList.add('on');
   tapButton(ui.res.querySelector('#raceAgain'), () => { showResult(null); const r = startRace(res.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); });
   tapButton(ui.res.querySelector('#raceResClose'), () => showResult(null));
@@ -576,7 +585,7 @@ export function raceTick(dt, ctx) {
   let near = null, bd = 18; const px = ctx.car ? ctx.car.x : ctx.player.x, pz = ctx.car ? ctx.car.z : ctx.player.z;
   for (const o of idleG.children) { const d = Math.hypot(o.position.x - px, o.position.z - pz); if (d < bd) { bd = d; near = o.userData.def; } }
   ui.near = near; const show = !!near && !ctx.game.isDown();
-  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = `\ud83c\udfc1 Race`;
+  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = document.body.classList.contains('touch') ? '\ud83c\udfc1 Race' : '\ud83c\udfc1 Race (Enter)';
 }
 // minimap: our next gate shows where the quest gate would
 const patched = new WeakSet();
