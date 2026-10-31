@@ -9,7 +9,7 @@
 // SSX.keys.audit() lists visible action buttons and their binding (tests/test-keys.js fails on any without one).
 const OWN = { // id -> key the owning module already handles
   driveBtn: 'E', petBtn: 'P', radioBtn: 'N', heistBtn: 'G', jobAct: 'G', barContactBtn: 'G', baseBtn: 'K', turfAct: 'Y',
-  airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', snipeBtn: 'Z', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '/',
+  airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', snipeBtn: 'Z', craneBtn: 'G', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '/',
 };
 const TOUCH_ONLY = new Set(['jumpBtn', 'runBtn', 'fireBtn', 'meleeBtn', 'hudShow']);
 const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn, #hxStuck, #dockRcn, #dockSmg, #dockSmgF'; // v7.5.16: the 🦝 / smuggling dock buttons lost their number keys

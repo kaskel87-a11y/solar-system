@@ -39,6 +39,7 @@ const PRECACHE = [
   `mars/jetpack.js${q}`, `mars/jetpackcore.js${q}`, // Mars jetpack (Pumpkin)
   `mars/flame.js${q}`, `mars/flamecore.js${q}`, // 🔥 flamethrower (Steve)
   `mars/sniper.js${q}`, `mars/snipercore.js${q}`, // 🎯 sniper scope + contracts (v7.5.19)
+  `mars/crane.js${q}`, `mars/cranecore.js${q}`, // 🧲 magnet crane truck (v7.5.22)
   `mars/pitring.js${q}`, `mars/pitringcore.js${q}`, // 🥊 The Pit landmark (v7.5.21)
   ...['onboard', 'onboardcore'].map(n => `${n}.js${q}`), // First Day on Mars tour + How to play codex (Ben)
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)

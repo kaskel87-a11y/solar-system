@@ -217,7 +217,7 @@ const API = {
   challenge: (o) => TWEAK.challenge(o), rockhead: () => TWEAK.state(), // force a rockhead fight challenge / read its state
   drops: () => COMBAT.drops(), blood: () => BLOOD.list(), night: () => NIGHT.debug(), colliders: () => COL.list('street'),
   hurt(key, dmg = 1, how = 'shot') { const s = CROWDS.slots().find(x => x.key === key || x.name === key); if (!s?.on) return false; COMBAT.hurt(s, dmg, how, K.player); return true; },
-  tow: { get impound() { return ST.impound ? { ...ST.impound } : null; }, hook: () => TOW.hook(true), pay: () => TOW.payImpound(), yard: () => TOW.yard(), quote: () => TOW.quote(), sell: () => TOW.sell(false), strip: () => TOW.sell(true), buyHot: kind => TOW.buyHot(kind), stock: () => TOW.stock() },
+  tow: { get impound() { return ST.impound ? { ...ST.impound } : null; }, hook: () => TOW.hook(true), pay: () => TOW.payImpound(), yard: () => TOW.yard(), quote: () => TOW.quote(), sell: () => TOW.sell(false), strip: () => TOW.sell(true), fence: (kind, strip) => TOW.fence(kind, !!strip), quoteKind: kind => TOW.quoteKind(kind), buyHot: kind => TOW.buyHot(kind), stock: () => TOW.stock() },
   stats: () => ({ ...ST.stats }), state: () => JSON.parse(JSON.stringify(ST)),
   on(fn) { const h = e => fn(e.detail); addEventListener('ssx:street', h); return () => removeEventListener('ssx:street', h); },
   reset() { const t = ST.tag; Object.assign(ST, S0(), { tag: t }); save(); TAGS.refresh?.(); return true; },

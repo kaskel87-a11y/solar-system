@@ -20,7 +20,7 @@ const KNOWN = {
   KeyF: ['index.html', 'controlmode.js', 'mars/sniper.js'], KeyM: ['index.html', 'controlmode.js'], // keyboard-only fire mode reuses the game's keys
   KeyI: ['mars/arsenal.js', 'phonetexts.js'], // I reload (no Shift) | Shift+I texts
   KeyX: ['index.html', 'mars/smugglecore.js'], KeyB: ['mars/contraband.js', 'mars/smugglecore.js'], // smuggling dump / bribe in space only; medkit / stash on the surface
-  KeyG: ['heist.js', 'mars/jobs.js', 'mars/barcontact.js'], KeyY: ['mars/turf.js', 'mars/street.js'], // context action buttons; jobs defers to heist
+  KeyG: ['heist.js', 'mars/jobs.js', 'mars/barcontact.js', 'mars/crane.js'], KeyY: ['mars/turf.js', 'mars/street.js'], // context action buttons; jobs defers to heist
   Digit2: ['base.js', 'danger.js', 'slots.js'], // standoff "fight" | base build tool 2 (build mode) | slots bet (modal) — v7.5.16: gravity's 2 alias is gone
   // v7.5.4: base build tools (build mode only, and they yield to a standoff / street-event choice) vs danger's 1-4 choices; K = base action at your plot, turf panel elsewhere
   Digit1: ['base.js', 'danger.js'], Digit3: ['base.js', 'danger.js'], Digit4: ['base.js', 'danger.js'], KeyK: ['base.js', 'mars/turf.js']
