@@ -503,6 +503,7 @@ function render() {
     h += btn('postInfo', `👽 ${F.SITES.post.name} prices`, 'See today\u2019s alien buyers.');
   }
   if (S.guide.off && !S.guide.done) h += btn('guide', '🧭 Show the farm guide', 'One step at a time, from buying the plot to your first sale.');
+  h += extRows(here, bl); // rows other modules add (mars/still.js: the 🥃 Still row), via SSX.farmRows
   h += btn('close', 'Close', '');
   const changed = h !== lastHtml; lastHtml = h; const gen = ++renderGen;
   pBody.innerHTML = h;
@@ -523,6 +524,7 @@ function act(d) {
   const a = d.a; let r = null;
   if (a === 'close') return close(); if (a === 'back') { plantFor = null; return render(); } if (a === 'postInfo') { pMode = 'post'; return render(); }
   if (a === 'plant') { plantFor = +d.i; return render(); }
+  if (a === 'ext') return extAct(d);
   if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack({ expect: d.n }); else if (a === 'plantc') { r = plant(+d.i, d.c); if (!r?.dup) plantFor = null; }
   else if ((a === 'harvest' || a === 'harvestAll') && typeof window.SSX?.harvest?.hire === 'function') r = window.SSX.harvest.hire(a === 'harvestAll' ? 'all' : +d.i); // the slow one-tap way
   else if (a === 'harvest') r = harvest(+d.i); else if (a === 'harvestAll') r = harvest('all'); else if (a === 'water' || a === 'power') r = refill(a); else if (a === 'patch') r = patch();
@@ -630,3 +632,17 @@ const API = {
   if (window.SSX.farm) return; window.SSX.farm = API; ui();
   try { window.SSX.registerSurfaceTick(tick); } catch (e) { console.warn('farm tick', e); }
 })();
+
+// ---------- hooks for other modules (mars/still.js) ----------
+// SSX.farmRows: [{ id, row({ mode, here, blocked, owned }) -> { label, sub, dis, pri } | null, tap() }]. One button each, after
+// the farm's own rows. Guarded: a hook that throws just doesn't draw.
+function extRows(here, bl) {
+  let h = ''; const L = window.SSX?.farmRows; if (!Array.isArray(L)) return h;
+  L.forEach((x, k) => { let r = null; try { r = x?.row?.({ mode: pMode, here: !!here, blocked: bl || null, owned: !!S.owned }); } catch (e) { r = null; }
+    if (r && r.label) h += btn('ext', esc(r.label), r.sub ? esc(r.sub) : '', { i: k, dis: !!r.dis, pri: !!r.pri }); });
+  return h;
+}
+function extAct(d) { const x = window.SSX?.farmRows?.[+d.i]; if (typeof x?.tap !== 'function') return; close(); try { x.tap(); } catch (e) { console.warn('farm row', e); } }
+// take crops out of the silo (the still's batch). Returns how many really came out.
+API.siloTake = (crop, n) => { if (!S.owned || !F.CROPS[crop]) return 0; const k = Math.min(S.silo[crop] | 0, Math.max(0, Math.floor(+n) || 0)); if (k <= 0) return 0;
+  S.silo[crop] -= k; if (!S.silo[crop]) delete S.silo[crop]; save(); emit('silo', { crop, n: -k, via: 'still' }); return k; };
