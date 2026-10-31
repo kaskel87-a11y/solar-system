@@ -48,7 +48,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { const P = window.SSX.pursuit; P.debug.setHeat(3); P.debug.los(true); });
     R.onUnits = await units(); R.onTier = await G(() => window.SSX.pursuit.tier()); R.onDowns = await G(() => window.__downs.length);
     ok('fewerUnits', { off: R.offUnits, on: R.onUnits, offTier: R.offTier, onTier: R.onTier }, R.onUnits.n <= R.offUnits.n && R.onTier.rovers < R.offTier.rovers);
-    R.chip = await G(() => { const c = document.getElementById('mhChip'), cs = getComputedStyle(c), r = c.getBoundingClientRect(); return { show: cs.display !== 'none', t: c.textContent, bg: cs.backgroundColor, color: cs.color, r: [r.x, r.y, r.width, r.height].map(Math.round) }; });
+    R.chip = await G(() => { const c = document.getElementById(document.body.classList.contains('hxSlim') ? 'hxStat' : 'mhChip'), /* v7.5.12 phones: merged into the slim status row */ cs = getComputedStyle(c), r = c.getBoundingClientRect(); return { show: cs.display !== 'none', t: c.textContent, bg: cs.backgroundColor, color: cs.color, r: [r.x, r.y, r.width, r.height].map(Math.round) }; });
     ok('chip', R.chip, R.chip.show && /police easing off/.test(R.chip.t) && R.chip.bg === 'rgb(0, 0, 0)' && R.chip.color === 'rgb(255, 255, 255)' && R.chip.r[0] >= 0 && R.chip.r[0] + R.chip.r[2] <= (await G(() => innerWidth)));
     await page.screenshot({ path: out + `missionheat-${tag}.png` });
     await G(() => { window.__app.surface.world.setWanted(3, 'debug'); window.SSX.pursuit.debug.los(false); }); await wait(() => !!window.SSX.pursuit.searching(), 6000);

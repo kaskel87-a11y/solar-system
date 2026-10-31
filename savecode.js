@@ -29,7 +29,7 @@
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1' // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
   ];
   const PREFIXES = ['ssx.race.ghost.'];
-  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];
+  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];
   const OWN = [PENDING, BAK, DONE];
   const MAX_CODE = 4e6, MAX_VAL = 2e6;
   const VERSIONED = /^ssx\.[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*\.v\d+$/;

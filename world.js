@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
 import * as ROOF from './roofs.js';
+import { bountyFor } from './copbounty.js'; // v7.5.12 flat 500 cr + 100 ⭐ per cop kill
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -590,7 +591,9 @@ export function createWorld(ctx) {
       if (gib) scene.remove(s.group); else { s.group.scale.y = s.group.scale.x; corpse(s.group, s.x, s.z); }
       backupT = 25; onEvent('backup', { officerDown: true, kind: s.kind }); }
     else { scene.remove(s.group); g.gore?.(s.x, s.y + 0.5, s.z, { mech: true, n: 2 }); }
-    onEvent('secDown', { kind: s.kind }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
+    if (s.foot) { s.ssxCop = 1; s.ssxDropDone = 1; } // v7.5.12: never also a 20-80 cr KO drop (economy.js npcDown)
+    let bounty = bountyFor(s); if (bounty) { try { bounty = g.copBounty?.(bounty) || null; } catch (e) { bounty = null; } } // v7.5.12: once per kill (spliced above)
+    onEvent('secDown', { kind: s.kind, bounty }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
   }
   const behindCover = (s, from) => s.crouch && s.cover && Math.hypot(from.x - s.x, from.z - s.z) > 4 && ((s.cover.sx - s.x) * (from.x - s.x) + (s.cover.sz - s.z) * (from.z - s.z)) > 0;
 

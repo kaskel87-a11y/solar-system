@@ -300,7 +300,7 @@ function buildModel(gltf, auxTex, D, look, lu) {
     lu.u.uKeyV.value.copy(lu.keyW).transformDirection(cam.matrixWorldInverse); lu.u.uRimV.value.copy(lu.rimW).transformDirection(cam.matrixWorldInverse);
     B.Head.getWorldPosition(crown.value); crown.value.y += 0.17; crown.value.applyMatrix4(cam.matrixWorldInverse); }; // hair strand origin
   m.traverse(o => {
-    if (!o.isMesh) return; o.userData.ssxDancer = true; o.frustumCulled = false; o.castShadow = false; o.onBeforeRender = onBR;
+    if (!o.isMesh) return; o.userData.ssxDancer = true; o.frustumCulled = !HIGH; if (!HIGH) o.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.7); // v7.5.12 phones: skip a dancer that's off screen (generous sphere: limbs, lifts) o.castShadow = false; o.onBeforeRender = onBR;
     o.material = dancerMaterial(o.material, auxTex, { alt: look === 'aqua' ? gltf.scene.userData.ssx?.eyelet : null, sheen: D.sheen, lu, crown }); mats.push(o.material); if (o.isSkinnedMesh) skel = o.skeleton;
     // own index buffer with just this outfit's triangles; vertex attributes stay shared with the cached GLB
     const g0 = o.geometry, gm = g0.attributes.aGm, src = g0.index.array, keep = [], cd = [];
@@ -353,6 +353,11 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   api.ticks.push((t, dt = 0.016) => {
     if (st.released) { st.start(); return; } // back in the club after a release
     if (!st.ready) return;
+    if (!HIGH) { // v7.5.12 phone LOD: pose at 30 Hz, freeze when the camera is 16 m+ away or she's off screen (the blocky rig keeps moving the group)
+      st.acc = (st.acc || 0) + dt; st.skip = !st.skip; if (st.skip) return;
+      if (!lodVisible(p.group)) { st.acc = 0; return; }
+      dt = Math.min(st.acc, 0.1); st.acc = 0;
+    }
     const { B, mixer } = st, between = !!(cardigan && cardigan());
     for (const [b, q] of st.rest) b.quaternion.copy(q); // bones without clip tracks start from rest each frame
     if (st.aDance) { const w = between ? 0 : 1; st.aDance.weight += (w - st.aDance.weight) * Math.min(1, dt * 3); if (st.aIdle) st.aIdle.weight = 1 - st.aDance.weight; } // private dancer idles between songs
@@ -377,6 +382,15 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   return st;
 }
 const _b2 = new THREE.Vector3();
+// v7.5.12 phone LOD helper: near (< 14 m) and inside the camera frustum (padded)
+const _lodP = new THREE.Vector3(), _lodC = new THREE.Vector3(), _lodF = new THREE.Frustum(), _lodM = new THREE.Matrix4(), _lodS = new THREE.Sphere(); let _lodT = -1, _lodCam = null;
+export const LOD_FAR = 16;
+function lodVisible(g) {
+  const cam = window.__app?.surface?.camera; if (!cam) return true;
+  const now = performance.now(); if (now - _lodT > 30 || _lodCam !== cam) { _lodT = now; _lodCam = cam; cam.getWorldPosition(_lodC); _lodM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _lodF.setFromProjectionMatrix(_lodM); }
+  g.getWorldPosition(_lodP); if (_lodP.distanceTo(_lodC) > LOD_FAR) return false;
+  _lodS.center.copy(_lodP); _lodS.center.y += 0.9; _lodS.radius = 2; return _lodF.intersectsSphere(_lodS);
+}
 
 const sstep = x => x * x * (3 - 2 * x);
 const CORE = ['Hips', 'Spine1', 'LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg'];

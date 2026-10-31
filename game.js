@@ -1707,6 +1707,7 @@ export function createGame(ctx) {
     enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, shopItem, buy, talk, spend, flag, setFlag, grantPerm, bribe, bribeCost, idleLine, ammoCap, registerMission,
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
+    copBounty(b) { if (!b || !(b.cr > 0)) return null; gain(b.stars | 0, b.cr | 0, true); return { cr: b.cr | 0, stars: b.stars | 0 }; }, // v7.5.12 cop kill: flat, no payoutMult (copbounty.js)
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
     gore, hostiles, heistAt, crack, choose, crackable, humanCount: () => agents.reduce((n, a) => n + (a.T.human ? 1 : 0), 0),
     // v7.5 mission helpers for add-on step runners (storymars.js, activities/runner.js)

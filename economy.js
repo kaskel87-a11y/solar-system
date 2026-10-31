@@ -31,7 +31,7 @@ export function jobPay(n, src = 'job', opts = {}) {
 
 // knocked-out NPC: once per NPC object (p.ssxDrop is set by the caller or here); toasts are batched so a brawl is one pop-up
 export function npcDown(p) {
-  if (p && typeof p === 'object') { if (p.ssxDropDone || p.kind === 'contact' || p.fighter) return 0; p.ssxDropDone = 1; }
+  if (p && typeof p === 'object') { if (p.ssxDropDone || p.kind === 'contact' || p.fighter || p.ssxCop || (p.foot === true && (p.kind === 'officer' || p.kind === 'heavy'))) return 0; p.ssxDropDone = 1; } // v7.5.12: a cop pays the flat cop bounty only (copbounty.js), no KO cash drop
   // v7.5.10: a Rust Pit bout pays its purse; the opponent you knock down in the cage drops nothing extra
   try { const X = globalThis.SSX; if (X?.arsenal?.inPit?.() || (() => { const f = X?.fightclub?.status?.(); return !!(f && (f.bout || f.inCage)); })()) return 0; } catch (e) { /* */ }
   const cr = dropCredits(Math.random()); if (!credit(cr)) return 0;
