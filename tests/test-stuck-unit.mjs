@@ -53,7 +53,9 @@ ok('marker kinds', S.markerKind('defeat') === 'foes' && S.markerKind('goto') ===
 const files = []; const walk = d => { for (const f of fs.readdirSync(path.join(root, d), { withFileTypes: true })) { if (['tests', 'vendor', 'node_modules', '.git', 'tools', 'shots', 'textures', 'icons', 'help'].includes(f.name)) continue; const p = path.join(d, f.name); if (f.isDirectory()) walk(p); else if (/\.(js|html)$/.test(f.name)) files.push(p); } };
 walk('.');
 ok('H is ship travel (so not ours)', /code === 'KeyH'[^\n]*travel\('ship'\)/.test(src('index.html')) && S.KEY !== 'KeyH');
-ok(`${S.KEY} not bound anywhere else`, !files.some(f => src(f).includes(`'${S.KEY}'`)), files.filter(f => src(f).includes(`'${S.KEY}'`)).join());
+// v7.5.16: / (Slash). index.html only uses it to CLOSE the open Controls panel (modal, its ? key); any other use is a clash
+const binds = f => src(f).split('\n').some(l => l.includes(`'${S.KEY}'`) && !/openControls\(false\)/.test(l));
+ok(`${S.KEY} not bound anywhere else`, !files.some(binds), files.filter(binds).join());
 
 // ---------- wiring ----------
 const run = src('activities/runner.js'), stuck = src('help/stuck.js'), foes = src('help/foes.js');
