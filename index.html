@@ -505,6 +505,8 @@
   "ssx/clubprivate": "./clubprivate.js?v=7.5.12",
   "./controlmode.js": "./controlmode.js?v=7.5.12",
   "ssx/controlmode": "./controlmode.js?v=7.5.12",
+  "./copbounty.js": "./copbounty.js?v=7.5.12",
+  "ssx/copbounty": "./copbounty.js?v=7.5.12",
   "./danger.js": "./danger.js?v=7.5.12",
   "ssx/danger": "./danger.js?v=7.5.12",
   "./dangercore.js": "./dangercore.js?v=7.5.12",
@@ -1513,7 +1515,7 @@
       else if (type === 'roll') { au7.fx.whoosh?.(); sfxLog.push('roll'); }
       else if (type === 'stunt') { if (ev.bad) { au7.fx.crash(); toast('💥 Landed on the roof. That one hurt.', 2200); } else { au7.fx.cash?.(); toast(`🌀 ${ev.rolls > 1 ? ev.rolls + 'x barrel roll' : 'Barrel roll'}! Clean landing +${ev.bonus} cr`, 2400); } sfxLog.push('stunt'); updateSurfHud(true); }
       else if (type === 'thud') { au7.fx.thud(); sfxLog.push('thud'); }
-      else if (type === 'secDown') toast(ev.kind === 'drone' ? '💥 Drone down. That\'s going on your record.' : '💥 Security down. They will remember that.', 2200);
+      else if (type === 'secDown') toast(ev.bounty ? `💥 Officer down · +${ev.bounty.cr} cr · +${ev.bounty.stars} ⭐` : ev.kind === 'drone' ? '💥 Drone down. That\'s going on your record.' : '💥 Security down. They will remember that.', 2200); // v7.5.12 cop bounty
       else if (type === 'rank') { fanfare(); toast(`⭐ Rank up! You are now a ${ev.rank}.`, 4000); }
       else if (type === 'overheat') { overheatSnd(); toast('🔥 Blaster\'s cooking. Let it breathe, or punch something.', 2200); }
       else if (type === 'toast') toast(ev.text, ev.long ? 4200 : 3500);
@@ -1893,7 +1895,7 @@
     function updateSurfHud(force) {
       const i = surface.info; if (!i) return;
       document.body.classList.toggle('driving', i.driving);
-      const extra = i.driving ? ` · 🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h` : '';
+      const extra = i.driving ? `<span class="spd"><span class="sep"> · </span>🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h</span>` : ''; // v7.5.12: phones show just the name (or just the speed while driving), never 'Mars · …'
       surfInfo.innerHTML = `<b>${i.name}</b><span class="gv"> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g</span>${extra}`;
       const act = actionFor(i);
       const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName, act.label, !!i.inside, !!(i.colony && i.colony.dist < 400)].join('|');

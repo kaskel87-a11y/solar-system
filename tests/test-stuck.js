@@ -53,6 +53,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await shot('doorshift-markers'); try { await page.locator('#miniMap').screenshot({ path: `${out}${tag}-doorshift-minimap.png` }); console.log('shot', `${out}${tag}-doorshift-minimap.png`); } catch (e) {}
 
     // ---------- 2. Stuck? on the card ----------
+    if (await G(() => document.body.classList.contains('hxSlim'))) { // v7.5.12 (Ben): phones hide Stuck? until ~20 s idle; it's also in ☰
+      ok('phone: Stuck? hidden until idle', null, await G(() => getComputedStyle(document.getElementById('hxStuck')).display === 'none'));
+      ok('phone: Stuck? in ☰', null, await G(() => !!document.getElementById('hxStuckMenu')));
+      await G(() => window.SSX.hudSlim.showStuck(600000));
+    }
     const b = await G(() => { const e = document.getElementById('hxStuck'); if (!e) return null; const cs = getComputedStyle(e), r = e.getBoundingClientRect(); return { on: e.classList.contains('vis'), parent: e.parentNode?.id, bg: cs.backgroundColor, fg: cs.color, w: r.width, h: r.height, text: e.textContent, inView: r.right <= innerWidth && r.bottom <= innerHeight && r.left >= 0 && r.top >= 0 }; });
     ok('Stuck? on the mission card', b, b && b.on && b.parent === 'hxCard' && b.inView);
     ok('black button, white text', b, b && /rgb\(0, 0, 0\)/.test(b.bg) && /rgb\(255, 255, 255\)/.test(b.fg) && b.text === 'Stuck?');

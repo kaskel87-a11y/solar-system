@@ -6,7 +6,7 @@
 //  - while you're wanted the mission card folds to one line (title, ⏱, ➤ distance); the step text comes back when the heat is off.
 //  - Stuck? (Ben's idea) is hidden until ~20 s pass with no mission progress and no movement; it's always in ☰ as "🆘 Stuck? hint".
 //  - the 🎬 DIRECTOR badge is hidden on phones (Director stays in ☰ → 🎬 Director). 🐾 Pet already only shows next to a dog.
-// Buttons stay black with white text. Window API: SSX.hudSlim = { on(), idleS(), state() }
+// Buttons stay black with white text. Window API: SSX.hudSlim = { on(), idleS(), state(), showStuck(ms) }
 const app = () => window.__app;
 const IDLE_S = 20, MOVE_M = 2;
 const isOn = () => document.body.classList.contains('touch') && innerWidth <= 500;
@@ -14,6 +14,7 @@ const css = `
 #hxStat{display:none;align-items:center;gap:6px;box-sizing:border-box;max-width:min(300px,100%);min-height:24px;padding:2px 8px;border-radius:9px;background:#000;color:#fff;border:1px solid #fff;font:800 12px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;pointer-events:none;flex:none}
 #hxStat.on{display:flex} #hxStat .st{letter-spacing:1px} #hxStat .st i{font-style:normal;opacity:.3} #hxStat .sr{color:#ffd400} #hxStat .mh{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #hxStat .sep{opacity:.5}
+body.hxSlim #surfInfo .gv,body.hxSlim.driving #surfInfo b,body.hxSlim #surfInfo .spd .sep{display:none!important} body.hxSlim #surfInfo{text-overflow:clip}
 body.hxSlim #puHud,body.hxSlim #mhChip,body.hxSlim #dirTag{display:none!important}
 body.hxSlim.surface:not(.indoors) #stackR{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 body.hxSlim #hxStuck:not(.hxShow){display:none!important}
@@ -72,4 +73,4 @@ function tick() {
 }
 ensure(); setInterval(tick, 250); tick();
 window.SSX = window.SSX || {};
-window.SSX.hudSlim = { on: () => S.on, idleS: () => S.idle, state: () => ({ on: S.on, idle: +S.idle.toFixed(1), stat: S.stat?.textContent || '', statOn: !!S.stat?.classList.contains('on') }) };
+window.SSX.hudSlim = { showStuck: (ms = 30000) => { S.forceT = performance.now() + ms; document.getElementById('hxStuck')?.classList.add('hxShow'); }, on: () => S.on, idleS: () => S.idle, state: () => ({ on: S.on, idle: +S.idle.toFixed(1), stat: S.stat?.textContent || '', statOn: !!S.stat?.classList.contains('on') }) };
