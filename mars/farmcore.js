@@ -158,6 +158,7 @@ export function migrate(raw) {
   s.water = clamp(+raw.water || 0, 0, cap.water); s.power = clamp(+raw.power || 0, 0, cap.power);
   for (const k of CROP_IDS) { const n = Math.max(0, Math.floor(+raw.silo?.[k] || 0)); if (n) s.silo[k] = n; }
   s.favors = (Array.isArray(raw.favors) ? raw.favors : []).filter(f => FAVORS[f]).slice(0, 10);
+  s.wallAt = Number.isFinite(+raw.wallAt) && +raw.wallAt > 0 ? +raw.wallAt : 0; // v7.5.15: real time of the last save (offline catch-up)
   s.hours = Math.max(0, +raw.hours || 0); s.lastRaidH = Number.isFinite(+raw.lastRaidH) ? +raw.lastRaidH : -99;
   for (const k in s.stats) s.stats[k] = Math.max(0, +raw.stats?.[k] || 0);
   const g = raw.guide && typeof raw.guide === 'object' ? raw.guide : {};
@@ -333,3 +334,31 @@ export function recover(rawSave, rawBak, rawBase) {
 }
 // may this state overwrite what is stored? an unowned state never replaces an owned one (only an explicit reset does)
 export function mayOverwrite(next, rawStored) { if (next?.owned) return true; return !migrate(parseJ(rawStored)).owned; }
+
+// ---------- v7.5.15 offline catch-up (Collin: "crops should keep growing while the game is closed") ----------
+// Real minutes away -> game hours (1 game hour = 1 real minute, SSX.time's 1x), capped at OFFLINE_CAP_H. Water and power are used
+// exactly like advance(), so a rack whose tanks run dry just stops growing. Offline time is kind: no storms, no wilting, no raids.
+export const OFFLINE_CAP_H = 48, OFFLINE_MIN_MS = 60000;
+export function offlineHours(wallAt, now) { if (!(wallAt > 0) || !(now > wallAt)) return 0; const ms = now - wallAt; if (ms < OFFLINE_MIN_MS) return 0; return Math.min(OFFLINE_CAP_H, ms / 60000); }
+export function catchUp(s, dh) {
+  const out = { hours: 0, grown: 0, ripe: [], starved: 0 };
+  if (!(dh > 0)) return out; dh = Math.min(dh, OFFLINE_CAP_H); out.hours = dh;
+  if (!s.owned) { s.hours += dh; return out; }
+  const starved = new Set(); let left = dh;
+  while (left > 1e-9) {
+    const h = Math.min(1, left); left -= h; s.hours += h;
+    for (let i = 0; i < s.racks.length; i++) {
+      const r = s.racks[i], c = CROPS[r.crop]; if (!c || r.health <= 0 || r.growth >= 1) continue;
+      const w = c.water * h, p = c.power * h;
+      if (s.water >= w && s.power >= p) { s.water -= w; s.power -= p; const was = r.growth; r.growth = clamp(r.growth + h / c.hours, 0, 1); if (r.growth > 0.99999) r.growth = 1; out.grown++; if (was < 1 && r.growth >= 1) out.ripe.push(i); }
+      else starved.add(i); // no supply: waits, no damage
+    }
+  }
+  s.water = r1(s.water); s.power = r1(s.power); out.starved = starved.size;
+  return out;
+}
+export function awayText(o) {
+  if (!o || !(o.hours > 0) || !o.grown) return '';
+  const n = o.ripe.length, hrs = Math.round(o.hours);
+  return n ? `\ud83c\udf31 While you were away: ${n} rack${n === 1 ? '' : 's'} ripened.` : `\ud83c\udf31 While you were away your crops grew ${hrs} game hour${hrs === 1 ? '' : 's'}.`;
+}

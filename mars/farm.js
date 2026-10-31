@@ -45,10 +45,11 @@ const PIT_AJ = [-292, -68], PIT_R = 12;
 const LS = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 const lsGet = k => { try { return LS?.getItem(k) ?? null; } catch (e) { return null; } };
 function loadState() { const r = F.recover(lsGet(F.SAVE_KEY), lsGet(F.BAK_KEY), lsGet(F.BASE_SAVE_KEY)); restoredFrom = r.restored ? r.from : null; return r.s; }
+let lastSaveT = 0, awayPending = null; // v7.5.15
 let restoredFrom = null, restoreSaid = false, saveErr = null, saveWarned = false;
 let S = loadState();
 function save(force) {
-  if (!LS) return false; const j = JSON.stringify(S);
+  if (!LS) return false; S.wallAt = Date.now(); lastSaveT = performance.now(); const j = JSON.stringify(S); // v7.5.15: wallAt = real time, for offline catch-up
   if (!force && !F.mayOverwrite(S, lsGet(F.SAVE_KEY))) return false; // never downgrade a stored farm
   const put = () => { LS.setItem(F.SAVE_KEY, j); if (S.owned) LS.setItem(F.BAK_KEY, j); else if (force) LS.removeItem(F.BAK_KEY); };
   try { put(); saveErr = null; return true; } catch (e) {
@@ -274,8 +275,29 @@ function advance(dh, why = 'tick') {
   if (o.wilted && (o.dry || o.dark)) { emit('wilt', { dry: o.dry, dark: o.dark }); if (why !== 'tick' || Math.random() < 0.02) say(o.dry ? '💧 The farm tanks are dry. Crops are wilting.' : '🔌 The farm is out of power. Crops are wilting.'); }
   if (o.stormLoss > 0) emit('storm', { phase: 'damage', loss: Math.round(o.stormLoss * 10) / 10, domeHp: Math.round(S.domeHp) });
   const d1 = F.day(S); if (d1 !== d0) emit('day', { day: d1 });
-  save(); dirty = true; return o;
+  // v7.5.15 perf: SSX.time advances the farm every frame, which used to write the save (and its .bak mirror) ~40 times a second.
+  // A plain tick now saves at most every 5 s (pagehide / tab hidden / the 15 s stamp flush it); events that matter save at once.
+  if (why !== 'tick' || o.ripe.length || d1 !== d0 || performance.now() - lastSaveT > 5000) save();
+  dirty = true; return o;
 }
+// ---------- v7.5.15 offline catch-up: real minutes away -> game hours (cap 48), water/power used, no storms/wilt/raids ----------
+function catchUpAway(fromWall, why) {
+  const h = F.offlineHours(fromWall, Date.now()); if (!(h > 0)) return null;
+  const o = F.catchUp(S, h); save(); dirty = true; rackKey = null;
+  const txt = F.awayText(o); if (txt) { awayPending = txt; }
+  emit('away', { hours: Math.round(h * 100) / 100, grown: o.grown, ripe: o.ripe, starved: o.starved, why });
+  return o;
+}
+function awayTick() { if (!awayPending) return; const a = app(); if (!a?.toast) return; const m = awayPending; awayPending = null; say(m); }
+let hiddenWall = 0;
+try {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenWall = Date.now(); if (S.owned) save(); }
+    else if (hiddenWall) { const w = hiddenWall; hiddenWall = 0; if (S.owned) catchUpAway(w, 'resume'); }
+  });
+  addEventListener('pagehide', () => { if (S.owned) save(); });
+  setInterval(() => { if (S.owned && !document.hidden && performance.now() - lastSaveT > 15000) save(); }, 15000);
+} catch (e) { /* */ }
 function skip(hours) {
   hours = Math.max(0, +hours || 0); const t = T(); let via = 'own';
   try { if (t?.set && (t.hour || t.now)) { const h = (t.hour?.() ?? t.now()); if (empOn) { skipDebt += Math.floor(h + (hours % 24)) - Math.floor(h); skipDebtT = performance.now() + 3000; } t.set(((h + hours) % 24 + 24) % 24); via = 'SSX.time'; const s = srcHour(); if (s) { lastH = s.h; src = s.src; } } } catch (e) { via = 'own'; }
@@ -697,7 +719,7 @@ function guideStatus() { const st = F.guideStep(S); return { on: S.guide.on, off
 // ---------- tick + boot ----------
 let uiT = 0;
 function tick(dt, tc) {
-  lastTc = tc; if (!fin(dt)) return;
+  lastTc = tc; if (!fin(dt)) return; awayTick();
   hookStorm(); hookEmpire(); hookBase();
   const dh0 = clockTick(dt), dh = empOn ? 0 : dh0; // SSX.empire 'hour' drives growth once it's live: never both
   if (dh > 0) advance(dh);
@@ -730,6 +752,7 @@ const API = {
     goto(id) { const s = surf(), p = W(F.SITES[id === 'post' ? 'post' : 'farm'].at); if (!s || !p) return false; s.debugMove(p.x + (id === 'post' ? 0 : 0), p.z + (id === 'post' ? 4 : 6), 0); return { x: p.x, z: p.z }; },
     storm(i = 1) { dbgStorm = F.clamp(+i || 0, 0, 1); return dbgStorm; }, raidEnd: (r = 'win') => endRaid(r), failNextExpand: (v = true) => { failNext = v !== false; return failNext; }, noRaids: v => { noRaids = v !== false; return noRaids; },
     state: () => JSON.parse(JSON.stringify(S)), reset() { AG.reset(); const c0 = credits(); for (const p of allPieces()) { try { B().remove(p.plot, p.id); } catch (e) { /* */ } } const c1 = credits(); if (c1 > c0) spend(c1 - c0); S = F.fresh(); save(true); restoredFrom = null; try { B()?.refresh?.(); } catch (e) { /* */ } synced = false; rackIds = []; raid = null; dbgStorm = 0; gStep = null; wpClear(); rebuildFarm(true); refresh(true); guideTick(true); return true; },
+    away(minutes) { return catchUpAway(Date.now() - Math.max(0, +minutes || 0) * 60000, 'debug'); }, awayPending: () => awayPending,
     reload() { S = loadState(); restoreSaid = false; synced = false; if (restoredFrom) save(); rebuildFarm(true); emit('load', {}); return status(); },
     ground: (x, z) => ground(x, z), colony: () => { const c = colony(); return c ? { x: c.x, z: c.z } : null; },
     inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome') || basePieces().some(p => p.type === F.LOT.dome.type), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
@@ -738,6 +761,7 @@ const API = {
 (function boot() {
   if (!window.SSX?.registerSurfaceTick || !window.__app || !window.SSX.registerMenuItem) { setTimeout(boot, 200); return; }
   if (window.SSX.farm) return; window.SSX.farm = API; ui();
+  try { if (S.owned) catchUpAway(S.wallAt, 'load'); } catch (e) { console.warn('farm catch-up', e); }
   try { window.SSX.registerSurfaceTick(tick); } catch (e) { console.warn('farm tick', e); }
 })();
 
