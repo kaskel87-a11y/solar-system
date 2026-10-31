@@ -45,9 +45,8 @@ export const ANNEXES = [
   { id: 'farm-annex-1', name: 'Homestead north lot', off: [0, -20] },
   { id: 'farm-annex-2', name: 'Homestead north-east lot', off: [20, -20] }
 ];
-// ⭐ price = credit price x STAR_RATE. Rate from the Star Shop (mars/starshopcore.js PRICES vs Blue's supplier price in
-// mars/contraband.js): 200⭐/20 cr, 250⭐/40 cr, 400⭐/75 cr, 600⭐/160 cr = 3.75 to 10 ⭐ per cr; one clean rate: 5 ⭐ = 1 cr.
-export const STAR_RATE = 5;
+// ⭐ price = credit price x STAR_RATE. Set 1:1 at Collin's request so his stars are usable; Star Shop works out to 3.75-10 ⭐/cr.
+export const STAR_RATE = 1;
 export const EXPANSIONS = {
   dome2: { id: 'dome2', kind: 'dome', n: 1, icon: '🫧', name: 'Second greenhouse dome', cr: 2500, needs: null },
   dome3: { id: 'dome3', kind: 'dome', n: 2, icon: '🫧', name: 'Third greenhouse dome', cr: 6000, needs: 'dome2' },

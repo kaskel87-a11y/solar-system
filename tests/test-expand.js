@@ -1,5 +1,5 @@
 // 🧱 Farm expansions (mars/farm.js + farmcore.js): ONE Expand row -> sub-list (domes + tanks, '… cr' and '… ⭐' buttons),
-// dome 2 (2,500 cr) then dome 3 (6,000 cr / 30,000 ⭐), tanks 1,500 cr / 7,500 ⭐; double tap = one charge in one currency; short on
+// dome 2 (2,500 cr) then dome 3 (6,000 cr / 6,000 ⭐), tanks 1,500 cr / 1,500 ⭐; double tap = one charge in one currency; short on
 // stars / credits refused; Rust Pit refused; failed save refunded; 18 racks on 3 lots; hire + harvester on the new racks; reload keeps it.
 // BASE=http://127.0.0.1:8897/ BR=webkit DEV=393x852 SHOTS_DIR=./shots/expand/ node tests/test-expand.js
 const pw = require('playwright');
@@ -54,9 +54,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await page.goto(base + '?farmraids=0&t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear());
     await wait(() => !!window.SSX?.harvest && !!window.SSX?.farm && !!window.SSX?.stars, 20000);
-    ok('api', await G(() => typeof window.SSX.farm.expand === 'function' && window.SSX.farm.expansions().length === 5 && window.SSX.farm.STAR_RATE === 5));
+    ok('api', await G(() => typeof window.SSX.farm.expand === 'function' && window.SSX.farm.expansions().length === 5 && window.SSX.farm.STAR_RATE === 1));
     await land();
-    await G(() => { const g = window.__app.game; g.debug?.calm?.(true); g.progress.credits = 30000; g.progress.xp = 20000; g.save(); window.__app.surface.world.setWanted(0); window.SSX.farm.debug.reset(); window.SSX.harvest.debug.reset(); window.SSX.starshop?.debug?.reset?.(); window.SSX.contraband?.reset?.();
+    await G(() => { const g = window.__app.game; g.debug?.calm?.(true); g.progress.credits = 30000; g.progress.xp = 5000; g.save(); window.__app.surface.world.setWanted(0); window.SSX.farm.debug.reset(); window.SSX.harvest.debug.reset(); window.SSX.starshop?.debug?.reset?.(); window.SSX.contraband?.reset?.();
       window.__fev = []; window.SSX.farm.on(e => window.__fev.push(e.type)); });
     await go('farm', 12);
     for (const f of ['buy', 'buildDome']) { await G(f => window.SSX.farm[f](), f); await sleep(900); }
@@ -69,7 +69,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       return { rows: rows.map(r => r.dataset.x + ':' + r.querySelector('b').textContent + '|' + r.querySelectorAll('button').length + '|' + [...r.querySelectorAll('button')].map(b => b.textContent).join('/')), tags: rows.map(r => r.querySelector('.tag')?.textContent || ''),
         style: bs.every(b => { const s = getComputedStyle(b), r = b.getBoundingClientRect(); return s.backgroundColor === 'rgb(0, 0, 0)' && (b.disabled || s.color === 'rgb(255, 255, 255)') && r.height >= 44; }), head: document.querySelector('#farmPanel .sub')?.textContent,
         dis: bs.filter(b => b.disabled).map(b => b.closest('.xp').dataset.x + ':' + b.dataset.b) }; });
-    ok('expandList', L, L.rows.length === 5 && L.rows[0].includes('2,500 cr/12,500 ⭐') && L.rows[1].includes('6,000 cr/30,000 ⭐') && L.rows.slice(2).every(r => r.includes('1,500 cr/7,500 ⭐')) && L.style && /1 cr = 5 ⭐/.test(L.head)
+    ok('expandList', L, L.rows.length === 5 && L.rows[0].includes('2,500 cr/2,500 ⭐') && L.rows[1].includes('6,000 cr/6,000 ⭐') && L.rows.slice(2).every(r => r.includes('1,500 cr/1,500 ⭐')) && L.style && /1 cr = 1 ⭐/.test(L.head)
       && L.tags[0] === '⭐ next' && /later/.test(L.tags[1]) && L.dis.includes('dome3:cr') && L.dis.includes('dome3:stars') && !L.dis.includes('dome2:stars') && !L.dis.includes('dome2:cr'));
     if (!desk) await page.screenshot({ path: out + `expand-list-${tag}.png` });
     // dome 2 with credits: double tap = one 2,500 charge, no stars touched
@@ -78,15 +78,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     fs = await St(); let s1 = await ST();
     ok('dome2Once', { fee: c0 - await cr(), caps: fs.caps, stars: s0.bal - s1.bal }, c0 - await cr() === 2500 && fs.exp.domes === 1 && fs.caps.racks === 12 && s1.bal === s0.bal);
     ok('dome2Placed', await G(() => window.SSX.farm.status().base ? window.SSX.farm.status().base.pieces.some(p => p.plot === 'farm-annex-1' && p.type === 'farm-dome') : !!window.__app.surface.scene.getObjectByName('farm-dome-2')));
-    // dome 3 in stars: short first (20,000 ⭐ < 30,000), refused, nothing taken
+    // dome 3 in stars: short first (5,000 ⭐ < 6,000), refused, nothing taken
     s0 = await ST(); const short = await G(() => window.SSX.farm.expand('dome3', 'stars')); s1 = await ST();
     ok('starsShort', { short, s0, s1 }, !short.ok && s1.bal === s0.bal && s1.spent === s0.spent && (await St()).exp.domes === 1);
     await G(() => { const g = window.__app.game; g.progress.xp = 45000; g.save(); }); await sleep(900);
     await G(() => window.SSX.farm.open?.()); await openExpand();
     s0 = await ST(); c0 = await cr();
     const dis3 = await G(s => document.querySelector(s)?.disabled, xb('dome3', 'stars')); await dbl(xb('dome3', 'stars')); await sleep(500); s1 = await ST(); fs = await St();
-    ok('dome3Stars', { dis3, s0, s1, fee: c0 - await cr(), caps: fs.caps }, dis3 === false && s0.bal - s1.bal === 30000 && s1.spent - s0.spent === 30000 && s1.xp === s0.xp && s1.life === s0.life && s1.rank === s0.rank && c0 === await cr() && fs.exp.domes === 2 && fs.caps.racks === 18);
-    ok('starsKey', await G(() => JSON.parse(localStorage.getItem('ssx.stars.v1') || '{}').spent === 30000 && !Object.keys(localStorage).some(k => /expan/i.test(k))));
+    ok('dome3Stars', { dis3, s0, s1, fee: c0 - await cr(), caps: fs.caps }, dis3 === false && s0.bal - s1.bal === 6000 && s1.spent - s0.spent === 6000 && s1.xp === s0.xp && s1.life === s0.life && s1.rank === s0.rank && c0 === await cr() && fs.exp.domes === 2 && fs.caps.racks === 18);
+    ok('starsKey', await G(() => JSON.parse(localStorage.getItem('ssx.stars.v1') || '{}').spent === 6000 && !Object.keys(localStorage).some(k => /expan/i.test(k))));
     // Rust Pit: refused, nothing charged
     await G(() => window.SSX.farm.close?.()); await G(() => { const c = window.__app.surface.info.colony || window.__app.surface.world.colony; window.__app.surface.debugMove(c.x - 292, c.z - 68, 0); }); await fr(6); await sleep(400);
     c0 = await cr(); s0 = await ST(); const pit = await G(() => window.SSX.farm.expand('water', 'cr')); const pitS = await G(() => window.SSX.farm.expand('water', 'stars'));
@@ -96,12 +96,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     c0 = await cr(); const fail = await G(() => { const o = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'ssx.farm.v1') throw new Error('QuotaExceededError'); return o.call(this, k, v); }; try { return window.SSX.farm.expand('water', 'cr'); } finally { Storage.prototype.setItem = o; } });
     ok('refundCr', { fail, fee: c0 - await cr() }, !fail.ok && fail.refunded === 1500 && c0 === await cr() && !(await St()).exp.water);
     await sleep(900); s0 = await ST(); const failS = await G(() => { window.SSX.farm.debug.failNextExpand(); return window.SSX.farm.expand('power', 'stars'); }); s1 = await ST();
-    ok('refundStars', { failS, s0, s1 }, !failS.ok && failS.refunded === 7500 && s1.bal === s0.bal && s1.spent === s0.spent && !(await St()).exp.power);
+    ok('refundStars', { failS, s0, s1 }, !failS.ok && failS.refunded === 1500 && s1.bal === s0.bal && s1.spent === s0.spent && !(await St()).exp.power);
     // tanks: water (cr, tap), power (⭐, tap), silo (cr): each doubles its cap
     await sleep(900); await openExpand(); c0 = await cr(); s0 = await ST();
     for (const [id, b] of [['water', 'cr'], ['power', 'stars'], ['silo', 'cr']]) { await tapSel(xb(id, b)); await dbl(xb(id, b)).catch(() => {}); await wait(id => window.SSX.farm.status().exp[id] === true, 8000, id); await sleep(600); }
     fs = await St(); s1 = await ST();
-    ok('tanks', { caps: fs.caps, fee: c0 - await cr(), stars: s0.bal - s1.bal }, fs.caps.water === 200 && fs.caps.power === 200 && fs.caps.silo === 240 && c0 - await cr() === 3000 && s0.bal - s1.bal === 7500 && s1.xp === s0.xp && s1.rank === s0.rank);
+    ok('tanks', { caps: fs.caps, fee: c0 - await cr(), stars: s0.bal - s1.bal }, fs.caps.water === 200 && fs.caps.power === 200 && fs.caps.silo === 240 && c0 - await cr() === 3000 && s0.bal - s1.bal === 1500 && s1.xp === s0.xp && s1.rank === s0.rank);
     const L2 = await G(() => [...document.querySelectorAll('#farmPanel .xp')].map(r => (r.querySelector('.tag')?.textContent || '') + '|' + r.querySelectorAll('button').length));
     ok('allOwned', L2, L2.length === 5 && L2.every(t => t === '✅ owned|0'));
     const again = await G(() => window.SSX.farm.expand('dome2', 'stars')); ok('ownedRefused', again, !again.ok && (await ST()).bal === s1.bal);
@@ -153,7 +153,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const before = await G(() => ({ exp: window.SSX.farm.status().exp, n: window.SSX.farm.status().racks.length, stars: window.SSX.stars.spent() }));
     await page.reload(); await wait(() => window.__frames > 3 && !document.getElementById('loading') && !!window.SSX?.farm && !!window.SSX?.stars, 120000); await sleep(1500);
     const after = await G(() => ({ exp: window.SSX.farm.status().exp, n: window.SSX.farm.status().racks.length, caps: window.SSX.farm.status().caps, stars: window.SSX.stars.spent() }));
-    ok('reload', { before, after }, JSON.stringify(after.exp) === JSON.stringify(before.exp) && after.n === 18 && after.caps.racks === 18 && after.caps.silo === 240 && after.stars === before.stars && before.stars === 37500);
+    ok('reload', { before, after }, JSON.stringify(after.exp) === JSON.stringify(before.exp) && after.n === 18 && after.caps.racks === 18 && after.caps.silo === 240 && after.stars === before.stars && before.stars === 7500);
     await land(); await fr(10); await sleep(1500); fs = await St();
     ok('reloadLots', { n: fs.racks.length, base: fs.base && fs.base.lots }, fs.racks.length === 18 && (!fs.base || fs.base.lots.length === 3) && (await G(() => window.SSX.farm.rackSpots().length)) === 18);
     ok('events', await G(() => window.__fev?.filter(t => /expand/.test(t)) || []), true);
