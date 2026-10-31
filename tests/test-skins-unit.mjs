@@ -70,5 +70,22 @@ ok('tapOtherPointer', !C.isRealTap(d, { id: 4, x: 100, y: 100 }) && !C.isRealTap
 ok('shop', C.SHOP.name && C.SHOP.aj.length === 2 && C.SHOP.aj.every(fin) && C.SHOP.near > 2 && C.SHOP.near < 8 && C.SAVE_KEY === 'ssx.skins.v1');
 ok('fmt', C.fmt(5000) === '5,000' && C.fmt(null) === '0');
 
+// #48 body API fit: every part lands on a real socket; on the blocky body nothing moves (scale 1, offset = -socket position);
+// on a slimmer body (the v8 sizes from look/MODELS.md) parts shrink with it, never collapse or blow up
+const V8S = { headRadius: 0.117, helmetRadius: 0.2, torso: { w: 0.34, h: 0.55, d: 0.24 }, armRadius: 0.05, upperArm: 0.28, forearmRadius: 0.04, forearm: 0.26, handRadius: 0.036, handLength: 0.18,
+  legRadius: 0.075, thigh: 0.42, shinRadius: 0.05, shin: 0.41, footWidth: 0.1, footLength: 0.25, shoulderWidth: 0.558 };
+ok('sockOf', C.sockOf('armL', -0.1) === 'armL' && C.sockOf('armL', -0.5) === 'forearmL' && C.sockOf('armR', -0.66) === 'handR' && C.sockOf('legR', -0.3) === 'legR' && C.sockOf('legL', -0.6) === 'shinL' && C.sockOf('legL', -0.84) === 'footL' && C.sockOf('head', -5) === 'head' && C.sockOf('torso', 9) === 'torso' && C.sockOf('armL', NaN) === 'armL');
+for (const k of C.SKINS) for (const p of k.parts) { const so = C.sockOf(p[0], p[3][1]); ok('socket:' + k.id, C.SOCKETS.includes(so), so); }
+for (const so of C.SOCKETS) for (const face of [false, true]) {
+  const b = C.sockFit(so, C.BLOCKY_SIZES, face), bp = C.BLOCKY_SOCK[so.replace(/[LR]$/, '')] || [0, 0, 0];
+  ok('blockyIdentity:' + so + face, b.s.every(v => v === 1) && b.o.every((v, i) => Math.abs(v + bp[i]) < 1e-9), JSON.stringify(b));
+  const v = C.sockFit(so, V8S, face);
+  ok('v8Shrinks:' + so + face, v.s.every(x => fin(x) && x >= 0.3 && x <= 2) && v.s.some(x => x < 1) && v.o.every(fin), JSON.stringify(v));
+}
+ok('v8Head', Math.abs(C.sockFit('head', V8S, true).s[0] - 0.117 / C.FACE_R) < 1e-9 && Math.abs(C.sockFit('head', V8S, false).s[0] - 0.2 / 0.23) < 1e-9);
+ok('v8Torso', Math.abs(C.sockFit('torso', V8S, false).s[0] - 0.34 / 0.56) < 1e-9);
+ok('fitJunk', C.sockFit('armL', { armRadius: 'x', upperArm: -1 }, false).s.every(x => x === 1) && C.sockFit('nope', V8S, false).s.join() === '1,1,1' && C.sockFit('head', null, false).s[0] === 1);
+ok('hidesHair', C.hidesHair(C.BY_ID.cowboy) && C.hidesHair(C.BY_ID.clown) && C.hidesHair(C.BY_ID.kingpin) && !C.hidesHair(null) && !C.hidesHair(C.BY_ID.chrome) && C.SKINS.every(k => C.hidesHair(k) === (!!k.face && k.parts.some(p => p[0] === 'head'))));
+
 console.log(fails ? `FAIL ${fails}/${n}` : `PASS ${n} skins unit checks`);
 process.exit(fails ? 1 : 0);
