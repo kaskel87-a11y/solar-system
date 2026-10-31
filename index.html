@@ -1379,7 +1379,7 @@
       const o = a.createOscillator(), g = a.createGain(); o.type = type;
       o.frequency.setValueAtTime(f0, a.currentTime + t0); o.frequency.exponentialRampToValueAtTime(f1, a.currentTime + t0 + dur);
       g.gain.setValueAtTime(0.0001, a.currentTime + t0); g.gain.exponentialRampToValueAtTime(vol, a.currentTime + t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + t0 + dur);
-      o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + dur + 0.05);
+      o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + dur + 0.05); o.addEventListener('ended', () => { try { o.disconnect(); g.disconnect(); } catch (e) { /* */ } }); // v7.5.15
     }
     function chime() { sfxLog.push('chime'); const a = audio(); if (!a) return; [[880, 0], [1175, 0.12], [1568, 0.24]].forEach(([f, t]) => tone(a, 'sine', f, f * 1.01, t, 0.9, 0.18)); }
     function bark() {

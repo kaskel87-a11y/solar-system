@@ -62,7 +62,7 @@ export function voice(x, dest, { type = 'sawtooth', f, t, dur, vol, f1, attack =
   let lfo = null; if (vib) { lfo = a.createOscillator(); const lg = a.createGain(); lfo.frequency.value = rate; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * vib, t + Math.min(0.35, dur * 0.6)); lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur + 0.05); }
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   let n = o; if (lp) { const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; fl.Q.value = q; n = o.connect(fl); }
-  n.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05);
+  n.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05); o.addEventListener('ended', () => { for (const x of [o, n, g, lfo]) { try { x?.disconnect(); } catch (e) { /* */ } } }); // v7.5.15
 }
 
 // Build a station def from { id, name, tag, dj, tracks, play(k) } where play(k) gets one 16th:

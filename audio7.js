@@ -11,6 +11,7 @@ export const STATIONS = [
 ];
 
 export function createAudio7(getCtx) {
+const _free = (...n) => () => { for (const x of n) { try { x.disconnect(); } catch (e) { /* */ } } }; // v7.5.15: one-shot voices disconnect when done (iOS WebKit keeps connected nodes alive)
   // v7.3 venue music (club / cantina) plays through the same bus, muffled like it's coming through the walls
   const VENUES = { club: { id: 'club', bpm: 118 }, cantina: { id: 'cantina', bpm: 92 } };
   let venue = null, venueWas = false;
@@ -25,12 +26,12 @@ export function createAudio7(getCtx) {
   function osc(a, dest, type, f, t, dur, vol, f1) {
     const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05);
+    o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05); o.addEventListener('ended', _free(o, g));
   }
   function hiss(a, dest, t, dur, vol, freq = 2000, q = 0.8, type = 'bandpass') {
     const s = a.createBufferSource(); s.buffer = noise(a); const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
     const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+    s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05); s.addEventListener('ended', _free(s, f, g));
   }
   // ---- radio ----
   function bus(a) {
