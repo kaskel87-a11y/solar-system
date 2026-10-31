@@ -35,6 +35,92 @@ export const AMORT_HARVESTS = 5;
 // full cost of one harvest on one rack: seed + water + power used while growing + (plot + dome) / max racks + rack, over AMORT_HARVESTS
 export function growCost(crop) { const c = CROPS[crop]; if (!c) return 0; const inputs = c.seed + c.water * c.hours * PRICES.water + c.power * c.hours * PRICES.power;
   return Math.round((inputs + ((PRICES.plot + PRICES.dome) / LIMITS.racks + PRICES.rack) / AMORT_HARVESTS) * 10) / 10; }
+
+// ---------- farm expansions: two more greenhouse domes on their own lots + bigger tanks ----------
+// State lives in the same save as s.exp (no new localStorage key); an old save without it = no expansions = the old farm.
+// Each extra dome stands on its own 20 x 20 m lot touching the homestead (lot-local offsets in metres, x east / z south):
+// north of it (open ground, 1.0 m of relief) and north-east of that (1.0 m); the west side stays clear for the harvester's
+// parking spot, the south side for the gate. Each dome holds LIMITS.racks racks (6 -> 12 -> 18).
+export const ANNEXES = [
+  { id: 'farm-annex-1', name: 'Homestead north lot', off: [0, -20] },
+  { id: 'farm-annex-2', name: 'Homestead north-east lot', off: [20, -20] }
+];
+// ⭐ price = credit price x STAR_RATE. Rate from the Star Shop (mars/starshopcore.js PRICES vs Blue's supplier price in
+// mars/contraband.js): 200⭐/20 cr, 250⭐/40 cr, 400⭐/75 cr, 600⭐/160 cr = 3.75 to 10 ⭐ per cr; one clean rate: 5 ⭐ = 1 cr.
+export const STAR_RATE = 5;
+export const EXPANSIONS = {
+  dome2: { id: 'dome2', kind: 'dome', n: 1, icon: '🫧', name: 'Second greenhouse dome', cr: 2500, needs: null },
+  dome3: { id: 'dome3', kind: 'dome', n: 2, icon: '🫧', name: 'Third greenhouse dome', cr: 6000, needs: 'dome2' },
+  water: { id: 'water', kind: 'tank', key: 'water', icon: '💧', name: 'Bigger water tank', cr: 1500, needs: null },
+  power: { id: 'power', kind: 'tank', key: 'power', icon: '🔋', name: 'Bigger power cells', cr: 1500, needs: null },
+  silo:  { id: 'silo',  kind: 'tank', key: 'silo',  icon: '🏚️', name: 'Bigger silo', cr: 1500, needs: null }
+};
+export const EXP_ORDER = ['dome2', 'dome3', 'water', 'power', 'silo'];
+export const starPrice = id => EXPANSIONS[id] ? EXPANSIONS[id].cr * STAR_RATE : 0;
+export const freshExp = () => ({ domes: 0, water: false, power: false, silo: false });
+export function migrateExp(e) {
+  const x = freshExp(); if (!e || typeof e !== 'object') return x;
+  x.domes = Math.max(0, Math.min(ANNEXES.length, Math.floor(+e.domes || 0))); x.water = e.water === true; x.power = e.power === true; x.silo = e.silo === true; return x;
+}
+// caps for this save: racks 6 per dome, each tank upgrade doubles its cap
+export function caps(s) {
+  const e = s?.exp || {}, d = Math.max(0, Math.min(ANNEXES.length, Math.floor(+e.domes || 0)));
+  return { racks: LIMITS.racks * (1 + d), water: LIMITS.water * (e.water === true ? 2 : 1), power: LIMITS.power * (e.power === true ? 2 : 1), silo: LIMITS.silo * (e.silo === true ? 2 : 1), domes: 1 + d };
+}
+// which lot (0 = the homestead, 1.. = ANNEXES[n - 1]) rack k stands on
+export const rackLot = k => Math.max(0, Math.floor((k | 0) / LIMITS.racks));
+export function owns(s, id) { const x = EXPANSIONS[id], e = s?.exp || {}; if (!x) return false; return x.kind === 'dome' ? (e.domes | 0) >= x.n : e[x.key] === true; }
+export function canExpand(s, id) {
+  const x = EXPANSIONS[id]; if (!x) return { ok: false, why: 'Unknown expansion.' };
+  if (!s?.owned) return { ok: false, why: 'Buy the homestead first.' };
+  if (!s.dome) return { ok: false, why: 'Build the first greenhouse dome first.' };
+  if (owns(s, id)) return { ok: false, why: `You already have the ${x.name.toLowerCase()}.`, owned: true };
+  if (x.needs && !owns(s, x.needs)) return { ok: false, why: `Build the ${EXPANSIONS[x.needs].name.toLowerCase()} first.`, locked: true };
+  return { ok: true, id, cr: x.cr, stars: starPrice(id) };
+}
+// can you pay it in this currency? have = credits or spendable stars
+export function canPay(v, cur, have) {
+  if (!v?.ok) return v; const price = cur === 'stars' ? v.stars : v.cr, unit = cur === 'stars' ? '⭐' : 'cr';
+  if (!(have >= price)) return { ok: false, short: price - (have | 0), why: `That costs ${price} ${unit}. You have ${Math.max(0, have | 0)} ${unit}.` };
+  return { ...v, price, cur: cur === 'stars' ? 'stars' : 'cr' };
+}
+// one purchase, all or nothing: check, take the price from ONE wallet (credits or stars), apply, commit (the save). Anything
+// failing after the money moved puts the state back and refunds it. wallet: { have() -> number, take(n) -> { ok, n?, msg?, dup? },
+// give(n) }. Returns { ok, ..., s }: s is the state to keep (the same object on success, a clean copy of the old one on failure).
+export function buyExpansion(s, id, cur, wallet, commit = () => true) {
+  cur = cur === 'stars' ? 'stars' : 'cr'; const unit = cur === 'stars' ? 'Stars' : 'Credits';
+  let have = 0; try { have = +wallet.have() || 0; } catch (e) { have = 0; }
+  const v = canPay(canExpand(s, id), cur, have); if (!v.ok) return { ...v, s };
+  const before = JSON.stringify(s); let paid = 0;
+  const undo = why => { const back = paid; paid = 0; if (back > 0) { try { wallet.give(back); } catch (e) { /* */ } } return { ok: false, why, refunded: back, s: migrate(JSON.parse(before)) }; };
+  try {
+    const t = wallet.take(v.price); if (!t?.ok) return { ok: false, why: t?.dup ? '' : (t?.msg || t?.why || 'Payment refused.'), dup: !!t?.dup, s };
+    paid = Number.isFinite(t.n) ? t.n : v.price; if (paid !== v.price) return undo(`The payment didn\u2019t add up, so nothing was bought. ${unit} refunded.`);
+    applyExpand(s, id);
+    if (!commit(s)) return undo(`Couldn\u2019t save the farm, so nothing was bought. ${unit} refunded.`);
+  } catch (e) { return undo(`Something went wrong, so nothing was bought. ${unit} refunded.`); }
+  return { ok: true, id, cur, price: paid, s, caps: caps(s) };
+}
+export function applyExpand(s, id) { const x = EXPANSIONS[id]; if (!s.exp) s.exp = freshExp(); if (x.kind === 'dome') s.exp.domes = Math.max(s.exp.domes | 0, x.n); else s.exp[x.key] = true; return s; }
+// one harvest on a rack in an extra dome: same inputs, that dome's price shared over its racks (AMORT_HARVESTS)
+export function growCostAt(crop, lot = 0) {
+  if (!(lot > 0)) return growCost(crop); const c = CROPS[crop]; if (!c) return 0; const d = EXPANSIONS[lot === 1 ? 'dome2' : 'dome3'];
+  const inputs = c.seed + c.water * c.hours * PRICES.water + c.power * c.hours * PRICES.power;
+  return Math.round((inputs + (d.cr / LIMITS.racks + PRICES.rack) / AMORT_HARVESTS) * 10) / 10;
+}
+// plain-word payback: full potato harvests on all 6 new racks (fair price, inputs paid) to earn back the dome + its racks
+export function paybackHarvests(id) {
+  const x = EXPANSIONS[id]; if (x?.kind !== 'dome') return 0; const c = CROPS.potato;
+  const profit = c.price * c.yield - (c.seed + c.water * c.hours * PRICES.water + c.power * c.hours * PRICES.power);
+  return Math.ceil((x.cr + LIMITS.racks * PRICES.rack) / (LIMITS.racks * profit));
+}
+export function expandWords(id) {
+  const x = EXPANSIONS[id]; if (!x) return '';
+  if (x.kind === 'dome') { const n = paybackHarvests(id), tot = LIMITS.racks * (1 + x.n);
+    return `+${LIMITS.racks} racks (${tot} in all). Pays for itself in about ${n} potato harvest${n === 1 ? '' : 's'} on its ${LIMITS.racks} racks.`; }
+  const cap = LIMITS[x.key] * 2;
+  return x.key === 'water' ? `Holds ${cap} water: fill up half as often.` : x.key === 'power' ? `Holds ${cap} power: charge half as often.` : `Holds ${cap} crops: sell less often.`;
+}
 const barterPrice = (d, crop, buyer) => { const c = CROPS[crop]; return Math.max(1, Math.round((c.barter ?? c.price) * dayMult(d, crop, buyer))); };
 // alien buyers at the trading post. pays: 'cash' | 'item' | 'favor'. wants: crop ids they buy.
 export const BUYERS = [
@@ -61,15 +147,16 @@ const r1 = v => Math.round(v * 10) / 10;
 
 export const freshRack = () => ({ crop: null, growth: 0, health: 100, planted: 0 });
 export function fresh() {
-  return { v: 1, owned: false, dome: false, domeHp: 100, racks: [], water: 0, power: 0, silo: {}, favors: [], hours: 0, lastRaidH: -99, stats: { planted: 0, harvested: 0, sold: 0, earned: 0, raids: 0, raidsWon: 0, stolen: 0, stormLoss: 0, wilted: 0 }, guide: { on: false, done: false, off: false } };
+  return { v: 1, owned: false, dome: false, domeHp: 100, racks: [], water: 0, power: 0, silo: {}, favors: [], hours: 0, lastRaidH: -99, stats: { planted: 0, harvested: 0, sold: 0, earned: 0, raids: 0, raidsWon: 0, stolen: 0, stormLoss: 0, wilted: 0 }, guide: { on: false, done: false, off: false }, exp: freshExp() };
 }
 // repairs partial / corrupt / older data; never throws
 export function migrate(raw) {
   const s = fresh(); if (!raw || typeof raw !== 'object' || raw.v !== 1) return s;
   s.owned = !!raw.owned; s.dome = !!raw.dome && s.owned; s.domeHp = clamp(+raw.domeHp || 0, 0, 100);
   if (!Number.isFinite(+raw.domeHp)) s.domeHp = 100;
-  s.racks = (Array.isArray(raw.racks) ? raw.racks : []).slice(0, LIMITS.racks).map(r => ({ crop: CROPS[r?.crop] ? r.crop : null, growth: clamp(+r?.growth || 0, 0, 1), health: clamp(Number.isFinite(+r?.health) ? +r.health : 100, 0, 100), planted: +r?.planted || 0 }));
-  s.water = clamp(+raw.water || 0, 0, LIMITS.water); s.power = clamp(+raw.power || 0, 0, LIMITS.power);
+  s.exp = migrateExp(raw.exp); const cap = caps(s);
+  s.racks = (Array.isArray(raw.racks) ? raw.racks : []).slice(0, cap.racks).map(r => ({ crop: CROPS[r?.crop] ? r.crop : null, growth: clamp(+r?.growth || 0, 0, 1), health: clamp(Number.isFinite(+r?.health) ? +r.health : 100, 0, 100), planted: +r?.planted || 0 }));
+  s.water = clamp(+raw.water || 0, 0, cap.water); s.power = clamp(+raw.power || 0, 0, cap.power);
   for (const k of CROP_IDS) { const n = Math.max(0, Math.floor(+raw.silo?.[k] || 0)); if (n) s.silo[k] = n; }
   s.favors = (Array.isArray(raw.favors) ? raw.favors : []).filter(f => FAVORS[f]).slice(0, 10);
   s.hours = Math.max(0, +raw.hours || 0); s.lastRaidH = Number.isFinite(+raw.lastRaidH) ? +raw.lastRaidH : -99;
@@ -84,7 +171,7 @@ export const day = s => Math.floor(s.hours / 24);
 // ---------- actions (pure: return { ok, why|msg, cost }) ----------
 export function canBuy(s, credits) { if (s.owned) return { ok: false, why: 'You already own the homestead.' }; if (credits < PRICES.plot) return { ok: false, why: `The homestead is ${PRICES.plot} cr. You're short ${PRICES.plot - credits}.` }; return { ok: true, cost: PRICES.plot }; }
 export function canDome(s, credits) { if (!s.owned) return { ok: false, why: 'Buy the homestead first.' }; if (s.dome) return { ok: false, why: 'The dome is already up.' }; if (credits < PRICES.dome) return { ok: false, why: `The dome kit is ${PRICES.dome} cr.` }; return { ok: true, cost: PRICES.dome }; }
-export function canRack(s, credits) { if (!s.dome) return { ok: false, why: 'Build the greenhouse dome first.' }; if (s.racks.length >= LIMITS.racks) return { ok: false, why: `The lot fits ${LIMITS.racks} racks.` }; if (credits < PRICES.rack) return { ok: false, why: `A hydroponic rack is ${PRICES.rack} cr.` }; return { ok: true, cost: PRICES.rack }; }
+export function canRack(s, credits) { if (!s.dome) return { ok: false, why: 'Build the greenhouse dome first.' }; const cap = caps(s).racks; if (s.racks.length >= cap) return { ok: false, why: cap < LIMITS.racks * (1 + ANNEXES.length) ? `Your dome${cap > LIMITS.racks ? 's fit' : ' fits'} ${cap} racks. 🧱 Expand for another dome.` : `The farm fits ${cap} racks.` }; if (credits < PRICES.rack) return { ok: false, why: `A hydroponic rack is ${PRICES.rack} cr.` }; return { ok: true, cost: PRICES.rack }; }
 export function canPlant(s, i, crop, credits) {
   const r = s.racks[i], c = CROPS[crop]; if (!r) return { ok: false, why: 'No rack there.' }; if (!c) return { ok: false, why: 'Unknown crop.' };
   if (r.crop) return { ok: false, why: 'That rack is already planted.' }; if (credits < c.seed) return { ok: false, why: `${c.name} seed is ${c.seed} cr.` };
@@ -94,13 +181,13 @@ export function plant(s, i, crop) { const r = s.racks[i]; r.crop = crop; r.growt
 export function yieldOf(r) { const c = CROPS[r.crop]; return c ? Math.max(0, Math.floor(c.yield * r.health / 100 + 1e-9)) : 0; }
 export function harvest(s, i) {
   const r = s.racks[i]; if (!r?.crop) return { ok: false, why: 'Nothing planted there.' }; if (r.growth < 1) return { ok: false, why: `Not ripe yet (${Math.floor(r.growth * 100)}%).` };
-  const crop = r.crop, n = yieldOf(r), room = Math.max(0, LIMITS.silo - siloCount(s)), got = Math.min(n, room);
+  const crop = r.crop, n = yieldOf(r), room = Math.max(0, caps(s).silo - siloCount(s)), got = Math.min(n, room);
   if (got > 0) s.silo[crop] = (s.silo[crop] || 0) + got;
   s.racks[i] = freshRack(); s.stats.harvested += got;
   return { ok: true, crop, n: got, lost: n - got };
 }
 // water / power top-up to full: returns units + cost
-export function refillCost(s, what) { const lim = LIMITS[what], have = s[what], units = Math.ceil(lim - have - 1e-9); return { units: Math.max(0, units), cost: Math.max(0, units) * PRICES[what] }; }
+export function refillCost(s, what) { const lim = caps(s)[what], have = s[what], units = Math.ceil(lim - have - 1e-9); return { units: Math.max(0, units), cost: Math.max(0, units) * PRICES[what] }; }
 
 // ---------- time: advance by dh game hours. stormI(h) -> 0..1 intensity for that slice ----------
 export function advance(s, dh, stormI = 0) {
@@ -229,7 +316,11 @@ export function baseEvidence(rawBase) {
   const p = parseJ(rawBase)?.plots?.[LOT.id]; if (!p || typeof p !== 'object') return null;
   const pcs = Array.isArray(p.pieces) ? p.pieces : [], dome = pcs.filter(q => q?.type === LOT.dome.type).length, racks = pcs.filter(q => q?.type === 'farm-rack').length;
   // boughtAt alone is not proof: debug.reset scraps the pieces and the lot syncs to unowned but keeps boughtAt
-  return (p.owned === true || dome + racks > 0) ? { owned: true, dome: dome > 0, racks: Math.min(racks, LIMITS.racks) } : null;
+  if (!(p.owned === true || dome + racks > 0)) return null;
+  // extra domes: an annex lot with a farm dome on it (lots in order) counts; its racks count up to LIMITS.racks each
+  let domes = 0, extra = 0; for (const a of ANNEXES) { const q = parseJ(rawBase)?.plots?.[a.id], ps = Array.isArray(q?.pieces) ? q.pieces : [];
+    if (!ps.some(x => x?.type === LOT.dome.type)) break; domes++; extra += Math.min(LIMITS.racks, ps.filter(x => x?.type === 'farm-rack').length); }
+  return { owned: true, dome: dome > 0, racks: Math.min(racks, LIMITS.racks) + extra, domes };
 }
 export function recover(rawSave, rawBak, rawBase) {
   const j = parseJ(rawSave), s = migrate(j);
@@ -237,7 +328,7 @@ export function recover(rawSave, rawBak, rawBase) {
   const b = migrate(parseJ(rawBak));
   if (b.owned) return { s: b, from: 'backup', restored: true };
   const ev = baseEvidence(rawBase);
-  if (ev) { s.owned = true; s.dome = ev.dome; s.domeHp = 100; while (s.racks.length < ev.racks) s.racks.push(freshRack());
+  if (ev) { s.owned = true; s.dome = ev.dome; s.domeHp = 100; s.exp.domes = Math.max(s.exp.domes, ev.domes | 0); while (s.racks.length < ev.racks) s.racks.push(freshRack());
     s.water = Math.max(s.water, 40); s.power = Math.max(s.power, 40); return { s, from: 'base', restored: true }; }
   return { s, from: j ? 'save' : 'fresh', restored: false };
 }

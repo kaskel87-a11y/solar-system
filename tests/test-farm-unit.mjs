@@ -95,4 +95,68 @@ ok('dirs', F.dirWord(0, 10) === 'south' && F.dirWord(10, 0) === 'east' && /Go to
   r = F.recover(unowned, null, resetBase); ok('rec:resetStaysReset', !r.s.owned && !r.restored, r.from);
   r = F.recover(null, null, null); ok('rec:fresh', !r.s.owned && r.from === 'fresh');
   ok('noDowngrade', !F.mayOverwrite(F.fresh(), v755) && F.mayOverwrite(F.fresh(), unowned) && F.mayOverwrite(F.migrate(JSON.parse(v755)), unowned) && F.mayOverwrite(F.fresh(), null)); }
+// expansions: caps 6 -> 12 -> 18, tanks double, order, one charge per purchase, credits OR stars, refunds, old saves
+{ const SC = await import('../mars/starshopcore.js');
+  const g = F.fresh(); g.owned = g.dome = true;
+  ok('exp:fresh', F.caps(g).racks === 6 && F.caps(g).water === 100 && F.caps(g).power === 100 && F.caps(g).silo === 120 && g.exp.domes === 0, F.caps(g));
+  ok('exp:prices', F.EXPANSIONS.dome2.cr === 2500 && F.EXPANSIONS.dome3.cr === 6000 && ['water', 'power', 'silo'].every(k => F.EXPANSIONS[k].cr === 1500) && F.STAR_RATE === 5 && F.starPrice('dome2') === 12500 && F.starPrice('dome3') === 30000 && F.starPrice('silo') === 7500);
+  // star rate sits inside the Star Shop's own ⭐-per-cr range (its star prices vs Blue's supplier credits)
+  const sup = { lowg: 20, glowdust: 40, redstatic: 75, voidhoney: 160 }, rates = Object.entries(SC.PRICES).map(([k, v]) => v / sup[k]);
+  ok('exp:rateFromShop', F.STAR_RATE >= Math.min(...rates) && F.STAR_RATE <= Math.max(...rates), rates);
+  // ordering: the third dome needs the second; a farm without its first dome can't expand
+  ok('exp:order', !F.canExpand(g, 'dome3').ok && F.canExpand(g, 'dome3').locked && F.canExpand(g, 'dome2').ok);
+  const nd = F.fresh(); nd.owned = true; ok('exp:needsFirstDome', !F.canExpand(nd, 'dome2').ok && !F.canExpand(F.fresh(), 'water').ok);
+  for (let i = 0; i < 6; i++) g.racks.push(F.freshRack()); ok('exp:cap6', !F.canRack(g, 9e9).ok && /Expand/.test(F.canRack(g, 9e9).why), F.canRack(g, 9e9));
+  // credits wallet: double call = one charge
+  let cr = 20000, takes = 0; const crW = { have: () => cr, take: n => { if (cr < n) return { ok: false }; cr -= n; takes++; return { ok: true, n }; }, give: n => { cr += n; } };
+  let r = F.buyExpansion(g, 'dome2', 'cr', crW); const r2 = F.buyExpansion(r.s, 'dome2', 'cr', crW);
+  ok('exp:dome2', r.ok && r.s === g && g.exp.domes === 1 && F.caps(g).racks === 12 && cr === 17500 && takes === 1, r);
+  ok('exp:twiceOnce', !r2.ok && r2.owned && cr === 17500 && takes === 1, r2);
+  for (let i = 6; i < 12; i++) { ok('exp:rack' + i, F.canRack(g, 9e9).ok); g.racks.push(F.freshRack()); } ok('exp:cap12', !F.canRack(g, 9e9).ok);
+  ok('exp:rackLots', F.rackLot(0) === 0 && F.rackLot(5) === 0 && F.rackLot(6) === 1 && F.rackLot(11) === 1 && F.rackLot(12) === 2 && F.rackLot(17) === 2);
+  r = F.buyExpansion(g, 'dome3', 'cr', crW); ok('exp:dome3', r.ok && F.caps(g).racks === 18 && cr === 11500, r);
+  for (let i = 12; i < 18; i++) g.racks.push(F.freshRack()); ok('exp:cap18', !F.canRack(g, 9e9).ok && F.caps(g).domes === 3);
+  // short: refused, nothing taken
+  const poor = { have: () => 100, take: () => { throw new Error('must not be called'); }, give: () => {} };
+  r = F.buyExpansion(g, 'water', 'cr', poor); ok('exp:shortCr', !r.ok && r.short === 1400 && !g.exp.water, r);
+  // tanks double their caps (refill and harvest use the new cap)
+  for (const k of ['water', 'power', 'silo']) { r = F.buyExpansion(g, k, 'cr', crW); ok('exp:tank:' + k, r.ok && F.caps(g)[k] === 2 * F.LIMITS[k], F.caps(g)); }
+  g.water = 0; ok('exp:refill200', F.refillCost(g, 'water').units === 200 && F.refillCost(g, 'water').cost === 400, F.refillCost(g, 'water'));
+  g.silo = { potato: 200 }; g.racks[0] = { crop: 'potato', growth: 1, health: 100, planted: 0 }; const hv = F.harvest(g, 0); ok('exp:silo240', hv.ok && hv.n === 6 && F.siloCount(g) === 206, hv);
+  // stars wallet over the real star core: the balance drops, lifetime XP (= rank) never does, double call = one charge, short = refused
+  const xp = 40000, st = SC.fresh(); const stW = { have: () => SC.balance(st, xp), take: n => SC.spend(st, xp, n, 'farm'), give: n => SC.refund(st, n) };
+  const sg = F.fresh(); sg.owned = sg.dome = true;
+  r = F.buyExpansion(sg, 'dome2', 'stars', stW); const again = F.buyExpansion(sg, 'dome2', 'stars', stW);
+  ok('exp:stars', r.ok && r.cur === 'stars' && r.price === 12500 && SC.balance(st, xp) === 27500 && st.spent === 12500 && xp === 40000 && sg.exp.domes === 1, { r, bal: SC.balance(st, xp) });
+  ok('exp:starsOnce', !again.ok && SC.balance(st, xp) === 27500, again);
+  r = F.buyExpansion(sg, 'dome3', 'stars', stW); ok('exp:starsShort', !r.ok && r.short === 2500 && SC.balance(st, xp) === 27500 && sg.exp.domes === 1, r);
+  // one currency per purchase: a credit buy never touches stars
+  let c2 = 5000; const c2W = { have: () => c2, take: n => { c2 -= n; return { ok: true, n }; }, give: n => { c2 += n; } };
+  r = F.buyExpansion(sg, 'water', 'cr', c2W); ok('exp:oneCurrency', r.ok && c2 === 3500 && SC.balance(st, xp) === 27500);
+  // refunds: a failed save or a throw puts the state back and gives the money back
+  r = F.buyExpansion(sg, 'power', 'stars', stW, () => false); ok('exp:refundSave', !r.ok && r.refunded === 7500 && SC.balance(st, xp) === 27500 && !r.s.exp.power, r);
+  r = F.buyExpansion(r.s, 'silo', 'cr', c2W, () => { throw new Error('boom'); }); ok('exp:refundThrow', !r.ok && r.refunded === 1500 && c2 === 3500 && !r.s.exp.silo, r);
+  r = F.buyExpansion(r.s, 'silo', 'cr', { have: () => 9e9, take: n => ({ ok: true, n: n - 1 }), give: n => { c2 += n; } }); ok('exp:refundMismatch', !r.ok && r.refunded === 1499, r);
+  // profit math: a rack in the dearest dome still clears about 2x its full grow cost; payback in plain words
+  ok('exp:profit', Object.keys(F.CROPS).every(c => F.CROPS[c].price * F.CROPS[c].yield >= 1.8 * F.growCostAt(c, 2) && F.growCostAt(c, 0) === F.growCost(c) && F.growCostAt(c, 2) > F.growCostAt(c, 1)), Object.keys(F.CROPS).map(c => [c, F.CROPS[c].price * F.CROPS[c].yield, F.growCostAt(c, 2)]));
+  ok('exp:payback', F.paybackHarvests('dome2') === 2 && F.paybackHarvests('dome3') === 3 && /about 2 potato harvests/.test(F.expandWords('dome2')) && /Holds 200 water/.test(F.expandWords('water')));
+  // migration: an old v1 save without exp = no expansions, old behaviour (racks capped at 6, tanks at 100)
+  const old = { v: 1, owned: true, dome: true, racks: Array.from({ length: 9 }, () => ({ crop: 'potato', growth: 0.5, health: 100 })), water: 180, power: 150, silo: { potato: 7 } };
+  let m = F.migrate(old); ok('exp:migrateOld', m.exp.domes === 0 && !m.exp.water && m.racks.length === 6 && m.water === 100 && m.power === 100 && F.caps(m).racks === 6, m);
+  m = F.migrate({ ...old, exp: { domes: 1, water: true } }); ok('exp:migrateExp', m.exp.domes === 1 && m.exp.water && !m.exp.power && m.racks.length === 9 && m.water === 180 && m.power === 100, m);
+  m = F.migrate({ ...old, exp: { domes: 9, water: 'yes', silo: 1 } }); ok('exp:migrateJunk', m.exp.domes === 2 && !m.exp.water && !m.exp.silo, m.exp);
+  const full = JSON.parse(JSON.stringify(g)); ok('exp:roundTrip', JSON.stringify(F.migrate(JSON.parse(JSON.stringify(full))).exp) === JSON.stringify(full.exp) && F.migrate(full).racks.length === 18);
+  // the empty-save guard and the backup still hold with expansions
+  const gj = JSON.stringify(g); let rr = F.recover('{broken', gj, null); ok('exp:fromBackup', rr.from === 'backup' && rr.s.exp.domes === 2 && rr.s.racks.length === 18, rr.from);
+  ok('exp:noDowngrade', !F.mayOverwrite(F.fresh(), gj));
+  const baseX = JSON.stringify({ v: 1, plots: { 'farm-homestead': { owned: true, pieces: [{ id: 1, type: 'farm-dome', i: 2, j: 0 }, { id: 2, type: 'farm-rack', i: 3, j: 7 }] },
+    'farm-annex-1': { owned: true, pieces: [{ id: 1, type: 'farm-dome', i: 2, j: 0 }, { id: 2, type: 'farm-rack', i: 3, j: 7 }, { id: 3, type: 'farm-rack', i: 6, j: 7 }] } } });
+  rr = F.recover(null, null, baseX); ok('exp:fromBase', rr.from === 'base' && rr.s.exp.domes === 1 && rr.s.racks.length === 3, { from: rr.from, exp: rr.s.exp, n: rr.s.racks.length });
+  // 💾 Save Code: the expansions ride inside ssx.farm.v1 (no new key), so a code made on one device brings them to another
+  await import('../savecode.js'); const SV = globalThis.SSXSaveCore;
+  const mk = init => { const mm = new Map(Object.entries(init)); return { get length() { return mm.size; }, key: i => [...mm.keys()][i] ?? null, getItem: k => mm.has(k) ? mm.get(k) : null, setItem: (k, v) => mm.set(k, String(v)), removeItem: k => mm.delete(k), clear: () => mm.clear(), dump: () => Object.fromEntries(mm) }; };
+  const A = mk({ 'ssx.farm.v1': gj, 'ssx.farm.v1.bak': gj, 'ssx.stars.v1': JSON.stringify(st) });
+  const code = await SV.encode(SV.collect(A), { t: 1, app: 'v7.5.11', plain: true }); const dv = await SV.decode(code); const Bs = mk({}); SV.applyTo(Bs, dv.keys);
+  const back = F.recover(Bs.dump()['ssx.farm.v1'], Bs.dump()['ssx.farm.v1.bak'], null).s;
+  ok('exp:saveCode', dv.ok && SV.isGameKey('ssx.farm.v1') && back.exp.domes === 2 && back.exp.water && back.exp.power && back.exp.silo && back.racks.length === 18 && F.caps(back).racks === 18 && JSON.parse(Bs.dump()['ssx.stars.v1']).spent === 12500, { exp: back.exp, n: back.racks.length }); }
 console.log(bad ? `farm unit: ${bad} FAIL` : 'farm unit OK'); process.exit(bad ? 1 : 0);
