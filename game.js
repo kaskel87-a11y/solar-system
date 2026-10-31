@@ -8,6 +8,7 @@ import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
 import { kbOnly, KB_AIM_CONE } from './controlmode.js';
+const KB_FIRE_CONE = 0.52; // v7.5.16: F-key auto-aim, rad either side of the heading (~30 degrees)
 import { segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission checkpoints: xz segment hits (airborne / fast frames)
 import { clearGates } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
 
@@ -973,7 +974,13 @@ export function createGame(ctx) {
     if (wpn.twin || wpn.quad) W.side = (W.side + 1) % (wpn.quad ? 4 : 2);
     const from = muzzle(), useTurret = st.driving && st.own && turret;
     let to;
-    if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
+    if (aimAt?.auto) { // v7.5.16 (Collin, laptop): the F key fires with auto-aim, never at the mouse: nearest alien / cop / guard
+      // within ~30 degrees of where the car or the player faces, else straight ahead along that heading
+      const yw = st.driving ? st.rover.yaw : (player.faceYaw ?? player.yaw), dir = new THREE.Vector3(-Math.sin(yw), 0, -Math.cos(yw));
+      const t = autoTarget(from, dir, KB_FIRE_CONE), wt = !t && ctx.worldTargets ? worldTarget(from, dir, KB_FIRE_CONE) : null;
+      to = t ? center(t).clone() : wt ? wt : from.clone().addScaledVector(dir, 80);
+      W.autoAim = t ? 'alien' : wt ? 'world' : 'ahead';
+    } else if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
     else {
       const kb = kbOnly() && !st.driving, dir = st.driving ? new THREE.Vector3(-Math.sin(st.rover.yaw), 0, -Math.cos(st.rover.yaw)) : kb ? new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)) : camera.getWorldDirection(new THREE.Vector3());
       const t = autoTarget(from, dir, st.driving ? 1.05 : kb ? KB_AIM_CONE : Math.PI);

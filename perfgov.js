@@ -23,23 +23,27 @@ const off = (() => { try { return /[?&]perfgov=0/.test(location.search) || local
 const app = () => window.__app;
 const phone = () => (matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window) && Math.min(screen.width || innerWidth, screen.height || innerHeight) <= 500;
 const S = { cull: false, cands: [], candT: 0, passT: 0, culled: 0, total: 0, dpr: null, dprMax: 2, lowT: 0, highT: 0, fps: 60, frames: 0, fpsT: 0, drops: 0, raises: 0,
-  landed: false, freed: [], freedMB: 0, freedN: 0, wrapped: false, phone: false };
+  landed: false, freed: [], freedMB: 0, freedN: 0, wrapped: false, phone: false, dropAt: -1e9, raiseAt: -1e9, lock: false };
 const STEPS = [2, 1.75, 1.5, 1.25, 1], CAP_STEPS = [2, 1.75, 1.5, 1.25, 1, 0.85];
 // ---------- 4. 30 fps pacing (phones, sustained load) ----------
 const fpsPref = (() => { try { const m = /[?&]fps=(30|60)/.exec(location.search); return m ? m[1] : (localStorage.getItem('ssx.fps') || 'auto'); } catch (e) { return 'auto'; } })();
-const C = { on: false, why: null, at: 0, q: new Map(), seq: 0, pending: 0, last: 0, landedT: 0, slowT: 0, lightT: 0, lite: false, flushes: 0 };
+const FRAME = 1000 / 30;
+const C = { on: false, why: null, at: 0, q: new Map(), seq: 0, pending: 0, last: 0, acc: 0, landedT: 0, slowT: 0, lightT: 0, lite: false, flushes: 0 };
 const nRaf = window.requestAnimationFrame.bind(window), nCaf = window.cancelAnimationFrame.bind(window);
 function pump(ts) {
   C.pending = 0; if (!C.on) { const cbs = [...C.q.values()]; C.q.clear(); for (const cb of cbs) run(cb, ts); return; }
-  if (C.last && ts - C.last < 28) { C.pending = nRaf(pump); return; } // ~33 ms cadence on a 60 Hz screen (every other vsync)
-  C.last = ts; C.flushes++; const cbs = [...C.q.values()]; C.q.clear(); for (const cb of cbs) run(cb, ts);
+  // v7.5.16: rAF-timestamp accumulator on a fixed 33.3 ms grid (was "28 ms since the last flush", which re-phased after every late
+  // frame: flushes at 0, 50, 83 ms = 50/33 judder). A late vsync keeps the grid; a stall (tab switch, long task) resets it.
+  if (C.last) { C.acc += ts - C.last; C.last = ts; if (C.acc > 100) C.acc = FRAME; if (C.acc < FRAME - 4) { C.pending = nRaf(pump); return; } C.acc = Math.min(4, Math.max(0, C.acc - FRAME)); } // carry vsync jitter only: no 16 ms catch-up flush after a late one
+  else { C.last = ts; C.acc = 0; }
+  C.flushes++; const cbs = [...C.q.values()]; C.q.clear(); for (const cb of cbs) run(cb, ts);
 }
 function run(cb, ts) { try { cb(ts); } catch (e) { setTimeout(() => { throw e; }); } }
 if (!off) {
   window.requestAnimationFrame = function (cb) { if (!C.on) return nRaf(cb); const id = ++C.seq; C.q.set(id, cb); if (!C.pending) C.pending = nRaf(pump); return -id; };
   window.cancelAnimationFrame = function (id) { if (id < 0) C.q.delete(-id); else nCaf(id); };
 }
-export function setCap(on, why = 'manual') { on = !!on; if (on === C.on) return C.on; C.on = on; C.why = on ? why : null; C.at = performance.now(); C.last = 0; S.lowT = S.highT = 0; if (!on && C.lite) liteOff(false); return C.on; }
+export function setCap(on, why = 'manual') { on = !!on; if (on === C.on) return C.on; C.on = on; C.why = on ? why : null; C.at = performance.now(); C.last = 0; C.acc = 0; S.lowT = S.highT = 0; if (!on && C.lite) liteOff(false); return C.on; }
 function liteOff(v) { C.lite = v; try { window.SSX?.grime?.setPost?.(v ? 'off' : 'cfg', true); } catch (e) { /* */ } }
 function capTick(now, landed) {
   if (!S.phone || document.hidden || fpsPref === '60') return;
@@ -108,8 +112,10 @@ function dprTick(dt, now) {
   if (S.dpr != null && Math.abs(cur - S.dpr) > 0.01) S.dpr = cur; // someone else moved it: follow
   const lo = C.on ? 24 : 40, hi = C.on ? 29 : 57, ST = C.on && C.lite ? CAP_STEPS : STEPS; // capped: judged against 30, not 60
   if (S.fps < lo) { S.lowT++; S.highT = 0; } else if (S.fps > hi) { S.highT++; S.lowT = 0; } else { S.lowT = 0; S.highT = 0; }
-  if (S.lowT >= 3) { S.lowT = 0; const nx = ST.find(v => v < cur - 0.01); if (nx) { setDpr(nx); S.drops++; } }
-  else if (S.highT >= (C.on ? 20 : 12)) { S.highT = 0; const up = [...ST].reverse().find(v => v > cur + 0.01 && v <= Math.min(S.dprMax, C.on ? 1.5 : 2)); if (up) { setDpr(up); S.raises++; } }
+  // v7.5.16 hysteresis: every resize reallocates the render targets (a hitch). After a drop, no raise for 60 s; a raise that has
+  // to come back down within 30 s locks the ratio for the session (no 20 s up/down see-saw at the 30 fps cap).
+  if (S.lowT >= 3) { S.lowT = 0; const nx = ST.find(v => v < cur - 0.01); if (nx) { if (now - S.raiseAt < 30000) S.lock = true; setDpr(nx); S.drops++; S.dropAt = now; } }
+  else if (!S.lock && now - S.dropAt > 60000 && S.highT >= (C.on ? 20 : 12)) { S.highT = 0; const up = [...ST].reverse().find(v => v > cur + 0.01 && v <= Math.min(S.dprMax, C.on ? 1.5 : 2)); if (up) { setDpr(up); S.raises++; S.raiseAt = now; } }
 }
 
 // ---------- 3. space-view textures while landed ----------
