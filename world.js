@@ -189,6 +189,7 @@ export function createWorld(ctx) {
   let wname = '', duel = null, ringM = null, camBoxes = [], solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
   let wanted = 0, evade = 0, bustT = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
   let doors = [], rooms = new Map(), inside = null, coverPaid = false, interiorsRoot = null, roomIdx = 0;
+  const warm = { age: 0, t: 0, busy: false, built: 0 }; // v7.5.17 interior prewarm (warmRooms)
   const caps = { drones: isMobile ? 2 : 3, buggies: isMobile ? 1 : 2, officers: isMobile ? 2 : 4, heavies: isMobile ? 1 : 2 };
   const toW = (p) => ({ x: cx + p[0], z: cz + p[1] });
 
@@ -351,7 +352,7 @@ export function createWorld(ctx) {
     if (inside) inside = null;
     for (const r of rooms.values()) { r.dispose(); }
     if (interiorsRoot) { scene.remove(interiorsRoot); interiorsRoot = null; }
-    rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0;
+    rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0; warm.age = 0; warm.t = 0; warm.busy = false;
     col = null; camBoxes = []; solids = []; vehicles = []; people = []; flick = []; lights = []; security = []; shots = []; signs = []; C = null; wanted = 0;
   }
 
@@ -798,7 +799,7 @@ export function createWorld(ctx) {
     backupT -= dt;
     updatePeople(dt); updateSecurity(dt); updateFx(dt); updateTraffic(dt); updateCheckpoints(dt);
     for (const c of [...corpses]) { c.t -= dt; if (c.t <= 0) { scene.remove(c.group); corpses.splice(corpses.indexOf(c), 1); } }
-    if (inside) inside.room.tick(dt);
+    if (inside) inside.room.tick(dt); else warmRooms(dt);
     // parked vehicles hug the ground (hover ones bob)
     const st = ctx.st();
     for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = height(v.x, v.z) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
@@ -984,6 +985,33 @@ export function createWorld(ctx) {
   }
   const doorMatch = (d, q) => { q = String(q || '').toLowerCase().replace(/^the\s+/, ''); const n = (d.name + ' ' + d.title + ' ' + INTERIORS[d.kind].name + ' ' + d.kind).toLowerCase(); return n.includes(q) || (q.includes('gun') && d.kind === 'guns') || (q.includes('bar') && d.kind === 'cantina'); };
   function doorFor(q) { return doors.find(d => doorMatch(d, q)) || null; }
+  // build (once per colony) the hidden interior behind a door; rooms are kept, hidden, between visits
+  function ensureRoom(door) {
+    let room = rooms.get(door.i); if (room) return room;
+    const game = ctx.game();
+    if (!interiorsRoot) { interiorsRoot = new THREE.Group(); interiorsRoot.userData.keep = true; scene.add(interiorsRoot); }
+    const ins = door.ins || C.inside?.[door.kind] || {};
+    room = buildRoom(door.kind, { title: door.title, ...ins, safeId: door.kind === 'mansion' ? 'safe:' + door.name : undefined, taken: id => game.flag('stash:' + id), vip: game.flag('vip'), vipNow: () => game.flag('vip'), cracked: id => game.flag('cracked:' + id), heist: () => !!game.heistAt?.(door.kind, door.name), shop: { item: id => game.shopItem(id), list: v => game.shopList(v).items } });
+    const ay = height(cx, cz) + 60 + (roomIdx++) * 12;
+    room.group.position.set(cx, ay, cz); room.ay = ay; room.group.visible = false; interiorsRoot.add(room.group); rooms.set(door.i, room);
+    return room;
+  }
+  // v7.5.17 club prewarm: the club (and its dancer GLBs) used to be built and compiled in the frame you walked in (~300 ms
+  // on a phone). Now it is built hidden while you approach (150 m) or once the colony has been idle for 10 s, and its
+  // materials are compiled + linked + uploaded over the next frames by stormguard's prewarm queue (one new program a frame).
+  // Lights: the room uses lights[0] (same light, same count, only uniforms change), so the programs match inside.
+  const WARM = { club: 150 };
+  function warmRooms(dt) {
+    if (inside || !C) return; warm.age += dt; if ((warm.t -= dt) > 0) return; warm.t = 1;
+    for (const d of doors) {
+      const r = WARM[d.kind]; if (!r || rooms.has(d.i) || warm.busy) continue;
+      if (warm.age < 10 && Math.hypot(d.x - player.x, d.z - player.z) > r) continue;
+      warm.busy = true; const c0 = C;
+      const go = () => { warm.busy = false; if (C !== c0 || inside || rooms.has(d.i)) return; try { const room = ensureRoom(d); window.SSX?.stormGuard?.prewarm?.(room.group, { draw: true }); warm.built++; } catch (e) { console.warn('interior prewarm failed', e); } };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 0);
+      return; // one room per second
+    }
+  }
   function enterBuilding(door) {
     door = typeof door === 'number' ? doors[door] : (door || nearDoor()); if (!door || inside) return { ok: false, msg: '' };
     const game = ctx.game(), def = INTERIORS[door.kind];
@@ -995,14 +1023,8 @@ export function createWorld(ctx) {
       if (!game.spend(def.cover)) return { ok: false, msg: `Brick: Cover’s ${def.cover}. You’ve got lint. Beat it.` };
       coverPaid = true; paid = def.cover;
     }
-    let room = rooms.get(door.i);
-    if (!room) {
-      if (!interiorsRoot) { interiorsRoot = new THREE.Group(); interiorsRoot.userData.keep = true; scene.add(interiorsRoot); }
-      const ins = door.ins || C.inside?.[door.kind] || {};
-      room = buildRoom(door.kind, { title: door.title, ...ins, safeId: door.kind === 'mansion' ? 'safe:' + door.name : undefined, taken: id => game.flag('stash:' + id), vip: game.flag('vip'), vipNow: () => game.flag('vip'), cracked: id => game.flag('cracked:' + id), heist: () => !!game.heistAt?.(door.kind, door.name), shop: { item: id => game.shopItem(id), list: v => game.shopList(v).items } });
-      const ay = height(cx, cz) + 60 + (roomIdx++) * 12;
-      room.group.position.set(cx, ay, cz); room.ay = ay; room.group.visible = false; interiorsRoot.add(room.group); rooms.set(door.i, room);
-    }
+    const room = ensureRoom(door);
+    if (game.flag('vip')) room.openRope(); // a prebuilt club (v7.5.17 prewarm) may predate the VIP pass
     room.group.visible = true;
     inside = { door, room, ax: cx, ay: room.ay, az: cz };
     if (lights[0]) { const L = room.def.light; lights[0].position.set(cx, room.ay + room.h - 0.5, cz); lights[0].color.setHex(L.color); lights[0].distance = 60; lights[0].decay = 1.2; lights[0].intensity = L.int; }
@@ -1031,7 +1053,7 @@ export function createWorld(ctx) {
     // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
     vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,

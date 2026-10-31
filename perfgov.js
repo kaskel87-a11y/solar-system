@@ -85,7 +85,7 @@ export function cullPass() {
   cam.getWorldPosition(camP); let n = 0;
   for (const o of S.cands) {
     let c = false;
-    if (lim < Infinity) { const bs = sphere(o); if (bs && bs.radius < 1e6 && isFinite(bs.radius)) { tmp.copy(bs.center).applyMatrix4(o.matrixWorld); c = tmp.distanceTo(camP) - bs.radius * o.matrixWorld.getMaxScaleOnAxis() > lim; } }
+    if (lim < Infinity && o.frustumCulled !== false) { const bs = sphere(o); /* v7.5.17: frustumCulled=false (stormGuard's warm draw, borrowed after collect) is never far-culled */ if (bs && bs.radius < 1e6 && isFinite(bs.radius)) { tmp.copy(bs.center).applyMatrix4(o.matrixWorld); c = tmp.distanceTo(camP) - bs.radius * o.matrixWorld.getMaxScaleOnAxis() > lim; } }
     o.__pgC = c; if (c) n++;
   }
   S.culled = n; return n;
