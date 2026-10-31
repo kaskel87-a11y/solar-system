@@ -11,6 +11,9 @@ const app = () => window.__app;
 const IDLE_S = 20, MOVE_M = 2;
 const isOn = () => document.body.classList.contains('touch') && innerWidth <= 500;
 const css = `
+/* playtest M2 (iPhone SE 375x667): the job-offer pill rides at the top of the stack and the stack grows enough to show it (it was clipped under the tour card + waypoint) */
+body.hxSlim #stackR > #radio{order:-1}
+@media (orientation:portrait){body.hudx.hxSlim #stackR:has(> #radio.mini[style*="block"]){max-height:max(calc(25vh - 62px - var(--sat)),132px)}}
 #hxStat{display:none;align-items:center;gap:6px;box-sizing:border-box;max-width:min(300px,100%);min-height:24px;padding:2px 8px;border-radius:9px;background:#000;color:#fff;border:1px solid #fff;font:800 12px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;pointer-events:none;flex:none}
 #hxStat.on{display:flex} #hxStat .st{letter-spacing:1px} #hxStat .st i{font-style:normal;opacity:.3} #hxStat .sr{color:#ffd400} #hxStat .mh{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #hxStat .sep{opacity:.5}
