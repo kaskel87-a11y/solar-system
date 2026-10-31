@@ -196,6 +196,7 @@ function trigger() {
   if (cool > 0) return true;
   if (slugs() <= 0) { cool = 0.6; toast('Out of slugs. Buy more at a gun counter (45 cr for 6).', 2200); return true; }
   const tc = lastTc, cam = tc.camera;
+  poseCam(cam, tc.player);
   cam.getWorldPosition(vO); cam.getWorldDirection(vD);
   passing = true; let fired = false; try { fired = game().fire({ x: 0, y: 0 }) !== false; } catch (e) { console.warn('sniper fire', e); } passing = false;
   if (!fired) return true;
@@ -289,6 +290,14 @@ function tickRun(dt, tc) {
   }
   if (perched === false && tower?.visible && !scoped && !run.down) { /* climb offer handled by refreshBtns */ }
 }
+// scope eye: 0.9 m ahead of the head along the (swayed) aim; also called right before a shot so a fresh aim counts
+function poseCam(cam, p) {
+  const yaw = p.yaw + SW.yaw, pitch = Math.max(-1.5, Math.min(1.5, p.pitch + SW.pitch + kick)), cp = Math.cos(pitch);
+  const fx = -Math.sin(yaw) * cp, fy = Math.sin(pitch), fz = -Math.cos(yaw) * cp;
+  cam.position.set(p.x + fx * 0.9, p.y - 0.06 + fy * 0.9, p.z + fz * 0.9);
+  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw, 0);
+  cam.updateMatrixWorld();
+}
 function tickScope(dt, tc) {
   const cam = tc.camera, p = tc.player, mag = K.ZOOMS[magI];
   K.breathStep(B, dt, steadyKey || steadyTouch); K.sway(B, dt, mag, SW);
@@ -296,13 +305,13 @@ function tickScope(dt, tc) {
   // keyboard aim (arrows / WASD) while scoped: movement is frozen anyway
   const k = app()?.keys; if (k) { const r = 0.9 * K.lookScale(fovNow, baseFov) * dt, ax = (k.ArrowRight || k.KeyD ? 1 : 0) - (k.ArrowLeft || k.KeyA ? 1 : 0), ay = (k.ArrowUp || k.KeyW ? 1 : 0) - (k.ArrowDown || k.KeyS ? 1 : 0); if (ax || ay) { p.yaw -= ax * r; p.pitch = Math.max(-1.45, Math.min(1.45, p.pitch + ay * r)); } }
   p.faceYaw = p.yaw;
-  const yaw = p.yaw + SW.yaw, pitch = Math.max(-1.5, Math.min(1.5, p.pitch + SW.pitch + kick)), cp = Math.cos(pitch);
-  const fx = -Math.sin(yaw) * cp, fy = Math.sin(pitch), fz = -Math.cos(yaw) * cp;
-  cam.position.set(p.x + fx * 0.9, p.y - 0.06 + fy * 0.9, p.z + fz * 0.9);
-  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw, 0);
+  poseCam(cam, p);
   const want = K.scopeFov(baseFov, mag); fovNow += (want - fovNow) * (1 - Math.exp(-dt * 14)); if (Math.abs(fovNow - want) < 0.02) fovNow = want;
   if (cam.fov !== fovNow) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   cam.updateMatrixWorld();
+  // optics cut through the dust: push the fog back while scoped (surface/grime rewrite it every frame, so no restore needed)
+  const f = tc.scene?.fog, zf = mag >= 8 ? 3.2 : 2.4;
+  if (f) { if (f.isFogExp2) f.density /= zf; else { f.near *= zf; f.far *= zf; } }
 }
 
 // ---------- UI ----------
@@ -432,6 +441,7 @@ function onKey(e) {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { steadyKey = true; return; }
   if (scoped) {
     if (e.code === 'Escape' || (e.code === 'KeyZ' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey)) { e.preventDefault(); e.stopImmediatePropagation(); setScope(false); return; }
+    if (e.code === 'KeyF' && !e.repeat) { hookFrame = frame; trigger(); return; } // instant on press (the polled fire would wait a frame); the hook then sees it as held
     if (e.code === 'Equal' || e.code === 'NumpadAdd') { e.preventDefault(); e.stopImmediatePropagation(); zoomStep(1); return; }
     if (e.code === 'Minus' || e.code === 'NumpadSubtract') { e.preventDefault(); e.stopImmediatePropagation(); zoomStep(-1); return; }
     return;
@@ -455,7 +465,7 @@ function boot() {
   const cv = app().renderer?.domElement;
   if (cv) {
     cv.addEventListener('contextmenu', e => { if (scoped || (onMars() && rifleOut())) e.preventDefault(); });
-    window.addEventListener('mousedown', e => { if (e.button !== 2 || e.target !== cv || !onMars() || !onFoot()) return; if (!scoped && !rifleOut()) return; e.preventDefault(); e.stopImmediatePropagation(); setScope(!scoped); }, true);
+    window.addEventListener('mousedown', e => { if (e.button === 0 && scoped && e.target === cv) { hookFrame = frame; trigger(); return; } if (e.button !== 2 || e.target !== cv || !onMars() || !onFoot()) return; if (!scoped && !rifleOut()) return; e.preventDefault(); e.stopImmediatePropagation(); setScope(!scoped); }, true);
   }
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && scoped && !isTouch()) setScope(false); });
   window.addEventListener('ssx:consequences', e => { if (e.detail?.type === 'down' && run) fail('you got taken down.'); });
@@ -464,6 +474,8 @@ function boot() {
     scope: on => setScope(on === undefined ? !scoped : !!on), scoped: () => scoped, list: () => K.list(S), stats: () => ({ ...S, done: { ...S.done } }), on: f => { subs.add(f); return () => subs.delete(f); },
     zoom: zoomStep, trigger, open, close,
     debug: {
+      // materials in the sniper group without a compiled program (0 = prewarm worked)
+      uncompiled: () => { const r = app()?.renderer; let n = 0; if (!r || !G) return -1; const seen = new Set(); G.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) { if (seen.has(m)) continue; seen.add(m); if (!r.properties.get(m)?.currentProgram) n++; } }); return n; },
       reset() { if (run) end('quit'); S = K.fresh(); save(); },
       tower: () => ({ x: TW.x, z: TW.z, ringX: TW.x, ringZ: TW.z + 3.25 }),
       mark: () => markPos.ok ? { x: markPos.x, y: markPos.y, z: markPos.z } : null,
