@@ -9,12 +9,12 @@
 // SSX.keys.audit() lists visible action buttons and their binding (tests/test-keys.js fails on any without one).
 const OWN = { // id -> key the owning module already handles
   driveBtn: 'E', petBtn: 'P', radioBtn: 'N', heistBtn: 'G', jobAct: 'G', barContactBtn: 'G', baseBtn: 'K', turfAct: 'Y',
-  airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '/',
+  airRollBtn: 'Z', dzPay: '1', dzFight: '2', dzRun: '3', dzTalk: '4', cbBtn: 'B', raceCtxBtn: 'Enter', snipeBtn: 'Z', radioAccept: 'Enter', radioLater: '⌫', hxStuck: '/',
 };
 const TOUCH_ONLY = new Set(['jumpBtn', 'runBtn', 'fireBtn', 'meleeBtn', 'hudShow']);
 const CTX_SEL = '#surfBtns button, [id$="Act"], [id$="CtxBtn"], #hxCtxNext, #airRollBtn, #cbBtn, #hxStuck, #dockRcn, #dockSmg, #dockSmgF'; // v7.5.16: the 🦝 / smuggling dock buttons lost their number keys
 // HUD furniture that is never a "card": the right stack, dock, minimap, joystick, the context column itself
-const NOT_CARD = new Set(['surfHud', 'surfBtns', 'stackR', 'ssxDock', 'miniMap', 'hudShow', 'fireBtn', 'meleeBtn', 'joy', 'flyBtns', 'hud', 'crosshair', 'toast', 'loading', 'fireHint', 'kbLayerCss', 'radio', 'ctlPanel', 'topBar']); // radio offer + controls panel: own keys (Enter/⌫, Esc)
+const NOT_CARD = new Set(['surfHud', 'surfBtns', 'stackR', 'ssxDock', 'miniMap', 'hudShow', 'fireBtn', 'meleeBtn', 'joy', 'flyBtns', 'hud', 'crosshair', 'toast', 'loading', 'fireHint', 'kbLayerCss', 'radio', 'ctlPanel', 'topBar', 'snScope']); // radio offer + controls panel: own keys (Enter/⌫, Esc)
 const OWNKEY_RE = /\((?:[A-Z0-9]|Enter|Esc|Space|Tab|Shift[^)]*|⇧[^)]*|[[\]\\.,';/`-])\)\s*$/;
 const CSS = `body:not(.touch) [data-kb]::after{content:' (' attr(data-kb) ')';opacity:.85;font-weight:600}
 body:not(.touch) .kbNum[data-kbn]::before{content:attr(data-kbn) ' · ';opacity:.7;font-weight:700}`;
