@@ -1,6 +1,6 @@
 // Walks EVERY mission step on every world (story, city, side jobs, add-on missions) and fails if a step's target has no marker:
 // place steps need the ◆ waypoint (door found for enter/crack), defeat steps a red ◆ + minimap dot on every foe, collect steps
-// their items, race steps the gate. Every step must also get a Stuck? hint. Steps with nothing on the map (clean / choice) are skipped.
+// their items, race steps the gate. v7.5.16: place goals are never inside a collider and a car can drive to them. Every step must also get a Stuck? hint. Steps with nothing on the map (clean / choice) are skipped.
 // BASE=http://127.0.0.1:8995/ BR=chromium WORLDS=Mars,Moon node tests/test-mission-markers.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8995/', BR = process.env.BR || 'chromium';
@@ -13,6 +13,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const errors = []; page.on('pageerror', e => /audio device/i.test(e.message) || errors.push('PE ' + e.message.slice(0, 200)));
   const G = (f, a) => page.evaluate(f, a), bad = [], seen = { steps: 0, checked: 0, none: 0, quests: 0, worlds: [] };
   const wait = async (f, ms = 30000, a) => { try { await page.waitForFunction(f, a, { timeout: ms, polling: 150 }); return true; } catch (e) { return false; } };
+  // BFS on a 2 m grid from every car-sized free cell inside the goal ring; reachable = gets 60 m out (open ground / the road net)
+  const reach = () => { const W = window.__app.surface.world, t = window.__app.game.debug.target(); if (!W?.collide || !t) return { ok: true, skip: true };
+    const R = 2, S = 2, OUT = 60, blk = (x, z) => !!W.collide(x, z, R), inside = !!W.collide(t.x, t.z, 1.2);
+    const q = [], seenC = new Set(), key = (i, j) => i * 4099 + j;
+    for (let i = -Math.ceil(t.r / S); i <= Math.ceil(t.r / S); i++) for (let j = -Math.ceil(t.r / S); j <= Math.ceil(t.r / S); j++) if (Math.hypot(i * S, j * S) <= Math.max(t.r, 1)) { const x = t.x + i * S, z = t.z + j * S; if (!blk(x, z)) { q.push([i, j]); seenC.add(key(i, j)); } }
+    const fit = q.length > 0; let out = false;
+    for (let h = 0; h < q.length && !out && h < 6000; h++) { const [i, j] = q[h]; if (Math.hypot(i * S, j * S) >= OUT) { out = true; break; }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj, k = key(a, b); if (seenC.has(k)) continue; seenC.add(k); if (!blk(t.x + a * S, t.z + b * S)) q.push([a, b]); } }
+    return { ok: fit && out, inside, fit, out, x: Math.round(t.x), z: Math.round(t.z), r: t.r };
+  };
   const frames = n => G(n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 240000);
@@ -57,6 +67,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             await frames(4); let r = await look();
             if (st.mark && !(r.r > 0)) { await G(([x, z]) => window.__app.surface.debugMove(x + 4, z + 4, 0), [r.x, r.z]); await frames(12); r = { ...(await look()), searched: true }; } // a bounty hunt: the marker shows once you're close / the tip lands
             res = { ok: r.wp && (r.r > 0 || !/enter|crack/.test(st.type)), ...r };
+            // take = the car itself, tail = a moving car: skipped. v7.5.16 (Pad to Plaza's drop sat inside the Olympus Row plaza dome): a drop / goal point must not be inside a dome,
+            // building or prop collider, and a car (r 2) must fit somewhere inside the goal ring and have a drivable way out to open ground
+            if (r.r > 0 && !/enter|crack|take|tail/.test(st.type)) { const rc = await G(reach); seen.reach = (seen.reach || 0) + (rc.skip ? 0 : 1); if (!rc.ok) res = { ...res, ok: false, reach: rc }; }
           }
           if (!(await G(id => window.__app.game.info.quest?.id === id, id))) { seen.ended = (seen.ended || []).concat(where); console.log('note: the mission ended by itself on', where); break; } // e.g. a story heist the add-on closed
           const h = await G(() => window.SSX.missionHelp.hint());
