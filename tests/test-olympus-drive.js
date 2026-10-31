@@ -9,7 +9,7 @@ const base = process.env.BASE || 'http://127.0.0.1:8889/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); const page = await ctx.newPage();
+  const ctx = await browser.newContext({ viewport: { width: 640, height: 400 } }); const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
   const G = (f, a) => page.evaluate(f, a), R = {}, bad = [];
   const ok = (k, v, cond) => { if (cond === undefined) cond = v; R[k] = v ?? !!cond; if (!cond) bad.push(k); };
@@ -39,27 +39,30 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { const s = window.__app.surface; s.summonRover(); const i = s.info; s.debugPlace(i.roverX + 2.5, i.roverZ + 1.5); s.interact(); });
     ok('driving', await wait(() => window.__app.surface.info.driving, 15000));
     await page.mouse.move(10, 10);
+    R.fps = await G(() => new Promise(r => { const f0 = window.__frames, t0 = performance.now(); setTimeout(() => r(+((window.__frames - f0) / ((performance.now() - t0) / 1000)).toFixed(1)), 2000); }));
     // the plaza dome: radius by probing the collider out from the centre
     const dome = await G(O => { const W = window.__app.surface.world; if (!W.collide(O.x, O.z, 0.1)) return null; let r = 0; while (r < 60 && W.collide(O.x, O.z + r, 0.1)) r += 0.25; return r; }, O);
     R.domeR = dome;
     if (dome) {
-      // glance: south of the dome, heading 30 deg into it (forward = (-sin yaw, -cos yaw)), start 7 m out
-      const g0 = { x: O.x - 14, z: O.z + dome + 3.2 }; await place(g0.x, g0.z, -Math.PI / 2 + 0.52); await sleep(300);
+            // start on the south-south-west side, heading along the tangent (westward round the dome) turned 30 deg into it
+      const ph = 100 * Math.PI / 180, R0 = dome + 3.2, nx = Math.cos(ph), nz = Math.sin(ph), tx = -Math.sin(ph), tz = Math.cos(ph), dx = Math.cos(0.52) * tx - Math.sin(0.52) * nx, dz = Math.cos(0.52) * tz - Math.sin(0.52) * nz;
+      await place(O.x + nx * R0, O.z + nz * R0, Math.atan2(-dx, -dz)); await sleep(300);
       const g = await drive(3000); ok('glance', g, g.path > 18 && g.stall < 1200);
       // wall: head-on into the dome from the south, throttle held 4 s
       await place(O.x, O.z + dome + 4, 0); await sleep(300);
       const w = await drive(4500); ok('wallUnstick', w, w.unstuck >= 1 && w.stall < 2400);
     } else ok('dome', false);
-    // prop: the smallest street / add-on collider within 400 m of the colony that has open ground around it
-    const prop = await G(() => { const A = window.SSX?.colliders, W = window.__app.surface.world, c = window.__app.surface.info.colony; if (!A) return null;
-      const L = A.list().filter(s => (s.type === 'cyl' ? s.r <= 0.8 : Math.max(s.hx, s.hz) <= 1.2 && Math.min(s.hx, s.hz) <= 0.8) && Math.hypot(s.x - c.x, s.z - c.z) < 700);
-      for (const s of L) { let free = true; for (let d = 3; d <= 12 && free; d += 1.5) if (W.collide(s.x, s.z + d, 2.2) || W.collide(s.x, s.z - d, 2.2)) free = false; if (free) return { ...s, n: L.length }; }
-      return { none: true, n: L.length }; });
+    // prop: a bench-sized add-on collider (the same shapes street props register) on open ground in the car's way
+    const prop = await G(O => { const A = window.SSX?.colliders, W = window.__app.surface.world; if (!A) return null;
+      for (let k = 0; k < 40; k++) { const x = O.x + 50 + k * 7, z = O.z + 40; let free = true; for (let d = -12; d <= 12 && free; d += 2) if (W.collide(x, z + d, 2)) free = false;
+        if (free) { A.add({ id: 'kbTestBench', type: 'box', x, z, hx: 1.1, hz: 0.35, group: 'test' }); return { x, z, walkerBlocked: !!W.collide(x, z, 0.45) }; } }
+      return null; }, O);
     R.prop = prop;
-    if (prop && !prop.none) {
-      await place(prop.x, prop.z + 10, 0); await sleep(300); // heading -z, straight through the prop
-      const p = await drive(2200); const end = await pos(); ok('propPass', { ...p, endZ: +(end.z - prop.z).toFixed(1) }, end.z < prop.z - 2);
-    } else R.propSkip = 'no small prop loaded near the colony';
+    if (prop) {
+      await place(prop.x, prop.z + 9, 0); await sleep(300); // heading -z, straight through the bench
+      const p = await drive(2200); const end = await pos(); ok('propPass', { ...p, endZ: +(end.z - prop.z).toFixed(1) }, end.z < prop.z - 2 && prop.walkerBlocked);
+      await G(() => window.SSX.colliders.remove('kbTestBench'));
+    } else ok('propSpot', false);
     // sweep
     const runs = []; for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4, x = O.x + Math.sin(an) * 75, z = O.z + Math.cos(an) * 75;
       await place(x, z, an); await sleep(300); // yaw an faces the centre

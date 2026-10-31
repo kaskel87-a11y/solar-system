@@ -879,7 +879,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       // v7.5.16 (Collin: vehicles stuck all the time at Olympus Row): a glancing hit slides along the wall / prop instead of a dead
       // stop + bounce; only a near head-on hit (>~45 deg into the surface) is a crash
       let head = 1; if (c) { const vx = nx - r.x, vz = nz - r.z, vl = Math.hypot(vx, vz) || 1, px = c.x - nx, pz = c.z - nz, pl = Math.hypot(px, pz) || 1; head = -(vx * px + vz * pz) / (vl * pl); }
-      if (c && head < 0.7 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6 && !world.collide(c.x, c.z, sp.r * 0.75, r)) {
+      let c2 = c && head < 0.7 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6 ? world.collide(c.x, c.z, sp.r * 0.75, r) : null;
+      if (c2 && Math.hypot(c2.x - c.x, c2.z - c.z) < 0.08) c2 = null; // float contact at the pushed-out edge
+      if (c && head < 0.7 && !c2 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6) {
         driven += Math.hypot(c.x - r.x, c.z - r.z); r.x = c.x; r.z = c.z; r.speed *= 1 - Math.max(0, head) * 0.5 * Math.min(1, dt * 10);
       } else if (c) { if (Math.abs(r.speed) > 9 && me) { onEvent('crash', { speed: Math.abs(r.speed) }); if (Math.abs(r.speed) > 16) game.hurtPlayer(Math.abs(r.speed) * 0.6, null); } r.speed *= -0.25; }
       else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
