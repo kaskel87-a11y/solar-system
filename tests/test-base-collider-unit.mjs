@@ -36,6 +36,39 @@ for (const side of Object.keys(SIDES)) { const r = drive(lot(1), side), gap = si
 // player (no from): unchanged full push-out
 { const s = lot(1), o = B.pushOut(s, c.x - 0.5, c.z, 0.45); ok('player inside a rack: out by the nearest face', o && Math.abs(o.x - (box.x0 - 0.45)) < 1e-6, o); }
 
+// every farm lot (ben/base-collider-fix): the homestead + its two touching extra lots (mars/farmcore.js ANNEXES: [0,-20], [20,-20]),
+// six racks each, driven through pushOutLots in world metres like base.js does. The regression: driving east into the westernmost
+// rack of the north-east lot (x 23, z 12 in the game) started on the north lot's ground, so only that lot's pieces were checked
+// and the ride went straight through. Every rack, every side, at 0.3 / 1 / 2.5 / 4 m a frame (15 m/s boost: 0.25 m at 60 fps, 3.75 m at the 0.25 s frame cap).
+{ const LOTS = [[0, 0], [0, -20], [20, -20]].map(([x, z]) => ({ state: lot(6), x, z }));
+  const racks = []; LOTS.forEach((L, n) => L.state.pieces.forEach(p => { const b = B.collidersOf(p)[0]; racks.push({ lot: n, b: { x0: b.x0 + L.x, x1: b.x1 + L.x, z0: b.z0 + L.z, z1: b.z1 + L.z }, c: { x: B.pieceCentre(p).x + L.x, z: B.pieceCentre(p).z + L.z } }); }));
+  const touch = (b, x, z) => { const qx = Math.max(b.x0, Math.min(x, b.x1)), qz = Math.max(b.z0, Math.min(z, b.z1)); return Math.hypot(x - qx, z - qz); };
+  const D = { west: [-3.4, 0, 1, 0], east: [3.4, 0, -1, 0], north: [0, -4.3, 0, 1], south: [0, 4.3, 0, -1] };
+  let worst = null, n = 0, failsHere = 0;
+  for (const r of racks) for (const [side, [ox, oz, dx, dz]] of Object.entries(D)) for (const step of [0.3, 1, 2.5, 4]) {
+    const sx = r.c.x + ox, sz = r.c.z + oz; let x = sx, z = sz; const o0 = B.pushOutLots(LOTS, x, z, RAD, { x, z }); const spawnShift = o0 ? Math.hypot(o0.x - x, o0.z - z) : 0; if (o0) { x = o0.x; z = o0.z; }
+    const gap0 = touch(r.b, x, z); let maxPush = 0, crossed = false, minGap = gap0;
+    for (let t = 0; t < Math.ceil(12 / step); t++) { const from = { x, z, jump: Math.max(B.TELEPORT, step * 2 + 1) }; x += dx * step; z += dz * step;
+      const o = B.pushOutLots(LOTS, x, z, RAD, from); if (o) { maxPush = Math.max(maxPush, Math.hypot(o.x - x, o.z - z)); x = o.x; z = o.z; }
+      if (dx ? (x - r.c.x) * Math.sign(ox) < 0 : (z - r.c.z) * Math.sign(oz) < 0) crossed = true; minGap = Math.min(minGap, touch(r.b, x, z)); }
+    n++; const okk = !crossed && spawnShift < 1e-6 && maxPush <= step + 1e-6 && minGap >= Math.min(gap0, RAD) - 1e-6;
+    if (!okk) { failsHere++; worst ||= { lot: r.lot, rack: [+r.c.x.toFixed(1), +r.c.z.toFixed(1)], side, step, crossed, spawnShift, maxPush, gap0, minGap, end: [x, z] }; } }
+  ok(`all lots, every rack, 4 sides, 4 speeds (${n} drives): never through, never shoved`, failsHere === 0, worst);
+  // the exact report: lot 2's westernmost rack (local slot 1,7 = 13, -14 here; x 23, z 12 in the game), driven east from 3.4 m west
+  const r = racks.filter(q => q.lot === 2).sort((u, v) => u.c.x - v.c.x)[0]; ok('north-east lot westernmost rack is at local (13, -14)', r.c.x === 13 && r.c.z === -14, r.c);
+  for (const step of [0.3, 1, 2.5, 4]) { let x = r.c.x - 3.4, z = r.c.z; for (let t = 0; t < 20; t++) { const from = { x, z, jump: 6 }; x += step; const o = B.pushOutLots(LOTS, x, z, RAD, from); if (o) { x = o.x; z = o.z; } }
+    ok(`exact case @${step} m/frame: stopped west of the rack`, x <= r.b.x0 - RAD + 1e-6 || (touch(r.b, x, z) >= RAD - 1e-6 && x < r.c.x), { x, z }); }
+  // only the lot under you (the #98 bug): that north lot alone lets it through
+  { let x = r.c.x - 3.4, z = r.c.z; for (let t = 0; t < 20; t++) { const from = { x, z }; x += 0.3; const o = B.pushOutLots([LOTS[1]], x, z, RAD, from); if (o) { x = o.x; z = o.z; } }
+    ok('north lot alone does not stop it (why every lot must count)', x > r.c.x, x); }
+  // one long frame straight through a lone rack: stopped on the near side, where it first touched
+  { const s = lot(1), L = [{ state: s, x: 0, z: 0 }], x0 = box.x0 - RAD - 0.5, o = B.pushOutLots(L, box.x1 + RAD + 0.5, c.z, RAD, { x: x0, z: c.z, jump: 10 });
+    ok('tunnel through in one frame: stopped at first touch', o && Math.abs(o.x - (box.x0 - RAD)) < 1e-3 && Math.abs(o.z - c.z) < 1e-9, o); }
+  // on foot (no from): unchanged
+  ok('on foot: same as pushOut', JSON.stringify(B.pushOutLots([{ state: lot(1), x: 0, z: 0 }], c.x - 0.5, c.z, 0.45)) === JSON.stringify(B.pushOut(lot(1), c.x - 0.5, c.z, 0.45)));
+  ok('unowned lot ignored', B.pushOutLots([{ state: { ...lot(1), owned: false }, x: 0, z: 0 }], c.x, c.z, RAD, { x: c.x - 0.3, z: c.z }) === null);
+}
+
 // unregistering a lot (SSX.base.unregisterPlot -> basecore removePlot)
 { const n0 = B.PLOTS.length; ok('add annex lot', B.addPlot({ id: 'farm-annex-1', name: 'Annex', at: [10, 20], price: 0 }).ok && B.PLOTS.length === n0 + 1);
   const r = B.removePlot('farm-annex-1'); ok('removePlot drops it', r.ok && r.id === 'farm-annex-1' && !B.plotById('farm-annex-1') && B.PLOTS.length === n0, r);
