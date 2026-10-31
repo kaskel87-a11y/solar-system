@@ -17,7 +17,7 @@ const KNOWN = {
   KeyA: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'], KeyD: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'],
   Slash: ['index.html', 'help/stuckcore.js'], // ? (Shift+/) opens Controls | plain / = Stuck? hint (v7.5.16)
   KeyR: ['index.html', 'trackbuilder.js'], KeyZ: ['airroll.js', 'mars/gravity.js', 'mars/sniper.js', 'trackbuilder.js'], // builder has its own keymap; Z airborne roll vs ground gravity toggle
-  KeyF: ['index.html', 'controlmode.js'], KeyM: ['index.html', 'controlmode.js'], // keyboard-only fire mode reuses the game's keys
+  KeyF: ['index.html', 'controlmode.js', 'mars/sniper.js'], KeyM: ['index.html', 'controlmode.js'], // keyboard-only fire mode reuses the game's keys
   KeyI: ['mars/arsenal.js', 'phonetexts.js'], // I reload (no Shift) | Shift+I texts
   KeyX: ['index.html', 'mars/smugglecore.js'], KeyB: ['mars/contraband.js', 'mars/smugglecore.js'], // smuggling dump / bribe in space only; medkit / stash on the surface
   KeyG: ['heist.js', 'mars/jobs.js', 'mars/barcontact.js'], KeyY: ['mars/turf.js', 'mars/street.js'], // context action buttons; jobs defers to heist

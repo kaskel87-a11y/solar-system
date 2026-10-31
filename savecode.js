@@ -28,7 +28,8 @@
     'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1',
     'ssx.still.v1', 'ssx.still.v1.bak', // moonshine still (mars/still.js) + its #83-style mirror
     'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
-    'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1' // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
+    'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
+    'ssx.sniper.v1' // v7.5.19 sniper contracts (done/stats)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];
