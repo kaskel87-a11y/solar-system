@@ -52,6 +52,7 @@ const PRECACHE = [
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   `mars/missionheat.js${q}`, // v7.5.11 police ease off on missions (SSX.missionHeat)
+  `perfgov.js${q}`, `hud/hudslim.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   `clubdancers.js${q}`, `privateshow.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   `savecode.js${q}`, // 💾 Save Code (SSX.savecode)
