@@ -547,7 +547,7 @@ const api = {
   enable() { cfg.enabled = true; if (post) post.mode = cfg.post; rebuildAll(); street?.enable(true); save(); return true; },
   disable() { cfg.enabled = false; rebuildAll(); if (post) post.mode = 'off'; restoreFog(); street?.disable(true); save(); return false; },
   get enabled() { return cfg.enabled; },
-  setPost(m) { cfg.post = ['full', 'lite', 'off'].includes(m) ? m : 'off'; if (post) post.mode = cfg.enabled ? cfg.post : 'off'; save(); return cfg.post; },
+  setPost(m, temp) { if (temp) { if (post) post.mode = cfg.enabled && m !== 'off' ? (m === 'cfg' ? cfg.post : m) : 'off'; return post?.mode; } cfg.post = ['full', 'lite', 'off'].includes(m) ? m : 'off'; if (post) post.mode = cfg.enabled ? cfg.post : 'off'; save(); return cfg.post; }, // v7.5.15 temp: perfgov's load governor, not saved ('cfg' = back to the saved mode)
   district(id, o) { if (o === null) delete overrides[id]; else if (o) overrides[id] = { ...(overrides[id] || {}), ...o }; const b = built.get(id); if (b) dispose(b); return dcfg(id); },
   rebuild: () => rebuildAll(),
   stats: () => ({ ...stats, built: [...built.keys()], post: post?.mode || 'off', postFrames: post?.frames || 0, level: cfg.level, enabled: cfg.enabled, phone: PHONE, audio: audioDone, street: street?.stats?.() || null }),

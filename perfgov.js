@@ -10,6 +10,12 @@
 //     step up (max min(devicePixelRatio, 2)). Waits while SSX.stormGuard has its own storm DPR floor on.
 //  3. while landed the space view (planets, sky, orbits) is NOT rendered or updated (index.html animate() returns early), but its
 //     textures stay on the GPU. We free them on landing (three re-uploads a texture on its next use) and pre-upload on takeoff.
+//  4. v7.5.15 sustained-load governor (Collin, again: "still lagging after 1-2 minutes"). A 4-minute soak found no leak (heap saw-tooths
+//     40-80 MB, scene ~4000 objects, geometries/textures/programs level off once each place has been visited), so the lag is the phone
+//     heating up and throttling. On phones, once landed play has run 75 s or the frame rate sits under 50 fps for 3 s, every
+//     requestAnimationFrame loop is paced to 30 fps (half the GPU/CPU work per second, steady instead of 60 -> 20 stutter). Sticky
+//     for the session. Still under 26 fps at 30 for 4 s: the film-look overlay goes off (not saved) and the pixel ratio may go to 0.85.
+//     Override: localStorage 'ssx.fps' = '60' (never cap) or '30' (cap from the start); ?fps=60 / ?fps=30. SSX.perfGov.setCap(on).
 // Off switch: ?perfgov=0 or localStorage 'ssx.perfgov' = '0'. Window API: SSX.perfGov = { state(), cullPass(), setDpr(v), freed() }
 import * as THREE from 'three';
 
@@ -18,7 +24,35 @@ const app = () => window.__app;
 const phone = () => (matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window) && Math.min(screen.width || innerWidth, screen.height || innerHeight) <= 500;
 const S = { cull: false, cands: [], candT: 0, passT: 0, culled: 0, total: 0, dpr: null, dprMax: 2, lowT: 0, highT: 0, fps: 60, frames: 0, fpsT: 0, drops: 0, raises: 0,
   landed: false, freed: [], freedMB: 0, freedN: 0, wrapped: false, phone: false };
-const STEPS = [2, 1.75, 1.5, 1.25, 1];
+const STEPS = [2, 1.75, 1.5, 1.25, 1], CAP_STEPS = [2, 1.75, 1.5, 1.25, 1, 0.85];
+// ---------- 4. 30 fps pacing (phones, sustained load) ----------
+const fpsPref = (() => { try { const m = /[?&]fps=(30|60)/.exec(location.search); return m ? m[1] : (localStorage.getItem('ssx.fps') || 'auto'); } catch (e) { return 'auto'; } })();
+const C = { on: false, why: null, at: 0, q: new Map(), seq: 0, pending: 0, last: 0, landedT: 0, slowT: 0, lightT: 0, lite: false, flushes: 0 };
+const nRaf = window.requestAnimationFrame.bind(window), nCaf = window.cancelAnimationFrame.bind(window);
+function pump(ts) {
+  C.pending = 0; if (!C.on) { const cbs = [...C.q.values()]; C.q.clear(); for (const cb of cbs) run(cb, ts); return; }
+  if (C.last && ts - C.last < 28) { C.pending = nRaf(pump); return; } // ~33 ms cadence on a 60 Hz screen (every other vsync)
+  C.last = ts; C.flushes++; const cbs = [...C.q.values()]; C.q.clear(); for (const cb of cbs) run(cb, ts);
+}
+function run(cb, ts) { try { cb(ts); } catch (e) { setTimeout(() => { throw e; }); } }
+if (!off) {
+  window.requestAnimationFrame = function (cb) { if (!C.on) return nRaf(cb); const id = ++C.seq; C.q.set(id, cb); if (!C.pending) C.pending = nRaf(pump); return -id; };
+  window.cancelAnimationFrame = function (id) { if (id < 0) C.q.delete(-id); else nCaf(id); };
+}
+export function setCap(on, why = 'manual') { on = !!on; if (on === C.on) return C.on; C.on = on; C.why = on ? why : null; C.at = performance.now(); C.last = 0; S.lowT = S.highT = 0; if (!on && C.lite) liteOff(false); return C.on; }
+function liteOff(v) { C.lite = v; try { window.SSX?.grime?.setPost?.(v ? 'off' : 'cfg', true); } catch (e) { /* */ } }
+function capTick(now, landed) {
+  if (!S.phone || document.hidden || fpsPref === '60') return;
+  if (fpsPref === '30') { if (!C.on) setCap(true, 'pref'); return; }
+  if (!landed) { C.slowT = 0; return; }
+  if (!C.on) {
+    C.landedT++; if (S.fps < 50) C.slowT++; else C.slowT = 0;
+    if (C.slowT >= 3) setCap(true, 'slow'); else if (C.landedT >= 75) setCap(true, 'heat');
+    return;
+  }
+  if (S.fps < 26) C.lightT++; else C.lightT = 0;
+  if (C.lightT >= 4 && !C.lite) { C.lightT = 0; liteOff(true); }
+}
 const tmp = new THREE.Vector3(), camP = new THREE.Vector3();
 
 // ---------- 1. far-fog cull ----------
@@ -64,16 +98,18 @@ function wrapRender() {
 }
 
 // ---------- 2. adaptive pixel ratio (phones) ----------
-export function setDpr(v) { const R = app()?.renderer; if (!R?.setPixelRatio) return; v = Math.max(1, Math.min(S.dprMax, v)); S.dpr = v; if (Math.abs(R.getPixelRatio() - v) > 0.01) { R.setPixelRatio(v); try { R.setSize(innerWidth, innerHeight); } catch (e) { /* */ } } }
+export function setDpr(v) { const R = app()?.renderer; if (!R?.setPixelRatio) return; v = Math.max(C.on && C.lite ? 0.85 : 1, Math.min(S.dprMax, v)); S.dpr = v; if (Math.abs(R.getPixelRatio() - v) > 0.01) { R.setPixelRatio(v); try { R.setSize(innerWidth, innerHeight); } catch (e) { /* */ } } }
 function dprTick(dt, now) {
   S.frames++; if (now - S.fpsT >= 1000) { S.fps = S.frames * 1000 / (now - S.fpsT); S.frames = 0; S.fpsT = now; } else return;
+  try { capTick(now, !!app()?.state?.onSurface); } catch (e) { /* */ }
   if (!S.phone || document.hidden) return;
   if (window.SSX?.stormGuard?.state?.().dprLow) { S.lowT = S.highT = 0; return; }
   const R = app()?.renderer; if (!R) return; const cur = R.getPixelRatio();
   if (S.dpr != null && Math.abs(cur - S.dpr) > 0.01) S.dpr = cur; // someone else moved it: follow
-  if (S.fps < 40) { S.lowT++; S.highT = 0; } else if (S.fps > 57) { S.highT++; S.lowT = 0; } else { S.lowT = 0; S.highT = 0; }
-  if (S.lowT >= 3) { S.lowT = 0; const nx = STEPS.find(v => v < cur - 0.01); if (nx) { setDpr(nx); S.drops++; } }
-  else if (S.highT >= 12) { S.highT = 0; const up = [...STEPS].reverse().find(v => v > cur + 0.01 && v <= S.dprMax); if (up) { setDpr(up); S.raises++; } }
+  const lo = C.on ? 24 : 40, hi = C.on ? 29 : 57, ST = C.on && C.lite ? CAP_STEPS : STEPS; // capped: judged against 30, not 60
+  if (S.fps < lo) { S.lowT++; S.highT = 0; } else if (S.fps > hi) { S.highT++; S.lowT = 0; } else { S.lowT = 0; S.highT = 0; }
+  if (S.lowT >= 3) { S.lowT = 0; const nx = ST.find(v => v < cur - 0.01); if (nx) { setDpr(nx); S.drops++; } }
+  else if (S.highT >= (C.on ? 20 : 12)) { S.highT = 0; const up = [...ST].reverse().find(v => v > cur + 0.01 && v <= Math.min(S.dprMax, C.on ? 1.5 : 2)); if (up) { setDpr(up); S.raises++; } }
 }
 
 // ---------- 3. space-view textures while landed ----------
@@ -112,5 +148,6 @@ function tick(now) {
 }
 if (!off) requestAnimationFrame(tick);
 window.SSX = window.SSX || {};
-window.SSX.perfGov = { off, state: () => ({ off, phone: S.phone, dpr: app()?.renderer?.getPixelRatio?.(), fps: Math.round(S.fps), drops: S.drops, raises: S.raises, culled: S.culled, total: S.total, landed: S.landed, freedN: S.freedN, freedMB: S.freedMB, texBefore: S.texBefore, texAfter: S.texAfter }),
+window.SSX.perfGov = { off, state: () => ({ off, phone: S.phone, dpr: app()?.renderer?.getPixelRatio?.(), fps: Math.round(S.fps), drops: S.drops, raises: S.raises, culled: S.culled, total: S.total, landed: S.landed, freedN: S.freedN, freedMB: S.freedMB, texBefore: S.texBefore, texAfter: S.texAfter, cap: C.on ? 30 : null, capWhy: C.why, capPref: fpsPref, lite: C.lite, landedS: C.landedT, flushes: C.flushes }),
+  setCap,
   cullPass, setDpr, freed: () => ({ n: S.freedN, mb: S.freedMB }) };
