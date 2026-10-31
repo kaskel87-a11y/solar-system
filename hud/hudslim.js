@@ -14,7 +14,7 @@ const css = `
 /* playtest M2 (iPhone SE 375x667): the stack is clipped at 25vh to keep the middle clear, and the job-offer pill sat last, so it was clipped away
    under the tour card + waypoint. It now rides first while it waits (one 22 px line), and the waypoint chip steps aside meanwhile */
 body.hxSlim #stackR > #radio{order:-1}
-body.hxSlim #stackR:has(> #radio.mini[style*="block"]) > #hxWay{display:none!important}
+@media (orientation:portrait) and (max-height:720px){body.hxSlim #stackR:has(> #radio.mini[style*="block"]) > #hxWay{display:none!important}} /* only where the 25vh stack is too short for all three */
 #hxStat{display:none;align-items:center;gap:6px;box-sizing:border-box;max-width:min(300px,100%);min-height:24px;padding:2px 8px;border-radius:9px;background:#000;color:#fff;border:1px solid #fff;font:800 12px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;pointer-events:none;flex:none}
 #hxStat.on{display:flex} #hxStat .st{letter-spacing:1px} #hxStat .st i{font-style:normal;opacity:.3} #hxStat .sr{color:#ffd400} #hxStat .mh{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #hxStat .sep{opacity:.5}
