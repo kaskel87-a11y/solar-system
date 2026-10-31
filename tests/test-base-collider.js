@@ -2,7 +2,9 @@
 // An add-on lot with the farm's rack piece in all six home-lot slots (0.4 m apart). Your rover spawns next to the first
 // rack on each side (west, east, north, south) and drives at it in 0.3 m steps: it must stay on that side, never get shoved
 // more than one step (the old push sent it ~3.5 m west on the west side). Then unregisterPlot removes the lot: no marker,
-// no colliders; an unowned FOR SALE lot loses its marker too; built-in lots are refused.
+// no colliders; an unowned FOR SALE lot loses its marker too; built-in lots are refused. Then the real farm with both extra
+// lots (18 racks) in the harvester: every lot's first rack from all four sides, each lot's west- and eastmost rack from outside,
+// at 0.3 m and 2.5 m steps: never through a rack, never shoved more than a step, never shoved on spawn.
 // BASE=http://127.0.0.1:8853/ BR=webkit DEV="iPhone 14 Pro" VP=393x852 node test-base-collider.js   (DEV=desktop BR=chromium)
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8853/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop', desk = DEV === 'desktop', VP = process.env.VP;
@@ -71,6 +73,33 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('reRegister', back, back.ok && back.n === 6);
     ok('events', await G(() => window.__bev), (await G(() => window.__bev.filter(e => e[0] === 'plot:unregister').length)) === 2);
     await G(LOT => window.SSX.base.unregisterPlot(LOT, { forget: true }), LOT);
+    // ---- the real farm, every lot (ben/base-collider-fix): homestead + both extra lots, 18 racks, driven in the harvester.
+    // #98 regression: east into the north-east lot's westernmost rack (x 23, z 12) went straight through, because the
+    // harvester started on the north lot's ground and only that lot's pieces were checked.
+    await G(() => { if (window.__app.surface.info.driving) window.__app.surface.interact(); }); await fr(4);
+    const farm = await G(async () => { const g = window.__app.game, sl = ms => new Promise(r => setTimeout(r, ms)); g.debug?.calm?.(true); g.progress.credits = 60000; g.progress.xp = 5000; g.save?.();
+      const F = window.SSX.farm, H = window.SSX.harvest; F.debug.reset(); H.debug.reset(); const p = F.places().find(q => q.id === 'farm'); window.__app.surface.debugMove(p.x, p.z + 12, 0); await sl(600);
+      const o = { buy: F.buy()?.ok !== false }; await sl(700); o.dome = F.buildDome()?.ok !== false; await sl(700);
+      o.d2 = F.expand('dome2', 'cr').ok; await sl(700); o.d3 = F.expand('dome3', 'cr').ok; await sl(700);
+      let n = 0; for (let i = 0; i < 18; i++) { if (!F.addRack().ok) break; n++; await sl(400); } o.racks = n; o.hb = H.buyHarvester().ok; return o; });
+    ok('farmSetup', farm, farm.d2 && farm.d3 && farm.racks === 18 && farm.hb);
+    const hs = await G(() => window.SSX.harvest.status().rover.spot); await move(hs.x + 2.6, hs.z, Math.PI / 2); await fr(8); await sleep(600);
+    let got = null; for (let t = 0; t < 12 && !got; t++) { got = await G(() => { const a = window.__dealer?.myrides?.ctxAction?.(); if (!a) return null; a.act(); return a.label; }); if (!got) await sleep(800); } await fr(10);
+    ok('harvesterDriving', await G(() => window.SSX.harvest.status().rover.driving));
+    const sp = await G(() => window.SSX.farm.rackSpots()); ok('lots', [0, 1, 2].map(l => sp.filter(q => q.lot === l).length), [0, 1, 2].every(l => sp.filter(q => q.lot === l).length === 6));
+    // drive: spawn off one side of rack rr, then 0.3 m (walking pace) or 2.5 m (fast) steps straight at it
+    const drive = async (rr, side, step) => { const [ox, oz, dx, dz, yaw] = { west: [-3.4, 0, 1, 0, Math.PI / 2], east: [3.4, 0, -1, 0, -Math.PI / 2], north: [0, -4.3, 0, 1, Math.PI], south: [0, 4.3, 0, -1, 0] }[side];
+      const sx = rr.x + ox, sz = rr.z + oz; await move(sx, sz, yaw); await fr(4); const s0 = await pos(); let x = s0.x, z = s0.z, maxPush = 0;
+      for (let k = 0; k < Math.ceil(5 / step); k++) { const tx = x + dx * step, tz = z + dz * step; await move(tx, tz, yaw); await fr(2); const q = await pos(); maxPush = Math.max(maxPush, Math.hypot(q.x - tx, q.z - tz)); x = q.x; z = q.z; }
+      const off = dx ? (x - rr.x) * Math.sign(ox) : (z - rr.z) * Math.sign(oz), face = dx ? 0.8 : 1.7; // > face: still on its own side, outside the rack
+      return { spawnShift: +Math.hypot(s0.x - sx, s0.z - sz).toFixed(2), maxPush: +maxPush.toFixed(2), off: +off.toFixed(2), pass: off > face && Math.hypot(s0.x - sx, s0.z - sz) < 0.35 && maxPush <= step + 0.05 }; };
+    for (const l of [0, 1, 2]) { const racks = sp.filter(q => q.lot === l).sort((u, v) => u.x - v.x), first = sp.filter(q => q.lot === l)[0];
+      for (const step of [0.3, 2.5]) {
+        for (const side of ['west', 'east', 'north', 'south']) { const r = await drive(first, side, step); ok(`lot${l}-first-${side}@${step}`, r, r.pass); }
+        let r = await drive(racks[0], 'west', step); ok(`lot${l}-westmost-west@${step}`, r, r.pass); // lot 2: the reported case (x 23, z 12)
+        r = await drive(racks[racks.length - 1], 'east', step); ok(`lot${l}-eastmost-east@${step}`, r, r.pass); } }
+    ok('exactCaseRack', (({ x, z }) => [x, z])(sp.filter(q => q.lot === 2).sort((u, v) => u.x - v.x)[0]), true);
+    await G(() => { if (window.__app.surface.info.driving) window.__app.surface.interact(); });
     ok('noErrors', errors.slice(0, 5), errors.length === 0);
   } catch (e) { bad.push('EXC ' + e.message); }
   console.log(JSON.stringify(R));
