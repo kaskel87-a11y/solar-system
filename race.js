@@ -462,7 +462,7 @@ function ensureUI() {
   // (Save Code, track name, chat) or when another handler already took Enter (radio offer, controls panel).
   window.addEventListener('keydown', e => {
     if ((e.code !== 'Enter' && e.code !== 'NumpadEnter') || e.repeat || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
-    const t = document.activeElement; if (t && t !== document.body && t.tagName !== 'CANVAS' && t !== ui.ctx && !ui.res.contains(t)) return; // typing, or Enter already presses a focused menu button
+    const t = document.activeElement; if (t && t !== document.body && t.tagName !== 'CANVAS') return; // typing, or Enter already presses a focused menu button
     if (panel.classList.contains('on') || builder?.open) return;
     if (ui.res.classList.contains('on')) { const b = ui.res.querySelector('#raceNext') || ui.res.querySelector('#raceAgain'); if (b) { e.preventDefault(); b.click(); /* detail 0 -> tapButton's keyboard path, once */ } return; }
     if (ui.ctx.style.display !== 'none' && ui.near) { e.preventDefault(); goNear(); }
