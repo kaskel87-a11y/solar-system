@@ -372,7 +372,7 @@ export function createWorld(ctx) {
       if (d < m) { hit = true; const k = m / (d || 1); x = s.x + dx * k; z = s.z + dz * k; }
     }
     for (const v of vehicles) { if (v === skip || !v.parked) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
-    const xc = globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
+    const CO = globalThis.SSX?.colliders; CO?.setVehicle?.(r > 0.6 && (yb !== undefined || !!skip?.spec)); let xc = null; try { xc = CO?.resolve?.(x, z, r); } finally { CO?.setVehicle?.(false); } if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
     return hit ? { x, z } : null;
   }
   function allVehicles() { return vehicles; } // collide() shadows `vehicles` with the cars a flying vehicle can't clear

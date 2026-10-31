@@ -837,6 +837,22 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     }
     r.wasAir = r.air; return ang;
   }
+  // v7.5.16 auto-unstick: throttle held for 1.5 s but the vehicle has moved < 0.5 m -> lift it out to the nearest spot it fits,
+  // preferring the way it was trying to go (then back, then the sides)
+  function unstick(r, sp, thr, dt) {
+    const a = r.unst || (r.unst = { x: r.x, z: r.z, t: 0 });
+    if (Math.abs(thr) < 0.3 || r.air || Math.hypot(r.x - a.x, r.z - a.z) > 0.5) { a.x = r.x; a.z = r.z; a.t = 0; return; }
+    if ((a.t += dt) < 1.5) return;
+    const room = sp.r * 0.75 + 0.3, dir = r.yaw + (thr < 0 ? Math.PI : 0);
+    let best = null;
+    for (let d = 2; d <= 14 && !best; d += 1.5) for (const o of [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.2, -2.2, Math.PI]) {
+      const an = dir + o, x = r.x - Math.sin(an) * d, z = r.z - Math.cos(an) * d;
+      if (!world.collide(x, z, room, r)) { best = { x, z }; break; }
+    }
+    a.t = 0; if (!best) return;
+    r.x = best.x; r.z = best.z; a.x = r.x; a.z = r.z; r.speed = 0; r.vy = Math.max(r.vy || 0, 2.5);
+    stuntLog.unstuck = (stuntLog.unstuck || 0) + 1; onEvent('unstuck', { x: r.x, z: r.z });
+  }
   function updateRover(dt, input, g, r = rover) {
     const height = world.vehicleGround(r); // live fix (roofs.js): ground under this vehicle = terrain or a roof it's on
     const sp = r.spec || VEHICLES.rover, me = driving && car === r;
@@ -860,8 +876,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (cfg.water !== undefined && !sp.amphibious && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2; // v7.4: spec.amphibious rides on the sea
     else {
       const c = world.collide(nx, nz, sp.r * 0.75, r);
-      if (c) { if (Math.abs(r.speed) > 9 && me) { onEvent('crash', { speed: Math.abs(r.speed) }); if (Math.abs(r.speed) > 16) game.hurtPlayer(Math.abs(r.speed) * 0.6, null); } r.speed *= -0.25; }
+      // v7.5.16 (Collin: vehicles stuck all the time at Olympus Row): a glancing hit slides along the wall / prop instead of a dead
+      // stop + bounce; only a near head-on hit (>~45 deg into the surface) is a crash
+      let head = 1; if (c) { const vx = nx - r.x, vz = nz - r.z, vl = Math.hypot(vx, vz) || 1, px = c.x - nx, pz = c.z - nz, pl = Math.hypot(px, pz) || 1; head = -(vx * px + vz * pz) / (vl * pl); }
+      if (c && head < 0.7 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6 && !world.collide(c.x, c.z, sp.r * 0.75, r)) {
+        driven += Math.hypot(c.x - r.x, c.z - r.z); r.x = c.x; r.z = c.z; r.speed *= 1 - Math.max(0, head) * 0.5 * Math.min(1, dt * 10);
+      } else if (c) { if (Math.abs(r.speed) > 9 && me) { onEvent('crash', { speed: Math.abs(r.speed) }); if (Math.abs(r.speed) > 16) game.hurtPlayer(Math.abs(r.speed) * 0.6, null); } r.speed *= -0.25; }
       else { driven += Math.hypot(nx - r.x, nz - r.z); r.x = nx; r.z = nz; }
+      if (me) unstick(r, sp, thr, dt);
     }
     if (sp.hover) { // hover vehicles: ride a cushion above the ground, lean into turns
       if (wantThr && !r.jets && r.body) r.jets = buildThrusters(r.body, true);

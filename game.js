@@ -10,7 +10,7 @@ import { buildVehicle } from './world.js';
 import { kbOnly, KB_AIM_CONE } from './controlmode.js';
 const KB_FIRE_CONE = 0.52; // v7.5.16: F-key auto-aim, rad either side of the heading (~30 degrees)
 import { segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission checkpoints: xz segment hits (airborne / fast frames)
-import { clearGates } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
+import { clearGates, reachSpot } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -1217,7 +1217,10 @@ export function createGame(ctx) {
     if (s.type === 'return') { const S = ctx.SHIP; return { x: S.x - 8, z: S.z + 8, r: 12 }; }
     if (s.type === 'enter' || s.type === 'crack') { const d = ctx.doorFor?.(s.building); return d ? { x: d.x, z: d.z, r: 2.5, door: d.kind } : { x: player.x, z: player.z, r: 0 }; }
     if (s.type === 'choice' && !s.at) return { x: player.x, z: player.z, r: 0 };
-    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2); if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
+    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2);
+      // v7.5.16: never inside a dome / building / prop footprint (Pad to Plaza's drop was the middle of the plaza dome)
+      const W = ctx.gateWorld?.(); if (p && W?.collide) p = reachSpot(p, (x, z, r) => !!W.collide(x, z, r));
+      if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
     if (s.type === 'take') { const v = ctx.nearestVehicle?.(); return v ? { x: v.x, z: v.z, r: 3 } : { x: player.x, z: player.z, r: 3 }; }
     if (s.type === 'clean') return { x: player.x, z: player.z, r: 0 };
     if (s.type === 'race') { const p = ctx.colonyAt?.(s.pts[0]) || ctx.safePoint(0, 60); return { x: p.x, z: p.z, r: 6 }; }

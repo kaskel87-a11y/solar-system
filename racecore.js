@@ -88,6 +88,20 @@ function pickSpot(p, a, b, blocked, needs, maxR = 60) {
   }
   return null;
 }
+// v7.5.16 (Collin: the Pad to Plaza drop sat inside the Olympus Row plaza dome): a mission / job marker inside a solid footprint
+// moves to the nearest spot a car fits (room) that also has a straight drivable run (LANE_R) 14 m further out, so it is never
+// in a pocket between two domes. Returns the point itself (same object) when it is already clear.
+export function reachSpot(p, blocked, room = 3, maxR = 70) {
+  if (!blocked || !p || !blocked(p.x, p.z, room)) return p;
+  let first = null;
+  for (let r = 1; r <= maxR; r += 1) for (let k = 0; k < 32; k++) {
+    const an = k / 32 * Math.PI * 2, c = Math.cos(an), s = Math.sin(an), x = p.x + c * r, z = p.z + s * r;
+    if (blocked(x, z, room)) continue;
+    const q = { x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10 }; first ??= q;
+    if (laneClear(q, { x: x + c * 14, z: z + s * 14 }, blocked)) return { ...q, moved: { x: p.x, z: p.z } };
+  }
+  return first ? { ...first, moved: { x: p.x, z: p.z } } : p;
+}
 // footprint predicate for tests / node: solids [{x,z,r}|{x,z,box:[hx,hz]}] like world.js builds them
 export function footprintBlocked(solids) {
   return (x, z, r = 0) => solids.some(s => s.box ? Math.abs(x - s.x) < s.box[0] + r && Math.abs(z - s.z) < s.box[1] + r : Math.hypot(x - s.x, z - s.z) < s.r + r);
