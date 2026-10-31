@@ -1490,7 +1490,7 @@
       }
       else if (type === 'chime') pickupSnd();
       else if (type === 'pickup') { if (ev.ammo) { au7.fx.crate(); sfxLog.push('ammo'); } else pickupSnd(); toast(`${ev.ammo ? '📦' : ev.blade ? '🗡️' : '✅'} ${ev.name}`, 2500); updateSurfHud(true); }
-      else if (type === 'melee') { if (ev.hit) { ev.blade ? au7.fx.blade() : au7.fx.punch(); sfxLog.push(ev.blade ? 'blade' : 'punch'); } else au7.fx.whoosh(); }
+      else if (type === 'melee') { if (ev.hit) { ev.cane && au7.fx.thwack ? au7.fx.thwack() : ev.blade ? au7.fx.blade() : au7.fx.punch(); sfxLog.push(ev.cane ? 'thwack' : ev.blade ? 'blade' : 'punch'); } else au7.fx.whoosh(); }
       else if (type === 'meleeHit') { /* world folk: sound comes from the melee event */ }
       else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '☣️ SPECIMEN' : '💎 RARE FIND', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
       else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.emp) { sfxLog.push('emp'); au7.fx.emp(); } else if (ev.rail) { sfxLog.push('rail'); au7.fx.rail(); } else if (ev.rocket) { sfxLog.push('rocket'); au7.fx.rocket(); } else if (ev.torch) { if (now - lastTorch > 110) { lastTorch = now; sfxLog.push('torch'); au7.fx.torch(); } } else if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }

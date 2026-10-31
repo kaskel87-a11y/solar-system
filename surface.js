@@ -1000,13 +1000,17 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const e = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.72), new THREE.MeshBasicMaterial({ color: 0x7fe9ff })); e.position.set(0, -0.06, -0.45); bl.add(e);
       P.armR.add(bl); P.blade = bl;
     }
+    if (P.blade) P.blade.visible = !player.caneHand; // v7.5.15: Velvet Mack's cane is the melee weapon, so no machete in the same hand
     const m = player.melee;
     if (m && m.t > 0) {
       m.t -= dt; const k = Math.max(0, m.t / m.max), arc = Math.sin(k * Math.PI);
-      if (m.kick) { P.legR.rotation.x = 1.45 * arc; P.armL.rotation.x = -0.5 * arc; }
+      if (m.cane) { // wind up behind the shoulder, then thwack down and across (third hit: a full overhead chop)
+        const big = m.step === 2; P.armR.rotation.x = (big ? 2.9 : 2.3) * Math.sin(k * Math.PI * 0.5) * (k > 0.35 ? 1 : k / 0.35) - 0.25 * (1 - k);
+        P.armR.rotation.z = (big ? 0 : (m.step % 2 ? -0.45 : 0.45)) * arc; P.armL.rotation.x = -0.35 * arc;
+      } else if (m.kick) { P.legR.rotation.x = 1.45 * arc; P.armL.rotation.x = -0.5 * arc; }
       else if (m.blade) P.armR.rotation.x = 0.1 + 2.4 * k;
       else (m.step % 2 ? P.armL : P.armR).rotation.x = 1.6 * arc;
-    }
+    } else if (m && m.cane && !m.done) { P.armR.rotation.z = 0; m.done = true; }
   }
 
   // ----- first-person rover cockpit: hood, dashboard, pillars and a live gauge, drawn on top of the world -----
@@ -1392,6 +1396,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.x0 + b.x1) / 2 + lx; player.z = (b.z0 + b.z1) / 2 + lz; player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
+    meleeRig: () => ({ blade: !!astro?.parts?.blade, bladeShown: !!astro?.parts?.blade?.visible, caneHand: !!player.caneHand, swing: player.melee ? { t: +player.melee.t.toFixed(3), cane: !!player.melee.cane, step: player.melee.step } : null, armR: +(astro?.parts?.armR?.rotation.x || 0).toFixed(2) }), // v7.5.15 test hook
     debugMove(x, z, yaw = 0) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     mapData() {

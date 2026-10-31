@@ -1,7 +1,8 @@
 // Velvet Mack (mars/skinscore.js 'mack', 1,000 cr): sold at the Threadbare stall between Hazmat Cook and Neon Street Hustler,
 // buys with a real tap, goes on the player rig (hat + feather, velvet suit + fur collar, chains, shades, cane in the right
-// hand), and the cane (skin.prop) hides while a weapon is out: firing (2.5 s after the last shot) and the machete equipped,
-// then comes back. Shots: front, side, machete drawn.
+// hand), and the cane (skin.prop) hides while a weapon is out: firing (2.5 s after the last shot) or the cleaver equipped,
+// then comes back. v7.5.15: the cane is Mack's melee weapon (replaces the machete; no machete beside it with the blaster out).
+// Shots: front, side, cane idle, cane mid-swing, cleaver drawn.
 // BASE=http://127.0.0.1:8978/ BR=webkit DEV=393x852 QS='look=classic&models=1' SHOTS_DIR=... node tests/test-velvet-mack.js
 const { chromium, webkit, devices } = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8978/', BR = process.env.BR || 'webkit', DEV = process.env.DEV || '393x852', QS = process.env.QS ?? 'look=classic&models=1';
@@ -50,9 +51,21 @@ const tag = `velvet-mack-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase(
     ok('caneInHand', await G(() => { const a = window.__skins.player().applied, k = window.__skins.C.BY_ID.mack; return a.anchors.filter(an => an.children.some(o => k.prop.some(key => o.material === window.__skins.mats.get(window.__skins.C.matKey(window.__skins.C.matSpec(k, key)))))).map(an => an.name); }), true);
     await atShop(4.5); await cam(Math.PI); await shot('front');
     await cam(Math.PI / 2); await shot('side');
-    // the machete drawn: cane hides; back to the blaster: cane back
-    await G(() => { const g = window.__app.surface.game; if (!g.progress.unlocks.includes('melee:blade')) g.progress.unlocks.push('melee:blade'); g.switchWeapon('blade'); }); await sleep(600);
-    const p3 = await prop(); ok('caneHidesMelee', { p3, w: await G(() => window.__app.surface.game.progress.equip.weapon) }, p3.out === 'melee' && !p3.shown);
+    // v7.5.15: the cane IS the melee weapon for Mack — blaster out (no shots): cane in hand, no machete beside it
+    await G(() => { const g = window.__app.surface.game; if (!g.progress.unlocks.includes('melee:blade')) g.progress.unlocks.push('melee:blade'); g.switchWeapon('rifle'); }); await sleep(600);
+    const r0 = await G(() => window.__app.surface.meleeRig()), p0b = await prop();
+    ok('noMacheteOverlap', { r0, p0b }, r0.caneHand && r0.blade && !r0.bladeShown && p0b.shown);
+    await cam(Math.PI * 0.75); await shot('cane-idle');
+    // machete selected: the cane stays in hand and swings (thwack) instead of the machete
+    await G(() => window.__app.surface.game.switchWeapon('blade')); await sleep(600);
+    const p3 = await prop(); ok('caneIsMelee', { p3, w: await G(() => window.__app.surface.game.progress.equip.weapon) }, p3.shown && !p3.out);
+    await G(() => { window.__app.surface.game.debug?.calm?.(true); window.__sfxMid = null; window.__app.surface.game.melee(); });
+    await sleep(110); const r1 = await G(() => window.__app.surface.meleeRig());
+    await shot('cane-swing');
+    ok('caneSwing', r1, !!r1.swing && r1.swing.cane && !r1.bladeShown && r1.armR > 0.5);
+    // the thermal cleaver keeps its own blade: cane hides while it is out
+    await G(() => { const g = window.__app.surface.game; if (!g.progress.unlocks.includes('melee:cleaver')) g.progress.unlocks.push('melee:cleaver'); g.switchWeapon('cleaver'); }); await sleep(900);
+    const p6 = await prop(), r6 = await G(() => window.__app.surface.meleeRig()); ok('cleaverHidesCane', { p6, r6 }, p6.out === 'melee' && !p6.shown && r6.bladeShown);
     await cam(Math.PI * 0.75); await shot('weapon-drawn');
     await G(() => window.__app.surface.game.switchWeapon('rifle')); await sleep(600);
     const p4 = await prop(); ok('caneBackAfterMelee', { p4, w: await G(() => window.__app.surface.game.progress.equip.weapon) }, p4.shown && !p4.out);
@@ -62,7 +75,8 @@ const tag = `velvet-mack-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase(
     ok('caneHidesFiring', { p1, shots }, p1.out === 'firing' && !p1.shown);
     await sleep(3000); const p2 = await prop(); ok('caneBackAfterFiring', p2, p2.shown && !p2.out);
     // another skin: no prop
-    await G(() => window.SSX.skins.equip('rusty')); await sleep(300); const p5 = await prop(); ok('noPropOtherSkin', p5, p5.meshes === 0);
+    await G(() => { window.SSX.skins.equip('rusty'); window.__app.surface.game.switchWeapon('blade'); }); await sleep(600); const p5 = await prop(), r5 = await G(() => window.__app.surface.meleeRig()); ok('noPropOtherSkin', { p5, r5 }, p5.meshes === 0 && !r5.caneHand && r5.bladeShown);
+    await G(() => window.__app.surface.game.switchWeapon('rifle')); await sleep(300);
     await G(() => window.SSX.skins.equip('mack')); await sleep(300); ok('reEquipCane', await prop(), (await prop()).shown);
   } catch (e) { bad.push('EXC ' + e.message); console.log(e.stack); }
   ok('noErrors', errors.slice(0, 5), errors.length === 0);

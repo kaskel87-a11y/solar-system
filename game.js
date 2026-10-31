@@ -619,14 +619,17 @@ export function createGame(ctx) {
   const hasCleaver = () => P.unlocks.includes('melee:cleaver');
   // which edge you swing: the one you have selected, else the best you own
   const meleeKind = () => P.equip.weapon === 'cleaver' && hasCleaver() ? 'cleaver' : P.equip.weapon === 'blade' && hasBlade() ? 'blade' : hasCleaver() ? 'cleaver' : hasBlade() ? 'blade' : null;
+  // v7.5.15 (Collin): with the Velvet Mack skin on, his jeweled cane is the melee weapon instead of the machete —
+  // machete damage and reach, a little more knockback, a thwack instead of a slash (the thermal cleaver, when you pick it, stays the cleaver)
+  const caneOn = () => { try { return window.SSX?.skins?.equipped === 'mack' && P.equip.weapon !== 'cleaver'; } catch (_) { return false; } };
   function melee() {
     const st = ctx.st();
     if (st.driving || H.down > 0 || st.intro > 0 || st.outro > 0 || MEL.cd > 0) return false;
     if (st.inside) { holster(); return false; }
-    const mk = meleeKind(), blade = !!mk, heavy = mk === 'cleaver';
+    const cane = caneOn(), mk = cane ? 'blade' : meleeKind(), blade = !!mk, heavy = mk === 'cleaver';
     if (time - MEL.last > 1.1) MEL.combo = 0;
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
-    const kick = step === 2, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (kick ? 0.3 : 0), knock = kick ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9);
+    const kick = step === 2 && !cane, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff
     let yaw = player.faceYaw ?? player.yaw, best = null, bd = range + 2.5;
@@ -643,20 +646,21 @@ export function createGame(ctx) {
       if (!blade && hits) break; // fists hit one thing, the blade sweeps
       a.hp -= dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; hits++;
       const c = center(a).clone();
-      if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
+      if (cane) burst(c.x, c.y, c.z, 12, 3.5, 0xf6cc50); // a gold-knob thwack, not a cut
+      else if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
       if (blade) splat(a.x + fx, a.z + fz, 0.6); }
-      if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1; a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, kick ? 1.2 : 0.6); if (!a.T.hover) a.vy = kick ? 5 : 2.5; }
+      if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1, big = kick || (cane && step === 2); a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, big ? 1.2 : 0.6); if (!a.T.hover) a.vy = big ? 5 : 2.5; }
       if (a.hp <= 0) killAgent(a);
     }
     if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
-    swing(yaw, blade, kick, heavy); player.melee = { t: kick ? 0.32 : 0.22, max: kick ? 0.32 : 0.22, kick, blade, step, heavy };
+    swing(yaw, blade, kick, heavy, cane); const mt = kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane };
     W.recoil = kick ? 1.6 : 1; W.lastShot = time;
-    onEvent('melee', { hit: hits > 0, blade, kick, step, heavy });
+    onEvent('melee', { hit: hits > 0, blade, kick, step, heavy, cane });
     return true;
   }
-  function swing(yaw, blade, kick, heavy) {
+  function swing(yaw, blade, kick, heavy, cane) {
     const arc = blade ? 2.4 : kick ? 1.2 : 0.8;
-    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? (heavy ? 1.9 : 1.7) : 1.1, blade ? (heavy ? 0.09 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? (heavy ? 1.9 : 1.7) : 1.1, blade ? (heavy ? 0.09 : cane ? 0.04 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: cane ? 0xd9a8ff : heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: cane ? 0.6 : blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
     m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (kick ? 0.5 : 0.15), yaw, (MEL.combo % 2 ? 1 : -1) * 0.3);
     m.geometry.rotateZ(Math.PI / 2 - arc / 2);
     m.position.set(player.x - Math.sin(yaw) * 0.6, player.y - (kick ? 1.2 : 0.55), player.z - Math.cos(yaw) * 0.6); scene.add(m);
@@ -1666,7 +1670,7 @@ export function createGame(ctx) {
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
     for (const b of [...bodies]) { b.t -= dt; if (b.t <= 0) { scene.remove(b.g); bodies.splice(bodies.indexOf(b), 1); } }
     updateWeapons(dt, input);
-    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver();
+    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver(); player.caneHand = caneOn();
     updateQuest(dt); if (!ins) { updateRares(dt); updateZone(dt); updateDogWarn(dt); }
   }
   // tapping a quest item or rare find picks it up; returns undefined when the object is not ours

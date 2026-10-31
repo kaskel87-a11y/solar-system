@@ -336,14 +336,15 @@ function wardrobeBuy(id) {
 }
 // ---------- hand props (Velvet Mack's cane): hidden while a weapon is out, back after (all feature-detected) ----------
 // A skin's prop: [palette keys] are the materials of its hand-held prop; those meshes hide while you fire (2.5 s after the
-// last shot, game.progress.stats.shots), hold the flamer (SSX.flame.state().eq) or have the machete / cleaver equipped.
+// last shot, game.progress.stats.shots), hold the flamer (SSX.flame.state().eq) or have the cleaver equipped (v7.5.15: for Velvet
+// Mack the cane replaces the machete, so it stays in hand with the machete selected and swings as the melee weapon).
 const PROP = { out: null, shots: -1, shotT: -9, n: 0 };
 function weaponOut() {
   const P = tryv(() => game()?.progress), now = performance.now() / 1000, sh = +tryv(() => P.stats.shots, NaN);
   if (Number.isFinite(sh)) { if (PROP.shots >= 0 && sh > PROP.shots) PROP.shotT = now; PROP.shots = sh; }
   if (now - PROP.shotT < 2.5) return 'firing';
   if (tryv(() => X().flame?.state?.().eq)) return 'flamer';
-  const w = tryv(() => P.equip.weapon); if (w === 'blade' || w === 'cleaver') return 'melee';
+  const w = tryv(() => P.equip.weapon); if (w === 'cleaver' || (w === 'blade' && !player?.applied?.id?.startsWith?.('mack'))) return 'melee'; // v7.5.15: Mack's cane IS his machete
   return null;
 }
 function syncProp() {
