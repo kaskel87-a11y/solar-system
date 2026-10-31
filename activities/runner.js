@@ -323,9 +323,11 @@ function startActivity(def, opts = {}) {
 function armDuel(def) {
   const w = C.world;
   if (!w?.challenge) return;
+  // v7.5.21 The Pit: stand on the ring's edge facing its centre so the fight happens inside the ropes
+  const at = window.SSX?.pitRing?.arm?.(def.id) || null;
   // Place a willing fighter next to the player
   const name = w.debugDuelist?.(false) || w.debugDuelist?.(true);
-  const r = w.challenge('fists', active.wager, name || undefined);
+  const r = w.challenge('fists', active.wager, name || undefined, at ? { at } : null);
   if (!r?.ok) toast(`🥊 ${r?.msg || 'No fighter. Try again.'}`);
 }
 

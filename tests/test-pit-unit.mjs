@@ -57,4 +57,56 @@ ok('water tower stands outside the ring', d(P, tower) - 3 > RING + HALF, d(P, to
 ok('water tower is close enough to say "under the water tower"', d(P, tower) < 16, d(P, tower).toFixed(1));
 for (const [b, name] of blocks) ok(`water tower clear of ${name}`, boxD(tower, b) > 3.5);
 ok('onboard fallback = pack at_aj', read('onboard.js').includes(`aj([${pit.location.at_aj[0]}, ${pit.location.at_aj[1]}], '📋 The Pit')`));
+
+// v7.5.21 the landmark (mars/pitringcore.js): rope ring, sign gantry, mast, crowd. Nothing inside the fight radius, nothing on
+// a building, a parked car, the water tower or a painted street, everything on the flat disc.
+const K = await import('../mars/pitringcore.js'), MT = await import('../marstrackcore.js');
+ok('landmark centre = PIT_LOCAL', d(K.PIT_LOCAL, PIT_LOCAL) < 0.01);
+ok('landmark district origin = citydata rough', d(K.FLATS_AJ, MT.DISTRICTS.rough.at) < 0.01);
+ok('centreWorld = pack at_aj + colony', (c => Math.abs(c.x - 1000 - pit.location.at_aj[0]) < 0.01 && Math.abs(c.z - 2000 - pit.location.at_aj[1]) < 0.01)(K.centreWorld({ x: 1000, z: 2000 })));
+ok('FIGHT_R matches the duel ring', K.FIGHT_R === RING);
+ok('ropes stand outside the fight radius', K.ROPE > RING + 0.5 && K.MAT >= K.ROPE + 0.3, K.ROPE);
+const FP = K.footprint(), FPp = K.footprint(true), crowd = K.crowdCandidates(), crowdP = K.crowdCandidates(true);
+ok('crowd: enough spectators (desktop >= 30, phone >= 20, phone fewer)', crowd.length >= 30 && crowdP.length >= 20 && crowdP.length < crowd.length, `${crowd.length}/${crowdP.length}`);
+ok('crowd stands past the corner posts', crowd.every(c => Math.hypot(c.x, c.z) > K.ROPE * Math.SQRT2 + 0.5), Math.min(...crowd.map(c => Math.hypot(c.x, c.z))).toFixed(2));
+ok('crowd stays outside the duel watchers (7.4) and the forfeit line (11 m) is reachable through the east gap', crowd.every(c => Math.hypot(c.x, c.z) > 8.5) && !crowd.some(c => Math.abs(Math.atan2(c.z, c.x)) < K.ENTRY.half));
+ok('crowd faces the ring', crowd.every(c => { const fx = -Math.sin(c.yaw), fz = -Math.cos(c.yaw); return (fx * -c.x + fz * -c.z) / Math.hypot(c.x, c.z) > 0.99; }));
+ok('crowd layout is deterministic', JSON.stringify(crowd) === JSON.stringify(K.crowdCandidates()));
+for (const s of [...FP, ...FPp]) if (Math.hypot(s.x, s.z) - (s.r || 0) <= RING + 0.5) ok(`${s.kind} [${s.x},${s.z}] outside the fight radius`, false);
+ok('every prop footprint is outside the fight radius', [...FP, ...FPp].every(s => Math.hypot(s.x, s.z) - (s.r || 0) > RING + 0.5));
+ok('overhead rig hangs high over the ring (>= 7 m)', K.RIG_Y >= 7 && K.RIG.every(([x, z]) => Math.hypot(x, z) < RING));
+ok('sign is big and high (>= 9 m wide, bottom >= 5 m)', K.SIGN.w >= 9 && K.SIGN.y >= 5 && K.SIGN.text === 'THE PIT');
+ok('sign faces east into the Flats', Math.abs(K.SIGN.yaw - Math.PI / 2) < 1e-6 && K.SIGN.at[0] < -10);
+ok('minimap icon is the 🥊', K.MINIMAP.icon === '\u{1F94A}');
+ok('landmark knows where the water tower stands', d(K.TOWER.at, [tower[0] - P[0], tower[1] - P[1]]) < 0.01);
+ok('no spectator in the water tower footprint (dress places it with clear())', [...crowd, ...crowdP].every(c => d([c.x, c.z], K.TOWER.at) > K.TOWER.r + 1));
+const solid = FP.filter(s => s.kind !== 'crowd');
+const at = s => [P[0] + s.x, P[1] + s.z];
+// the crowd is filtered at runtime by world.collide; the static part (posts, sign legs, mast) must be clear outright
+for (const s of solid) {
+  const p = at(s), nb = Math.min(...blocks.map(([b]) => boxD(p, b))), nv = Math.min(...vehicles.map(v => d(p, v.slice(1)))), ns = Math.min(...slots.map(q => d(p, q)));
+  ok(`${s.kind} at [${p.map(v => v.toFixed(1))}] clear of blocks (>1 m), cars (>4 m), the tower`, nb > 1 && nv > 4 && ns > 4 && d(p, tower) > 3.5, `${nb.toFixed(1)} ${nv.toFixed(1)} ${ns.toFixed(1)} ${d(p, tower).toFixed(1)}`);
+  ok(`${s.kind} at [${p.map(v => v.toFixed(1))}] clear of domes`, domes.every(dm => d(p, dm) > dm[2] + 1));
+}
+const live = crowd.filter(c => { const p = at(c); return blocks.every(([b]) => boxD(p, b) > 0.6) && vehicles.every(v => d(p, v.slice(1)) > 3) && d(p, tower) > 3.4 && domes.every(dm => d(p, dm) > dm[2] + 0.6); });
+ok('crowd after static blockers still rings the fight (>= 24)', live.length >= 24, live.length);
+const street = MT.STREETS.flatMap(st => MT.sampleStreet(st.pts, st.loop, 1)).map(([x, z]) => [x - K.FLATS_AJ[0], z - K.FLATS_AJ[1]]);
+const nearRoad = p => Math.min(...street.map(q => d(p, q)));
+ok('no prop on a painted street (> half road + 1.5 m)', FP.every(s => nearRoad(at(s)) > MT.ROAD_W / 2 + 1.5), Math.min(...FP.map(s => nearRoad(at(s)))).toFixed(1));
+ok('mat on the flat disc', Math.hypot(...P) + K.MAT * Math.SQRT2 < 58);
+ok('sign, mast and crowd on the flat disc', FP.every(s => Math.hypot(...at(s)) < 58));
+ok('pitring.js + pitringcore.js are precached', /mars\/pitring\.js/.test(read('sw.js')) && /mars\/pitringcore\.js/.test(read('sw.js')));
+ok('index.html loads pitring.js', /<script type="module" src="\.\/mars\/pitring\.js/.test(read('index.html')));
+ok('minimap draws icon marks (full + lite)', /if \(m\.icon\)/.test(read('index.html')) && /if \(m\.icon\)/.test(read('hud/hudx.js')));
+ok('pit fight lines up through the centre (runner arm + world challenge at)', /pitRing\?\.arm\?\./.test(read('activities/runner.js')) && /opts\?\.at/.test(read('world.js')));
+const startS = K.startSpot(0, 0, 5, 0); ok('start spot 1.6 m from centre facing in', Math.abs(Math.hypot(startS.x, startS.z) - 1.6) < 1e-9 && Math.abs(-Math.sin(startS.yaw) + 1) < 1e-9);
+// same check as test-mission-markers' reach(): a car-sized (r 2) BFS on a 2 m grid from the ring centre gets out past the
+// crowd (desktop and phone layouts) using the landmark's own colliders
+for (const [tag, fp] of [['desktop', FP], ['phone', FPp]]) {
+  const blk = (x, z) => fp.some(s => Math.hypot(x - s.x, z - s.z) < (s.r || 0.35) + 2);
+  const q = [[0, 0]], seen = new Set(['0,0']); let out = false;
+  for (let h = 0; h < q.length && !out; h++) { const [i, j] = q[h]; if (Math.hypot(i * 2, j * 2) >= 20) { out = true; break; }
+    for (const [a, b] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) { const k = a + ',' + b; if (seen.has(k)) continue; seen.add(k); if (!blk(a * 2, b * 2)) q.push([a, b]); } }
+  ok(`a car-sized path leads out of the ring past the crowd (${tag})`, out);
+}
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);

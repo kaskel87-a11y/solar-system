@@ -910,7 +910,9 @@ export function createWorld(ctx) {
     if (F && wager < F.minWager) return { ok: false, msg: `${p.name}: I don’t get out of bed for less than ${F.minWager}.` };
     if (!F && p.temper < 0.2) return { ok: false, refused: true, msg: `${p.name}: ` + ['Not today, spacer. I just got this suit cleaned.', 'Fight you? I’ve seen you drive. Pass.', 'Nope. Go bother somebody tougher.'][(p.duels || 0) % 3] };
     if (wager && !g.spend(wager)) return { ok: false, msg: `You don’t have ${wager} cr to put up.` };
-    const dx = p.x - player.x, dz = p.z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
+    // v7.5.21 opts.at: a fixed ring (The Pit) lines the fight up through its centre instead of toward the opponent
+    const at = opts?.at && Number.isFinite(opts.at.x) && Math.hypot(opts.at.x - player.x, opts.at.z - player.z) > 0.3 ? opts.at : null;
+    const dx = (at || p).x - player.x, dz = (at || p).z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
     const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
     p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
     duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,

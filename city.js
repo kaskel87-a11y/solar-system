@@ -18,7 +18,7 @@ const MANSIONS = { 'VOSS HOUSE': 'voss', 'SABLE ANNEX': 'sable', 'QUINN VILLA': 
 // [-36,-18,7] (no sign, no door, and it buried BAY SIX DENTAL's entrance) is dropped, and its hauler parks clear of the ring
 export const PIT_LOCAL = [-40, -9];
 export const DROPPED_DOMES = { rough: [[-36, -18]] };
-export const MOVED_VEHICLES = { rough: { '-46,-16': [-54, -2] } };
+export const MOVED_VEHICLES = { rough: { '-46,-16': [-50, 10] } }; // v7.5.21 further out so THE PIT sign gantry stands clear
 const keepDome = (key, d) => !(DROPPED_DOMES[key] || []).some(([x, z]) => d[0] === x && d[1] === z);
 const moveSlot = (key, x, z) => (MOVED_VEHICLES[key] || {})[x + ',' + z] || [x, z];
 const clearOfVehicles = (f, vs) => { let [x, z] = f; for (const v of vs || []) if (Math.hypot(v[1] - x, v[2] - z) < 6) { const L = Math.hypot(x, z) || 1; x -= x / L * 8; z -= z / L * 8; } return [Math.round(x * 10) / 10, Math.round(z * 10) / 10]; };
