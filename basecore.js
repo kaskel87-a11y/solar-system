@@ -58,6 +58,13 @@ export function addPlot(def) {
   const n = normPlot(def); if (!n.ok) return n; if (BUILTIN_PLOTS.includes(n.plot.id)) return { ok: false, why: `registerPlot: ${n.plot.id} is a built-in lot` };
   const k = PLOTS.findIndex(p => p.id === n.plot.id); if (k >= 0) PLOTS[k] = n.plot; else PLOTS.push(n.plot); return { ok: true, id: n.plot.id, replaced: k >= 0, plot: n.plot };
 }
+// SSX.base.unregisterPlot: drops an add-on lot from PLOTS (built-ins can't go). Its save entry is the caller's (base.js) business.
+export function removePlot(id) {
+  id = typeof id === 'string' ? id.trim() : ''; if (!id) return { ok: false, why: 'unregisterPlot(id): id (string) required' };
+  if (BUILTIN_PLOTS.includes(id)) return { ok: false, why: `unregisterPlot: ${id} is a built-in lot` };
+  const k = PLOTS.findIndex(p => p.id === id); if (k < 0) return { ok: false, why: `unregisterPlot: no lot ${id}` };
+  return { ok: true, id, plot: PLOTS.splice(k, 1)[0] };
+}
 export function addPieceType(def) {
   const n = normPiece(def); if (!n.ok) return n; if (BUILTIN_PIECES.includes(n.piece.id)) return { ok: false, why: `registerPiece: ${n.piece.id} is a built-in piece` };
   const replaced = !!PIECES[n.piece.id]; PIECES[n.piece.id] = n.piece; if (!PIECE_IDS.includes(n.piece.id)) PIECE_IDS.push(n.piece.id); return { ok: true, id: n.piece.id, replaced, piece: n.piece };
@@ -139,7 +146,10 @@ export function removePiece(state, id) { const k = state.pieces.findIndex(p => p
 export const refundOf = p => Math.floor(PIECES[p.type].cost * REFUND * (p.hp / PIECES[p.type].hp));
 
 // circle (player / car) vs piece colliders, local metres. Returns the push-out { x, z } or null. gates are open to you.
-export function pushOut(state, lx, lz, rad) {
+// from = { x, z }: where the circle was last frame (local metres). With it, each piece pushes back out on the side you came
+// from, only as far as you went in this frame (see pushSwept); without it, the old full push-out below.
+export function pushOut(state, lx, lz, rad, from) {
+  if (from && Number.isFinite(from.x) && Number.isFinite(from.z)) return pushSwept(state, lx, lz, rad, from.x, from.z);
   let x = lx, z = lz, hit = false;
   for (const p of state.pieces) for (const b of collidersOf(p)) {
     const qx = Math.max(b.x0, Math.min(x, b.x1)), qz = Math.max(b.z0, Math.min(z, b.z1)), dx = x - qx, dz = z - qz, d2 = dx * dx + dz * dz;
@@ -149,6 +159,33 @@ export function pushOut(state, lx, lz, rad) {
       const opts = [[b.x0 - rad - x, 0], [b.x1 + rad - x, 0], [0, b.z0 - rad - z], [0, b.z1 + rad - z]].sort((u, v) => Math.hypot(...u) - Math.hypot(...v));
       x += opts[0][0]; z += opts[0][1];
     }
+  }
+  return hit ? { x, z } : null;
+}
+// Vehicles (#ben/base-collider). The old push resolved box after box, so a big circle next to a row of racks 0.4 m apart got
+// pushed out of one rack onto the face of the next, then a full radius out of that one too (3.5 m west of the farm's first
+// rack with the harvester's 2 m radius). Here every box is judged against the circle's last-frame position:
+// - the side it came from is the face whose outside held `from` (nearest face if `from` was already inside the box)
+// - it may stay as deep in as it already was last frame (a spawned / teleported / embedded ride isn't shoved), but no deeper
+// - a jump of more than TELEPORT m is a teleport: last frame doesn't count, so nothing it lands on shoves it
+export const TELEPORT = 3;
+function pushSwept(state, lx, lz, rad, fx, fz) {
+  if (Math.hypot(lx - fx, lz - fz) > TELEPORT) { fx = lx; fz = lz; }
+  let x = lx, z = lz, hit = false;
+  for (const p of state.pieces) for (const b of collidersOf(p)) {
+    const qx = Math.max(b.x0, Math.min(x, b.x1)), qz = Math.max(b.z0, Math.min(z, b.z1)), dx = x - qx, dz = z - qz;
+    if (dx * dx + dz * dz >= rad * rad - 1e-9) continue;
+    // outward normal: the side `from` sits on (x / z), else the nearest face to `from`
+    let sx = fx < b.x0 ? -1 : fx > b.x1 ? 1 : 0, sz = fz < b.z0 ? -1 : fz > b.z1 ? 1 : 0;
+    if (sx && sz) { // came in past a corner: keep the axis it was further out on
+      const ox = sx < 0 ? b.x0 - fx : fx - b.x1, oz = sz < 0 ? b.z0 - fz : fz - b.z1; if (ox >= oz) sz = 0; else sx = 0;
+    }
+    if (!sx && !sz) { const f = [[fx - b.x0, -1, 0], [b.x1 - fx, 1, 0], [fz - b.z0, 0, -1], [b.z1 - fz, 0, 1]].sort((u, v) => u[0] - v[0])[0]; sx = f[1]; sz = f[2]; }
+    // depth along that normal now and last frame; push back to last frame's depth (never past the face + rad)
+    const depth = (px, pz) => sx < 0 ? px + rad - b.x0 : sx > 0 ? b.x1 + rad - px : sz < 0 ? pz + rad - b.z0 : b.z1 + rad - pz;
+    const fqx = Math.max(b.x0, Math.min(fx, b.x1)), fqz = Math.max(b.z0, Math.min(fz, b.z1)), inBefore = (fx - fqx) ** 2 + (fz - fqz) ** 2 < rad * rad - 1e-9;
+    const now = depth(x, z), was = inBefore ? Math.max(0, depth(fx, fz)) : 0; if (now <= was + 1e-9) continue;
+    const k = now - was; x += sx * k; z += sz * k; hit = true;
   }
   return hit ? { x, z } : null;
 }
