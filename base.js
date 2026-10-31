@@ -9,6 +9,7 @@
 //   SSX.base.raid(id, opts) / endRaid(id, result) / damage(id, pieceId, n) / addTargets(fn)
 //   SSX.base.on(evt, fn) / off(evt, fn); every event is also a window CustomEvent `base:<evt>` (base:raid, base:place, …)
 //   SSX.base.registerPlot(def) / registerPiece(def): add-on lots and buildable pieces (see "Add-on lots and pieces" below).
+//   SSX.base.unregisterPlot(id, { forget? }) (alias removePlot): take an add-on lot back off the map (marker + colliders).
 //   Calls made before this module is up can be queued: (SSX._pendingPlots ||= []).push(def), (SSX._pendingPieces ||= []).push(def).
 // Raids: if Steve's SSX.raids exists, raid() starts one through SSX.raids.start and window raid:start / raid:wave /
 // raid:end events whose pos falls inside a lot arm that lot's turrets. Otherwise raid() emits base:raid on its own.
@@ -29,6 +30,7 @@ const persist = () => BC.save(LS, S);
 
 // ---------- runtime ----------
 let C = null;                 // latest surface ctx
+let lastRide = null; // { car, pid, x, z } after last frame's push-out
 let root = null, sceneRef = null, centres = {}, inst = null, ghost = null, markers = null, grid = null, tracers = null;
 let build = null;             // { plotId, type, r, tool: 'place'|'remove' }
 let ui = null, actNow = null, inPlotId = null, menuBtn = null, clock = 0;
@@ -308,9 +310,12 @@ export function baseTick(dt, ctx) {
   // solid pieces push you (and your ride) out; gates are yours, so they let you through
   const pid = plotUnder(P.x, P.z, 3);
   if (pid && plotState(pid).owned && !indoor) {
-    const tgt = car || P, rad = car ? Math.min(2, car.spec?.r || 1.6) : 0.45, l = toLocal(pid, tgt.x, tgt.z), o = BC.pushOut(plotState(pid), l.x, l.z, rad);
+    const tgt = car || P, rad = car ? Math.min(2, car.spec?.r || 1.6) : 0.45, l = toLocal(pid, tgt.x, tgt.z);
+    const from = car && lastRide?.car === car && lastRide.pid === pid ? toLocal(pid, lastRide.x, lastRide.z) : car ? l : undefined; // rides: pushed back on the side they came from
+    const o = BC.pushOut(plotState(pid), l.x, l.z, rad, from);
     if (o) { const w = toWorldXZ(pid, o.x, o.z); tgt.x = w.x; tgt.z = w.z; if (car) car.speed *= 0.6; }
-  }
+    lastRide = car ? { car, pid, x: tgt.x, z: tgt.z } : null;
+  } else lastRide = null;
   // garage: a rover parked in the bay gets topped up
   for (const p of BC.PLOTS) { const g = plotState(p.id).owned && plotState(p.id).pieces.find(q => q.type === 'garage'); if (!g || !ctx.rover || !centres[p.id]) continue;
     const l = toLocal(p.id, ctx.rover.x, ctx.rover.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r);
@@ -454,7 +459,7 @@ const api = {
     if (p.hp <= 0) { BC.removePiece(s, pieceId); turretSt.delete(id + ':' + pieceId); if (p.type === 'stash') { const lost = { ...s.stash }; s.stash = { credits: 0, medkits: 0 }; emit('stash:looted', { plotId: id, lost }); } persist(); if (root?.parent) rebuildPieces(); emit('destroyed', { plotId: id, type: p.type, pieceId }); return { destroyed: true }; }
     persist(); emit('damaged', { plotId: id, type: p.type, pieceId, hp: p.hp }); return { destroyed: false, hp: p.hp };
   },
-  registerPlot: def => registerPlot(def), registerPiece: def => registerPiece(def), pieceIds: plotId => BC.piecesFor(plotId || null),
+  registerPlot: def => registerPlot(def), unregisterPlot: (id, opts) => unregisterPlot(id, opts), removePlot: (id, opts) => unregisterPlot(id, opts), registerPiece: def => registerPiece(def), pieceIds: plotId => BC.piecesFor(plotId || null),
   addTargets(fn) { targetSources.add(fn); return () => targetSources.delete(fn); },
   on(evt, fn) { (listeners[evt] ||= []).push(fn); return () => api.off(evt, fn); },
   off(evt, fn) { listeners[evt] = (listeners[evt] || []).filter(f => f !== fn); },
@@ -486,6 +491,17 @@ export function registerPlot(def) {
   let r; try { r = BC.addPlot(def); } catch (e) { r = { ok: false, why: String(e?.message || e) }; }
   if (!r.ok) { console.warn('SSX.base.registerPlot:', r.why); return { ok: false, why: r.why }; }
   refreshAfterRegister(); emit('plot:register', { plotId: r.id, replaced: r.replaced }); return { ok: true, id: r.id, replaced: r.replaced };
+}
+// SSX.base.unregisterPlot(id, { forget? }) (alias removePlot): takes an add-on lot off the map: its FOR SALE / owned marker,
+// its pieces and their colliders, build mode and raid state there. Built-in lots are refused. Its save entry is kept (it comes
+// back if the lot registers again) unless forget: true. Returns { ok, id } or { ok: false, why }; never throws.
+export function unregisterPlot(id, opts = {}) {
+  let r; try { r = BC.removePlot(id); } catch (e) { r = { ok: false, why: String(e?.message || e) }; }
+  if (!r.ok) { console.warn('SSX.base.unregisterPlot:', r.why); return { ok: false, why: r.why }; }
+  id = r.id; if (build?.plotId === id) setBuild(false); if (inPlotId === id) { inPlotId = null; emit('leave', { plotId: id }); }
+  if (lastRide?.pid === id) lastRide = null; raids.delete(id); for (const k of [...turretSt.keys()]) if (k.startsWith(id + ':')) turretSt.delete(k);
+  if (opts?.forget) delete S.plots[id];
+  refreshAfterRegister(); emit('plot:unregister', { plotId: id, forgot: !!opts?.forget }); return { ok: true, id };
 }
 export function registerPiece(def) {
   let r; try { r = BC.addPieceType(def); } catch (e) { r = { ok: false, why: String(e?.message || e) }; }
