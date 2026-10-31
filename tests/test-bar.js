@@ -43,6 +43,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000)); await sleep(800);
     await G(() => window.__app.surface.registerTick((dt, c) => { window.__pp = { x: c.player.x, z: c.player.z }; window.__camZ = c.camera.rotation.z; }));
     ok('moduleUp', await G(() => !!window.__bar && window.__bar.drinks.map(d => `${d.name} ${d.price}`).join(', ')));
+    // v7.5.13: #96's still now ships SSX.liquor; park it so the no-still path is still covered (the stub below replaces it)
+    R.realLiquor = await G(() => { const had = !!window.SSX?.liquor; window.__realLiquor = window.SSX?.liquor; if (had) delete window.SSX.liquor; return had; });
     ok('noLiquorOnMain', await G(() => !window.SSX?.liquor && window.__bar.liquor.ok === false));
     // neighbours keep their own spots
     for (const [k, x, z, id] of [['atBar', -8.1, 1.5, 'bar'], ['atSlots', -6.85, 6.4, 'slots'], ['atDoor', 0, 7.0, 'leave']]) { await G(([x, z]) => window.__app.surface.debugInside(x, z, 0), [x, z]); await sleep(350); R[k] = await G(() => window.__app.surface.info.spot?.id); ok(k + 'Ok', R[k] === id); }
