@@ -1900,12 +1900,15 @@
       toast(`🐶 ${v} it is.`, 2500); updateSurfHud(true);
     };
     document.getElementById('dogName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') document.getElementById('dogSave').click(); });
+    // v7.5.15: the HUD runs every frame; writing the same text/HTML/width again still costs a DOM mutation + style recalc on phones
+    const setT = (el, v) => { v = String(v); if (el && el.__t !== v) { el.__t = v; el.textContent = v; } }, setH = (el, v) => { if (el && el.__h !== v) { el.__h = v; el.innerHTML = v; } }, setW = (el, v) => { if (el && el.__w !== v) { el.__w = v; el.style.width = v; } };
+    const shValEl = document.getElementById('shVal'), hpValEl = document.getElementById('hpVal'), heatLblEl = document.getElementById('heatLbl');
     let hudKey = '';
     function updateSurfHud(force) {
       const i = surface.info; if (!i) return;
       document.body.classList.toggle('driving', i.driving);
       const extra = i.driving ? `<span class="spd"><span class="sep"> · </span>🚙 ${Math.round(Math.abs(i.speed) * 3.6)} km/h</span>` : ''; // v7.5.12: phones show just the name (or just the speed while driving), never 'Mars · …'
-      surfInfo.innerHTML = `<b>${i.name}</b><span class="gv"> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g</span>${extra}`;
+      setH(surfInfo, `<b>${i.name}</b><span class="gv"> · ${i.g.toFixed(i.g < 0.3 ? 3 : 2)} g</span>${extra}`);
       const act = actionFor(i);
       const key = [i.view, i.disc.found, i.disc.total, i.driving, i.nearRover, i.nearDog, dogName, act.label, !!i.inside, !!(i.colony && i.colony.dist < 400)].join('|');
       if (force || key !== hudKey) {
@@ -1931,15 +1934,15 @@
       document.body.classList.toggle('combat', g.combat);
       document.body.classList.toggle('turret', g.turret);
       document.body.classList.toggle('quest', !!g.quest);
-      shBar.style.width = `${(100 * g.shield / g.shieldMax).toFixed(0)}%`;
-      hpBar.style.width = `${(100 * g.hp / g.hpMax).toFixed(0)}%`; hpBarEl.classList.toggle('low', g.hp < 35);
-      document.getElementById('shVal').textContent = Math.round(g.shield); document.getElementById('hpVal').textContent = Math.round(g.hp);
-      heatBar.style.width = `${g.heat}%`; heatBarEl.classList.toggle('over', g.overheat);
-      document.getElementById('heatLbl').textContent = g.overheat ? '♨️' : '🔥';
-      rankLine.innerHTML = `💰 ${g.credits}<span class="xp"> · ⭐ ${window.SSX?.stars?.balance?.() ?? g.xp}</span>`; rankLine.title = `${g.rank} · ${g.xp} XP`;
+      setW(shBar, `${(100 * g.shield / g.shieldMax).toFixed(0)}%`);
+      setW(hpBar, `${(100 * g.hp / g.hpMax).toFixed(0)}%`); hpBarEl.classList.toggle('low', g.hp < 35);
+      setT(shValEl, Math.round(g.shield)); setT(hpValEl, Math.round(g.hp));
+      setW(heatBar, `${g.heat}%`); heatBarEl.classList.toggle('over', g.overheat);
+      setT(heatLblEl, g.overheat ? '♨️' : '🔥');
+      setH(rankLine, `💰 ${g.credits}<span class="xp"> · ⭐ ${window.SSX?.stars?.balance?.() ?? g.xp}</span>`); const rt = `${g.rank} · ${g.xp} XP`; if (rankLine.title !== rt) rankLine.title = rt;
       const si = surface.info, wl = si?.wanted || 0, ws = document.getElementById('wantedStars');
       document.body.classList.toggle('wanted', wl > 0);
-      if (wl > 0) { ws.textContent = '★'.repeat(wl); ws.classList.toggle('evade', !!si.evading); }
+      if (wl > 0) { setT(ws, '★'.repeat(wl)); ws.classList.toggle('evade', !!si.evading); }
       const gc = document.getElementById('gearChip');
       // weapon + its ammo, then medkits: "🔫∞ ✚1" (blaster never runs dry), "💥12 ✚1" (shotgun shells), "🗡️ ✚1"
       const WI = { shotgun: '💥', smg: '🔫', railrifle: '⚡', launcher: '💣' };

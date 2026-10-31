@@ -268,7 +268,7 @@ function updCtx() {
   const pick = list.length ? list[ctxPick % list.length] : null;
   for (const el of all) { el.classList.toggle('hxCtxOff', !!pick && el !== pick);
     if (!el.dataset.hxObs) { el.dataset.hxObs = '1'; new MutationObserver(() => updCtx()).observe(el, { attributes: true, attributeFilter: ['class'] }); } } // react the same frame a button shows
-  ctxNext.textContent = `⇅ ${list.length}`; ctxNext.classList.toggle('show', list.length > 1);
+  { const cn = `⇅ ${list.length}`; if (ctxNext.textContent !== cn) ctxNext.textContent = cn; } ctxNext.classList.toggle('show', list.length > 1);
   if (pick && list.length > 1) { const pr = pick.getBoundingClientRect(); // ⇅ sits beside (landscape) or on top of (portrait) the picked button
     ctxNext.style.right = land ? `${r + Math.round(pr.width || 120) + 8}px` : `${r}px`; ctxNext.style.bottom = land ? `${b}px` : `${b + Math.round(pr.height || 52) + 6}px`; }
 }
