@@ -84,3 +84,18 @@ index.html's `SSX.on` / `SSX.emit`; if neither exists (a test page), a tiny bus 
   blocky rig (each cube drawn alone on its own layer, so a hidden parent shows 0 px), cubes sit on the right bones and
   limbs, the fallback re-run keeps them, the hand cube follows a punch, a forced swap moves them to the blocky sockets and
   back, tint / helmet / hair uniforms, reset, and `models:player` events.
+
+## Phone performance (v8-perf)
+
+- NPC bodies: phones switch to the 1-draw far LOD past 17 m and back inside 13 m (desktop 30 / 26 m); near NPCs past 8 m
+  animate every 2nd frame on phones. A body that already has a model keeps its cap slot unless a newcomer is 4 m nearer.
+- One skeleton (one bone texture) per body instead of one per skinned part.
+- Pools are per body id (re-tinted on reuse), at most 4 per body on phones / 8 on desktop; anything evicted, and every
+  pooled body when models switch off, is disposed (bone textures, mixer caches). Geometry, atlas and materials stay shared.
+- look/v8.js: the 2 s scene scan drops objects / materials that left the scene (so the per-frame env / emissive loops don't
+  grow), a material shared by terrain and a prop is no longer re-patched terrain <-> surface on every scan, and the club
+  dancers keep their own castShadow = false.
+- `tests/test-v8-perf.js`: WebKit iPhone 14 393x852, look=med + models=1, grime lite, flamethrower bursts, two cycles of
+  walking outside the Velvet Airlock + time inside with the dancers. Asserts geometries / textures / programs plateau in
+  cycle 2, few shader re-patches, cap respected, bounded pools, pool reuse + disposal on a forced despawn. `DUR=180 OUT=x.json`
+  gives the 3-minute trace (samples every 10 s); `BR=chromium` adds the JS heap.

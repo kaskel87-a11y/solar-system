@@ -59,7 +59,7 @@ const LIT = m => m && (m.isMeshStandardMaterial || m.isMeshPhongMaterial || m.is
 const tmpS = new THREE.Vector3();
 function scan(ctx) {
   S.stats.scans++;
-  const scene = ctx.scene, world = ctx.name, info = new Map();
+  const scene = ctx.scene, world = ctx.name, info = new Map(), seenO = new Set(), seenM = new Set(), terr = new Set();
   scene.traverse(o => {
     if (!o.isMesh || o.isSprite || o.isPoints) return;
     if (o.userData.noV8) return;
@@ -70,20 +70,24 @@ function scan(ctx) {
     const terrain = !o.isInstancedMesh && !!geo.attributes.color && mats[0]?.vertexColors && rad > 18;
     const dress = (o.name || '').startsWith('dress:') || o.parent?.userData?.v8?.part === 'dress';
     const transparent = mats.every(m => m.transparent || m.opacity < 1 || m.blending === THREE.AdditiveBlending);
+    seenO.add(o);
     if (!S.objs.has(o)) { o.userData.__v8s = [o.castShadow, o.receiveShadow]; S.objs.add(o); }
-    if (!transparent) { o.receiveShadow = true; o.castShadow = !terrain && !dress && rad < 70; }
+    if (!transparent) { o.receiveShadow = true; o.castShadow = !terrain && !dress && rad < 70 && !(o.userData.ssxDancer && !o.userData.__v8s[0]); } // the club dancers keep their own (no) shadow: no skinned depth pass
     for (const m of mats) {
+      if (m) seenM.add(m);
       if (!m?.isMeshStandardMaterial || m.userData.noV8) continue;
       if (tier.envMode === 'metal' && m.metalness >= 0.35 && (!m.envMap || m.userData.__v8env)) S.envMats.add(m);
       if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0.05 && m.emissiveIntensity > 0) S.emissive.add(m);
-      if (terrain) { if (S.T && m.vertexColors) { patchTerrain(m, S.T, tier); S.terrainMats.add(m); S.mats.add(m); } continue; }
+      if (terrain) { if (S.T && m.vertexColors) { patchTerrain(m, S.T, tier); S.terrainMats.add(m); S.mats.add(m); terr.add(m); } continue; }
       let r = info.get(m); if (!r) info.set(m, r = { maxRadius: 0, skinned: false, dress: false });
       r.maxRadius = Math.max(r.maxRadius, rad); r.skinned ||= !!o.isSkinnedMesh; r.dress ||= dress;
     }
   });
+  prune(seenO, seenM);
   if (!tier.weather) return;
   const dust = new THREE.Color(K.dustFor(world));
   for (const [m, r] of info) {
+    if (terr.has(m)) continue; // v8-perf: a material shared by a terrain chunk and a smaller prop flipped terrain <-> surface patch every scan (3 shader rebuilds / 2 s); terrain wins
     if (r.skinned || r.dress || m.userData.weathered || m.isMeshPhysicalMaterial && m.transmission > 0) continue; // GLB kits keep their own look
     const em = m.emissive ? (m.emissive.r + m.emissive.g + m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
     const setName = S.T ? K.detailSetFor({ metalness: m.metalness, roughness: m.roughness, transparent: m.transparent, hasMap: !!(m.map || m.normalMap), maxRadius: r.maxRadius, skinned: r.skinned, emissive: em }) : null;
@@ -96,6 +100,16 @@ function scan(ctx) {
   }
   S.stats.patched = S.mats.size; S.stats.terrain = S.terrainMats.size;
   S.stats.casters = 0; for (const o of S.objs) if (o.castShadow) S.stats.casters++;
+}
+// v8-perf: drop what left the scene (despawned NPCs, burnt corpses, a left interior) so the per-frame loops over
+// S.envMats / S.emissive and the caster count don't grow with every spawn, and the sets don't keep dead objects alive.
+// A dropped object gets its own shadow flags back; a dropped material keeps its (cached) patch, so if it comes back the
+// next scan re-adds it with no recompile.
+function prune(seenO, seenM) {
+  for (const o of S.objs) if (!seenO.has(o)) { const f = o.userData.__v8s; if (f) { o.castShadow = f[0]; o.receiveShadow = f[1]; delete o.userData.__v8s; } S.objs.delete(o); }
+  for (const m of S.envMats) if (!seenM.has(m)) { const o = m.userData.__v8env; if (o) { m.envMap = null; m.envMapIntensity = o.i; m.needsUpdate = true; delete m.userData.__v8env; } S.envMats.delete(m); }
+  for (const set of [S.mats, S.terrainMats, S.emissive]) for (const m of set) if (!seenM.has(m)) set.delete(m);
+  S.stats.pruned = (S.stats.pruned || 0) + 1;
 }
 function unscan() {
   clearEnvMats();

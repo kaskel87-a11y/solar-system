@@ -5,7 +5,7 @@
 // just shows the v7 rig. Nothing here touches the Velvet Airlock dancers (skinned, ssxDancer) or any interior.
 //   People: one skinned vertex buffer per body, 2-3 draws at LOD0 (opaque, alpha-tested, helmet glass), 1 draw at LOD1;
 //   geometry, atlas and materials are shared by every copy, one clip set (models/v8/chars/anims.glb) drives all four
-//   bodies (same 26-joint skeleton). Nearest NPCs first, capped (phone/med 12); LOD1 + every-3rd-frame mixer past 30 m;
+//   bodies (same 26-joint skeleton). Nearest NPCs first, capped (phone/med 12); LOD1 + every-3rd-frame mixer past 30 m (phones: 17 m out / 13 m back);
 //   blocky rig past 80 m. Clips follow what the game already does: speed -> Idle/Walk/Run, a shot bolt leaving a
 //   person -> Pistol fire, crouch -> Pistol aim, melee -> Punch, airborne -> Jump.
 //   Buildings: per district, streamed when you get within 260 m; repeats are InstancedMesh, the facade kit is merged.
@@ -27,8 +27,11 @@ const FORCE = qs.get('models') === '0' || LS === 'off' ? 'off' : qs.get('models'
 const phone = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 const CAPS = { low: 6, med: 12, high: 24, ultra: 24 };
 const D_LOD1 = 30, D_FAR = 80, D_KIT = 260;
+// v8-perf: phones drop NPC bodies to the 1-draw far LOD past ~15 m (in at 13 m, out at 17 m: hysteresis, no flicker),
+// desktop keeps 30 m (26/30). Pools are per body (re-tinted on reuse) and bounded; evicted instances are disposed.
+const LOD_OUT = phone ? 17 : D_LOD1, LOD_IN = phone ? 13 : D_LOD1 - 4, POOL_MAX = phone ? 4 : 8, STICKY = 4;
 
-const S = { on: false, tier: 'classic', ctx: null, scene: null, people: new Map(), player: null, pools: new Map(), files: new Map(), clips: null, mats: new Map(), stats: { attached: 0, lod0: 0, lod1: 0, blocky: 0, loads: 0, fails: 0, fired: 0, kits: 0, kitMeshes: 0 }, seenBolts: new WeakSet(), t: 0, frame: 0, kits: new Map(), warned: new Set() };
+const S = { on: false, tier: 'classic', ctx: null, scene: null, people: new Map(), player: null, pools: new Map(), files: new Map(), clips: null, mats: new Map(), stats: { attached: 0, made: 0, disposed: 0, pooled: 0, lod0: 0, lod1: 0, blocky: 0, loads: 0, fails: 0, fired: 0, kits: 0, kitMeshes: 0 }, seenBolts: new WeakSet(), t: 0, frame: 0, kits: new Map(), warned: new Set() };
 const warnOnce = (k, e) => { if (S.warned.has(k)) return; S.warned.add(k); console.warn('v8 models: ' + k, e); };
 let loader = null;
 const gltf = (n) => (loader ??= new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)).loadAsync(url(n));
@@ -87,18 +90,41 @@ function makeInstance(file, id, tint) {
   root.traverse(o => {
     if (o.isBone) bones[o.name] = o;
     if (!o.isSkinnedMesh) return;
-    const kind = o.material.name || 'opaque'; o.material = matFor(file, id, kind, tint); o.userData.noV8 = true; o.userData.ssxModel = true;
+    const kind = o.material.name || 'opaque'; o.material = matFor(file, id, kind, tint); o.userData.noV8 = true; o.userData.ssxModel = true; o.userData.ssxKind = kind;
     o.castShadow = false; o.receiveShadow = false; o.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.3);
     (kind === 'far' ? meshes.lod1 : meshes.lod0).push(o);
   });
   root.rotation.y = Math.PI; // the bodies face +Z, the game's rigs face -Z
+  const skel = shareSkeleton(root);
   const mixer = new THREE.AnimationMixer(root), acts = {};
   for (const [n, c] of Object.entries(file.clips)) { const a = mixer.clipAction(c); acts[n] = a; if (/fire|punch|hit|death|jump/i.test(n)) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; } }
   acts.Idle?.play();
-  return { root, meshes, bones, mixer, acts, cur: 'Idle', id, tint, lod: 0, acc: 0 };
+  S.stats.made++;
+  return { root, meshes, bones, mixer, acts, skel, cur: 'Idle', id, tint, lod: 0, acc: 0 };
 }
-function poolGet(id, tint) { const k = id + (tint ?? ''); const p = S.pools.get(k); return p && p.length ? p.pop() : null; }
-function poolPut(inst) { const k = inst.id + (inst.tint ?? ''); let p = S.pools.get(k); if (!p) S.pools.set(k, p = []); inst.root.removeFromParent(); if (p.length < 16) p.push(inst); }
+// SkeletonUtils.clone gives every skinned part its own Skeleton (own bone texture + its own boneMatrices pass each frame).
+// The parts of one body bind the same joints with the same inverses, so they can share one: 1 upload per body, not 3.
+function shareSkeleton(root) {
+  let first = null; const all = [];
+  root.traverse(o => { if (!o.isSkinnedMesh) return; const sk = o.skeleton;
+    if (!first) { first = sk; all.push(sk); return; }
+    const same = sk.bones.length === first.bones.length && sk.bones.every((b, i) => b === first.bones[i]) && sk.boneInverses.every((m, i) => m.equals(first.boneInverses[i]));
+    if (same) { o.skeleton = first; sk.dispose(); } else all.push(sk); });
+  return all;
+}
+function tintInstance(inst, tint) {
+  if (inst.tint === tint) return; inst.tint = tint; const file = S.files.get(inst.id)?.ready; if (!file) return;
+  for (const o of [...inst.meshes.lod0, ...inst.meshes.lod1]) o.material = matFor(file, inst.id, o.userData.ssxKind, tint);
+}
+// free what an instance owns: the bone texture(s), the mixer's cached actions/bindings; geometry + materials are shared
+function disposeInstance(inst) {
+  try { inst.root.removeFromParent(); inst.mixer.stopAllAction(); inst.mixer.uncacheRoot(inst.root); for (const sk of inst.skel || []) sk.dispose(); if (inst.gun) inst.gun.removeFromParent(); } catch (e) { warnOnce('dispose', e); }
+  S.stats.disposed++;
+}
+function flushPools() { for (const p of S.pools.values()) for (const inst of p) disposeInstance(inst); S.pools.clear(); S.stats.pooled = 0; }
+// pooled per body (was body+tint: one pool per colonist colour, 16 deep each, and the overflow was dropped undisposed)
+function poolGet(id, tint) { const p = S.pools.get(id); const inst = p && p.length ? p.pop() : null; if (!inst) return null; S.stats.pooled--; inst.mixer.stopAllAction(); inst.cur = null; inst.acts.Idle?.reset().play(); inst.cur = 'Idle'; inst.acc = 0; tintInstance(inst, tint); return inst; }
+function poolPut(inst) { let p = S.pools.get(inst.id); if (!p) S.pools.set(inst.id, p = []); inst.root.removeFromParent(); if (p.length < POOL_MAX) { p.push(inst); S.stats.pooled++; } else disposeInstance(inst); }
 function play(inst, name, fade = 0.2) {
   if (inst.cur === name || !inst.acts[name]) return;
   const a = inst.acts[name], b = inst.acts[inst.cur]; a.reset(); a.setEffectiveWeight(1); a.play(); if (b) a.crossFadeFrom(b, fade, false); inst.cur = name;
@@ -143,7 +169,7 @@ function blocky(e, on) {
 }
 function attach(e, inst) {
   e.inst = inst; e.group.add(inst.root); 
-  inst.root.scale.setScalar(e.info.scale); inst.root.position.set(0, 0, 0); inst.lod = -1; setLod(inst, 0); blocky(e, false);
+  inst.root.scale.setScalar(e.info.scale); inst.root.position.set(0, 0, 0); inst.lod = -1; setLod(inst, !e.player && e.d > LOD_OUT ? 1 : 0); blocky(e, false);
   for (const o of inst.meshes.lod0) o.castShadow = e.player || S.tier === 'high' || S.tier === 'ultra';
   if (e.info.gun && !inst.gun) { const gm = gunMesh(); const hand = inst.bones.WeaponR || inst.bones.RightHand; if (hand) { hand.add(gm); inst.gun = gm; } }
   if (inst.gun) inst.gun.visible = !!e.info.gun;
@@ -185,7 +211,8 @@ function updatePeople(dt, ctx) {
     if (!visibleInScene(g) || e.d > D_FAR) { if (e.inst && e.d > D_FAR + 6) detach(e); continue; }
     list.push(e);
   }
-  list.sort((a, b) => (b.player - a.player) || a.d - b.d);
+  for (const e of list) e.k = e.d - (e.inst ? STICKY : 0); // a body already on keeps its slot unless a newcomer is 4 m nearer (no attach/detach churn at the cap edge)
+  list.sort((a, b) => (b.player - a.player) || a.k - b.k);
   let n = 0; S.stats.lod0 = 0; S.stats.lod1 = 0; S.stats.blocky = 0;
   for (const e of list) {
     if (n >= cap) { if (e.inst) detach(e); S.stats.blocky++; continue; }
@@ -200,7 +227,7 @@ function updatePeople(dt, ctx) {
   }
 }
 function animate(e, dt) {
-  const inst = e.inst, g = e.group, lod = e.d > D_LOD1 && !e.player ? 1 : 0; setLod(inst, lod);
+  const inst = e.inst, g = e.group, lod = e.player ? 0 : inst.lod === 1 ? (e.d > LOD_IN ? 1 : 0) : (e.d > LOD_OUT ? 1 : 0); setLod(inst, lod);
   if (lod) S.stats.lod1++; else S.stats.lod0++;
   // crouch: world.js squashes the group (scale.y 0.6); keep the body's proportions and kneel into Pistol aim instead
   const sx = g.scale.x || 1, sy = g.scale.y || 1, k = e.info.scale; inst.root.scale.set(k, k * sx / sy, k); const crouch = sy < sx * 0.8;
@@ -215,7 +242,7 @@ function animate(e, dt) {
   if (inst.cur === 'Punch' && inst.acts.Punch?.isRunning()) want = 'Punch';
   play(inst, want);
   const ts = want === 'Walk' ? THREE.MathUtils.clamp(e.spd / 1.5, 0.6, 1.6) : want === 'Run' ? THREE.MathUtils.clamp(e.spd / 5.5, 0.7, 1.5) : 1; if (inst.acts[want]) inst.acts[want].timeScale = ts;
-  inst.acc += dt; const every = lod ? 3 : 1;
+  inst.acc += dt; const every = lod ? 3 : phone && !e.player && e.d > 8 ? 2 : 1; // phones: near NPCs animate every 2nd frame past 8 m
   if ((S.frame + (hash(g) % 3)) % every === 0) { inst.mixer.update(inst.acc); inst.acc = 0; }
 }
 // shot bolts: world.js R.bolt (0.06 x 1.4 cylinder), game.js tracer boxes; whoever is within 2.6 m of a new bolt fired it
@@ -236,8 +263,9 @@ import('./models-kits.js').then(m => { S.kitMod = m; }, e => warnOnce('kits modu
 
 // ---------------------------------------------------------------- runtime ----------------------------------------------------------------
 function wanted() { const t = window.SSX?.look?.tier?.(); S.tier = typeof t === 'string' ? t : 'classic'; if (FORCE === 'off') return false; return FORCE === 'on' ? true : S.tier !== 'classic'; }
-function clearAll() {
+function clearAll(flush = false) {
   for (const e of S.people.values()) detach(e); S.people.clear(); if (S.player) { detach(S.player); S.player = null; }
+  if (flush) flushPools(); // models off / low tier off Mars: give the bone textures + mixers back
   for (const k of S.kits.values()) S.kitMod?.removeKit?.(k); S.kits.clear();
 }
 function tick(dt, ctx) {
@@ -247,7 +275,7 @@ function tick(dt, ctx) {
 }
 function tickInner(dt, ctx) {
   const on = wanted();
-  if (!on || ctx.name !== 'Mars' && S.tier === 'low') { if (S.on) { clearAll(); S.on = false; } return; }
+  if (!on || ctx.name !== 'Mars' && S.tier === 'low') { if (S.on) { clearAll(true); S.on = false; } return; }
   if (S.scene !== ctx.scene) { clearAll(); S.scene = ctx.scene; S.t = 0; }
   S.on = true; S.ctx = ctx;
   if ((S.t -= dt) <= 0) { S.t = 0.5; try { scanPeople(ctx); } catch (e) { warnOnce('scan', e); } if (S.player && !S.people.has(S.player.group)) S.people.set(S.player.group, S.player); }
@@ -263,7 +291,7 @@ const API = {
   preload: (ids = ['player', 'soldier', 'worker', 'hacker']) => Promise.all(ids.map(loadChar)),
 };
 S.gltf = gltf;
-window.__v8models = { S, API, PLAYER, dev: { loadChar, makeInstance, play, blocky, detach } };
+window.__v8models = { S, API, PLAYER, dev: { loadChar, makeInstance, play, blocky, detach, disposeInstance, flushPools, LOD_IN, LOD_OUT, POOL_MAX } };
 (function boot() {
   const X = window.SSX; if (!X || typeof X.registerSurfaceTick !== 'function') { setTimeout(boot, 250); return; }
   X.registerSurfaceTick(tick); X.models = API;

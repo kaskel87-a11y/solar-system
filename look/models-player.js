@@ -206,8 +206,8 @@ export function makePlayerApi(S, isAstro) {
   function hideL(o, on) { if (on) { if (o.userData.__ssxHelmL === undefined) { o.userData.__ssxHelmL = o.layers.mask; o.layers.mask = HIDE_MASK; } } else if (o.userData.__ssxHelmL !== undefined) { if (o.layers.mask === HIDE_MASK) o.layers.mask = o.userData.__ssxHelmL; delete o.userData.__ssxHelmL; } }
   function recolor(o, sp) {
     const u = o.userData;
-    if (!sp) { if (u.__ssxTintMat && o.material === u.__ssxTintMat) o.material = u.__ssxTintOrig; delete u.__ssxTintMat; delete u.__ssxTintOrig; return; }
-    if (!u.__ssxTintMat || o.material !== u.__ssxTintMat) { u.__ssxTintOrig = o.material; u.__ssxTintMat = o.material.clone(); u.__ssxTintMat.userData = { ...o.material.userData, ssxTint: true }; o.material = u.__ssxTintMat; }
+    if (!sp) { if (u.__ssxTintMat && o.material === u.__ssxTintMat) o.material = u.__ssxTintOrig; u.__ssxTintMat?.dispose(); delete u.__ssxTintMat; delete u.__ssxTintOrig; return; } // v8-perf: free the clone
+    if (!u.__ssxTintMat || o.material !== u.__ssxTintMat) { u.__ssxTintMat?.dispose(); u.__ssxTintOrig = o.material; u.__ssxTintMat = o.material.clone(); u.__ssxTintMat.userData = { ...o.material.userData, ssxTint: true }; o.material = u.__ssxTintMat; }
     u.__ssxTintMat.color?.copy(u.__ssxTintOrig.color || col.setRGB(1, 1, 1)).lerp(sp.c, sp.k);
   }
   // ---- swap tracking: called at the end of every surface tick (models on or off)
