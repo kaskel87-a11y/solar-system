@@ -1,4 +1,4 @@
-// v7.5.25 browser test: the Hydro Den (mars/hydroden.js). Land on Mars, stand south of the ARES JUNCTION dome, walk up to the
+// v7.5.25 (+7.5.30 racks) browser test: the Hydro Den (mars/hydroden.js). Land on Mars, stand south of the ARES JUNCTION dome, walk up to the
 // airlock (no getting stuck), 🚪 Enter Hydro Den, walk to Sister Nettle, tap her, trade silo potatoes and rover moonshine for
 // contraband, check stash/silo/crates/credits, leave. No console errors; panel black/white; screenshots.
 // BASE=http://localhost:8766/ BR=chromium DEV="iPhone 14" OUT=/workspace/dome/ node tests/test-hydroden.js   (DEV=desktop for 1366x768)
@@ -53,7 +53,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.debugInside(0, 3.0, 0)); await sleep(300);
     let wn = null; for (let k = 0; k < 30 && !wn; k++) { await page.keyboard.down('KeyW'); await sleep(150); await page.keyboard.up('KeyW'); const q = await info(); if (q.spot === 'hd:nettle') wn = { ok: true, steps: k }; }
     wn = wn || { ok: false, at: await info() }; ok('walked to Nettle', wn, wn.ok);
-    await sleep(400); ok('nettle button', (await info()).btn, /Nettle/.test((await info()).btn));
+    await sleep(400); ok('nettle button', (await info()).btn, /Talk to Sister Nettle/.test((await info()).btn));
     await tapSel('#driveBtn'); ok('panel open', await wait(() => !!document.getElementById('hdPanel'), 4000));
     const style = await G(() => { const b = document.querySelector('#hdPanel button[data-good]'); const s = getComputedStyle(b); return { bg: s.backgroundColor, c: s.color }; });
     ok('black/white buttons', style, style.bg === 'rgb(0, 0, 0)' && style.c === 'rgb(255, 255, 255)');
@@ -73,6 +73,34 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const h = await G(() => window.SSX.hydroden.trade('potato_moonshine', 'lowg')); await sleep(300);
     ok('heat on a wire', { heat: h.heat, wanted: await G(() => window.__app.surface.world.wanted) }, h.heat && (await G(() => window.__app.surface.world.wanted)) >= 1);
     await G(() => { window.__app.surface.world.setWanted?.(0); window.SSX.hydroden.close(); });
+    // v7.5.30 grow racks: tap -> panel; plant (rent + seeds), timer, harvest to silo or straight to Nettle; raid risk; toast on every tap
+    await G(() => { window.SSX.contraband.reset?.(); window.SSX.hydroden.debug.rackClear(); window.__app.game.progress.credits = 1000; window.__app.surface.world.setWanted?.(0); window.SSX.hydroden.close(); });
+    await G(() => window.__app.surface.debugInside(-4.7, 0.6, Math.PI / 2)); await sleep(500);
+    await G(() => { if (window.__toasts) return; const t = window.__app.toast; window.__toasts = []; window.__app.toast = (m, ms) => { window.__toasts.push(m); return t(m, ms); }; }); // record every toast (the on-screen one queues behind game toasts)
+    const toastT = () => G(() => window.__toasts.slice(-2).join(' | '));
+    ok('rack prompt', (await info()).btn, (await info()).spot === 'hd:racks' && /Grow racks · rent one/.test((await info()).btn));
+    await tapSel('#driveBtn'); await sleep(200);
+    ok('tap rack -> panel + toast', await toastT(), !!(await G(() => document.querySelector('#hdPanel button[data-plant="potato"]'))) && /Rent a rack/.test(await toastT()));
+    await sleep(1100); await tapSel('#hdPanel button[data-plant="potato"]'); await sleep(200);
+    const pl = { cr: await G(() => window.__app.game.progress.credits), toast: await toastT(), timer: await G(() => document.querySelector('#hdPanel [data-timer]')?.textContent || ''), btn: (await info()).btn };
+    ok('plant potatoes -> 175 cr, timer in panel + prompt', pl, pl.cr === 825 && /Planted/.test(pl.toast) && /left/.test(pl.timer) && /left/.test(pl.btn));
+    await sleep(1100); await tapSel('#hdPanel button[data-check]'); await sleep(200); const tw = await toastT(); ok('check growing -> feedback', tw, /Still growing/.test(tw));
+    await shot(out + `dome-rack-${tag}.png`);
+    await G(() => { window.SSX.hydroden.debug.rackReady(); window.SSX.hydroden.debug.rng(() => 0.99); }); await sleep(900);
+    ok('ripe -> harvest buttons', await G(() => !!document.querySelector('#hdPanel button[data-take="silo"]') && !!document.querySelector('#hdPanel button[data-take="glowdust"]')));
+    const silo0 = await G(() => window.SSX.farm.status().silo.potato || 0);
+    await sleep(1100); await tapSel('#hdPanel button[data-take="silo"]'); await sleep(200);
+    const hs = { silo: await G(() => window.SSX.farm.status().silo.potato || 0), toast: await toastT(), phase: await G(() => window.SSX.hydroden.rack().phase) };
+    ok('harvest into silo -> +5 potatoes, rack free', { silo0, ...hs }, hs.silo - silo0 === 5 && /into your silo/.test(hs.toast) && hs.phase === 'empty');
+    await sleep(1100); await tapSel('#hdPanel button[data-plant="potato"]'); await G(() => { window.SSX.hydroden.debug.rackReady(); window.SSX.hydroden.debug.rng(() => 0); }); await sleep(900);
+    const cr1 = await G(() => window.__app.game.progress.credits);
+    await sleep(1100); await tapSel('#hdPanel button[data-take="glowdust"]'); await sleep(300);
+    const rd = { gd: await G(() => window.SSX.contraband.stash().items.glowdust?.qty || 0), cr: (await G(() => window.__app.game.progress.credits)) - cr1, wanted: await G(() => window.__app.surface.world.wanted), toast: await toastT() };
+    ok('raided sale to Nettle -> half seized, star, 2 potatoes -> 5 glow-dust + 10 cr', rd, rd.gd === 5 && rd.cr === 10 && rd.wanted >= 1 && /raid/i.test(rd.toast));
+    await sleep(1100); await tapSel('#hdPanel button[data-leave]'); ok('Done closes the rack panel', !(await G(() => !!document.getElementById('hdPanel'))));
+    await G(() => { window.__app.surface.world.setWanted?.(0); window.SSX.hydroden.debug.rng(() => 0.99); });
+    // Nettle's prompt still wins at her table
+    await G(() => window.__app.surface.debugInside(0, -0.6, 0)); await sleep(400); ok('Nettle prompt at her table', (await info()).btn, /Talk to Sister Nettle/.test((await info()).btn));
     // leave
     await G(() => window.__app.surface.leaveBuilding()); await sleep(600); ok('left', (await info()).inside === null);
     const fps = await G(() => window.__app.surface.renderer?.info?.render?.calls ?? null); R.calls = fps;

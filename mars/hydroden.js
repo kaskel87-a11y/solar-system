@@ -33,6 +33,41 @@ const subs = new Set(); const emit = (type, d = {}) => { for (const f of subs) {
 const stats = { trades: 0, goods: 0, units: 0, change: 0, heat: 0 };
 let rng = Math.random;
 
+// v7.5.30: one rentable grow rack (K.rackPlant / K.rackHarvest). Wall-clock readyAt so it keeps growing while you're away.
+let rack = null; try { rack = JSON.parse(localStorage.getItem(K.RACK_KEY) || 'null')?.rack || null; } catch (e) { rack = null; }
+const rackSt = () => rack;
+const rackSave = () => { try { localStorage.setItem(K.RACK_KEY, JSON.stringify({ rack })); } catch (e) { /* private mode */ } };
+function siloInfo() { try { const F = SSX().farm; return { owned: !!F?.status?.()?.owned, room: F?.siloRoom?.() ?? 0 }; } catch (e) { return { owned: false, room: 0 }; } }
+function rackPlant(crop) {
+  const r = K.rackPlant(rack, crop, credits()); if (!r.ok) { toast(r.msg, 2800); return r; }
+  const g = game(); g.progress.credits -= r.cost; g.save?.(); rack = r.next; rackSave(); emit('rack', { do: 'plant', crop }); toast(r.msg, 3200); return r;
+}
+// harvest the ripe rack: to = 'silo' or a drug id (sell straight to Nettle). Checks it can happen BEFORE the raid roll.
+function rackTake(to) {
+  const ph = K.rackPhase(rack);
+  if (ph.phase !== 'ready') { const m = ph.phase === 'empty' ? '🌱 Nothing planted. Pick a crop.' : `🌱 Not ripe yet. ${K.mmss(ph.ms)} left.`; toast(m, 2600); return { ok: false, msg: m }; }
+  const crop = ph.crop;
+  if (to === 'silo') { const si = siloInfo(); if (!si.owned) { const m = '🌱 You need the Dustbowl Homestead for a silo. Sell it to Nettle instead.'; toast(m, 3000); return { ok: false, msg: m }; } if (si.room < 1) { const m = '🌱 Your silo is full. Sell to Nettle instead.'; toast(m, 3000); return { ok: false, msg: m }; } }
+  else { const q = K.quote(crop, ph.n, to, room(to), drugCost(to)); if (!q.ok) { toast('🌱 ' + q.msg, 2800); return q; } }
+  let cops = 1; try { cops = SSX().time?.state?.()?.cops ?? 1; } catch (e) { /* */ }
+  const w = world(), h = K.rackHarvest(rack, rng(), K.raidChance(w?.wanted || 0, cops));
+  let raidMsg = '';
+  if (h.raided) { stats.heat++; raidMsg = `🚨 ColSec raid! They bagged ${h.lost} ${K.goodName(crop)} as evidence. `; try { w?.crime?.(1, 'grow rack raid in the Hydro Den'); } catch (e) { /* */ } }
+  let n = h.n, out;
+  if (n < 1) { rack = null; out = { ok: true, raided: true, msg: raidMsg + 'Nothing left.' }; }
+  else if (to === 'silo') {
+    let b = null; try { b = SSX().farm.bank({ [crop]: n }, { hand: true, via: 'hydroden' }); } catch (e) { b = null; }
+    const got = b?.got?.[crop] | 0; n -= got; rack = n > 0 ? { ...rack, n } : null;
+    out = { ok: got > 0, raided: h.raided, got, msg: raidMsg + (got ? `🌱 ${got} ${K.goodIcon(crop)} ${K.goodName(crop)} into your silo.${n ? ` ${n} left on the rack (silo full).` : ' Rack is free.'}` : '🌱 The silo took nothing.') };
+  } else {
+    const q = K.quote(crop, n, to, room(to), drugCost(to)); let added = 0, change = 0, take = 0;
+    if (q.ok) { take = q.take; try { added = SSX().contraband.add(to, q.units, 1)?.qty | 0; } catch (e) { added = 0; } change = take * q.each - added * q.cost; pay(change); stats.trades++; stats.goods += take; stats.units += added; }
+    n -= take; rack = n > 0 ? { ...rack, n } : null;
+    out = { ok: added > 0, raided: h.raided, units: added, change, msg: raidMsg + (added ? `🌿 Nettle takes ${take} ${K.goodName(crop)} off the rack: ${added} ${K.DRUGS[to].icon} ${K.DRUGS[to].name}${change ? ` + ${change} cr` : ''}.${n ? ` ${n} left on the rack.` : ' Rack is free.'}` : '🌿 Nettle: No room for it in your pockets.') };
+  }
+  rackSave(); emit('rack', { do: 'harvest', to, ...out }); toast(out.msg, 3400); return out;
+}
+
 // what you can bring: silo crops (Dustbowl Homestead) + moonshine crates in your rover
 function goods() {
   const out = [];
@@ -100,9 +135,20 @@ registerInterior(K.KIND, {
     live.nettle = api.person({ top: 0x3a4a2a, bottom: 0x22201a, hair: 0x6a7a5a, hairStyle: 'long', skin: 0xa07050, accent: 0x7dff6a, glow: 0x7dff6a }, 0, -3.1, 0, anim, 0.7);
     api.person({ top: 0x1a1a1a, bottom: 0x1e1e22, hairStyle: 'cap', skin: 0x6a4a32, accent: 0xff4a4a, bulk: 1.3 }, w / 2 - 2.6, -4.4, -Math.PI / 4, hulk);
     api.person({ top: 0x5a4a3a, bottom: 0x2a2a2a, hair: 0x2a1a10, hairStyle: 'short', skin: 0xd8b090 }, -w / 2 + 2.4, 2.4, Math.PI / 2, anim, 2.3);
-    api.spot({ id: 'hd:nettle', x: 0, z: -1.0, r: 1.8, label: `🌿 ${K.DEALER} · trade crops & shine` });
-    api.spot({ id: 'hd:racks', x: -w / 2 + 2.3, z: -1.5, r: 1.3, label: '🌱 Grow racks' });
+    api.spot({ id: 'hd:nettle', x: 0, z: -1.0, r: 1.8, label: `💬 Talk to ${K.DEALER} · trade crops & shine` });
+    // v7.5.30: the racks are a real feature (rent one, harvest glow-dust); one spot per wall, label follows the rack's state
+    for (const sx of [-1, 1]) { const sp = api.spot({ id: 'hd:racks', x: sx * (w / 2 - 2.3), z: 0.6, r: 1.4, label: '🌱 Grow rack' }); const real = api.spots?.find(o => o.id === 'hd:racks' && o.x === sp.x && o.z === sp.z) || sp; Object.defineProperty(real, 'label', { get: () => K.rackLabel(rackSt()), configurable: true }); }
     api.spot({ id: 'hd:muscle', x: w / 2 - 3.2, z: -3.4, r: 1.2, label: '💬 Muscle' });
+    // v7.5.30: timer + progress bar over the left rack (one sprite + one bar; canvas redrawn twice a second only when it changes)
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const cx = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv);
+    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); tag.scale.set(3.2, 0.6, 1); tag.position.set(-w / 2 + 1.1, 2.55, 0.6); api.g.add(tag);
+    const barM = new THREE.MeshBasicMaterial({ color: 0x7dff6a }), bar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1), barM); bar.position.set(-w / 2 + 1.1, 2.15, 0.6); api.g.add(bar);
+    let last = '', acc = 1;
+    api.ticks.push((t, dt) => { acc += dt; if (acc < 0.5) return; acc = 0; const ph = K.rackPhase(rackSt()); // (rackSt: build() has a local `rack` material)
+      const txt = ph.phase === 'growing' ? `${K.goodIcon(ph.crop)} ${K.mmss(ph.ms)} · ${Math.round(ph.p * 100)}%` : ph.phase === 'ready' ? `${K.goodIcon(ph.crop)} READY · ${ph.n}` : `🌱 RACK FOR RENT · ${K.RACK.rent} cr`;
+      bar.visible = ph.phase !== 'empty'; bar.scale.z = Math.max(0.02, ph.p * 2.6); bar.position.z = 0.6 - (2.6 - bar.scale.z) / 2; barM.color.setHex(ph.phase === 'ready' ? 0xffffff : 0x7dff6a);
+      if (txt === last) return; last = txt; cx.clearRect(0, 0, 512, 96); cx.fillStyle = 'rgba(0,0,0,0.75)'; cx.fillRect(0, 0, 512, 96); cx.strokeStyle = '#fff'; cx.lineWidth = 4; cx.strokeRect(2, 2, 508, 92);
+      cx.fillStyle = ph.phase === 'ready' ? '#fff' : '#9dff6a'; cx.font = 'bold 50px system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(txt, 256, 50); tex.needsUpdate = true; });
     live.api = api; live.n++;
   }
 });
@@ -121,6 +167,7 @@ function onTap(el, fn) { if (window.__onTap) window.__onTap(el, fn); else el.add
 const QUOTES = ['You grow it, I move it. Everybody eats.', 'Shine pays better than spuds. Spuds pay better than nothing.', 'Don\u2019t look at the guy on the rail. Don\u2019t look at anyone.', 'Ghost lichen? Now we\u2019re talking.'];
 function render() {
   if (!panel) return;
+  if (mode === 'rack') return renderRack();
   const G = goods(); let h = `<h3>${esc(K.DEALER)} · ${esc(K.TITLE)}</h3><p class="q">\u201c${esc(QUOTES[(stats.trades + (Date.now() / 60000 | 0)) % QUOTES.length])}\u201d</p>`;
   if (msg) h += `<p class="m">${esc(msg)}</p>`;
   h += `<p>Pick the product you want, then what you\u2019re paying with. Crops come from your homestead silo; shine from the crates in your rover.</p><div class="drugs">`;
@@ -140,17 +187,49 @@ function render() {
     if (b.dataset.good) { const r = trade(b.dataset.good, sel); msg = r.msg || ''; if (r.ok && r.heat) msg += ' 🚨 Somebody on the rail was wearing a wire. ColSec is coming.'; render(); if (r.ok) toast(r.msg, 2600); }
   });
 }
-function open() { if (!inside() && !openAnywhere) return false; css(); close(); panel = document.createElement('div'); panel.id = 'hdPanel'; panel.setAttribute('role', 'dialog'); document.body.appendChild(panel); msg = ''; render(); if (document.pointerLockElement) document.exitPointerLock?.(); emit('open'); return true; }
-function close() { if (panel) { panel.remove(); panel = null; emit('close'); } }
+// v7.5.30: the grow-rack panel (same black/white look, every button through __onTap, every tap toasts)
+let rackPh = '';
+function rackBar(ph) { return `<div style="height:12px;border:2px solid #fff;margin:0 0 8px;background:#000"><div data-bar="1" style="height:100%;width:${Math.round(ph.p * 100)}%;background:#fff"></div></div>`; }
+function renderRackLive() { const ph = K.rackPhase(rack); if (ph.phase !== rackPh) return render(); const t = panel?.querySelector('[data-timer]'), b = panel?.querySelector('[data-bar]'); if (t && ph.phase === 'growing') t.textContent = `${K.mmss(ph.ms)} left · ${Math.round(ph.p * 100)}%`; if (b) b.style.width = Math.round(ph.p * 100) + '%'; }
+function renderRack() {
+  const ph = K.rackPhase(rack); rackPh = ph.phase;
+  let h = `<h3>🌱 Grow racks · ${esc(K.TITLE)}</h3>`;
+  if (msg) h += `<p class="m">${esc(msg)}</p>`;
+  if (ph.phase === 'empty') {
+    h += `<p>Rent a rack under Nettle\u2019s lights: ${K.RACK.rent} cr rent + her seeds, ripe in real minutes (keeps growing while you\u2019re out). Harvest into your silo or sell it straight to her. ColSec sometimes raids a harvest.</p>`;
+    for (const id of K.CROP_IDS) { const c = K.plantCost(id), dis = credits() < c; h += `<button data-plant="${id}" ${dis ? 'data-short="1"' : ''}>${K.goodIcon(id)} Plant ${esc(K.goodName(id))} · ${c} cr</button><small>${K.RACK.rent} rent + ${K.seedPrice(id)} seeds · ${K.mmss(K.growMs(id))} · ${K.rackYield(id)} crops (worth ${K.goodValue(id)} cr each)${dis ? ' · you\u2019re short' : ''}</small>`; }
+  } else if (ph.phase === 'growing') {
+    h += `<p>${K.goodIcon(ph.crop)} ${ph.n} ${esc(K.goodName(ph.crop))} growing: <b data-timer="1">${K.mmss(ph.ms)} left · ${Math.round(ph.p * 100)}%</b></p>` + rackBar(ph);
+    h += `<button data-check="1">⏱ Check the rack</button>`;
+  } else {
+    const si = siloInfo();
+    h += `<p>${K.goodIcon(ph.crop)} <b>${ph.n} ${esc(K.goodName(ph.crop))} ripe.</b> Raid risk on harvest: ~${Math.round(K.raidChance(world()?.wanted || 0) * 100)}%.</p>` + rackBar(ph);
+    h += `<button data-take="silo">🏚 Harvest into your silo</button><small>${si.owned ? `${si.room} silo space free` : 'needs the Dustbowl Homestead'}</small>`;
+    h += `<p style="margin:4px 0">Or sell straight to Nettle for:</p><div class="drugs">`;
+    for (const id of K.DRUG_IDS) { const D = K.DRUGS[id], q = K.quote(ph.crop, ph.n, id, room(id), drugCost(id)); h += `<button data-take="${id}">${D.icon} ${esc(D.name)}<br><small style="margin:0;color:inherit">${q.ok ? `${q.units} + ${q.change} cr` : 'no room'}</small></button>`; }
+    h += '</div>';
+  }
+  h += '<button data-leave="1" class="alt">Done</button>';
+  panel.innerHTML = h;
+  for (const b of panel.querySelectorAll('button')) onTap(b, () => {
+    if (b.dataset.leave) { toast('🌱 Racks hum along.', 1400); return close(); }
+    if (b.dataset.plant) { const r = rackPlant(b.dataset.plant); msg = r.msg || ''; return render(); }
+    if (b.dataset.check) { const p2 = K.rackPhase(rack); msg = p2.phase === 'growing' ? `Still growing. ${K.mmss(p2.ms)} left.` : 'Ripe!'; toast('🌱 ' + msg, 2000); return render(); }
+    if (b.dataset.take) { const r = rackTake(b.dataset.take); msg = r.msg || ''; return render(); }
+  });
+}
+let mode = 'trade', rackTimer = 0;
+function open(m = 'trade') { if (!inside() && !openAnywhere) return false; css(); close(); mode = m === 'rack' ? 'rack' : 'trade'; panel = document.createElement('div'); if (mode === 'rack') rackTimer = setInterval(() => { if (panel && mode === 'rack') renderRackLive(); }, 500); panel.id = 'hdPanel'; panel.setAttribute('role', 'dialog'); document.body.appendChild(panel); msg = ''; render(); if (document.pointerLockElement) document.exitPointerLock?.(); emit('open'); return true; }
+function close() { clearInterval(rackTimer); rackTimer = 0; if (panel) { panel.remove(); panel = null; emit('close'); } }
 let openAnywhere = false;
 
 // ---------- hotspots (the existing context button / E) ----------
-const LINES = { racks: ['🌱 Glow-berry clones under purple bars. Somebody wrote "DON\u2019T TOUCH" on the tray in marker. And again in blood.', '🌱 The lichen tray hums. It shouldn\u2019t hum.'], muscle: ['Muscle: Trade or walk. Don\u2019t browse.', 'Muscle: Nettle says you\u2019re cool. I say we\u2019ll see.', 'Muscle: You bleed on the floor, you mop the floor.'] };
+const LINES = { muscle: ['Muscle: Trade or walk. Don\u2019t browse.', 'Muscle: Nettle says you\u2019re cool. I say we\u2019ll see.', 'Muscle: You bleed on the floor, you mop the floor.', 'Muscle: Racks on the walls are for rent. Tap one. Rent up front.', 'Muscle: Shine buys more than spuds. Talk to Nettle.'] };
 const pick = a => a[(Math.random() * a.length) | 0];
 function act(id) {
   if (!inside()) return false; const sid = id || surf()?.info?.spot?.id;
-  if (sid === 'hd:nettle') return open();
-  if (sid === 'hd:racks') { toast(pick(LINES.racks), 3400); return true; }
+  if (sid === 'hd:nettle') return open('trade');
+  if (sid === 'hd:racks') { const ok = open('rack'); const ph = K.rackPhase(rack); toast(ph.phase === 'growing' ? `🌱 Your ${K.goodName(ph.crop)}: ${K.mmss(ph.ms)} left.` : ph.phase === 'ready' ? `🌱 Your ${K.goodName(ph.crop)} is ripe. Harvest it.` : `🌱 Rent a rack: ${K.RACK.rent} cr + seeds. Ready in minutes.`, 2200); return ok; }
   if (sid === 'hd:muscle') { toast(pick(LINES.muscle), 2600); return true; }
   return false;
 }
@@ -178,7 +257,8 @@ const API = {
   door: () => { const d = door(); return d ? { x: d.x, z: d.z, name: d.name, kind: d.kind } : null; },
   goods, room, quote, trade, open, close, act, rates: K.rateTable, stats: () => ({ ...stats }),
   on(fn) { subs.add(fn); return () => subs.delete(fn); },
-  debug: { rng(f) { rng = typeof f === 'function' ? f : Math.random; }, anywhere(v = true) { openAnywhere = !!v; }, room: () => ({ built: live.n }) }
+  rack: () => ({ state: rack ? { ...rack } : null, ...K.rackPhase(rack), label: K.rackLabel(rack) }), rackPlant, rackTake,
+  debug: { rackReady() { if (rack) { rack.readyAt = Date.now() - 1; rackSave(); } return !!rack; }, rackClear() { rack = null; rackSave(); }, rng(f) { rng = typeof f === 'function' ? f : Math.random; }, anywhere(v = true) { openAnywhere = !!v; }, room: () => ({ built: live.n }) }
 };
 window.SSX = window.SSX || {}; window.SSX.hydroden = API; // index.html's SSX object spreads this in
 let booted = false;

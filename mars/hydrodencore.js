@@ -59,3 +59,50 @@ export function heatChance(units, wanted = 0, cops = 1) {
 export function tradeText(q) { return `🌿 ${q.take} ${goodName(q.good)} \u2192 ${q.units} ${DRUGS[q.drug].icon} ${DRUGS[q.drug].name}${q.change ? ` + ${q.change} cr` : ''}`; }
 // table for the README / report: units of each drug per one good
 export function rateTable() { return [...CROP_IDS, ...SHINE_IDS].map(id => ({ id, name: goodName(id), value: goodValue(id), per: Object.fromEntries(DRUG_IDS.map(d => [d, Math.round(goodValue(id) / DRUGS[d].cost * 100) / 100])) })); }
+
+// ---------- v7.5.30: rentable grow racks (the "🌱 Grow racks" prompt used to be flavour text only) ----------
+// Tap a rack -> panel. Pick a crop: you pay Nettle's rent plus her seed price and it grows in real minutes (much faster
+// than the homestead's game hours, no water/power, but rent every crop and a smaller yield). When it's ripe: harvest into
+// your homestead silo or trade it straight to Nettle for product. Every harvest rolls a small ColSec raid (half the crop
+// seized + a star). The timer uses wall-clock readyAt so it keeps growing while you're away; saved in ssx.hydroden.v1.
+export const RACK = { rent: 150, seedMark: 1.25, msPerHour: 18000, yieldMult: 0.75, raidBase: 0.06, raidPerStar: 0.04, raidMax: 0.25 };
+export const RACK_KEY = 'ssx.hydroden.v1';
+export const seedPrice = id => CROPS[id] ? round5(CROPS[id].seed * RACK.seedMark) : 0;
+export const plantCost = id => CROPS[id] ? RACK.rent + seedPrice(id) : 0;
+export const growMs = id => CROPS[id] ? CROPS[id].hours * RACK.msPerHour : 0; // potato 3:00, algae 1:48, glowberry 4:12, lichen 6:00
+export const rackYield = id => CROPS[id] ? Math.max(1, Math.ceil(CROPS[id].yield * RACK.yieldMult)) : 0;
+export const mmss = ms => { const s = Math.ceil(Math.max(0, ms) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+export function raidChance(wanted = 0, cops = 1) {
+  const c = (RACK.raidBase + RACK.raidPerStar * Math.max(0, +wanted || 0)) * (Number.isFinite(+cops) && +cops > 0 ? +cops : 1);
+  return Math.min(RACK.raidMax, Math.max(0, c));
+}
+// st = { crop, n, plantedAt, readyAt } | null
+export function rackPhase(st, now = Date.now()) {
+  if (!st || !CROPS[st.crop] || !(st.n > 0)) return { phase: 'empty', p: 0 };
+  const total = Math.max(1, (+st.readyAt || 0) - (+st.plantedAt || 0)), ms = Math.max(0, (+st.readyAt || 0) - now);
+  return ms > 0 ? { phase: 'growing', ms, p: Math.min(1, 1 - ms / total), crop: st.crop, n: st.n } : { phase: 'ready', ms: 0, p: 1, crop: st.crop, n: st.n };
+}
+export function rackLabel(st, now = Date.now()) {
+  const p = rackPhase(st, now);
+  if (p.phase === 'growing') return `🌱 Your rack · ${goodIcon(p.crop)} ${mmss(p.ms)} left`;
+  if (p.phase === 'ready') return `🌱 Your rack · ${p.n} ${goodName(p.crop)} ready`;
+  return '🌱 Grow racks · rent one';
+}
+// plant: credits you have -> { ok, cost, next, msg }
+export function rackPlant(st, crop, credits = 0, now = Date.now()) {
+  if (!CROPS[crop]) return { ok: false, msg: 'Nettle: Never heard of it.' };
+  const ph = rackPhase(st, now);
+  if (ph.phase !== 'empty') return { ok: false, msg: `🌱 Your rack is busy: ${ph.phase === 'ready' ? 'harvest it first' : mmss(ph.ms) + ' left'}.` };
+  const cost = plantCost(crop);
+  if (credits < cost) return { ok: false, msg: `🌱 Nettle: ${goodName(crop)} is ${RACK.rent} rent + ${seedPrice(crop)} seeds = ${cost} cr. You have ${Math.floor(credits)}.` };
+  const ms = growMs(crop), n = rackYield(crop);
+  return { ok: true, cost, next: { crop, n, plantedAt: now, readyAt: now + ms }, msg: `🌱 Planted ${goodIcon(crop)} ${goodName(crop)} for ${cost} cr. ${n} ready in ${mmss(ms)}. It keeps growing while you're out.` };
+}
+// harvest roll: r in [0,1) vs raid chance -> { raided, n (kept), lost }
+export function rackHarvest(st, r = 1, chance = 0, now = Date.now()) {
+  const ph = rackPhase(st, now);
+  if (ph.phase === 'empty') return { ok: false, msg: '🌱 Nothing planted. Pick a crop.' };
+  if (ph.phase === 'growing') return { ok: false, msg: `🌱 Not ripe yet. ${mmss(ph.ms)} left.` };
+  if (r < chance) { const lost = Math.ceil(st.n / 2); return { ok: true, raided: true, crop: st.crop, n: st.n - lost, lost }; }
+  return { ok: true, raided: false, crop: st.crop, n: st.n, lost: 0 };
+}

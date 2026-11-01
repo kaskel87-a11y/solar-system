@@ -53,4 +53,30 @@ ok('module tags that dome with the interior kind', /d\[5\] = K\.KIND/.test(mod))
 ok('index.html imports mars/hydroden.js (static, no ?v=)', /import '\.\/mars\/hydroden\.js';/.test(idx));
 ok('sw.js precaches both files', sw.includes('`mars/hydroden.js${q}`') && sw.includes('`mars/hydrodencore.js${q}`'));
 ok('buttons go through window.__onTap', /window\.__onTap\(el, fn\)/.test(mod) && !/addEventListener\('click'(?!, fn\))/.test(mod.replace("el.addEventListener('click', fn)", '')));
+
+// v7.5.30: grow racks are a real feature (rent + seeds -> real-minute grow -> silo or Nettle), every den prompt has a handler
+{
+  const t0 = 1000;
+  ok('empty rack label invites a rental', K.rackLabel(null, t0) === '🌱 Grow racks · rent one');
+  for (const id of K.CROP_IDS) ok(`${id}: costs rent + seeds, grows in a few real minutes, still pays`, K.plantCost(id) === K.RACK.rent + K.seedPrice(id) && K.growMs(id) >= 60000 && K.growMs(id) <= 6 * 60000 && K.rackYield(id) * K.goodValue(id) > K.plantCost(id));
+  const broke = K.rackPlant(null, 'potato', 100, t0); ok('too broke: refused with the price', !broke.ok && /175 cr/.test(broke.msg));
+  const pl = K.rackPlant(null, 'potato', 500, t0); ok('plant sets crop, yield and timer', pl.ok && pl.cost === 175 && pl.next.crop === 'potato' && pl.next.n === 5 && pl.next.readyAt === t0 + 180000);
+  ok('busy rack refuses a second planting', !K.rackPlant(pl.next, 'algae', 9999, t0 + 1).ok);
+  const mid = K.rackPhase(pl.next, t0 + 90000); ok('half way: growing, 50%, 1:30 left', mid.phase === 'growing' && Math.abs(mid.p - 0.5) < 1e-9 && K.mmss(mid.ms) === '1:30');
+  ok('label shows the countdown', K.rackLabel(pl.next, t0 + 90000).includes('1:30 left'));
+  ok('harvest while growing is refused with time left', /Not ripe yet\. 1:30/.test(K.rackHarvest(pl.next, 1, 0, t0 + 90000).msg));
+  const ready = t0 + 180000; ok('ready label', K.rackLabel(pl.next, ready) === '🌱 Your rack · 5 Potatoes ready');
+  const clean = K.rackHarvest(pl.next, 0.9, 0.06, ready); ok('no raid: keep it all', clean.ok && !clean.raided && clean.n === 5);
+  const raid = K.rackHarvest(pl.next, 0.01, 0.06, ready); ok('raid: half seized (rounded up)', raid.ok && raid.raided && raid.lost === 3 && raid.n === 2);
+  ok('raid risk is small and capped', K.raidChance(0) === K.RACK.raidBase && K.raidChance(0) < 0.1 && K.raidChance(9, 3) === K.RACK.raidMax);
+  ok('every plant/harvest outcome has a message', [broke, pl].every(r => r.msg.length > 5));
+}
+{
+  const m = read('mars/hydroden.js');
+  const ids = [...m.matchAll(/api\.spot\(\{ id: '(hd:[a-z]+)'/g)].map(x => x[1]);
+  ok('every den spot id has an act() branch', ids.length >= 3 && ids.every(id => m.includes(`sid === '${id}'`)), ids);
+  ok('racks open the rack panel (not flavour text) and toast', /sid === 'hd:racks'\) \{ const ok = open\('rack'\); .*toast\(/.test(m));
+  ok('rack save key is in the save-code list', read('savecode.js').includes(`'${K.RACK_KEY}'`));
+  ok('Nettle prompt says Talk to Sister Nettle', m.includes('Talk to ${K.DEALER}'));
+}
 console.log(`\n${n - fails}/${n} passed`); if (fails) process.exit(1);
