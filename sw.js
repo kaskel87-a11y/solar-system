@@ -32,6 +32,7 @@ const PRECACHE = [
   `mars/fightclub.js${q}`,
   ...['marstracks', 'marstrackcore'].map(n => `${n}.js${q}`),
   `airroll.js${q}`, // phone barrel-roll button
+  `nozoom.js${q}`, // v7.5.44 iOS zoom lock
   `mars/gravity.js${q}`, `mars/gravitycore.js${q}`, // Pumpkin: gravity modes for Mars vehicles
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
   `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, // fast travel on Mars (Pumpkin)
