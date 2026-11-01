@@ -106,6 +106,29 @@ function trade(good, drug) {
   emit('trade', res); return res;
 }
 
+// ---------- v7.5.32: Nettle buys for cash (product off your stash; silo crops and rover shine) ----------
+function stashQty(id) { try { return SSX().contraband?.stash?.()?.items?.[id]?.qty | 0; } catch (e) { return 0; } }
+function cap() { try { return SSX().contraband?.capacity?.() || null; } catch (e) { return null; } }
+function streetPrice(id) { try { const p = SSX().contraband?.buyerPrice?.(id); return Number.isFinite(p) ? p : null; } catch (e) { return null; } }
+const fence = id => K.fencePrice(id, streetPrice(id));
+function sellDrug(id, qty = 1) {
+  const D = K.DRUGS[id], C = SSX().contraband; if (!D || !C) return { ok: false, msg: 'Nettle: Not buying that.' };
+  const q = K.saleQuote(stashQty(id), qty, fence(id), D.name); if (!q.ok) return q;
+  const got = C.remove?.(id, q.qty) | 0; if (got < 1) return { ok: false, msg: `You\u2019re not holding any ${D.name}.` };
+  const total = got * q.each; pay(total); stats.sold = (stats.sold || 0) + got; stats.cash = (stats.cash || 0) + total;
+  const res = { ok: true, kind: 'drug', id, qty: got, each: q.each, total, heat: false, msg: `💰 Nettle buys ${got} ${D.icon} ${D.name} for ${total} cr (${q.each} each).` };
+  let cops = 1; try { cops = SSX().time?.state?.()?.cops ?? 1; } catch (e) { /* */ }
+  const w = world(); if (rng() < K.heatChance(got, w?.wanted || 0, cops)) { res.heat = true; stats.heat++; try { w?.crime?.(1, 'dealing in the Hydro Den'); } catch (e) { /* */ } res.msg += ' 🚨 Somebody on the rail was wearing a wire.'; }
+  emit('sell', res); return res;
+}
+function sellGood(id, qty = 'all') {
+  const g = goods().find(x => x.id === id), name = K.goodName(id), q = K.saleQuote(g?.n || 0, qty, K.goodCash(id), name); if (!q.ok) return q;
+  const got = takeGood(id, q.qty); if (got < 1) return { ok: false, msg: `Your ${name} came up empty.` };
+  const total = got * q.each; pay(total); stats.cash = (stats.cash || 0) + total;
+  const res = { ok: true, kind: 'good', id, qty: got, each: q.each, total, msg: `💰 Nettle pays ${total} cr for ${got} ${K.goodIcon(id)} ${name} (${q.each} each).` };
+  emit('sell', res); return res;
+}
+
 // ---------- the room ----------
 const live = { api: null, nettle: null, fan: null, n: 0 };
 const anim = (h, t, k) => { const s = Math.sin(t * 1.4 + k); h.hips.position.y = h.base - Math.abs(s) * 0.02; h.torso.rotation.z = s * 0.04; h.head.rotation.y = Math.sin(t * 0.5 + k) * 0.5; h.arms[0].rotation.x = 0.4; h.arms[1].rotation.x = 0.9 + Math.sin(t * 2 + k) * 0.2; };
@@ -160,6 +183,7 @@ const CSS = `#hdPanel{position:fixed;left:50%;bottom:max(12px,env(safe-area-inse
 #hdPanel .drugs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px}
 #hdPanel button{display:block;width:100%;min-height:48px;margin:0 0 6px;padding:8px 10px;background:#000;color:#fff;border:2px solid #fff;border-radius:4px;font:700 15px system-ui;text-align:left;touch-action:manipulation}
 #hdPanel .drugs button{margin:0;text-align:center}#hdPanel button.on{background:#fff;color:#000}#hdPanel button[disabled]{opacity:.45;border-style:dashed}#hdPanel button.alt{color:#bbb;border-style:dashed}
+#hdPanel .full{background:#fff;color:#000;border:2px solid #fff;font:800 15px/1.3 system-ui;padding:10px;margin:0 0 8px;text-align:center}#hdPanel button.no{opacity:.55;border-style:dashed}
 #hdPanel small{display:block;color:#aaa;margin:-2px 0 8px;font-size:12px}`;
 function css() { if (document.getElementById('hdCss')) return; const s = document.createElement('style'); s.id = 'hdCss'; s.textContent = CSS; document.head.appendChild(s); }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -169,22 +193,35 @@ function render() {
   if (!panel) return;
   if (mode === 'rack') return renderRack();
   const G = goods(); let h = `<h3>${esc(K.DEALER)} · ${esc(K.TITLE)}</h3><p class="q">\u201c${esc(QUOTES[(stats.trades + (Date.now() / 60000 | 0)) % QUOTES.length])}\u201d</p>`;
+  const C0 = cap(); if (K.pocketsFull(C0)) h += `<div class="full" data-full="1">${esc(K.fullBanner(C0))}</div>`;
   if (msg) h += `<p class="m">${esc(msg)}</p>`;
+  const held = K.DRUG_IDS.filter(id => stashQty(id) > 0);
+  if (held.length) {
+    h += '<h3 style="margin-top:6px">💰 Sell product to Nettle</h3>';
+    for (const id of held) { const D = K.DRUGS[id], n = stashQty(id), e = fence(id); h += `<p style="margin:2px 0">${D.icon} ${esc(D.name)} · you hold ${n} · ${e} cr each</p><div class="drugs"><button data-sell="${id}" data-q="1">Sell 1 · ${e} cr</button><button data-sell="${id}" data-q="all">Sell all ${n} · ${n * e} cr</button></div>`; }
+    h += '<small>Street buyers pay more, with more risk. Nettle pays a fence’s price.</small>';
+  }
+  h += '<h3 style="margin-top:6px">🔁 Swap for product</h3>';
   h += `<p>Pick the product you want, then what you\u2019re paying with. Crops come from your homestead silo; shine from the crates in your rover.</p><div class="drugs">`;
   for (const id of K.DRUG_IDS) { const D = K.DRUGS[id]; h += `<button data-drug="${id}" class="${id === sel ? 'on' : ''}">${D.icon} ${esc(D.name)}<br><small style="margin:0;color:inherit">${drugCost(id)} cr · room ${room(id)}</small></button>`; }
   h += '</div>';
   if (!G.length) h += '<p>You\u2019ve got nothing she wants. Harvest crops at the Dustbowl Homestead, or brew shine at your still and load the crates in your rover.</p>';
   for (const g of G) {
     const q = quote(g.id, sel), each = K.goodValue(g.id);
-    h += `<button data-good="${g.id}" ${q.ok ? '' : 'disabled'}>${q.ok ? esc(K.tradeText(q)) : `${K.goodIcon(g.id)} ${esc(K.goodName(g.id))}: ${esc(q.msg)}`}</button><small>${g.n} ${g.from === 'silo' ? 'in your silo' : 'in your rover'} · worth ${each} cr each${K.isShine(g.id) ? ' (shine pays more)' : ''}</small>`;
+    h += `<button data-good="${g.id}" ${q.ok ? '' : `class="no" data-no="${esc(q.msg)}"`}>${q.ok ? esc(K.tradeText(q)) : `${K.goodIcon(g.id)} ${esc(K.goodName(g.id))}: ${esc(q.msg)}`}</button><small>${g.n} ${g.from === 'silo' ? 'in your silo' : 'in your rover'} · worth ${each} cr each${K.isShine(g.id) ? ' (shine pays more)' : ''}</small>`;
+  }
+  if (G.length) {
+    h += '<h3 style="margin-top:6px">💵 Sell crops &amp; shine for cash</h3>';
+    for (const g of G) { const e = K.goodCash(g.id); h += `<p style="margin:2px 0">${K.goodIcon(g.id)} ${esc(K.goodName(g.id))} · ${g.n} ${g.from === 'silo' ? 'in your silo' : 'in your rover'} · ${e} cr each</p><div class="drugs"><button data-cash="${g.id}" data-q="1">Sell 1 · ${e} cr</button><button data-cash="${g.id}" data-q="all">Sell all ${g.n} · ${g.n * e} cr</button></div>`; }
   }
   h += '<button data-leave="1" class="alt">Leave it</button>';
   panel.innerHTML = h;
   for (const b of panel.querySelectorAll('button')) onTap(b, () => {
-    if (b.disabled) return;
-    if (b.dataset.leave) return close();
-    if (b.dataset.drug) { sel = b.dataset.drug; msg = ''; return render(); }
-    if (b.dataset.good) { const r = trade(b.dataset.good, sel); msg = r.msg || ''; if (r.ok && r.heat) msg += ' 🚨 Somebody on the rail was wearing a wire. ColSec is coming.'; render(); if (r.ok) toast(r.msg, 2600); }
+    if (b.dataset.no) { const full = K.pocketsFull(cap()); msg = b.dataset.no + (full ? ' Sell some product to Nettle first.' : ''); toast('🌿 ' + msg, 2600); return render(); }
+    if (b.dataset.sell || b.dataset.cash) { const qq = b.dataset.q === 'all' ? 'all' : 1, r = b.dataset.sell ? sellDrug(b.dataset.sell, qq) : sellGood(b.dataset.cash, qq); msg = r.msg || 'Nettle shrugs.'; toast(msg, 2800); return render(); }
+    if (b.dataset.leave) { toast('🌿 Nettle: Come back when you’ve got something.', 1600); return close(); }
+    if (b.dataset.drug) { sel = b.dataset.drug; msg = ''; toast(`🌿 Swapping for ${K.DRUGS[sel].icon} ${K.DRUGS[sel].name}: ${room(sel)} room left.`, 1600); return render(); }
+    if (b.dataset.good) { const r = trade(b.dataset.good, sel); msg = r.msg || ''; if (!r.ok) toast('🌿 ' + msg, 2600); if (r.ok && r.heat) msg += ' 🚨 Somebody on the rail was wearing a wire. ColSec is coming.'; render(); if (r.ok) toast(r.msg, 2600); }
   });
 }
 // v7.5.30: the grow-rack panel (same black/white look, every button through __onTap, every tap toasts)
@@ -255,7 +292,7 @@ function surfaceTick(dt, tc) {
 const API = {
   version: 1, get tagged() { return tagged; }, get inside() { return inside(); }, get isOpen() { return !!panel; },
   door: () => { const d = door(); return d ? { x: d.x, z: d.z, name: d.name, kind: d.kind } : null; },
-  goods, room, quote, trade, open, close, act, rates: K.rateTable, stats: () => ({ ...stats }),
+  goods, room, quote, trade, sellDrug, sellGood, fence, open, close, act, rates: K.rateTable, stats: () => ({ ...stats }),
   on(fn) { subs.add(fn); return () => subs.delete(fn); },
   rack: () => ({ state: rack ? { ...rack } : null, ...K.rackPhase(rack), label: K.rackLabel(rack) }), rackPlant, rackTake,
   debug: { rackReady() { if (rack) { rack.readyAt = Date.now() - 1; rackSave(); } return !!rack; }, rackClear() { rack = null; rackSave(); }, rng(f) { rng = typeof f === 'function' ? f : Math.random; }, anywhere(v = true) { openAnywhere = !!v; }, room: () => ({ built: live.n }) }

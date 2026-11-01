@@ -79,4 +79,17 @@ ok('buttons go through window.__onTap', /window\.__onTap\(el, fn\)/.test(mod) &&
   ok('rack save key is in the save-code list', read('savecode.js').includes(`'${K.RACK_KEY}'`));
   ok('Nettle prompt says Talk to Sister Nettle', m.includes('Talk to ${K.DEALER}'));
 }
+
+// v7.5.32: Nettle buys (cash)
+for (const d of K.DRUG_IDS) ok(`${d}: fence price is a bit under Blue's and never over 80% of street`, K.fencePrice(d) < K.DRUGS[d].cost && K.fencePrice(d) >= K.DRUGS[d].cost * 0.85 && K.fencePrice(d, 20) <= 16);
+for (const g of [...K.CROP_IDS, ...K.SHINE_IDS]) {
+  ok(`${g}: cash price is slightly under its swap value`, K.goodCash(g) < K.goodValue(g) && K.goodCash(g) >= K.goodValue(g) * 0.85);
+  for (const d of K.DRUG_IDS) { const q = K.quote(g, 10, d, 99); if (q.ok) ok(`no loop: ${g} -> ${d} -> cash pays no more than selling ${g}`, q.units * K.fencePrice(d) + q.change <= q.take * K.goodValue(g)); }
+}
+ok('saleQuote sell 1 / sell all / none', K.saleQuote(5, 1, 36).total === 36 && K.saleQuote(5, 'all', 36).qty === 5 && !K.saleQuote(0, 1, 36, 'X').ok && /not holding any X/.test(K.saleQuote(0, 1, 36, 'X').msg));
+ok('full banner text', K.pocketsFull({ used: 20, max: 20 }) && !K.pocketsFull({ used: 19, max: 20 }) && K.fullBanner({ used: 20, max: 20 }) === 'Pockets full (20/20) — sell some product below to make room');
+{ const m = read('mars/hydroden.js');
+  ok('panel has sell 1 / sell all for product and goods + the banner', /data-sell=/.test(m) && /data-cash=/.test(m) && /data-q="all"/.test(m) && /data-full/.test(m));
+  ok('greyed swap buttons still answer a tap (no disabled attr)', !/'disabled'/.test(m.split('function render()')[1].split('function renderRack')[0]) && /b\.dataset\.no/.test(m));
+  ok('product sales roll the same wire as swaps', /function sellDrug[\s\S]*K\.heatChance\(got/.test(m)); }
 console.log(`\n${n - fails}/${n} passed`); if (fails) process.exit(1);

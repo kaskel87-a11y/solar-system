@@ -106,3 +106,24 @@ export function rackHarvest(st, r = 1, chance = 0, now = Date.now()) {
   if (r < chance) { const lost = Math.ceil(st.n / 2); return { ok: true, raided: true, crop: st.crop, n: st.n - lost, lost }; }
   return { ok: true, raided: false, crop: st.crop, n: st.n, lost: 0 };
 }
+
+// ---------- v7.5.32: Nettle buys too (cash) ----------
+// Product off your stash: a fence's price, a bit under Blue's wholesale (and never over 80% of the street price), so the
+// den can't be looped (crop -> product at Blue's price -> cash) for profit; the street still pays more, with more risk.
+// Crops and shine: 90% of what she values them at in a swap. Product sales roll the same wire as swaps (heatChance).
+export const FENCE_MULT = 0.9, STREET_CAP = 0.8, GOODS_CASH_MULT = 0.9;
+export function fencePrice(drug, street = null) {
+  const D = DRUGS[drug]; if (!D) return 0;
+  let p = D.cost * FENCE_MULT; if (Number.isFinite(+street) && +street > 0) p = Math.min(p, +street * STREET_CAP);
+  return Math.max(1, Math.round(p));
+}
+export const goodCash = id => Math.max(0, round5(goodValue(id) * GOODS_CASH_MULT)); // potato 95, algae 70, glowberry 165, lichen 290; shine 165/125/295/505
+// selling `qty` of something you hold `have` of -> { ok, qty, each, total, msg }
+export function saleQuote(have, qty, each, name = 'it') {
+  have = int(have); const q = qty === 'all' ? have : Math.min(have, int(qty));
+  if (!have) return { ok: false, qty: 0, each, total: 0, msg: `You\u2019re not holding any ${name}.` };
+  if (!(each > 0)) return { ok: false, qty: 0, each: 0, total: 0, msg: `Nettle: I don\u2019t buy ${name}.` };
+  return { ok: q > 0, qty: q, each, total: q * each, msg: '' };
+}
+export const pocketsFull = cap => !!cap && cap.max > 0 && cap.used >= cap.max;
+export const fullBanner = cap => `Pockets full (${cap.used}/${cap.max}) \u2014 sell some product below to make room`;
