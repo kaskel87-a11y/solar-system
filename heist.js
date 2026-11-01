@@ -162,7 +162,10 @@ export function heistTick(dt, ctx) {
     if (dist(w.site) < w.site.r * 2) { raiseAlarm(ctx.world, Math.min(5, H.wanted + 1), `${d.title}: private security response`); emit('alarm:response', { id: d.id, x: w.site.x, z: w.site.z, wanted: ctx.world.wanted }); }
   }
   let act = null, goal = null;
-  const onFoot = !car;
+  // v7.5.40: on foot AND at street level. Outdoors, standing 2.5 m+ above a ring (a jetpack on the villa roof right over
+  // the safe) isn't being at the door / safe / power box (player.y is eye height, 1.7 m over your feet).
+  const lifted = !isIndoors(ctx.world) && Number.isFinite(P.y) && typeof ctx.height === 'function' && P.y - 1.7 - ctx.height(P.x, P.z) > 2.5;
+  const onFoot = !car && !lifted;
   if (w.power && onFoot && dist(w.power) < 2.2 && !run.powerCut && STAGE_IDX(run.stage) <= STAGE_IDX('crack')) act = { label: '⚡ Cut power', fn: async () => { run.powerCut = true; for (const c of cams.list()) if (c.heistId === d.id) cams.disable(c.id, d.power?.s ?? 45); emit('camera:disabled', { id: d.id, all: true, s: d.power?.s ?? 45 }); toast('⚡ Cameras dark for a bit. Move.', 2500); } };
   else if (onFoot && cv.near && cv.nearD < 2.4 && cv.near.heistId === d.id && STAGE_IDX(run.stage) <= STAGE_IDX('crack')) { const c = cv.near; act = { label: '✂️ Cut camera', fn: async () => { cams.disable(c.id); emit('camera:disabled', { id: c.id, heistId: d.id, s: c.disabledFor }); toast('✂️ Camera loop spliced.', 2000); } }; }
   if (run.stage === 'case') {

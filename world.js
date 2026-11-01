@@ -370,6 +370,7 @@ export function createWorld(ctx) {
     const vehicles = yb === undefined ? allVehicles() : allVehicles().filter(v => !(v.parked && ROOF.clearsCar(v, yb, height))); // cars it's above don't block
     let hit = false;
     for (const s of solids) {
+      if (s.deck) continue; // v7.5.40: a deck (the villa roof) only holds you up from above; it never pushes anyone sideways
       if (yb !== undefined && ROOF.overlaps(s, x, z, r) && ROOF.clears(s, x, z, r, yb, height)) continue;
       if (s.box) { const dx = x - s.x, dz = z - s.z, ex = s.box[0] + r, ez = s.box[1] + r;
         if (Math.abs(dx) < ex && Math.abs(dz) < ez) { hit = true; if (ex - Math.abs(dx) < ez - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * ex; else z = s.z + Math.sign(dz || 1) * ez; } continue; }
@@ -404,7 +405,7 @@ export function createWorld(ctx) {
   }
   function solidAt(x, y, z) {
     if (!C) return false;
-    for (const s of solids) { if (y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
+    for (const s of solids) { if (s.deck || y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
     return false;
   }
 
@@ -413,7 +414,7 @@ export function createWorld(ctx) {
     if (!C) return false;
     for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
-      if (s.nocam) continue; // v7.5.4: street dressing never pulls the camera in
+      if (s.nocam || s.deck) continue; // v7.5.4: street dressing never pulls the camera in
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
       const r = s.r - 0.1; if (Math.hypot(x - s.x, (y - gy) * (r / Math.max(0.5, s.h || r)), z - s.z) < r) return true;
@@ -593,7 +594,7 @@ export function createWorld(ctx) {
       const du = Math.hypot(cxp - x, czp - z), dp = Math.hypot(cxp - px, czp - pz); if (du > maxD || dp < 6 || dp > 42) return;
       const sc = du + Math.abs(dp - 16) * 0.4; if (sc < bs) { bs = sc; best = { x: cxp, z: czp, sx, sz }; }
     };
-    for (const s of solids) if (Math.hypot(s.x - x, s.z - z) < maxD + 12) { if (s.box) consider(s.x, s.z, s.box[0], s.box[1], s); else if (s.r < 6) consider(s.x, s.z, 0, 0, s); }
+    for (const s of solids) if (!s.deck && Math.hypot(s.x - x, s.z - z) < maxD + 12) { if (s.box) consider(s.x, s.z, s.box[0], s.box[1], s); else if (s.r < 6) consider(s.x, s.z, 0, 0, s); }
     for (const b of camBoxes) if (Math.hypot(b.x - x, b.z - z) < maxD) consider(b.x, b.z, 0, 0, { r: 0.9 });
     for (const v of vehicles) if (v.parked && Math.hypot(v.x - x, v.z - z) < maxD) consider(v.x, v.z, 0, 0, { r: v.spec.r * 0.8 });
     return best;
@@ -1136,7 +1137,7 @@ export function createWorld(ctx) {
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
     coverNear, hostileAt: (x, z) => witnessed(x, z), copSees: (x, z, r) => copSees(x, z, r), freeSpot,
     // v7.5.4 API: add-on solids (street dressing). nocam defaults to true. Cleared on world exit; returns a remover.
-    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
+    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; if (Number.isFinite(o.y0)) sd.y0 = o.y0; if (Number.isFinite(o.top)) sd.top = o.top; if (o.deck) sd.deck = true; /* v7.5.40: heights + support-only decks (roofs.js) */ const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },
     highway: () => HW ? { name: HW.def.name, len: HW.len, closed: HW.closed, checkpoints: cps.map(c => ({ id: c.id, name: c.name, faction: c.faction, x: c.x, z: c.z })), ramps: HW.ramps.map(r => ({ x: r.x, z: r.z, len: r.len, h: r.h })), at: s2 => roadAt(s2), project: (x, z) => projectRoad(x, z) } : null,
