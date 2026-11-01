@@ -236,14 +236,15 @@ function tick(dt, tc) {
   else if (!search) { const L = lastSeen || { x: P.x, z: P.z }, total = (SEARCH_BASE + SEARCH_PER * stars) * ease(); search = { x: L.x, z: L.z, r: 25 + 10 * stars, left: total, total }; emit('search', { x: search.x, z: search.z, left: total }); }
   if (search) { search.left -= dt; if (search.left <= 0) { lose('search', true); return; } }
   // units
-  const pit = inPit(P.x, P.z), safe = pit || P.inside || P.floating;
+  const pit = inPit(P.x, P.z), perch = !P.driving && fin(P.y) && fin(P.gy) && P.y - 1.7 - P.gy > 4; // v7.5.23: up a tower / on a roof they can shoot but can't box you in
+  const safe = pit || P.inside || P.floating;
   let near = 0;
   for (const u of [...units]) { stepUnit(u, dt, P, stars, safe, pit); if (units.includes(u) && Math.hypot(u.x - P.x, u.z - P.z) < 7.5) near++; }
   // roadblock contact
   if (P.driving && !safe) for (const b of blocks) { const dx = P.x - b.x, dz = P.z - b.z, along = dx * b.fx + dz * b.fz, across = dx * b.fz - dz * b.fx; if (Math.abs(along) < 4.2 && Math.abs(across) < b.w && Math.abs(P.speed) > 6 && P.car) { P.car.speed *= 0.25; b.t = tNow; try { g.hurtPlayer(6 + stars, { x: b.x, z: b.z }); } catch (e) { /* */ } emit('ram', { by: 'roadblock', id: b.id }); stats.rams++; } }
   // boxed in: stopped with two of ours on you (or one on foot); core's own bust timer still runs for its units
   const stopped = P.driving ? Math.abs(P.speed) < 1.5 : true;
-  if (!safe && stopped && near >= (P.driving ? 2 : 1)) { boxT += dt * ease(); if (boxT > (P.driving ? 3 : 2.5)) { boxT = 0; emit('boxed', { units: near }); try { g.bust?.(); } catch (e) { console.warn('pursuit bust', e); } } }
+  if (!safe && !perch && stopped && near >= (P.driving ? 2 : 1)) { boxT += dt * ease(); if (boxT > (P.driving ? 3 : 2.5)) { boxT = 0; emit('boxed', { units: near }); try { g.bust?.(); } catch (e) { console.warn('pursuit bust', e); } } }
   else boxT = Math.max(0, boxT - dt);
   // hideouts: out of sight, parked or still inside one
   const h = nearSite(sites.hide, P);

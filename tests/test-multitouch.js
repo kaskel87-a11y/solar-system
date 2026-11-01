@@ -60,7 +60,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const tw = await G(() => window.SSX.sniper.debug.tower());
     await G(tw => { const W = window.__app.surface.world; W.setWanted(2); for (let k = 0; k < 2; k++) W.debug.spawnSecurity('officer', { x: tw.x + 2 + k, z: tw.z + 2 }); }, tw);
     let minD = 1e9; const busts0 = await G(() => window.SSX.consequences?.status().stats?.busted ?? 0);
-    for (let k = 0; k < 20; k++) { await sleep(500); const d = await G(() => { const i = window.__app.surface.info; return Math.min(1e9, ...window.__app.surface.world.debug.security?.() .map(s => Math.hypot(s.x - i.x, s.z - i.z)) || [1e9]); }).catch(() => 1e9); minD = Math.min(minD, d); }
+    for (let k = 0; k < 20; k++) { await sleep(500); const d = await G(() => { const i = window.__app.surface.info; return Math.min(1e9, ...window.__app.surface.world.debug.security?.() .map(s => Math.hypot(s.x - i.x, s.z - i.z)) || [1e9]); }).catch(() => 1e9); minD = Math.min(minD, d); (R.trace ??= []).push(await G(() => { const i = window.__app.surface.info, c = window.SSX.consequences?.status(); return [window.SSX.sniper.debug.perched() ? 'P' : '-', Math.round(i.y ?? -1), c?.pending ? 'pend' : '', c?.custody ? 'cust' : '', window.__app.surface.world.wanted].join(''); }).catch(e => 'x')); }
     const st = await G(() => ({ c: window.SSX.consequences?.status(), wanted: window.__app.surface.world.wanted, perched: window.SSX.sniper.debug.perched() }));
     ok('towerNoBust', { minD: Math.round(minD * 10) / 10, wanted: st.wanted, perched: st.perched, pending: st.c?.pending, custody: !!st.c?.custody }, !st.c?.pending && !st.c?.custody && st.perched);
     await G(() => { window.SSX.sniper.stop(); window.__app.surface.world.setWanted(0, 'debug'); });
