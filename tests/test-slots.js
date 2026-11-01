@@ -49,7 +49,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('npcBudget', nb && `${nb.used}/${nb.cap}`, !nb || (nb.used <= nb.cap && (desk || nb.cap <= 12)));
     // other hotspots are not in range at the machines, and the machines are not in range at the bar / door
     await G(() => window.__app.surface.debugInside(-8.1, 1.5, 0)); await sleep(400); R.atBar = await G(() => window.__app.surface.info.spot?.id); ok('barSpot', R.atBar === 'bar');
-    await G(() => window.__app.surface.debugInside(0, 7.0, 0)); await sleep(400); R.atDoor = await G(() => window.__app.surface.info.spot?.id); ok('doorSpot', R.atDoor === 'leave');
+    await G(() => window.__app.surface.debugInside(-11, 22.6, 0) /* v7.5.33 door moved (4x club) */); await sleep(400); R.atDoor = await G(() => window.__app.surface.info.spot?.id); ok('doorSpot', R.atDoor === 'leave');
     // 1) the prompt at the machines
     await G(() => window.__app.surface.debugInside(-6.85, 6.4, Math.PI));
     ok('prompt', await wait(() => /🎰 Play/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'slots' && document.body.classList.contains('slNear'), 15000));

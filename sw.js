@@ -45,6 +45,8 @@ const PRECACHE = [
   `mars/pitring.js${q}`, `mars/pitringcore.js${q}`, // 🥊 The Pit landmark (v7.5.21)
   `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
   `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
+  `clubpoker.js${q}`, // 🃏 Velvet Airlock Hold'em room (v7.5.33)
+  `mars/heliospass.js${q}`, `mars/heliospasscore.js${q}`, // 🏰 Helios Heights guest pass (v7.5.33)
   ...['onboard', 'onboardcore'].map(n => `${n}.js${q}`), // First Day on Mars tour + How to play codex (Ben)
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)
   `mars/raccoonrover.js${q}`, `mars/raccooncore.js${q}`, // Raccoon Rover (Pumpkin)

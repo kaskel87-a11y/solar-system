@@ -16,7 +16,7 @@ export const COLONIES = {
     domes: [[0, 0, 14, 'ARES JUNCTION', 0xff7a2a], [-22, -16, 8], [24, 6, 9, 'HAB 3', 0x6ad0ff]],
     // [x, z, w, d, h, sign, colour, interior kind?, inside title?]; the door is the middle of the +z face
     blocks: [[31, -17, 9, 5, 6, 'CANTINA', 0xff2a5a, 'cantina', 'CANTINA'], [-6, 23, 7, 4, 4, 'SUPPLY', 0x3cff8a, 'supply', 'ARES SUPPLY'], [-44, -14, 6, 4, 5, 'DEPOT', 0xffd040, 'depot', 'MERIDIAN DEPOT'],
-      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -36, 12, 7, 7, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'], [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
+      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -39.5, 24, 14, 8, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'] /* v7.5.33 4x (was 12 x 7 at z -36): same front face + door, grew back + sideways */, [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
     pad: [-38, 10, 9], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]],
     shop: [-6, 26.2], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
     // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the VIP room
@@ -293,7 +293,9 @@ export function createWorld(ctx) {
     // perimeter lamps; a few flicker like they're wired by the lowest bidder
     const lr = isColony ? 50 : (D.lampR || 44);
     for (let k = 0; k < (D.lamps || 0); k++) {
-      const a = k / D.lamps * Math.PI * 2, X = ox + Math.cos(a) * lr, Z = oz + Math.sin(a) * lr;
+      const a = k / D.lamps * Math.PI * 2; let r = lr; // v7.5.33: a lamp that would stand inside a block (the bigger club) steps outward past it
+      for (let n = 0; n < 40 && (D.blocks || []).some(([bx, bz, bw, bd]) => Math.abs(Math.cos(a) * r - bx) < bw / 2 + 1 && Math.abs(Math.sin(a) * r - bz) < bd / 2 + 1); n++) r += 0.5;
+      const X = ox + Math.cos(a) * r, Z = oz + Math.sin(a) * r;
       add(mesh(R.cyl, R.frame, X, y0 + 2.5, Z, 0.09, 5, 0.09)); const bulb = add(mesh(R.sph, R.lampOn, X, y0 + 5.1, Z, 0.28));
       if (k % 4 === 1) flick.push({ m: bulb, flicker: true });
     }
@@ -1079,9 +1081,9 @@ export function createWorld(ctx) {
     if (game.flag('vip')) room.openRope(); // a prebuilt club (v7.5.17 prewarm) may predate the VIP pass
     room.group.visible = true;
     inside = { door, room, ax: cx, ay: room.ay, az: cz };
-    if (lights[0]) { const L = room.def.light; lights[0].position.set(cx, room.ay + room.h - 0.5, cz); lights[0].color.setHex(L.color); lights[0].distance = 60; lights[0].decay = 1.2; lights[0].intensity = L.int; }
+    if (lights[0]) { const L = room.def.light; lights[0].position.set(cx + room.cx, room.ay + room.h - 0.5, cz + room.cz); lights[0].color.setHex(L.color); lights[0].distance = Math.max(60, Math.hypot(room.w, room.d) * 1.2); lights[0].decay = 1.2; lights[0].intensity = L.int; }
     onEvent('door', {});
-    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx, y: room.ay, z: cz + room.d / 2 - 1.3, yaw: 0 } };
+    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx + room.cx, y: room.ay, z: cz + room.cz + room.d / 2 - 1.3, yaw: 0 } };
   }
   function exitBuilding() {
     if (!inside) return null; const { door, room } = inside; room.group.visible = false; inside = null;
@@ -1106,7 +1108,7 @@ export function createWorld(ctx) {
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
     vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
-    get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
+    get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; }, get inDuel() { return !!duel; },

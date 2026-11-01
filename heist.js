@@ -232,6 +232,7 @@ export const heist = {
     emit('alarm', { level, why, before, wanted: world ? world.wanted : 0, op: act.op, heistId: run?.def.id || null }); return act;
   },
   registerHeist(def) { const d = normHeist(def); HEISTS.set(d.id, d); ensureMenu(); return d.id; },
+  unregisterHeist(id) { if (run && run.def.id === id) return false; const had = HEISTS.delete(id); ensureMenu(); return had; }, // v7.5.33 (a bribed one-run Helios pass ends)
   heists: () => [...HEISTS.values()].map(d => ({ id: d.id, title: d.title, world: d.world, tier: d.safe.tier, cameras: d.cameras.length })),
   fromMansion: heistFromMansion,
   // applyTip(heistId, tip): informant intel. Unknown types / heists are ignored (returns null). Emits 'tip' with the
