@@ -1013,6 +1013,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     a.group.position.set(player.x, player.y - EYE, player.z);
     if (player.moving > 0.05) player.faceYaw = lerpAngle(player.faceYaw, player.moveYaw, dt * 10);
     a.group.rotation.y = player.faceYaw;
+    if (player.slump > 0) { a.group.rotation.order = 'YXZ'; a.group.rotation.x = -Math.min(1, player.slump) * 1.42; } else if (a.group.rotation.x) a.group.rotation.x = 0; // v7.5.29 the Pit: knocked down (mars/pitshow.js)
     const sw = Math.sin(player.bob) * 0.6 * player.moving;
     if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; }
     else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; }
@@ -1185,7 +1186,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     activityTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     heistTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
     sciTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name });
-    if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
+    if (extraTicks.length) { const tc = { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile, astro }; for (const f of extraTicks) { try { f(dt, tc); } catch (e) { console.warn('surface tick', e); } } } // v7.5.1 registerSurfaceTick
     modeTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, isMobile });
     game.update(dt, input);
     dangerTick(dt, { scene, camera, height, player, car: driving ? car : null, rover, game, world, name, inside: !!indoor, dog, intro: state.intro });

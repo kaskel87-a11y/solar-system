@@ -42,6 +42,7 @@ const PRECACHE = [
   `mars/crane.js${q}`, `mars/cranecore.js${q}`, // 🧲 magnet crane truck (v7.5.22)
   `mars/hydroden.js${q}`, `mars/hydrodencore.js${q}`, // 🌿 the Hydro Den in the ARES JUNCTION dome (v7.5.25)
   `mars/pitring.js${q}`, `mars/pitringcore.js${q}`, // 🥊 The Pit landmark (v7.5.21)
+  `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
   `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
   ...['onboard', 'onboardcore'].map(n => `${n}.js${q}`), // First Day on Mars tour + How to play codex (Ben)
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)

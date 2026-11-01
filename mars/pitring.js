@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildHuman } from '../interiors.js';
 import * as K from './pitringcore.js';
+import { packSpot, rushers as rushList } from './pitshowcore.js'; // v7.5.29 the show: the crowd packs the ropes, late arrivals run in
 
 const app = () => window.__app, surf = () => app()?.surface, world = () => surf()?.world;
 const isPhone = () => document.body.classList.contains('touch') || matchMedia('(pointer: coarse)').matches;
@@ -143,7 +144,9 @@ function build(tc) {
   const W = tc.world || world(), phone = isPhone();
   crowd = K.crowdCandidates(phone).filter(c => !W?.collide?.(C0.x + c.x, C0.z + c.z, 0.45));
   const outfits = [{ top: 0x9a6a44, bottom: 0x4a4650, hair: 0x2a2118, skin: 0xc68a64 }, { top: 0x5f7890, bottom: 0x5a4636, hair: 0x4a3020, hairStyle: 'cap', skin: 0x9a6a4c }];
-  inst = [0, 1].map(pose => { const list = crowd.filter(c => c.pose === pose); const m = new THREE.InstancedMesh(crowdGeo(outfits[pose], pose === 1), mats.crowd, Math.max(1, list.length));
+  for (const c of crowd) { const q = packSpot(c); c.px = q.x; c.pz = q.z; c.cx = c.x; c.cz = c.z; }
+  const rush = rushList(phone).map(r => ({ ...r, rush: true, px: r.x, pz: r.z, cx: r.sx, cz: r.sz, hx: r.sx, hz: r.sz }));
+  inst = [0, 1].map(pose => { const list = crowd.filter(c => c.pose === pose).concat(rush.filter(c => c.pose === pose)); const m = new THREE.InstancedMesh(crowdGeo(outfits[pose], pose === 1), mats.crowd, Math.max(1, list.length));
     m.count = list.length; m.name = 'pit-crowd-' + pose; m.frustumCulled = false; m.userData.list = list;
     list.forEach((c, i) => { const k = 0.85 + c.seed * 0.3; m.setColorAt(i, new THREE.Color(k * (0.9 + 0.2 * ((c.seed * 7) % 1)), k, k * (0.85 + 0.3 * ((c.seed * 13) % 1)))); });
     if (m.instanceColor) m.instanceColor.needsUpdate = true; G.add(m); return m; });
@@ -152,11 +155,27 @@ function build(tc) {
   window.SSX?.stormGuard?.prewarm?.(G, { hide: false, draw: true });
 }
 
-function poseCrowd(t, fighting) {
+// v7.5.29 show state, driven by mars/pitshow.js through api.show(): pack (crowd at the ropes, late arrivals running in), mood
+// ('' | 'cheer' | 'erupt' | 'boo' | 'gasp'), hype 0..1 (jump height), strobe (lamp-head colour or null)
+const SH = { pack: false, mood: '', hype: 0, strobe: null, since: 0 };
+function poseCrowd(t, fighting, dt = 0) {
+  const show = SH.pack, mood = SH.mood, hype = SH.hype, RUN = 5.2;
   for (const m of inst) { const list = m.userData.list;
-    list.forEach((c, i) => { const a = K.cheer(t, c.seed, fighting), y = lift(c.x, c.z) + (fighting ? 0.22 : 0.05) * a;
-      E.set(0, c.yaw + Math.sin(t * 2 + c.seed * 30) * 0.18 * a, Math.sin(t * 3 + c.seed * 9) * 0.06 * a); Q.setFromEuler(E);
-      const s = 0.94 + c.seed * 0.14; M4.compose(V.set(c.x, y, c.z), Q, S1.set(s, s, s)); m.setMatrixAt(i, M4); });
+    list.forEach((c, i) => {
+      if (c.cx === undefined) { c.cx = c.x; c.cz = c.z; }
+      // walk / run toward the target spot (packed at the ropes in a show, home otherwise; late arrivals leave the way they came)
+      const tx = show ? c.px : c.rush ? c.hx : c.x, tz = show ? c.pz : c.rush ? c.hz : c.z, gx = tx - c.cx, gz = tz - c.cz, gl = Math.hypot(gx, gz);
+      const go = dt > 0 && gl > 0.05 && (!c.rush || !show || t - SH.since > c.delay);
+      if (go) { const st = Math.min(gl, (show ? RUN : 2.2) * dt); c.cx += gx / gl * st; c.cz += gz / gl * st; }
+      const moving = go && gl > 0.3, gone = c.rush && !show && gl < 0.3;
+      if (gone) { M4.makeScale(0, 0, 0); m.setMatrixAt(i, M4); return; }
+      const f = fighting || show, loud = mood === 'erupt' ? 1.8 : mood === 'boo' ? 0.5 : mood === 'gasp' ? 0.25 : 1;
+      const a = moving ? 0.4 : K.cheer(t, c.seed, f) * (show ? (0.7 + hype * 0.8) * loud : 1);
+      const y = lift(c.cx, c.cz) + (moving ? Math.abs(Math.sin(t * 11 + c.seed * 9)) * 0.12 : (f ? 0.22 : 0.05) * a);
+      const face = moving ? Math.atan2(-gx, -gz) : show ? Math.atan2(c.cx, c.cz) : c.yaw;
+      const sway = mood === 'boo' ? Math.sin(t * 7 + c.seed * 20) * 0.35 : Math.sin(t * 2 + c.seed * 30) * 0.18 * a; // boo: heads shaking, arms waved off
+      E.set(mood === 'gasp' ? -0.12 : 0, face + sway, Math.sin(t * 3 + c.seed * 9) * 0.06 * a); Q.setFromEuler(E);
+      const s = 0.94 + c.seed * 0.14; M4.compose(V.set(c.cx, y, c.cz), Q, S1.set(s, s, s)); m.setMatrixAt(i, M4); });
     m.instanceMatrix.needsUpdate = true; }
 }
 
@@ -193,7 +212,9 @@ function tick(dt, tc) {
     if (W !== lastW || !W.collide?.(C0.x + p[0], C0.z + p[1], 0.05)) { lastW = W; if (W.addSolid) addSolids(W); } } // world.exit() resets its solids
   if (!G.visible) return;
   t += dt; animT -= dt;
-  if (animT <= 0) { animT = 0.1; applyNight(); if (d < 80) { const pl = tc.player; poseCrowd(t, !!W?.inDuel && !!pl && Math.hypot(pl.x - C0.x, pl.z - C0.z) < 14); } }
+  if (animT <= 0) { const step = SH.pack || SH.hype > 0 ? 0.05 : 0.1; animT = step; applyNight();
+    if (SH.strobe != null) mats.head.color.setHex(SH.strobe); else if (SH.lastStrobe) { SH.lastStrobe = 0; nightNow = null; applyNight(); } if (SH.strobe != null) SH.lastStrobe = 1;
+    if (d < 80) { const pl = tc.player; poseCrowd(t, !!W?.inDuel && !!pl && Math.hypot(pl.x - C0.x, pl.z - C0.z) < 14, step); } }
 }
 
 // the pit fight: stand on the ring edge, 1.6 m from the centre on your side, facing in; returns the centre for challenge({ at })
@@ -212,8 +233,13 @@ function uncompiled() {
 }
 const counts = () => { if (!G) return null; let meshes = 0, tris = 0; G.traverse(o => { if (!o.isMesh) return; meshes++; const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3; tris += o.isInstancedMesh ? n * o.count : n; }); return { meshes, tris: Math.round(tris), crowd: crowd.length, solids: removers.length }; };
 
-const api = { centre: () => (built ? { x: C0.x, z: C0.z } : null), arm,
-  debug: { get built() { return built; }, counts, uncompiled, night: () => nightNow, layout: () => ({ centre: { ...C0 }, y0, crowd: crowd.map(c => ({ ...c })), solids: K.solids(), sign: K.SIGN, mast: K.MAST }), group: () => G } };
+// v7.5.29 the show (mars/pitshow.js): api.show({ pack, mood, hype, strobe }); returns the crowd's packed count
+function show(o = {}) { if (o.pack !== undefined && !!o.pack !== SH.pack) { SH.pack = !!o.pack; SH.since = t; }
+  if (o.mood !== undefined) SH.mood = o.mood || ''; if (o.hype !== undefined) SH.hype = Math.max(0, Math.min(1, +o.hype || 0)); if (o.strobe !== undefined) SH.strobe = o.strobe;
+  return { ...SH, crowd: crowd.length, rushers: inst.reduce((n, m) => n + m.userData.list.filter(c => c.rush).length, 0) }; }
+const crowdNow = () => inst.flatMap(m => m.userData.list.map(c => ({ x: +(c.cx ?? c.x).toFixed(2), z: +(c.cz ?? c.z).toFixed(2), rush: !!c.rush })));
+const api = { centre: () => (built ? { x: C0.x, z: C0.z } : null), arm, show, ground: () => y0, group: () => G,
+  debug: { get built() { return built; }, counts, uncompiled, night: () => nightNow, crowdNow, layout: () => ({ centre: { ...C0 }, y0, crowd: crowd.map(c => ({ ...c })), solids: K.solids(), sign: K.SIGN, mast: K.MAST }), group: () => G } };
 window.SSX = window.SSX || {}; window.SSX.pitRing = api;
 (function wire() { const reg = window.SSX?.registerSurfaceTick; if (typeof reg === 'function') reg(tick); else setTimeout(wire, 300); })();
 export default api;

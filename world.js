@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
 import * as ROOF from './roofs.js';
+import { aiInit as pitAi, aiStep as pitStep, aiHit as pitHit, oppDamage as pitDmg, countIn as pitCount, TUNE as PITT } from './mars/pitshowcore.js'; // v7.5.29 the Pit show: pit fighter AI + tuning
 import { bountyFor } from './copbounty.js'; // v7.5.12 flat 500 cr + 100 ⭐ per cop kill
 import * as CP from './copcore.js'; // v7.5.28 cops calm down (car theft = no heat unless a cop is right there)
 
@@ -934,8 +935,13 @@ export function createWorld(ctx) {
     const dx = (at || p).x - player.x, dz = (at || p).z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
     const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
     p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
+    // v7.5.29 opts.pit { round, seed }: a Pit round (mars/pitshowcore.js). Same fighter every round: back on their feet, healed,
+    // no yield or bottling, tougher, and they fight back with guard / slip / circle / flurry instead of walking in and swinging
+    const pit = opts?.pit && type === 'fists' ? { ai: pitAi(opts.pit.seed || ((p.temper * 1e4) | 0) + (opts.pit.round || 1)), round: opts.pit.round || 1, ev: 0, last: '' } : null;
+    if (pit) { p.stun = 0; p.hp = Math.max(3, p.hp || 0); p.group.rotation.x = 0; p.wait = 99; }
     duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,
-      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null };
+      chicken: !pit && type === 'pistol' && !F && p.temper < 0.42, yieldAt: !pit && !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null, pit, countS: pit ? pitCount(pit.round) : 3 };
+    if (pit) duel.tough = PITT.tough;
     // the ring, and a crowd (guards too, but they only watch)
     if (!ringM) { ringM = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.0, 48), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ringM.rotation.x = -Math.PI / 2; }
     ringM.position.set(duel.cx, height(duel.cx, duel.cz) + 0.06, duel.cz); scene.add(ringM);
@@ -944,7 +950,15 @@ export function createWorld(ctx) {
     return { ok: true, msg: `${T.icon} ${T.name} with ${p.name}. Pot ${duel.pot} cr.` };
   }
   function duelHit() {
-    const D = duel; D.them = Math.max(0, D.them - D.T.hit / D.tough); D.hits++; onEvent('duelHit', { who: 'them', them: D.them });
+    const D = duel;
+    if (D.pit) { // v7.5.29: they can slip it or take it on the gloves; a clean one staggers them back
+      const h = pitHit(D.pit.ai); D.pit.ev++; D.pit.last = h.slipped ? 'slip' : h.blocked ? 'block' : 'hit';
+      if (h.slipped) { onEvent('duelSwing', { hit: false, slip: true }); return; }
+      D.them = Math.max(0, D.them - h.dmg); D.hits++; onEvent('duelHit', { who: 'them', them: D.them, blocked: h.blocked });
+      D.p.flee = 0; if (!h.blocked) { const dx = D.p.x - player.x, dz = D.p.z - player.z, l = Math.hypot(dx, dz) || 1; D.p.x += dx / l * PITT.knock; D.p.z += dz / l * PITT.knock; }
+      if (D.them <= 0) endDuel('ko-win'); return;
+    }
+    D.them = Math.max(0, D.them - D.T.hit / D.tough); D.hits++; onEvent('duelHit', { who: 'them', them: D.them });
     D.p.flee = 0; D.p.x += (D.p.x - player.x) * 0.08; D.p.z += (D.p.z - player.z) * 0.08;
     if (D.them <= 0) endDuel('ko-win'); else if (D.yieldAt && D.them <= D.yieldAt) endDuel('yield-win');
   }
@@ -954,11 +968,18 @@ export function createWorld(ctx) {
     let moving = false;
     if (D.phase === 'count') {
       if (D.chicken && D.t > 1.7) return endDuel('chicken');
-      if (D.t >= 3) { D.phase = 'fight'; D.ocd = D.type === 'pistol' ? (p.fighter ? 0.55 : 0.85) + (p.temper % 0.3) : 0.8; onEvent('duel', { go: true }); }
+      if (D.t >= (D.countS || 3)) { D.phase = 'fight'; D.ocd = D.type === 'pistol' ? (p.fighter ? 0.55 : 0.85) + (p.temper % 0.3) : 0.8; onEvent('duel', { go: true }); }
     } else if (D.phase === 'fight') {
       if (Math.hypot(player.x - D.cx, player.z - D.cz) > 11) return endDuel('forfeit');
       D.ocd -= dt;
-      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
+      if (D.pit) { // v7.5.29 pit fighter (mars/pitshowcore.js aiStep): press, guard, circle, flurry
+        const s = pitStep(D.pit.ai, dt, d, D.them); D.pit.guard = s.guard; D.pit.mode = D.pit.ai.mode;
+        if (s.move === 'in' && d > PITT.reach) { const sp = Math.min(d - 0.9, PITT.walk * dt); p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
+        else if (s.move === 'circle') { const dir = D.pit.ai.dir, out = d < 3.2 ? 1 : 0, sp = PITT.circle * dt; p.x += (dz / d * dir - dx / d * out) * sp; p.z += (-dx / d * dir - dz / d * out) * sp; moving = true; }
+        const cd = Math.hypot(p.x - D.cx, p.z - D.cz); if (cd > 5.3) { p.x = D.cx + (p.x - D.cx) * 5.3 / cd; p.z = D.cz + (p.z - D.cz) * 5.3 / cd; } // stay inside the ropes
+        if (s.swing) { onEvent('duelSwing', { hit: !!s.land }); if (s.land && d <= PITT.reach + 0.2) duelHurt(pitDmg(D.dmgK)); }
+      }
+      else if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
       else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
       else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1))); }
     }
@@ -983,7 +1004,7 @@ export function createWorld(ctx) {
     lastDuel = res; return res;
   }
   let lastDuel = null;
-  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil((duel.countS || 3) - duel.t)), t: duel.t, pit: duel.pit ? { round: duel.pit.round, mode: duel.pit.ai.mode, guard: !!duel.pit.guard, ev: duel.pit.ev, last: duel.pit.last } : null, me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button

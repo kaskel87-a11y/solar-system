@@ -109,4 +109,46 @@ for (const [tag, fp] of [['desktop', FP], ['phone', FPp]]) {
     for (const [a, b] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) { const k = a + ',' + b; if (seen.has(k)) continue; seen.add(k); if (!blk(a * 2, b * 2)) q.push([a, b]); } }
   ok(`a car-sized path leads out of the ring past the crowd (${tag})`, out);
 }
+
+// ---------- v7.5.29 the Pit show: best-of-3 rounds that last, the crowd, the finale (mars/pitshowcore.js) ----------
+const SC = await import('../mars/pitshowcore.js');
+const SER = await import('../activities/pitseries.js');
+const sim = style => { const r = []; for (let s = 1; s <= 40; s++) r.push(SC.simulateRound({ seed: s, style })); r.sort((a, b) => a.t - b.t); return { med: r[20].t, lo: r[4].t, hi: r[35].t, wins: r.filter(x => x.win).length, meLeft: r.reduce((a, x) => a + x.me, 0) / r.length, blocked: r.reduce((a, x) => a + x.blocked, 0), guards: r.reduce((a, x) => a + x.guards, 0) }; };
+const spam = sim('spam'), avg = sim('avg'), idle = sim('idle');
+console.log('     round sim (s): spam', JSON.stringify(spam), 'avg', JSON.stringify(avg), 'idle', JSON.stringify(idle));
+ok('a round vs a button-masher lasts 15-35 s (median)', spam.med >= 15 && spam.med <= 35, spam.med);
+ok('a round for an average player lasts 20-40 s (median, 80% band inside 15-45)', avg.med >= 20 && avg.med <= 40 && avg.lo >= 15 && avg.hi <= 45, JSON.stringify(avg));
+ok('standing still gets you knocked down (not a free win), in 15-45 s', idle.wins === 0 && idle.med >= 15 && idle.med <= 45, idle.med);
+ok('it is a back-and-forth: an average player wins most rounds but finishes them hurt (20-65 hp left)', avg.wins >= 26 && avg.meLeft >= 20 && avg.meLeft <= 65, JSON.stringify(avg));
+ok('the fighter guards and you hit gloves sometimes', avg.guards > 40 && avg.blocked > 20);
+// a whole match: 2-3 rounds + count-ins + 5 s corner breaks
+const match = (style, seed) => { const S = SER.newSeries(); let t = 0, k = 0; while (!S.over && k < 5) { const r = SC.simulateRound({ seed: seed * 10 + k, style }); t += SC.countIn(S.round) + r.t; SER.scoreRound(S, r.win ? 'win' : 'loss'); if (!S.over) t += SER.BREAK_S; k++; } return { t, S }; };
+const ms = [1, 2, 3, 4, 5, 6, 7, 8].map(s => match('avg', s).t).sort((a, b) => a - b);
+console.log('     match (avg player, s):', ms.map(x => x.toFixed(0)).join(' '));
+ok('a match runs 45-130 s', ms[0] >= 45 && ms[7] <= 130, ms.join(','));
+ok('best of 3: first to 2, round 1 has the long announcer count-in', SER.WIN_ROUNDS === 2 && SER.MAX_ROUNDS === 3 && SC.countIn(1) > SC.countIn(2) && SC.countIn(2) === 3);
+ok('round tally pips', SC.pips(0) === '○○' && SC.pips(1) === '●○' && SC.pips(2) === '●●' && SC.tallyLine({ round: 2, me: 1, them: 0 }) === 'R2 · YOU ●○ ○○ THEM');
+ok('round banners: knockdown with the tally', SC.roundBanner('win', { me: 1, them: 0 }).big === 'KNOCKDOWN!' && /●○ ○○/.test(SC.roundBanner('win', { me: 1, them: 0 }).small) && SC.roundBanner('loss', { me: 0, them: 1 }).tone === 'lose');
+ok('match banner shows the purse', SC.matchBanner({ result: 'win', me: 2, them: 1, credits: 400 }).small.includes('+400 cr') && SC.matchBanner({ result: 'sweep', me: 2, them: 0, credits: 640 }).big === 'FLAWLESS!' && SC.matchBanner({ result: 'lose', me: 1, them: 2, credits: 40 }).win === false);
+ok('announcer: FINAL ROUND for round 3', SC.ANNOUNCER.round(3) === 'FINAL ROUND' && SC.ANNOUNCER.round(2) === 'ROUND 2');
+// crowd packs the ropes: every packed spot is outside the rope square (half-side 6.6) and off the corner posts
+for (const [tag, ph] of [['desktop', false], ['phone', true]]) {
+  const cs = K.crowdCandidates(ph), pk = cs.map(c => SC.packSpot(c)), rs = SC.rushers(ph);
+  ok(`packed crowd stands outside the ropes (${tag})`, pk.every(q => Math.max(Math.abs(q.x), Math.abs(q.z)) >= K.ROPE + 0.7), Math.min(...pk.map(q => Math.max(Math.abs(q.x), Math.abs(q.z)))).toFixed(2));
+  ok(`packed crowd keeps off the corner posts (${tag})`, pk.every(q => K.posts().every(([x, z]) => Math.hypot(q.x - x, q.z - z) > 0.6)));
+  ok(`packed crowd is closer than idle (${tag})`, pk.reduce((a, q) => a + Math.hypot(q.x, q.z), 0) < cs.reduce((a, c) => a + Math.hypot(c.x, c.z), 0) * 0.85);
+  ok(`late arrivals run in from 24 m+, end outside the ropes, keep the east entry open (${tag})`, rs.length === SC.BUDGET[ph ? 'phone' : 'desktop'].rushers && rs.every(r => Math.hypot(r.sx, r.sz) >= 24 && Math.max(Math.abs(r.x), Math.abs(r.z)) >= K.ROPE + 1 && Math.abs(Math.atan2(r.z, r.x)) > 0.6));
+}
+ok('phone budgets are smaller', SC.BUDGET.phone.sparks < SC.BUDGET.desktop.sparks && SC.BUDGET.phone.confetti < SC.BUDGET.desktop.confetti && SC.BUDGET.phone.sparks <= 200);
+ok('strobe cycles colours', new Set([0, 0.5, 1, 1.5, 2].map(t => SC.strobeColor(t, 0))).size >= 3);
+ok('finale: slow motion is short and real', SC.FINALE.slowK >= 0.2 && SC.FINALE.slowK < 0.5 && SC.FINALE.slowmo <= 2);
+// wiring
+const W = read('world.js'), RUN = read('activities/runner.js'), SHOW = read('mars/pitshow.js'), IDX = read('index.html');
+ok('world.challenge takes opts.pit (same fighter, healed, no yield) and uses the pit AI', /opts\?\.pit/.test(W) && /pitStep\(/.test(W) && /pitHit\(/.test(W) && /yieldAt: !pit/.test(W));
+ok('runner keeps the same opponent all match and hands the purse to the finale', /active\.opp/.test(RUN) && /pitShow\?\.finale\?\.\(/.test(RUN) && /pit: \{ round:|pit = def\.id === 'act-pit-fight'/.test(RUN));
+ok('pitshow + pitshowcore precached, pitshow loaded', /mars\/pitshow\.js/.test(read('sw.js')) && /mars\/pitshowcore\.js/.test(read('sw.js')) && /<script type="module" src="\.\/mars\/pitshow\.js/.test(IDX));
+ok('slow motion scales the surface step (and is bounded)', /surface\.update\(realDt \* Math\.max\(0\.1, Math\.min\(1, window\.__ssxTimeK/.test(IDX));
+ok('pitshow prewarms its shaders at build and pools its particles', /stormGuard\?\.prewarm\?\.\(FX/.test(SHOW) && /new THREE\.Points\(/.test(SHOW) && /new THREE\.InstancedMesh\(/.test(SHOW) && !/new THREE\.(Mesh|Points|Sprite)\(/.test(SHOW.slice(SHOW.indexOf('// ---------- per-frame'))));
+ok('no real lights added', !/new THREE\.(Point|Spot|Directional)Light/.test(SHOW));
+ok('surface: knocked-down slump on the player model', /player\.slump > 0/.test(read('surface.js')));
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);

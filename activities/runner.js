@@ -326,8 +326,13 @@ function armDuel(def) {
   // v7.5.21 The Pit: stand on the ring's edge facing its centre so the fight happens inside the ropes
   const at = window.SSX?.pitRing?.arm?.(def.id) || null;
   // Place a willing fighter next to the player
-  const name = w.debugDuelist?.(false) || w.debugDuelist?.(true);
-  const r = w.challenge('fists', active.wager, name || undefined, at ? { at } : null);
+  // v7.5.29 the Pit show: the same fighter all match (knocked down, back up, healed), pit AI + tuning (mars/pitshowcore.js)
+  const pit = def.id === 'act-pit-fight' ? { round: active.series?.round || 1 } : null;
+  let r = null;
+  if (pit && active.opp) r = w.challenge('fists', active.wager, active.opp, { at, pit, tag: 'pit' });
+  if (!r?.ok) { const name = w.debugDuelist?.(false) || w.debugDuelist?.(true);
+    r = w.challenge('fists', active.wager, name || undefined, pit ? { at, pit, tag: 'pit' } : at ? { at } : null); }
+  if (r?.ok && pit) active.opp = w.duel?.name || active.opp;
   if (!r?.ok) toast(`🥊 ${r?.msg || 'No fighter. Try again.'}`);
 }
 
@@ -390,6 +395,7 @@ function finishSeries() {
   if (S.result === 'forfeit') return failActivity('You walked out of the ring. No purse.');
   if (pay.credits || pay.xp) { try { C.game.reward ? C.game.reward(pay.xp, pay.credits) : C.game.debug?.credits?.(pay.credits); } catch (e) {} }
   active.lastPay = { ...pay, result: S.result, me: S.me, them: S.them }; lastPit = active.lastPay;
+  try { window.SSX?.pitShow?.finale?.(active.lastPay, active.opp); } catch (e) { /* the show is optional */ } // v7.5.29 star burst / glow-up / banner
   if (S.result === 'lose') return failActivity(`🥊 Lost the series ${S.me}–${S.them}. Marrow tosses you ${pay.credits} cr for the show.`);
   completeActivity({ purse: `🥊 ${S.result === 'sweep' ? 'Clean sweep' : 'Series won'} ${S.me}–${S.them}. Purse +${pay.credits} cr.` });
 }
