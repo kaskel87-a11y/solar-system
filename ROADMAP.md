@@ -82,7 +82,7 @@ Not scheduled yet.
    - They give weird interdimensional missions that portal you to bizarre mini-worlds.
 
 ## Later (rough order)
-- [ ] Rocks/boulders as obstacles for the rover and player (playtest p1).
+- [x] Rocks/boulders as obstacles for the rover and player (playtest p1). **v7.5.41 (Nov 1, 2026):** big boulders out in the wastes stop you on foot and stop your rides (glancing hits slide round, head-on at speed is a crash); jet or fly over the top and they don't count; auto-unstick won't hop you through a rock; colony districts and the Beltway are swept clear of boulders. `tests/test-boulders.js`.
 - [ ] **Base and structure building:** place habitats, walls, turrets, landing pads and storage.
 - [ ] **Space bank heist** in stages: plan (scout and intel), crew (hire specialists), vault (drill/hack under pressure), getaway (pursuit to the ship).
 - [ ] **Contraband business** in fictional "space drugs" (e.g. glow-dust):

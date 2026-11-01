@@ -188,6 +188,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const rockBlk = new Map(); // v7.5.1 (M4/m2): big rocks per chunk block the camera boom
   const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
   // v7.5.7: big rocks near (x, z) at ground level (summon keeps the rover out of them; tests count them)
+  // v7.5.41 boulders are solid (playtest p1): big rocks out in the wastes stop you on foot (sc > 0.6) and in a ride (sc > 0.9);
+  // jet or fly over the top and they don't. Cities and the Beltway are swept clear of rocks so streets never get a surprise wall.
+  const rockPush = (x, z, rad, bottom, minSc) => { let ox = x, oz = z, hit = false; const ix = Math.floor(x / CHUNK), iz = Math.floor(z / CHUNK);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = rockBlk.get(`${ix + i},${iz + j}`); if (L) for (const r of L) {
+      if (r.sc < minSc || bottom > r.top - 0.15) continue; const dx = ox - r.x, dz = oz - r.z, d = Math.hypot(dx, dz), m = r.sr + rad; if (d >= m) continue;
+      const k = d > 1e-4 ? m / d : 0; ox = d > 1e-4 ? r.x + dx * k : r.x + m; oz = d > 1e-4 ? r.z + dz * k : oz; hit = true; } }
+    return hit ? { x: ox, z: oz, rock: true } : null; };
+  const rockClear = (x, z) => { try { return !!world.districtAt?.(x, z); } catch (e) { return false; } }; // world isn't built yet on the very first chunks
   const rocksNear = (x, z, pad = 0) => { let n = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = rockBlk.get(`${Math.floor(x / CHUNK) + i},${Math.floor(z / CHUNK) + j}`); if (L) for (const r of L) if (Math.hypot(x - r.x, z - r.z) < r.r + pad) n++; } return n; };
   const poiObjects = [];
   let state = null;
@@ -304,10 +312,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const x = ox + hx * CHUNK, z = oz + hz * CHUNK; const y = height(x, z);
       if (cfg.water !== undefined && y < cfg.water + 0.3) continue;
       if (Math.hypot(x, z) < 14 || Math.hypot(x - 14, z + 22) < 10) continue;
+      if (rockClear(x, z)) continue; // v7.5.41: no boulders in colony districts or on the Beltway
       const sc = 0.2 + Math.pow(hs, 3) * (name === 'Mars' ? 2.2 : 1.8);
       tmpS.set(sc * (0.8 + hx * 0.6), sc * (0.6 + hz * 0.6), sc * (0.8 + hs * 0.5));
       tmpE.set(hx * 3, hz * 6.28, hs * 2); tmpQ.setFromEuler(tmpE); tmpP.set(x, y + sc * 0.2, z);
-      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS)); if (sc > 0.5) blk.push({ x, z, y: y + sc * 0.2, r: sc * 1.25 + 0.3 });
+      rocks.setMatrixAt(placed, tmpM.compose(tmpP, tmpQ, tmpS)); if (sc > 0.5) blk.push({ x, z, y: y + sc * 0.2, r: sc * 1.25 + 0.3, sc, sr: sc * 0.85, top: y + sc * 0.75 });
       rocks.setColorAt(placed, tmpC.copy(cfg.rock).multiplyScalar(0.75 + hs * 0.5));
       placed++;
     }
@@ -732,6 +741,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       if (!indoor && cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
       else { player.walked += Math.hypot(dx, dz); player.moveYaw = Math.atan2(-dx, -dz); }
       const c = world.collidePlayer(nx, nz, 0.45, feet); if (c) { nx = c.x; nz = c.z; } // v7.5.39: height-aware, roofs you're above don't block
+      if (!indoor) { const rc = rockPush(nx, nz, 0.45, feet, 0.6); if (rc) { nx = rc.x; nz = rc.z; } } // v7.5.41: boulders block you on foot
       player.x = nx; player.z = nz;
     }
     const ground = footGround(player.x, player.z, player.y - EYE) + EYE; // v7.5.39: roofs hold you up (land, walk, snipe)
@@ -845,10 +855,12 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (Math.abs(thr) < 0.3 || r.air || Math.hypot(r.x - a.x, r.z - a.z) > 0.5) { a.x = r.x; a.z = r.z; a.t = 0; return; }
     if ((a.t += dt) < 1.5) return;
     const room = sp.r * 0.75 + 0.3, dir = r.yaw + (thr < 0 ? Math.PI : 0);
+    // v7.5.41: nosed into a boulder? that's not stuck, steer round it (no hop through the rock)
+    if (rockPush(r.x - Math.sin(dir) * 1.2, r.z - Math.cos(dir) * 1.2, sp.r * 0.75, height(r.x, r.z), 0.9)) { a.t = 0; return; }
     let best = null;
     for (let d = 2; d <= 14 && !best; d += 1.5) for (const o of [0, 0.5, -0.5, 1, -1, 1.6, -1.6, 2.2, -2.2, Math.PI]) {
       const an = dir + o, x = r.x - Math.sin(an) * d, z = r.z - Math.cos(an) * d;
-      if (!world.collide(x, z, room, r)) { best = { x, z }; break; }
+      if (!world.collide(x, z, room, r) && !rockPush(x, z, room, height(x, z), 0.9)) { best = { x, z }; break; }
     }
     a.t = 0; if (!best) return;
     r.x = best.x; r.z = best.z; a.x = r.x; a.z = r.z; r.speed = 0; r.vy = Math.max(r.vy || 0, 2.5);
@@ -876,11 +888,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const nx = r.x - Math.sin(r.yaw) * r.speed * dt, nz = r.z - Math.cos(r.yaw) * r.speed * dt;
     if (cfg.water !== undefined && !sp.amphibious && height(nx, nz) < cfg.water - 0.3) r.speed *= -0.2; // v7.4: spec.amphibious rides on the sea
     else {
-      const c = world.collide(nx, nz, sp.r * 0.75, r);
+      // v7.5.41: your ride hits big boulders too (glancing hits slide round them, head-on is a crash); fly over them and they don't count
+      const bot = r.air ? r.y - (sp.hover || 0.8) - 0.2 : height(nx, nz), hitAt = (x, z) => world.collide(x, z, sp.r * 0.75, r) || (me && !indoor ? rockPush(x, z, sp.r * 0.75, bot, 0.9) : null);
+      const c = hitAt(nx, nz);
       // v7.5.16 (Collin: vehicles stuck all the time at Olympus Row): a glancing hit slides along the wall / prop instead of a dead
       // stop + bounce; only a near head-on hit (>~45 deg into the surface) is a crash
       let head = 1; if (c) { const vx = nx - r.x, vz = nz - r.z, vl = Math.hypot(vx, vz) || 1, px = c.x - nx, pz = c.z - nz, pl = Math.hypot(px, pz) || 1; head = -(vx * px + vz * pz) / (vl * pl); }
-      let c2 = c && head < 0.7 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6 ? world.collide(c.x, c.z, sp.r * 0.75, r) : null;
+      let c2 = c && head < 0.7 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6 ? hitAt(c.x, c.z) : null;
       if (c2 && Math.hypot(c2.x - c.x, c2.z - c.z) < 0.08) c2 = null; // float contact at the pushed-out edge
       if (c && head < 0.7 && !c2 && Math.hypot(c.x - r.x, c.z - r.z) < Math.abs(r.speed) * dt + 0.6) {
         driven += Math.hypot(c.x - r.x, c.z - r.z); r.x = c.x; r.z = c.z; r.speed *= 1 - Math.max(0, head) * 0.5 * Math.min(1, dt * 10);
@@ -1431,7 +1445,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
       let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
       return v ? world.despawnVehicle(v) : false; },
-    summonRover, rocksNear, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
+    summonRover, rocksNear, rockPush, boulders: (x, z, R = 60) => { const out = []; for (const L of rockBlk.values()) for (const r of L) if (Math.hypot(r.x - x, r.z - z) < R) out.push({ x: r.x, z: r.z, sc: r.sc, sr: r.sr, top: r.top }); return out; }, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0) { const b = world.inside; if (!b) return false; player.x = (b.ax ?? (b.x0 + b.x1) / 2) + lx; player.z = (b.az ?? (b.z0 + b.z1) / 2) + lz; /* v7.5.33 room-local = the room anchor (the club's shell is off-centre) */ player.yaw = yaw; player.faceYaw = yaw; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
