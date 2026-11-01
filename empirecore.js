@@ -75,7 +75,7 @@ export function earn(kind, h, hours) {
 
 // ---------- save ----------
 export function fresh(now = Date.now()) { return { v: VERSION, owned: {}, lastAt: now, lastHour: null, lastThreatH: -99, clockH: 0, threat: null, earned: 0, log: [], stats: { bought: 0, collected: 0, raids: 0, defended: 0, lost: 0, extortions: 0, paid: 0, chopped: 0 }, home: null }; }
-export function ownedState(o = {}) { return { at: o.at ?? 0, pending: +o.pending || 0, closedH: +o.closedH || 0, security: !!o.security, protect: o.protect || null, graceH: +o.graceH || 0, stash: { credits: (o.stash?.credits | 0) || 0, medkits: (o.stash?.medkits | 0) || 0 }, hits: o.hits | 0, defended: o.defended | 0 }; }
+export function ownedState(o = {}) { return { at: o.at ?? 0, pending: +o.pending || 0, crew: +o.crew > 0 ? +o.crew : 0 /* v7.5.42 crew cash washed through this front (crewcore) */, closedH: +o.closedH || 0, security: !!o.security, protect: o.protect || null, graceH: +o.graceH || 0, stash: { credits: (o.stash?.credits | 0) || 0, medkits: (o.stash?.medkits | 0) || 0 }, hits: o.hits | 0, defended: o.defended | 0 }; }
 export function migrate(raw, now = Date.now()) {
   let s = raw; if (typeof s === 'string') { try { s = JSON.parse(s); } catch (e) { s = null; } }
   if (!s || typeof s !== 'object' || s.v !== VERSION) return fresh(now);
@@ -114,7 +114,12 @@ export function canBuy(state, id, credits) {
   return { ok: true, cost: p.price };
 }
 export function buy(state, id) { const p = propById(id); state.owned[id] = ownedState({ at: state.clockH || 0, graceH: RULES.graceHours }); state.stats.bought++; return p; }
-export function collect(state, id) { const o = state.owned[id]; if (!o) return 0; const n = Math.floor(o.pending); o.pending -= n; state.earned += n; state.stats.collected += n; return n; }
+export const till = o => (o ? (+o.pending || 0) + (+o.crew || 0) : 0); // v7.5.42: front income + crew cash waiting at the counter
+// v7.5.42 crew: wash crew cash into an owned, open front's till (the biggest earner). Not capped (the till cap pauses only the front's own income).
+export function launder(state, n, prefer = null) { n = Math.floor(+n || 0); if (!(n > 0)) return null; const fr = Object.keys(state.owned).filter(id => isFront(propById(id)));
+  if (!fr.length) return null; const open = fr.filter(id => !(state.owned[id].closedH > 0)), pool = open.length ? open : fr;
+  const id = pool.includes(prefer) ? prefer : pool.slice().sort((a, b) => avgRate(propById(b).kind) - avgRate(propById(a).kind))[0]; state.owned[id].crew = (+state.owned[id].crew || 0) + n; return id; }
+export function collect(state, id) { const o = state.owned[id]; if (!o) return 0; const c = Math.floor(+o.crew || 0); o.crew = 0; const n0 = Math.floor(o.pending); o.pending -= n0; const n = n0 + c; state.earned += n; state.stats.collected += n; return n; }
 export const securityCost = p => Math.round(p.price * RULES.secFrac / 10) * 10;
 export const repairCost = p => Math.round(p.price * RULES.repairFrac / 10) * 10;
 export function perHour(state, h) { let s = 0; for (const [id, o] of Object.entries(state.owned)) { const p = propById(id); if (isFront(p) && !(o.closedH > 0)) s += rateAt(p.kind, h); } return Math.round(s); }
@@ -160,7 +165,7 @@ export function rollThreat(state, ctxFor, rng = Math.random) {
 export function applyLoss(state, id) {
   const p = propById(id), o = state.owned[id]; if (!p || !o) return { lost: 0 };
   o.hits++; state.stats.lost++;
-  if (isFront(p)) { const lost = Math.floor(o.pending); o.pending = 0; o.closedH = RULES.closedHours; return { lost, closedH: o.closedH }; }
+  if (isFront(p)) { const lost = Math.floor(o.pending + (+o.crew || 0)); o.pending = 0; o.crew = 0; o.closedH = RULES.closedHours; return { lost, closedH: o.closedH }; }
   const lost = Math.floor(o.stash.credits * RULES.stashLoss); o.stash.credits -= lost; return { lost, stash: true };
 }
 
