@@ -3,13 +3,22 @@
 (function () {
   var st = document.createElement('style');
   st.textContent = 'html,body{touch-action:manipulation!important}canvas{touch-action:none}' +
-    'html{-webkit-text-size-adjust:100%;text-size-adjust:100%}input,textarea,select{font-size:max(16px,1em)!important}';
+    // v7.5.47 fit-to-screen: text-size-adjust is !important so Chrome iOS text zoom (inline style on html/body) can't inflate
+    // px-sized HUD text; html/body pinned to the layout viewport so nothing can widen or scroll the page.
+    'html,body{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;overflow:hidden!important;' +
+    'position:fixed!important;left:0;top:0;width:100%!important;height:100%!important;max-width:100vw;margin:0}' +
+    'input,textarea,select{font-size:max(16px,1em)!important}' +
+    'body.ssx-vvfit{transform-origin:0 0!important;will-change:transform}';
   (document.head || document.documentElement).appendChild(st);
-  var opt = { passive: false };
+  var opt = { passive: false }, vv = window.visualViewport;
+  // zoomed in (iOS restores the old pinch scale + scroll on reload, or an auto-zoom slipped through): let a pinch through
+  // so you can always zoom back out, and never block touches while zoomed.
+  var zoomed = function () { return !!(vv && vv.scale > 1.01); };
   var pd = function (e) { if (e.cancelable) e.preventDefault(); };
-  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, pd, opt); });
+  var pdg = function (e) { if (!zoomed()) pd(e); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, pdg, opt); });
   var isText = function (el) { return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)); };
-  document.addEventListener('touchmove', function (e) { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) pd(e); }, opt);
+  document.addEventListener('touchmove', function (e) { if (zoomed()) return; if (e.touches.length > 1 || (e.scale && e.scale !== 1)) pd(e); }, opt);
   var last = 0;
   document.addEventListener('touchend', function (e) {
     var now = Date.now();
@@ -17,4 +26,37 @@
     last = now;
   }, opt);
   document.addEventListener('dblclick', function (e) { if (!isText(e.target)) pd(e); }, opt);
+
+  // v7.5.47 always fit the visible screen (Collin: buttons cut off on iPhone even after a reload).
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  var noKick = function () { return !!window.SSX_FIT_NOKICK; }, meta = function () { return document.querySelector('meta[name=viewport]'); };
+  var VP = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+  var kicks = 0, kickT = 0, raf = 0;
+  function kick() { // iOS re-applies initial-scale when the viewport meta changes: nudges a stuck zoom back to 1
+    var m = meta(); if (!m || noKick() || kicks > 6 || Date.now() - kickT < 400) return; kicks++; kickT = Date.now();
+    m.setAttribute('content', VP.replace('initial-scale=1', 'initial-scale=1.0001'));
+    setTimeout(function () { m.setAttribute('content', VP); }, 30);
+  }
+  function fit() {
+    raf = 0; var b = document.body; if (!b) return;
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    var de = document.documentElement; if (de.scrollLeft || de.scrollTop) { de.scrollLeft = 0; de.scrollTop = 0; }
+    if (b.scrollLeft || b.scrollTop) { b.scrollLeft = 0; b.scrollTop = 0; }
+    var s = vv ? vv.scale : 1;
+    if (s > 1.01) {
+      kick();
+      // still zoomed: draw the whole game inside what you can actually see (fixed children use body as their box)
+      b.classList.add('ssx-vvfit');
+      b.style.transform = 'translate(' + (vv.offsetLeft || 0).toFixed(1) + 'px,' + (vv.offsetTop || 0).toFixed(1) + 'px) scale(' + (1 / s).toFixed(4) + ')';
+    } else if (b.classList.contains('ssx-vvfit')) { b.classList.remove('ssx-vvfit'); b.style.transform = ''; kicks = 0; }
+  }
+  var q = function () { if (!raf) raf = requestAnimationFrame(fit); };
+  window.SSX_FIT = { fit: fit, zoomed: zoomed };
+  if (vv) { vv.addEventListener('resize', q); vv.addEventListener('scroll', q); }
+  addEventListener('resize', q); addEventListener('scroll', q, true);
+  addEventListener('orientationchange', function () { q(); setTimeout(q, 300); setTimeout(q, 800); });
+  addEventListener('pageshow', q); addEventListener('load', q);
+  document.addEventListener('focusout', function (e) { if (isText(e.target)) { setTimeout(q, 60); setTimeout(q, 400); } });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', q); else q();
+  setInterval(function () { if (zoomed() || window.scrollX || window.scrollY) q(); }, 1000);
 })();
