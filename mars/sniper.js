@@ -379,7 +379,6 @@ function ui() {
   panel = document.createElement('div'); panel.id = 'snPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Contracts"><div id="snBody"></div><div class="sub" id="snMsg"></div><div class="foot"><button id="snClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); pBody = panel.querySelector('#snBody'); pMsg = panel.querySelector('#snMsg');
   tap(panel.querySelector('#snClose'), close);
-  panel.addEventListener('click', e => { const b = e.target.closest('button[data-c]'); if (b && !b.disabled) { const r = start(b.dataset.c); if (!r.ok) pMsg.textContent = r.msg; } });
   attachBtns();
 }
 function attachBtns() {
@@ -433,6 +432,8 @@ function render() {
     h += '</div>';
   }
   pBody.innerHTML = h;
+  // v7.5.23 (M1): each Take button fires on its own finger's pointerup (tap / __onTap); a plain click never comes for a second finger while a thumb holds the joystick
+  for (const b of pBody.querySelectorAll('button[data-c]')) tap(b, () => { if (b.disabled || !panel.classList.contains('show')) return; const r = start(b.dataset.c); if (!r.ok) pMsg.textContent = r.msg; });
 }
 
 // ---------- input ----------

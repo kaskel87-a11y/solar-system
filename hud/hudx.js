@@ -322,11 +322,11 @@ function installTapGuard() {
   let down = null, blockClick = 0, blockSc = null, lastPtr = '', lastPtrT = -1e9; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
   const now = () => performance.now(), recent = sc => sc.some(([el]) => now() - (lastS.get(el) ?? -1e9) < SCROLL_QUIET);
   addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1) lastS.set(t, now()); }, true);
-  addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, quiet: recent(sc) } : null; }, true);
+  addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); const safe = !!e.target?.closest?.('[data-tapsafe]'); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, safe, quiet: !safe && recent(sc) } : null; }, true);
   addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) down.moved = true; }, true);
   addEventListener('pointerup', e => {
     if (!down || e.pointerId !== down.id || e.__hx) return; const d = down; down = null;
-    const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1);
+    const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || (!d.safe && (recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1)));
     if (!bad) return;
     e.stopImmediatePropagation(); e.preventDefault(); blockClick = now() + 700; blockSc = d.sc.map(([el]) => el);
     try { const c = new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true, clientX: e.clientX, clientY: e.clientY }); c.__hx = true; e.target.dispatchEvent(c); } catch (er) { /* old WebKit */ }

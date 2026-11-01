@@ -734,6 +734,7 @@ export function createWorld(ctx) {
     // busted: they get hands on you (on foot or boxed in while stopped)
     if (wanted > 0 && !down) {
       if (inside) close = false; // they can't see you in here
+      if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
       if (bustT > (st.driving ? 3 : 2)) { bustT = 0; game.bust(); }
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
