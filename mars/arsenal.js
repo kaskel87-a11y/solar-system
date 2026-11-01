@@ -139,7 +139,10 @@ function note(kind, msg) { if (R.tNow - (R[kind] ?? -9) > 2.5) { R[kind] = R.tNo
 function fireReq(aim, src) {
   const g = game(); if (!g || !origFire) return false;
   if (!onFoot()) return origFire.call(g, aim); // rover turret / drive-by: the game's own rules
-  if (inPit()) { stats.pitBlocks++; emit('pit', { src }); note('pitNote', '🥊 Rust Pit rules: fists only. Use 👊 melee.'); return false; }
+  // v7.5.38 (Collin: "in the Pit fight pressing F does nothing"): fists only here, so FIRE (F, click, the FIRE button) throws a
+  // punch instead of being swallowed. game.melee has its own cooldown, so a held F just keeps punching at the normal rate.
+  if (inPit()) { stats.pitBlocks++; emit('pit', { src }); let ok = false; try { ok = !!origMelee?.call(g); } catch (e) { ok = false; } if (ok) stats.pitPunches = (stats.pitPunches || 0) + 1;
+    if (!world()?.inDuel) note('pitNote', '🥊 Rust Pit rules: fists only. F / C / click = punch.'); return ok; }
   const a = curArs(); if (!a) return origFire.call(g, aim);
   if (a.kind === 'melee') return swing(a);
   if (R.reload) return false;

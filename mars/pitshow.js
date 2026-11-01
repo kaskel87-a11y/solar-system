@@ -85,7 +85,7 @@ function build(G) {
 }
 
 // ---------- DOM: banner, screen flash, HUD tally ----------
-let bannerEl = null, flashEl = null, tallyEl = null, bannerT = 0;
+let keyEl = null, bannerEl = null, flashEl = null, tallyEl = null, bannerT = 0;
 function css() {
   if (document.getElementById('pitShowCss')) return;
   const st = document.createElement('style'); st.id = 'pitShowCss';
@@ -95,11 +95,12 @@ function css() {
 #pitShowBanner .small{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:8px;background:#000;color:#fff;font:800 clamp(14px,4vw,22px)/1.2 system-ui,sans-serif;border:1px solid rgba(255,255,255,.35)}
 #pitShowBanner.win{--glow:#ffd24a}#pitShowBanner.lose{--glow:#ff1f3d}#pitShowBanner.round{--glow:#22d3ee}
 @keyframes pitSlam{0%{transform:scale(2.6);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}
+#pitKeyHint{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;pointer-events:none;display:none;font:700 13px system-ui,sans-serif;color:#fff;background:#000;border-radius:999px;padding:5px 12px;letter-spacing:.02em}
 #pitFlash{position:fixed;inset:0;z-index:39;pointer-events:none;opacity:0;background:#fff;transition:opacity .45s ease-out}
 #pitTally{margin-left:auto;margin-right:8px;font-weight:900;letter-spacing:.06em;color:#fff}`;
   document.head.appendChild(st);
   bannerEl = document.createElement('div'); bannerEl.id = 'pitShowBanner'; bannerEl.setAttribute('aria-live', 'polite'); bannerEl.innerHTML = '<div class="big"></div><div class="small"></div>';
-  flashEl = document.createElement('div'); flashEl.id = 'pitFlash'; document.body.append(bannerEl, flashEl);
+  flashEl = document.createElement('div'); flashEl.id = 'pitFlash'; keyEl = document.createElement('div'); keyEl.id = 'pitKeyHint'; document.body.append(bannerEl, flashEl, keyEl);
 }
 function banner(big, small = '', tone = 'round', secs = 1.6) {
   if (!bannerEl) return; const b = bannerEl.querySelector('.big'), s = bannerEl.querySelector('.small');
@@ -182,7 +183,9 @@ function startShow(d) {
   SH.seq = seq.map(([at, b, s]) => ({ at: SH.startedAt + at, b, s }));
   crowd('roar', 1.2, 2.4); fx('wanted');
 }
-function stopShow() {
+// v7.5.38 (Collin couldn't find the punch on a laptop): which inputs punch, shown only during a Pit bout
+function keyHint(on) { if (!keyEl) return; const touch = document.body.classList.contains('touch'); const txt = touch ? '👊 / FIRE = punch' : 'F / C / click = punch'; if (keyEl.textContent !== txt) keyEl.textContent = txt; const d = on ? 'block' : 'none'; if (keyEl.style.display !== d) keyEl.style.display = d; }
+function stopShow() { keyHint(false);
   SH.on = false; SH.phase = 'idle'; SH.duel = null; SH.finale = null; SH.seq = null; window.__ssxTimeK = 1;
   if (FX) { FX.visible = false; for (const o of [shock, shell, flare, aura, pillar]) o.visible = false; }
   ring()?.show?.({ pack: false, mood: '', hype: 0, strobe: null }); unglow(); if (bannerEl) bannerEl.className = ''; bannerT = 0; SH.banner = ''; if (SH.slump && lastTc?.player) lastTc.player.slump = 0; SH.slump = null; tally(null);
@@ -270,7 +273,7 @@ function tick(dt, tc) {
   if (SH.mood && t > SH.moodUntil) { SH.mood = ''; R.show({ mood: SH.phase === 'fight' || SH.phase === 'count' ? 'cheer' : '' }); }
   // hype rises as both fighters wear down
   const tension = SH.duel ? 0.45 + (1 - Math.min(SH.me, SH.them) / 100) * 0.5 : 0.5; SH.hype += (tension - SH.hype) * Math.min(1, rdt * 1.5);
-  ringT -= rdt; if (ringT <= 0) { ringT = 0.1; if (pitDuel) tally(SH.S); R.show({ hype: SH.hype, strobe: K.strobeOn(t, 0, 128) ? K.strobeColor(t, 0) : 0x222222 }); }
+  ringT -= rdt; if (ringT <= 0) { ringT = 0.1; if (pitDuel) tally(SH.S); keyHint(!!pitDuel); R.show({ hype: SH.hype, strobe: K.strobeOn(t, 0, 128) ? K.strobeColor(t, 0) : 0x222222 }); }
   stepBeams(t); stepSparks(rdt * (window.__ssxTimeK || 1) ** 0.5); stepConf(rdt, t);
   // slump (knocked down): drop 0.35 s, hold, get up 0.6 s
   if (SH.slump && tc.player) { const e = t - SH.slump.t0, h = SH.slump.hold; tc.player.slump = e < 0.35 ? e / 0.35 : e < 0.35 + h ? 1 : Math.max(0, 1 - (e - 0.35 - h) / 0.6); if (e > h + 1) { tc.player.slump = 0; SH.slump = null; } }

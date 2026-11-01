@@ -151,4 +151,10 @@ ok('slow motion scales the surface step (and is bounded)', /surface\.update\(rea
 ok('pitshow prewarms its shaders at build and pools its particles', /stormGuard\?\.prewarm\?\.\(FX/.test(SHOW) && /new THREE\.Points\(/.test(SHOW) && /new THREE\.InstancedMesh\(/.test(SHOW) && !/new THREE\.(Mesh|Points|Sprite)\(/.test(SHOW.slice(SHOW.indexOf('// ---------- per-frame'))));
 ok('no real lights added', !/new THREE\.(Point|Spot|Directional)Light/.test(SHOW));
 ok('surface: knocked-down slump on the player model', /player\.slump > 0/.test(read('surface.js')));
+// v7.5.38 Pit input: FIRE punches in the Pit (not swallowed), F/click punch on press in a duel, the bout hint
+{ const A = read('mars/arsenal.js'), I = read('index.html'), S = read('mars/pitshow.js');
+  ok('arsenal: FIRE in the Pit throws a punch (origMelee), not a blocked shot', /if \(inPit\(\)\) \{[^\n]*origMelee\?\.call\(g\)/.test(A) && !/Use 👊 melee\.'\); return false; \}/.test(A));
+  ok('index: F press punches in a duel', /e\.code === 'KeyF' && !e\.repeat && surface\.world\?\.inDuel\)\) surface\.game\.melee\(\)/.test(I));
+  ok('index: left click punches in a duel (pointer lock or not)', /e\.button === 0 && surface\.world\?\.inDuel\) surface\.game\.melee\(\)/.test(I));
+  ok('pitshow: "F / C / click = punch" hint during bouts', S.includes("'F / C / click = punch'") && /keyHint\(!!pitDuel\)/.test(S) && /function stopShow\(\) \{ keyHint\(false\)/.test(S)); }
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);
