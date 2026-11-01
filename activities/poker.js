@@ -2,7 +2,7 @@
 // No new core hooks. Uses game credits via spend/debug.credits. Optional SSX.bark.
 import { tap, panelTap } from '../racehooks.js';
 import {
-  freshDeck, evalBest, cmpScore, strength01, cardLabel, HAND_NAMES,
+  freshDeck, evalBest, cmpScore, strength01, cardLabel, cardFace, cardText, HAND_NAMES,
 } from './poker-eval.js';
 
 const BUYINS = [50, 150, 400];
@@ -29,9 +29,10 @@ const CSS = `
   border: 1px solid rgba(80,180,100,0.35); min-height: 64px; }
 #pokerPanel .board .pot { font-size: 0.9rem; margin-bottom: 4px; opacity: 0.9; }
 #pokerPanel .cards { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
-#pokerPanel .card { width: 42px; height: 58px; border-radius: 7px; background: #f7f3ea; color: #111; display: flex; align-items: center;
-  justify-content: center; font-weight: 900; font-size: 0.95rem; border: 1px solid #ccc; }
-#pokerPanel .card.red { color: #c0182a; } #pokerPanel .card.back { background: #1a3a6a; color: #9cf; border-color: #2a5080; font-size: 0.7rem; }
+#pokerPanel .card { width: 50px; height: 70px; border-radius: 8px; background: #fff; color: #111; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; font-weight: 900; font-size: 1.35rem; line-height: 1; border: 1px solid #bbb; font-family: system-ui, -apple-system, sans-serif; }
+#pokerPanel .card .st { font-size: 1.55rem; margin-top: 2px; font-family: 'Apple Symbols', 'Segoe UI Symbol', system-ui, sans-serif; font-variant-emoji: text; }
+#pokerPanel .card.red { color: #d0101e; } #pokerPanel .card.blk { color: #111; } /* v7.5.34 rank + suit symbol, bigger for iPhone */ #pokerPanel .card.back { background: #1a3a6a; color: #9cf; border-color: #2a5080; font-size: 0.7rem; }
 #pokerPanel .log { font-size: 0.72rem; opacity: 0.75; min-height: 1.4em; text-align: center; padding: 0 4px; }
 #pokerPanel .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 6px; }
 #pokerPanel .actions button { min-height: 56px; border-radius: 14px; font-weight: 900; font-size: 0.95rem; color: #fff;
@@ -92,8 +93,8 @@ function ensurePanel() {
 
 function cardHtml(c, hidden = false) {
   if (hidden || c == null) return `<span class="card back">?</span>`;
-  const lab = cardLabel(c), red = lab[1] === 'h' || lab[1] === 'd';
-  return `<span class="card${red ? ' red' : ''}">${lab[0]}<small>${lab[1]}</small></span>`;
+  const f = cardFace(c); // v7.5.34 'K' + '♦' (was 'K' + 'd')
+  return `<span class="card ${f.red ? 'red' : 'blk'}" data-card="${cardLabel(c)}"><span class="rk">${f.r}</span><span class="st">${f.s}\ufe0e</span></span>`;
 }
 
 function isMobile() {
@@ -364,7 +365,7 @@ function tipDealer() {
   // Peek: show one opponent's hole briefly in log; chance of getting caught
   const foe = G.players.find(p => !p.human && !p.folded);
   if (foe) {
-    G.log = `Dealer coughs: ${foe.name} holds ${cardLabel(foe.hole[0])} ${cardLabel(foe.hole[1])}.`;
+    G.log = `Dealer coughs: ${foe.name} holds ${cardText(foe.hole[0])} ${cardText(foe.hole[1])}.`;
     G.cheated = true;
   }
   const caught = rng() < 0.28;

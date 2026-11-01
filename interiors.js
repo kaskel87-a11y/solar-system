@@ -12,6 +12,7 @@ import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP boot
 import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
 import { addSlotMachines } from './slots.js'; // v7.6 slot machines in the club's south-west corner
 import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
+import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
 import { addBarCounter } from './bar.js'; // v7.6 space-liquor counter (sell your bottles / drinks) at the north end of the club bar
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
@@ -472,6 +473,7 @@ export const INTERIORS = {
         api.sign('STAGE \u00b7 BAR \u00b7 VIP \u2191', 0xff3cc8, 7, 3.6, 8.32, 0, 4.4, { h: 96 });
         for (const [x, z] of [[-32, 21], [9.5, 21], [9.5, 13]]) { box(x, 0.45, z, 1.0, 0.9, 3.2, velvet); api.col(x, z, 0.55, 1.65); } // lounge sofas
         addPokerRoom(api, { x: -22, z: 0 }, { sit: sitPose, idle });
+        try { addClubGames(api, { sit: sitPose, idle }); } catch (e) { console.warn('club games', e); } // v7.5.34 lobby: Blackjack (-24, 16) + Roulette (2, 16)
       }
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
