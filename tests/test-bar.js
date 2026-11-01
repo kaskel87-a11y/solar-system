@@ -47,7 +47,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     R.realLiquor = await G(() => { const had = !!window.SSX?.liquor; window.__realLiquor = window.SSX?.liquor; if (had) delete window.SSX.liquor; return had; });
     ok('noLiquorOnMain', await G(() => !window.SSX?.liquor && window.__bar.liquor.ok === false));
     // neighbours keep their own spots
-    for (const [k, x, z, id] of [['atBar', -8.1, 1.5, 'bar'], ['atSlots', -6.85, 6.4, 'slots'], ['atDoor', -11, 22.6, 'leave'] /* v7.5.33 the club's door moved south-west (4x club) */]) { await G(([x, z]) => window.__app.surface.debugInside(x, z, 0), [x, z]); await sleep(350); R[k] = await G(() => window.__app.surface.info.spot?.id); ok(k + 'Ok', R[k] === id); }
+    for (const [k, x, z, id] of [['atBar', -8.1, 1.5, 'bar'], ['atSlots', -31.4, 12.3, 'slots'] /* v7.5.36 slots moved to the gaming floor */, ['atDoor', -11, 22.6, 'leave'] /* v7.5.33 the club's door moved south-west (4x club) */]) { await G(([x, z]) => window.__app.surface.debugInside(x, z, 0), [x, z]); await sleep(350); R[k] = await G(() => window.__app.surface.info.spot?.id); ok(k + 'Ok', R[k] === id); }
     // 1) prompt
     ok('prompt', await atCounter());
     const bw = await G(() => { const c = getComputedStyle(document.getElementById('driveBtn')); return c.backgroundColor + ' / ' + c.color; });
@@ -137,7 +137,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('sellHiddenAgain', await G(() => getComputedStyle(document.getElementById('barSell')).display === 'none'));
     ok('closed5', await closeMenu());
     // 10) slots + Danny untouched
-    await G(() => { window.__app.game.progress.credits = 1000; window.__app.game.save(); window.__app.surface.debugInside(-6.85, 6.4, Math.PI); });
+    await G(() => { window.__app.game.progress.credits = 1000; window.__app.game.save(); window.__app.surface.debugInside(-31.4, 12.3, Math.PI / 2); });
     ok('slotsPrompt', await wait(() => /🎰 Play/.test(document.getElementById('driveBtn').textContent) && !document.body.classList.contains('barNear'), 4000));
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); });
     ok('dannyLabel', await wait(() => /Private show 150/.test(document.getElementById('driveBtn').textContent), 4000));

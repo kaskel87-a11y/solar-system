@@ -18,7 +18,7 @@ const total = r.reduce((a, q, i) => { const n = r[(i + 1) % r.length]; return a 
 ok('loops', Math.abs(patrol(r, total + 0.3).x - patrol(r, 0.3).x) < 1e-9);
 ok('every route pauses at least twice', ROUTES.every(R => R.pts.filter(q => q[2] > 0).length >= 2));
 // routes stay inside the club and off every table / sofa / wall (sampled every 0.25 m)
-const box = [[-24, 16, 1.95, 1.25], [2, 16, 1.95, 1.0], [-22, 0, 3.3, 2.6], [-32, 21, 0.75, 1.85], [9.5, 21, 0.75, 1.85], [9.5, 13, 0.75, 1.85], [-11.15, -1.5, 0.4, 6.7], [-7, 8.15, 4.2, 0.4], [7, 8.15, 4.2, 0.4], [-24, 14.55, 0.5, 0.5], [1.4, 14.8, 0.5, 0.5]];
+const box = [[-24, 16, 1.95, 1.25], [2, 16, 1.95, 1.0], [-22, 0, 3.3, 2.6], [-32, 21, 0.75, 1.85], [9.5, 21, 0.75, 1.85], [9.5, 13, 0.75, 1.85], [-11.15, -1.5, 0.4, 6.7], [-7, 8.15, 4.2, 0.4], [7, 8.15, 4.2, 0.4], [-24, 14.55, 0.5, 0.5], [1.4, 14.8, 0.5, 0.5], [-32.1, 13.8, 1.2, 5.6], [-31.9, 9.55, 1.6, 1.5]]; // v7.5.36 + slot bank, Olympus Mega
 let hit = null;
 for (const R of ROUTES) R.pts.forEach((q, i) => { const n = R.pts[(i + 1) % R.pts.length], L = Math.hypot(n[0] - q[0], n[1] - q[1]); for (let d = 0; d <= L; d += 0.25) { const x = q[0] + (n[0] - q[0]) * d / L, z = q[1] + (n[1] - q[1]) * d / L; if (x < -32.5 || x > 10.5 || z < -7.5 || z > 23.5) hit = hit || `${R.name} outside at ${x.toFixed(1)},${z.toFixed(1)}`; for (const [bx, bz, hx, hz] of box) if (Math.abs(x - bx) < hx && Math.abs(z - bz) < hz) hit = hit || `${R.name} hits ${bx},${bz} at ${x.toFixed(1)},${z.toFixed(1)}`; } });
 ok('routes clear of tables, sofas and walls' + (hit ? ' (' + hit + ')' : ''), !hit);

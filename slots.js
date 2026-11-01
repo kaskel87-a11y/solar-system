@@ -93,6 +93,29 @@ export function addSlotMachines(api, { x = -7.7, z = 7.6, face = -1, gap = 1.25 
   return api.spot({ id: 'slots', x, z: z + out * 1.15, r: 1.35, label: '🎰 Play', act: 'slots' });
 }
 
+// ---------- v7.5.36 the Velvet gaming floor: a bank of 8 cabinets + the giant Olympus Mega machine on the west wall ----------
+// Everything static is baked into one mesh per material (bulbs into 3 flicker phases), so 9 machines cost ~30 draw calls.
+// The machines face +x (into the lobby); x is the wall-side centre line, z0 the first cabinet, gap the spacing.
+export const BANK = { x: -32.55, z0: 11.8, n: 8, gap: 1.0, megaZ: 9.55 };
+export const MEGA = { bet: 100, scale: 0.9, seed: 25000, olympusW: 1, perMegaSpin: 5, perFloorSpin: 0.02, ambientEvery: 3, key: 'ssx.megaPot' };
+const MEGA_REEL = SLOTS.reel.map(r => (r.id === SLOTS.jackpot ? { ...r, w: MEGA.olympusW } : r));
+const MEGA_TOTAL = MEGA_REEL.reduce((a, s) => a + s.w, 0);
+export function megaStop(rng = Math.random) { let r = rng() * MEGA_TOTAL; for (const s of MEGA_REEL) { if ((r -= s.w) < 0) return s.id; } return MEGA_REEL[MEGA_REEL.length - 1].id; }
+// the Mega (100 cr a pull) pays the normal paytable × 90 cr, except three 🌋 (rarer: 🌋 is 1 stop in 28, so 1 in 21,952) pays the
+// whole progressive pot (seed 25,000; +5 per Mega pull, +2 % of every other floor bet, +1 every 3 s for the rest of the floor)
+export function megaPayout(reels, pot) { const m = multOf(reels); if (m.kind === 'jackpot') return { mult: pot / MEGA.bet, kind: 'mega', win: Math.round(pot), big: true }; return { ...m, mult: m.mult * MEGA.scale, win: Math.round(m.mult * MEGA.bet * MEGA.scale), big: m.mult >= SLOTS.big }; }
+export function megaOdds(pot = MEGA.seed) {
+  let base = 0, jp = 0;
+  for (const a of MEGA_REEL) for (const b of MEGA_REEL) for (const c of MEGA_REEL) { const p = a.w * b.w * c.w / MEGA_TOTAL ** 3, m = multOf([a.id, b.id, c.id]); if (m.kind === 'jackpot') jp += p; else base += p * m.mult * MEGA.scale; }
+  return { base, jackpotOneIn: 1 / jp, rtp: base + jp * pot / MEGA.bet, breakEvenPot: Math.round((1 - base) / jp * MEGA.bet) };
+}
+const ls = () => { try { return window.localStorage; } catch (e) { return null; } };
+export function megaPot() { const v = +(ls()?.getItem(MEGA.key)); return v >= MEGA.seed ? v : MEGA.seed; }
+export function addPot(n) { const v = Math.round((megaPot() + n) * 100) / 100; try { ls()?.setItem(MEGA.key, String(v)); } catch (e) { /* */ } return v; }
+export function resetPot() { try { ls()?.setItem(MEGA.key, String(MEGA.seed)); } catch (e) { /* */ } return MEGA.seed; }
+export const fmtPot = v => Math.floor(v).toLocaleString('en-US');
+
+
 // ---------- the slot overlay (index.html) ----------
 const CSS = `
 body.slNear #driveBtn{background:#000!important;color:#fff!important;border:1.5px solid #fff!important}
@@ -120,6 +143,9 @@ body.slNear #driveBtn{background:#000!important;color:#fff!important;border:1.5p
 #slClose{flex:0 0 44px;min-width:44px;min-height:44px}
 #slPay{display:grid;grid-template-columns:1fr auto 1fr auto;gap:2px 8px;margin-top:10px;padding-top:8px;border-top:1px solid #333;font-size:12.5px;align-items:center}
 #slPay .m{text-align:right;font-weight:700;color:#ffd040;font-variant-numeric:tabular-nums} #slPay .jp{color:#ff3cc8}
+#slPot{display:none;margin-top:8px;padding:6px;border-radius:10px;background:#120414;border:1.5px solid #ffd040;text-align:center;color:#ffd040;font:800 24px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+#slCard.mega #slPot{display:block} #slCard.mega #slBets{display:none} #slCard.mega{border-color:#ffd040;box-shadow:0 0 30px rgba(255,208,64,.6)}
+.slCoin{position:fixed;top:-40px;z-index:59;font-size:30px;pointer-events:none;animation:slCoin 1.8s linear forwards}@keyframes slCoin{to{transform:translateY(110vh) rotate(720deg)}}
 #slCard .ft{margin-top:6px;color:#999;font-size:11px;text-align:center} body.touch #slCard .keys{display:none}
 @media (orientation:landscape) and (max-height:520px){#slCard{width:min(760px,calc(100vw - 24px));display:grid;grid-template-columns:1.1fr 1fr;column-gap:14px;padding:8px 12px} #slCard .hd{grid-column:1/-1} #slPay{margin-top:6px;border-top:0;padding-top:0} .slReel{height:58px!important;font-size:34px!important} #slReels{margin:6px 0 4px} #slMsg{min-height:36px} #slCard .r{margin-top:6px}}
 @media (max-height:700px){.slReel{height:64px;font-size:38px} #slPay{font-size:11.5px} #slCard{padding:10px}}
@@ -129,22 +155,24 @@ export function clubSlots({ surface, toast = () => {}, onTap = (el, fn) => el.ad
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const el = document.createElement('div'); el.id = 'slPanel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   const pt = paytable().map(p => `<span${p.jackpot ? ' class="jp"' : ''}>${p.icons}</span><span class="m${p.jackpot ? ' jp' : ''}">${p.mult}×${p.jackpot ? ' JACKPOT' : ''}</span>`).join('');
-  el.innerHTML = `<div id="slCard"><div class="hd"><b>🎰 RED PLANET SLOTS</b><span id="slCash"></span><button class="slBtn" id="slClose" aria-label="Close">✕</button></div>
-<div class="main"><div id="slReels"><div class="slReel" id="slR0">🌋</div><div class="slReel" id="slR1">🌋</div><div class="slReel" id="slR2">🌋</div></div>
+  el.innerHTML = `<div id="slCard"><div class="hd"><b id="slTitle">🎰 RED PLANET SLOTS</b><span id="slCash"></span><button class="slBtn" id="slClose" aria-label="Close">✕</button></div>
+<div class="main"><div id="slPot"></div><div id="slReels"><div class="slReel" id="slR0">🌋</div><div class="slReel" id="slR1">🌋</div><div class="slReel" id="slR2">🌋</div></div>
 <div id="slMsg">Pick a bet and pull.</div>
 <div class="r" id="slBets">${BETS.map(b => `<button class="slBtn slBet" data-b="${b}">${b} cr</button>`).join('')}</div>
 <div class="r"><button class="slBtn" id="slSpin"></button><button class="slBtn" id="slLeave">Leave</button></div></div>
 <div class="side"><div id="slPay">${pt}</div>
-<div class="ft">Jackpot: 🌋🌋🌋 pays ${JACKPOT_AT[BETS[BETS.length - 1]].toLocaleString('en-US')} cr at ${BETS[BETS.length - 1]}. House cr only.<span class="keys"> · Space/E spin · 1 2 3 bet · Esc leave</span></div></div></div>`;
+<div class="ft" id="slFt">Jackpot: 🌋🌋🌋 pays ${JACKPOT_AT[BETS[BETS.length - 1]].toLocaleString('en-US')} cr at ${BETS[BETS.length - 1]}. House cr only.<span class="keys"> · Space/E spin · 1 2 3 bet · Esc leave</span></div></div></div>`;
   document.body.appendChild(el);
   const $ = id => document.getElementById(id), card = $('slCard'), msg = $('slMsg'), R = [0, 1, 2].map(i => $('slR' + i)), spinBtn = $('slSpin');
   const game = () => surface?.game || window.__app?.surface?.game || window.__app?.game;
   const credits = () => game()?.progress?.credits ?? 0;
   const grant = n => { const g = game(); if (!g || !(n > 0)) return; if (typeof g.debug?.credits === 'function') g.debug.credits(n); else { g.progress.credits += n; try { g.save?.(); } catch (e) { /* */ } } };
-  let open = false, bet = BETS[0], S = null, last = null, openedAt = 0, forced = null, stats = { spins: 0, wagered: 0, won: 0, jackpots: 0 };
+  let mega = false, open = false, bet = BETS[0], S = null, last = null, openedAt = 0, forced = null, stats = { spins: 0, wagered: 0, won: 0, jackpots: 0, megaSpins: 0, megas: 0 };
+  const ftNormal = $('slFt').innerHTML, mo = megaOdds();
+  const potShow = () => { $('slPot').textContent = '🌋 MEGA JACKPOT ' + fmtPot(megaPot()) + ' cr'; };
   const say = (t, cls = '') => { msg.textContent = t; msg.className = cls; };
   const cash = () => { $('slCash').textContent = credits().toLocaleString('en-US') + ' cr'; };
-  const setBet = b => { if (S || !BETS.includes(b)) return; bet = b; for (const x of el.querySelectorAll('.slBet')) x.classList.toggle('sel', +x.dataset.b === b); spinBtn.textContent = `SPIN · ${b} cr`; };
+  const setBet = b => { if (mega) { spinBtn.textContent = `SPIN · ${MEGA.bet} cr`; return; } if (S || !BETS.includes(b)) return; bet = b; for (const x of el.querySelectorAll('.slBet')) x.classList.toggle('sel', +x.dataset.b === b); spinBtn.textContent = `SPIN · ${b} cr`; };
 
   // ---- sound (Web Audio one-shots, same style as audio7's fx) ----
   function osc(type, f, t, dur, vol, f1) { const a = actx(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05); }
@@ -158,18 +186,23 @@ export function clubSlots({ surface, toast = () => {}, onTap = (el, fn) => el.ad
     lose() { try { const t = now(); osc('triangle', 330, t, 0.16, 0.04); osc('triangle', 247, t + 0.14, 0.26, 0.04); } catch (e) { /* */ } },
   };
 
-  function show() {
+  function show(s) {
     if (open) return; if (window.__pshow?.active || window.__cprivate?.active) return;
     if (document.pointerLockElement) document.exitPointerLock();
+    if (!S) { mega = !!(s?.big || s?.id === 'megaslot'); card.classList.toggle('mega', mega); $('slTitle').textContent = mega ? '🌋 OLYMPUS MEGA' : '🎰 RED PLANET SLOTS'; $('slFt').innerHTML = mega ? `${MEGA.bet} cr a pull. 🌋🌋🌋 wins the whole progressive pot (about 1 in ${Math.round(mo.jackpotOneIn).toLocaleString('en-US')}); other lines pay the normal table × ${MEGA.bet * MEGA.scale} cr. Every spin on the floor grows the pot. House cr only.` : ftNormal; if (mega) potShow(); const jp = el.querySelector('#slPay .m.jp'); if (jp) { jp.dataset.t = jp.dataset.t || jp.textContent; jp.textContent = mega ? 'MEGA POT' : jp.dataset.t; } }
     open = true; openedAt = performance.now(); el.classList.add('on'); document.body.classList.remove('slNear'); setBet(bet); cash();
     if (!S) { msg.className = ''; if (!msg.textContent) say('Pick a bet and pull.'); }
   }
   function close() { if (!open) return; settle(); open = false; el.classList.remove('on'); card.classList.remove('shake'); hud(); }
   function doSpin() {
     if (!open || S || performance.now() - openedAt < 300) return null; // swallow the tap that opened us
-    if (credits() < bet || !game()?.spend?.(bet)) { say(`Short on cr. A ${bet} cr spin needs ${bet} cr; you have ${credits()}.`, 'broke'); fx.dry?.(); card.classList.remove('shake'); return { ok: false, why: 'broke' }; }
-    const res = forced ? { reels: forced, bet, ...payout(forced, bet) } : spin(bet); forced = null;
-    stats.spins++; stats.wagered += bet; cash(); hud(); snd.pull();
+    const b = mega ? MEGA.bet : bet;
+    if (credits() < b || !game()?.spend?.(b)) { say(`Short on cr. A ${b} cr spin needs ${b} cr; you have ${credits()}.`, 'broke'); fx.dry?.(); card.classList.remove('shake'); return { ok: false, why: 'broke' }; }
+    let res;
+    if (mega) { const reels = forced || [megaStop(), megaStop(), megaStop()]; addPot(MEGA.perMegaSpin); res = { reels, bet: b, ...megaPayout(reels, megaPot()) }; stats.megaSpins++; potShow(); }
+    else { res = forced ? { reels: forced, bet: b, ...payout(forced, b) } : spin(b); addPot(Math.max(1, b * MEGA.perFloorSpin)); }
+    forced = null;
+    stats.spins++; stats.wagered += b; cash(); hud(); snd.pull();
     say('Spinning…'); card.classList.remove('shake'); spinBtn.disabled = true;
     S = { res, t0: performance.now(), stopped: 0, last: 0, timer: 0, settled: false };
     R.forEach(r => r.classList.add('spin'));
@@ -191,12 +224,14 @@ export function clubSlots({ surface, toast = () => {}, onTap = (el, fn) => el.ad
     R.forEach((r, i) => { r.classList.remove('spin'); r.textContent = SYM[res.reels[i]].icon; });
     if (res.win > 0) grant(res.win); stats.won += res.win; if (res.kind === 'jackpot') stats.jackpots++;
     S = null; spinBtn.disabled = false; cash(); hud(); last = res;
-    if (res.kind === 'jackpot') { say(`🌋 JACKPOT! +${res.win.toLocaleString('en-US')} cr`, 'big'); snd.jackpot(); shake(); fx.cash?.(); }
+    if (res.kind === 'mega') { resetPot(); stats.megas++; potShow(); say(`🌋🌋🌋 MEGA JACKPOT! +${res.win.toLocaleString('en-US')} cr`, 'big'); snd.jackpot(); setTimeout(() => snd.jackpot(), 1700); shake(); setTimeout(shake, 900); fx.cash?.(); window.__megaFlash = performance.now() + 7000; coins(); }
+    else if (res.kind === 'jackpot') { say(`🌋 JACKPOT! +${res.win.toLocaleString('en-US')} cr`, 'big'); snd.jackpot(); shake(); fx.cash?.(); }
     else if (res.big) { say(`BIG WIN! +${res.win.toLocaleString('en-US')} cr`, 'big'); snd.win(true); shake(); }
     else if (res.win > res.bet) { say(`WIN +${res.win} cr`, 'win'); snd.win(false); }
     else if (res.win === res.bet) { say(`🔴 Bet back: +${res.win} cr`, 'win'); snd.win(false); }
     else { say(['Nothing. The machine hums smugly.', 'Dust. Pull again?', 'So close. (It wasn’t.)', 'The house thanks you.'][(Math.random() * 4) | 0], 'lose'); snd.lose(); }
   }
+  function coins() { for (let i = 0; i < 36; i++) { const c = document.createElement('div'); c.className = 'slCoin'; c.textContent = i % 5 ? '🪙' : '💰'; c.style.left = (Math.random() * 96) + 'vw'; c.style.animationDelay = (Math.random() * 1.6) + 's'; document.body.appendChild(c); setTimeout(() => c.remove(), 3800); } }
   function shake() { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); try { navigator.vibrate?.([60, 40, 120]); } catch (e) { /* */ } }
 
   for (const b of el.querySelectorAll('.slBet')) onTap(b, () => setBet(+b.dataset.b));
@@ -211,7 +246,7 @@ export function clubSlots({ surface, toast = () => {}, onTap = (el, fn) => el.ad
   // the black/white prompt while you stand at the machines; close if you leave the club some other way
   surface?.registerTick?.(() => { try { const inside = !!surface.info?.inside, sp = surface.info?.spot; document.body.classList.toggle('slNear', !open && inside && sp?.act === 'slots'); if (open && !inside) close(); } catch (e) { /* */ } });
 
-  const api = { open: show, close, spin: doSpin, setBet, settle, bets: BETS, table: SLOTS, odds: exactOdds,
+  const api = { open: show, pot: megaPot, mega: MEGA, megaOdds, get isMega() { return mega; }, close, spin: doSpin, setBet, settle, bets: BETS, table: SLOTS, odds: exactOdds,
     get isOpen() { return open; }, get spinning() { return !!S; }, get bet() { return bet; }, get last() { return last; }, get stats() { return { ...stats }; },
     debugNext(reels) { forced = Array.isArray(reels) && reels.length === 3 && reels.every(r => SYM[r]) ? reels.slice() : null; return !!forced; } }; // tests only
   window.__slots = api;

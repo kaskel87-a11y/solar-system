@@ -51,7 +51,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.debugInside(-8.1, 1.5, 0)); await sleep(400); R.atBar = await G(() => window.__app.surface.info.spot?.id); ok('barSpot', R.atBar === 'bar');
     await G(() => window.__app.surface.debugInside(-11, 22.6, 0) /* v7.5.33 door moved (4x club) */); await sleep(400); R.atDoor = await G(() => window.__app.surface.info.spot?.id); ok('doorSpot', R.atDoor === 'leave');
     // 1) the prompt at the machines
-    await G(() => window.__app.surface.debugInside(-6.85, 6.4, Math.PI));
+    await G(() => window.__app.surface.debugInside(-31.4, 12.3, Math.PI / 2) /* v7.5.36 the bank on the gaming floor's west wall */);
     ok('prompt', await wait(() => /🎰 Play/.test(document.getElementById('driveBtn').textContent) && window.__app.surface.info.spot?.id === 'slots' && document.body.classList.contains('slNear'), 15000));
     const bw = await G(() => { const c = getComputedStyle(document.getElementById('driveBtn')); return c.backgroundColor + ' / ' + c.color; });
     ok('promptBW', bw, /rgba?\(0, 0, 0(, 1)?\)/.test(bw) && /255, 255, 255/.test(bw.split('/')[1]));
@@ -97,6 +97,30 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(800); await act(); ok('reopen', await wait(() => window.__slots.isOpen, 3000));
     if (!desk) { await tapSel('#slClose'); ok('closeX', await wait(() => !window.__slots.isOpen, 3000)); }
     else { await page.keyboard.press('Escape'); ok('closeEsc', await wait(() => !window.__slots.isOpen, 3000)); }
+    // 5b) v7.5.36 the floor: 8 cabinets + the Olympus Mega, baked; the old corner is empty; the floor shot; the Mega + its progressive pot
+    ok('floorBuilt', JSON.stringify(await G(() => window.__slotFloor)), await G(() => window.__slotFloor?.machines === 9 && window.__slotFloor.baked <= 24 && window.__slotFloor.lights <= 9));
+    await G(() => window.__app.surface.debugInside(-6.85, 6.4, Math.PI)); await sleep(400); ok('oldCornerEmpty', await G(() => window.__app.surface.info.spot?.act !== 'slots'));
+    await G(p => window.__app.surface.debugInside(...p), desk ? [-24.5, 13.6, Math.atan2(8, -0.6)] : [-26.5, 12.4, Math.atan2(11.5, -1.2)]); await sleep(2500);
+    await G(() => { for (const e of document.querySelectorAll('[id]')) if (e.offsetHeight && e.offsetHeight < 220 && /find your feet|tap to read/i.test(e.innerText || '')) e.style.visibility = 'hidden'; }); // screenshot only: hide the tutorial card
+    R.drawCalls = await G(() => new Promise(res => { const inf = window.__app.renderer.info; inf.autoReset = false; inf.reset(); let m = 0, t0 = performance.now(); const f = () => { m = Math.max(m, inf.render.calls); inf.reset(); if (performance.now() - t0 < 1500) requestAnimationFrame(f); else { inf.autoReset = true; res(m); } }; requestAnimationFrame(f); }));
+    ok('drawCallsOk', R.drawCalls, R.drawCalls < 600); await shot('floor');
+    await G(() => { localStorage.setItem('ssx.megaPot', '30000'); window.__app.game.progress.credits = 1000; window.__app.game.save(); window.__app.surface.debugInside(-30.8, 9.55, Math.PI / 2); });
+    ok('megaPrompt', await wait(() => /Mega Jackpot/.test(document.getElementById('driveBtn').textContent) && document.body.classList.contains('slNear'), 6000));
+    await sleep(500); await act(); ok('megaOpen', await wait(() => window.__slots.isOpen && window.__slots.isMega && /MEGA JACKPOT 30,0\d\d/.test(document.getElementById('slPot').textContent) && getComputedStyle(document.getElementById('slBets')).display === 'none', 3000));
+    ok('megaSpinLabel', await G(() => document.getElementById('slSpin').textContent), await G(() => /SPIN · 100 cr/.test(document.getElementById('slSpin').textContent)));
+    await sleep(400); let m0 = await credits(), p0 = await G(() => window.__slots.pot());
+    if (desk) await page.keyboard.press('Space'); else await tapSel('#slSpin');
+    ok('megaCharged100', await wait(c => window.__app.game.progress.credits === c - 100, 3000, m0)); await wait(() => !window.__slots.spinning, 4000);
+    ok('potGrew', await G(p => window.__slots.pot() >= p + 5, p0));
+    await G(() => window.__slots.debugNext(['olympus', 'olympus', 'olympus'])); m0 = await credits(); const pot = await G(() => window.__slots.pot());
+    if (desk) await page.keyboard.press('Space'); else await tapSel('#slSpin'); await wait(() => !window.__slots.spinning, 4000);
+    const L2 = await G(() => window.__slots.last);
+    ok('megaJackpot', `${m0} -100 +${L2.win} (pot ${pot}+5)`, L2.kind === 'mega' && L2.win === Math.round(pot + 5) && (await credits()) === m0 - 100 + L2.win);
+    ok('megaCelebration', await G(() => window.__megaFlash > performance.now() && document.querySelectorAll('.slCoin').length > 10 && /MEGA JACKPOT/.test(document.getElementById('slMsg').textContent)));
+    ok('potReset', await G(() => window.__slots.pot() >= 25000 && window.__slots.pot() < 25010 && +localStorage.getItem('ssx.megaPot') >= 25000));
+    await sleep(700); await shot('mega');
+    if (desk) await page.keyboard.press('Escape'); else await tapSel('#slLeave'); ok('megaClosed', await wait(() => !window.__slots.isOpen, 3000));
+    await sleep(900); await shot('mega-marquee');
     // 6) Danny's own flow untouched (her 150 show from the VIP room)
     await G(() => { localStorage.setItem('ssx.adult', '1'); window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); });
     ok('dannyLabel', await wait(() => /Private show 150/.test(document.getElementById('driveBtn').textContent) && !document.body.classList.contains('slNear'), 4000));

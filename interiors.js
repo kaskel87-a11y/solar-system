@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { dress, DANNY_NAME } from './clubdancers.js';
 import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth (private show)
 import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
-import { addSlotMachines } from './slots.js'; // v7.6 slot machines in the club's south-west corner
+import { addSlotBank } from './slotfloor.js'; // v7.5.36 slot bank + Olympus Mega on the Velvet gaming floor (was addSlotMachines in the old south-west corner)
 import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
 import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
 import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
@@ -461,7 +461,7 @@ export const INTERIORS = {
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
-      try { addSlotMachines?.(api, { x: -7.7, z: d / 2 - 0.4 }); } catch (e) { console.warn('slots', e); } // v7.6 slots (slots.js): south-west corner, past the bar's end, far from the poles / Danny / VIP / upstairs
+      // v7.5.36 the slots moved to the gaming floor (addSlotBank, below)
       // v7.5.33 the bigger club: a wall behind the bar (west wing = card room), the old south wall kept as two pieces either
       // side of a 6 m arch (slots keep their backdrop) and the south lobby down to the new door at (-11, 24)
       {
@@ -475,6 +475,7 @@ export const INTERIORS = {
         for (const [x, z] of [[-32, 21], [9.5, 21], [9.5, 13]]) { box(x, 0.45, z, 1.0, 0.9, 3.2, velvet); api.col(x, z, 0.55, 1.65); } // lounge sofas
         addPokerRoom(api, { x: -22, z: 0 }, { sit: sitPose, idle });
         try { addClubGames(api, { sit: sitPose, idle }); } catch (e) { console.warn('club games', e); } // v7.5.34 lobby: Blackjack (-24, 16) + Roulette (2, 16)
+        try { addSlotBank(api); } catch (e) { console.warn('slot bank', e); } // v7.5.36 8 slots + the Olympus Mega on the west wall, z 8.4..19.2
         try { addClubFloor(api, { sit: sitPose, idle, human: buildHuman }); } catch (e) { console.warn('club floor', e); } // v7.5.35 3 waitresses on patrol + 6 baked spectators
       }
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs

@@ -78,7 +78,7 @@ ok('sober speech untouched', slur('Same again, please.', 0) === 'Same again, ple
 ok('drunk speech slurs', slur('Same again, please.', 0.9, rng) !== 'Same again, please.', slur('Same again, please.', 0.9, rng));
 
 // counter placement: clear of the other club spots (room-local coords)
-const others = { bar: [-8.1, 1.5, 2.0], slots: [-7.7, 6.45, 1.35], rhea: [-2.8, -4.0, 0.95], kiara: [2.8, -4.0, 0.95], tip: [0, -3.9, 1.5], danny: [7.6, -5.1, 0.9], show: [6.55, -5.3, 0.6], upstairs: [8.8, -6.1, 0.9], leave: [0, 7.1, 1.6] };
+const others = { bar: [-8.1, 1.5, 2.0], slots: [-31.4, 12.3, 1.05], rhea: [-2.8, -4.0, 0.95], kiara: [2.8, -4.0, 0.95], tip: [0, -3.9, 1.5], danny: [7.6, -5.1, 0.9], show: [6.55, -5.3, 0.6], upstairs: [8.8, -6.1, 0.9], leave: [0, 7.1, 1.6] };
 const clear = Object.entries(others).filter(([, [x, z, r]]) => Math.hypot(x - COUNTER.x, z - COUNTER.z) <= r + COUNTER.r).map(([k]) => k);
 ok('counter spot overlaps no other spot', !clear.length, clear.join() || 'clear');
 

@@ -20,7 +20,7 @@
   'use strict';
   const PREFIX = 'SSX1-', PENDING = 'ssx.savecode.pending', BAK = 'ssx.savecode.bak', DONE = 'ssx.savecode.done';
   const KNOWN = [
-    'ssx.progress.v1', 'ssx.discoveries.v1', 'ssx.contacts', 'ssx.texts', 'ssx.dannyShows', 'ssx.adult', 'ssx.dogName', 'ssx.heist.unlock',
+    'ssx.progress.v1', 'ssx.discoveries.v1', 'ssx.contacts', 'ssx.texts', 'ssx.dannyShows', 'ssx.adult', 'ssx.dogName', 'ssx.heist.unlock', 'ssx.megaPot',
     'ssx.ambient.v1', 'ssx.arsenal.v1', 'ssx.base.v1', 'ssx.beltway.v1', 'ssx.bribes.v1', 'ssx.consequences.v1', 'ssx.contraband.v1',
     'ssx.controlMode', 'ssx.danger.v1', 'ssx.director.v1', 'ssx.empire.v1', 'ssx.farm.v1', 'ssx.farm.v1.bak', 'ssx.fight.v1', 'ssx.flats.v1',
     'ssx.grime.v1', 'ssx.hudx.more', 'ssx.hudx.v1', 'ssx.jobs.v1', 'ssx.lab.v1', 'ssx.mars.act.v1', 'ssx.marstracks.snap', 'ssx.mix.v1',

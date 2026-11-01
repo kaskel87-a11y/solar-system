@@ -46,6 +46,7 @@ const PRECACHE = [
   `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
   `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
   `clubpoker.js${q}`, // 🃏 Velvet Airlock Hold'em room (v7.5.33)
+  `slotfloor.js${q}`, // 🎰 Velvet slot bank + Olympus Mega (v7.5.36)
   `clubfloor.js${q}`, // 🍸 Velvet cocktail waitresses + gamblers (v7.5.35)
   `clubgames.js${q}`, `clubgamescore.js${q}`, // 🂡🎡 Velvet Blackjack + Roulette (v7.5.34)
   `mars/heliospass.js${q}`, `mars/heliospasscore.js${q}`, // 🏰 Helios Heights guest pass (v7.5.33)
