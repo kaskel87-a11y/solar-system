@@ -30,7 +30,8 @@
     'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
-    'ssx.crane.v1' // v7.5.22 magnet crane (owned / lifts / fenced)
+    'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
+    'ssx.velvetdeal.v1' // v7.5.26 Ines's side deal (job chain, comps, product shows)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];

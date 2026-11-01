@@ -6,6 +6,7 @@
 // routes the 'show' hotspot to show.offer(spot). Phone buttons use window.__onTap (one finger per button on iOS).
 import * as THREE from 'three';
 import { spawn, DANNY_NAME } from './clubdancers.js';
+import * as VD from './mars/velvetdealcore.js'; // v7.5.26 pay in product (or product + cr, or Ines's comp); the show itself is unchanged
 const DF = DANNY_NAME.split(' ')[0]; // first name for captions; the full display name lives in clubdancers.js (DANNY_NAME)
 
 export const SHOW_PRICE = 150, LAP_PRICE = 250, TIP = 20, TIPS_FOR_NUMBER = 3, SHOW_SEC = 34, LAP_SEC = 26, TIP_SEC = 6;
@@ -72,6 +73,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 const CSS = `
 #pshowOffer{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
 #pshowOffer .w{max-width:340px;margin:16px;padding:16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
+#pshowOffer .w{max-height:calc(100vh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch} #pshowOffer .ph{margin-top:8px;color:#bbb;font-size:12px} #pshowOffer .ph:empty,#pshowProd:empty{display:none}
 #pshowOffer h3{margin:0 0 6px;font-size:17px} #pshowOffer .r{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px} #pshowOffer .r .pshowBtn{flex:1 1 40%}
 .pshowBtn{flex:1;min-height:46px;border-radius:10px;border:1.5px solid #fff;background:#000;color:#fff;font:600 15px system-ui,sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .pshowBtn.on,.pshowBtn:active{background:#fff;color:#000} .pshowBtn.alt{background:#fff;color:#000}
@@ -85,7 +87,7 @@ body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibi
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private show, upstairs. One song, my booth, my rules: costume stays on, your hands stay on the chair.”</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private show · 150 cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance · 250 cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div></div>';
+  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private show, upstairs. One song, my booth, my rules: costume stays on, your hands stay on the chair.”</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private show · 150 cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance · 250 cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
   ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>';
   document.body.append(offerEl, ui);
@@ -97,7 +99,32 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
 
   function offer(spot) {
     if (S) return; if (document.pointerLockElement) document.exitPointerLock();
-    offerEl.style.display = 'flex';
+    prodRow(); offerEl.style.display = 'flex';
+  }
+  // v7.5.26: product payment (mars/velvetdealcore.js). Buttons are rebuilt per offer and bound with onTap (window.__onTap).
+  const vdLoad = () => { try { return VD.loadState(localStorage.getItem(VD.KEY)); } catch (e) { return VD.fresh(); } };
+  const vdSave = s => { try { localStorage.setItem(VD.KEY, JSON.stringify(s)); } catch (e) { /* private mode */ } };
+  const stashQty = () => { const q = {}; try { const it = window.SSX?.contraband?.stash?.()?.items || {}; for (const k in it) q[k] = it[k].qty || 0; } catch (e) { /* no contraband module */ } return q; };
+  function prodRow() {
+    const row = $('pshowProd'), hint = $('pshowProdHint'); row.textContent = ''; hint.textContent = '';
+    const st = stashQty(), cr = surface.game?.progress?.credits || 0, comps = vdLoad().comps; let n = 0;
+    for (const mode of ['show', 'lap']) for (const o of VD.payOptions(mode, st, cr, comps)) {
+      const b = document.createElement('button'); b.className = 'pshowBtn'; b.type = 'button'; b.dataset.mode = mode; b.dataset.kind = o.kind; b.textContent = o.label;
+      onTap(b, () => payProd(mode, o)); row.appendChild(b); n++;
+    }
+    if (!n && window.SSX?.contraband) hint.textContent = VD.priceHint();
+  }
+  function payProd(mode, o) {
+    offerEl.style.display = 'none'; const C = window.SSX?.contraband, st = stashQty();
+    if (!boothNow()) { toast(DF + ': The booth\u2019s being cleaned. Rain check.', 2400); return; } // nothing taken yet
+    if (o.kind === 'comp') { const s = VD.useComp(vdLoad()); if (!s) { toast(DF + ': Ines didn’t comp you anything, sugar.', 2400); return; } vdSave(s); toast(DF + ': Ines says this one’s on the house. Lucky you.', 2600); start(mode); return; }
+    if (!C || (st[o.item] || 0) < o.qty) { toast(DF + ': You’re not holding what you’re promising.', 2400); fx.dry?.(); return; }
+    if (o.cr && (surface.game?.progress?.credits || 0) < o.cr) { toast(DF + ': ' + o.cr + ' cr on top. Come back when you’re liquid.', 2400); fx.dry?.(); return; }
+    if (C.remove(o.item, o.qty) < o.qty) { toast(DF + ': Short. Nice try.', 2000); return; }
+    if (o.cr && !surface.game.spend(o.cr)) { C.add(o.item, o.qty); toast(DF + ': Cash first.', 2000); return; }
+    const s = vdLoad(); s.productShows++; vdSave(s);
+    toast(DF + ': ' + ['Product works. Tiny didn’t see a thing.', 'Into the garter it goes. Sit.', 'Mm. The good stuff. Hands on the chair.'][s.productShows % 3], 2600);
+    fx.cash?.(); hud(); start(mode);
   }
   onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast(DF + ': Your loss, sugar.', 2000); });
   const buy = (mode) => {
