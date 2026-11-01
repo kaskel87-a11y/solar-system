@@ -74,8 +74,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     R.callsBefore = (await ST()).calls; R.heldSeen = (await ST()).held?.seen;
     await G(() => window.SSX.crane.debug.callNow(true)); await sleep(600);
     const wNow = await G(() => window.__app.surface.world.wanted), evs = await G(() => window.__evs.join(','));
-    // witnessed lift = stars right away (world.take -> crime); unseen = the owner calls it in (forced roll above)
-    ok('heat: seen -> stars on grab, unseen -> owner call', { seen: R.heldSeen, afterGrab: R.wantedAfterGrab, now: wNow }, R.heldSeen ? R.wantedAfterGrab >= 1 : (R.callsBefore === 1 && evs.includes('call') && wNow >= 1));
+    // v7.5.28 cops calm down: a lift is car theft = no stars (no ColSec officer within 12 m here); an unseen lift's owner call is just noise
+    ok('heat: lift = 0 stars, owner call = no stars', { seen: R.heldSeen, afterGrab: R.wantedAfterGrab, now: wNow, evs }, R.wantedAfterGrab === 0 && wNow === 0 && (R.heldSeen || (R.callsBefore === 1 && evs.includes('call'))));
     await G(() => window.__app.surface.world.setWanted(0));
     // haul to Lou: hook over the yard drop through the south gate
     const yd = await G(() => window.SSX.crane.yard()); ok('yard drop', !!yd, !!yd);

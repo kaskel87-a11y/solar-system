@@ -161,7 +161,7 @@ function onEnter(car, tc) { // called once when you get into a Raccoon Rover
   const target = RC.wantedOnEnter(owned, R.prevWanted, cur);
   if (target !== cur) setWanted(target, owned ? 'owner' : 'stole the Raccoon Rover');
   if (owned) { if (!car.rcnOwned && car !== tc.rover) { car.rcnOwned = true; const st = tc.game?.progress?.stats; if (st?.stolen > 0) st.stolen--; } toast('🦝 Your Raccoon Rover. Rocket is riding shotgun. Hold still for loot, 5 or 🦝 to pickpocket.', 3600); }
-  else { own('stole'); emit({ type: 'steal', wanted: target }); toast(`🦝 Stole the Raccoon Rover. Heat ${target}★. It's in your garage now (no plates).`, 3600); bark('raccoon_steal', true); }
+  else { own('stole'); emit({ type: 'steal', wanted: target }); toast(`🦝 Stole the Raccoon Rover. ${target > (R.prevWanted | 0) ? `Heat ${target}★.` : 'Nobody called it in.'} It's in your garage now (no plates).`, 3600); bark('raccoon_steal', true); }
 }
 
 // ---------- loot: Rocket robs what you crawl past ----------

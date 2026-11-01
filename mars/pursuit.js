@@ -5,7 +5,7 @@
  * (drones, buggies, officers, heavies, gunship), its bust timer (game.bust) and its evade timer. This file layers on top:
  *  - line of sight: any ColSec unit (core securityList + ours) that can see you holds the heat; break LOS and a SEARCH
  *    starts around your last-seen point (a ring on the minimap, a countdown). When it runs out, the stars go.
- *  - dispatch by tier: 1-2★ pursuit rovers that ram, PIT and box you in; 3★ spotlight cones under the core drones (the
+ *  - dispatch by tier (v7.5.28: 1★ is a nuisance, core drone only): 2★ pursuit rovers that ram, PIT and box you in; 3★ spotlight cones under the core drones (the
  *    beam spots you even round corners); 4★ roadblocks at the Beltway checkpoints and the lane ahead; 5★ armoured SWAT
  *    rovers that ram harder and shoot (their rounds can kill you: wasted).
  *  - losing it: hideouts (Flats, Beltway underpasses, Vat House lab and turf HQ when those modules are present), spray
@@ -29,6 +29,7 @@
  */
 import * as THREE from 'three';
 import { buildVehicle } from '../world.js';
+import * as CP from '../copcore.js'; // v7.5.28 cops calm down: no pursuit rovers at 1★, shorter searches
 
 const KEY = 'ssx.pursuit.v1';
 const app = () => window.__app, surf = () => app()?.surface, game = () => app()?.game || surf()?.game, world = () => surf()?.world;
@@ -37,7 +38,7 @@ const isTouch = () => document.body.classList.contains('touch') || matchMedia('(
 const fin = v => Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const PIT_AJ = [-292, -68], PIT_R = 12;           // the Rust Pit (mars/fightclub.js) in Ares Junction coords
-const SEARCH_BASE = 8, SEARCH_PER = 5;            // search seconds = 8 + 5 per star
+// search seconds: CP.searchSecs (v7.5.28: 6 + 4 per star, was 8 + 5)
 const HIDE_HOLD = 3, FLOAT_H = 4;                 // seconds to lie low; metres above ground = "floating"
 const SIGHT = { drone: 45, gunship: 60, officer: 55, heavy: 55, guard: 50, buggy: 75, rover: 80, swat: 80 };
 
@@ -62,7 +63,7 @@ const mobile = () => !!(isTouch() || window.innerWidth < 700);
 // roadblocks, 2x slower dispatch and fire, half the damage, 2x longer to box you in, a half-length search, 75% chase speed on foot
 const ease = () => { try { const f = window.SSX?.policeEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
 const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
-function tierOf(n) { const m = mobile(); return { stars: n, rovers: ezN(n <= 0 ? 0 : n === 1 ? 1 : m ? 1 : 2), spotlights: n >= 3, roadblocks: ezN(n >= 4 ? 2 : 0), swat: ezN(n >= 5 ? (m ? 1 : 2) : 0) }; }
+function tierOf(n) { const m = mobile(); return { stars: n, rovers: ezN(CP.pursuitRovers(n, m)), spotlights: n >= 3, roadblocks: ezN(n >= 4 ? 2 : 0), swat: ezN(n >= 5 ? (m ? 1 : 2) : 0) }; }
 function colony() { const c = surf()?.info?.colony; return c && fin(c.x) ? c : null; }
 function aj2w(p) { const c = colony(); return c ? { x: c.x + p[0], z: c.z + p[1] } : null; }
 function pitAt() { let a = null; try { const at = window.SSX?.fight?.status?.().at; if (Array.isArray(at)) a = aj2w(at); } catch (e) { /* no fight club */ } return a || aj2w(PIT_AJ); }
@@ -233,7 +234,7 @@ function tick(dt, tc) {
   else if (forceLOS == null && spot) seenNow = true;
   if (forceLOS === false) seenNow = false;
   if (seenNow) { if (search) emit('spotted', { x: P.x, z: P.z }); search = null; lastSeen = { x: P.x, z: P.z }; lastSeenT = tNow; }
-  else if (!search) { const L = lastSeen || { x: P.x, z: P.z }, total = (SEARCH_BASE + SEARCH_PER * stars) * ease(); search = { x: L.x, z: L.z, r: 25 + 10 * stars, left: total, total }; emit('search', { x: search.x, z: search.z, left: total }); }
+  else if (!search) { const L = lastSeen || { x: P.x, z: P.z }, total = CP.searchSecs(stars) * ease(); search = { x: L.x, z: L.z, r: 25 + 10 * stars, left: total, total }; emit('search', { x: search.x, z: search.z, left: total }); }
   if (search) { search.left -= dt; if (search.left <= 0) { lose('search', true); return; } }
   // units
   const pit = inPit(P.x, P.z), perch = !P.driving && fin(P.y) && fin(P.gy) && P.y - 1.7 - P.gy > 4; // v7.5.23: up a tower / on a roof they can shoot but can't box you in
@@ -327,7 +328,7 @@ function lose(how, auto = false) {
 function finishLose(how, to, msg, extra = {}) {
   const w = world(); stats.lost[how] = (stats.lost[how] || 0) + 1;
   try { w.setWanted(to, how === 'search' ? 'ColSec lost you' : how === 'hideout' ? 'lay low in a hideout' : how === 'repaint' ? 'new paint, new plate' : 'bribe'); } catch (e) { console.warn('pursuit setWanted', e); }
-  if (to <= 0) { clearUnits(); syncBlocks(0); search = null; } else { const P = me(); search = P ? { x: P.x, z: P.z, r: 25 + 10 * to, left: (SEARCH_BASE + SEARCH_PER * to) / 2, total: SEARCH_BASE + SEARCH_PER * to } : null; forceLOS = forceLOS === true ? null : forceLOS; }
+  if (to <= 0) { clearUnits(); syncBlocks(0); search = null; } else { const P = me(); search = P ? { x: P.x, z: P.z, r: 25 + 10 * to, left: CP.searchSecs(to) / 2, total: CP.searchSecs(to) } : null; forceLOS = forceLOS === true ? null : forceLOS; }
   hideT = 0; boxT = 0;
   emit(how === 'hideout' ? 'hideout' : how === 'repaint' ? 'repaint' : 'lost', { how, to, ...extra });
   if (how !== 'search' && how !== 'bribe') emit('lost', { how, to, ...extra });
@@ -360,7 +361,7 @@ function hookOutcomes() {
   // #23 bribes: a paid bribe already moved world.wanted; we drop the pursuit to match (no second bribe UI)
   addEventListener('ssx:bribe', e => { const t = e.detail?.type; if (t !== 'paid' && t !== 'record') return; const n = heat();
     if (n <= 0) { clearUnits(); syncBlocks(0); search = null; emit('lost', { how: 'bribe', to: 0 }); stats.lost.bribe = (stats.lost.bribe || 0) + 1; }
-    else { for (const u of units.filter(q => q.kind === 'swat')) dropUnit(u); const P = me(); if (P) search = { x: P.x, z: P.z, r: 25 + 10 * n, left: (SEARCH_BASE + SEARCH_PER * n) / 2, total: SEARCH_BASE + SEARCH_PER * n }; emit('lost', { how: 'bribe', to: n, partial: true }); } });
+    else { for (const u of units.filter(q => q.kind === 'swat')) dropUnit(u); const P = me(); if (P) search = { x: P.x, z: P.z, r: 25 + 10 * n, left: CP.searchSecs(n) / 2, total: CP.searchSecs(n) }; emit('lost', { how: 'bribe', to: n, partial: true }); } });
 }
 
 // ---------- minimap ----------

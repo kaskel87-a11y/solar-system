@@ -167,7 +167,7 @@ function onEnter(car, tc) {
   const want = CC.wantedOnEnter(owned, R.prevWanted, cur);
   if (want !== cur) setWanted(want, owned ? 'owner' : 'stole Lou\u2019s magnet crane');
   if (owned) { if (!car.crOwned && car !== tc.rover) { car.crOwned = true; const st = tc.game?.progress?.stats; if (st?.stolen > 0) st.stolen--; } }
-  else { own('stole'); const l = louAt(); if (l) bark(l, 'crane_lou', 'Lou'); toast(`\ud83e\uddf2 You stole Lou\u2019s magnet crane. Heat ${want}\u2605. It\u2019s in My rides now (no plates).`, 3600); }
+  else { own('stole'); const l = louAt(); if (l) bark(l, 'crane_lou', 'Lou'); toast(`\ud83e\uddf2 You stole Lou\u2019s magnet crane. ${want > (R.prevWanted | 0) ? `Heat ${want}\u2605.` : 'Lou\u2019s yelling, but nobody\u2019s calling ColSec.'} It\u2019s in My rides now (no plates).`, 3600); }
   if (!R.firstRide) { R.firstRide = true; setTimeout(() => toast(`\ud83e\uddf2 Crawl up so the hook (out front) is over a parked ride, then ${matchMedia('(pointer:coarse)').matches ? 'tap \ud83e\uddf2 Magnet' : 'press G (or \ud83e\uddf2 Magnet)'}. Drop it on Lou\u2019s lot to sell or keep it.`, 4600), owned ? 200 : 3800); }
 }
 
@@ -186,10 +186,10 @@ function press() {
 function say(msg) { toast(msg, 2200); return { ok: false, msg }; }
 function roofOf(v) { try { v.group.updateWorldMatrix(true, true); BOX.setFromObject(v.group); return Math.max(0.8, Math.min(4, BOX.max.y - v.group.position.y)); } catch (e) { return 2; } }
 function latch(tc, rig, v) {
-  const w = tc.world, seen = !!w?.hostileAt?.(v.x, v.z), before = w?.wanted | 0;
+  const w = tc.world, seen = !!w?.hostileAt?.(v.x, v.z), before = w?.wanted | 0, cs = w?.copSees?.(v.x, v.z), copSaw = !!(cs && cs.los && cs.d < 12);
   const h = roofOf(v), rel = (v.yaw || 0) - (tc.car.yaw || 0);
-  try { w?.take?.(v); } catch (e) { v.parked = false; v.taken = true; }   // stolen stat + crime() when witnessed
-  if (seen && (w?.wanted | 0) <= before) heat(w, before, `magnet-jacked a ${nameOf(v).toLowerCase()}`);
+  try { w?.take?.(v); } catch (e) { v.parked = false; v.taken = true; }   // stolen stat; crime() only if a ColSec officer right there saw it (v7.5.28)
+  if (copSaw && (w?.wanted | 0) < CC.heatOnGrab(true, before)) heat(w, before, `magnet-jacked a ${nameOf(v).toLowerCase()}`);
   v.parked = false; v.carried = true; v.speed = 0;
   rig.mag.add(v.group); v.group.position.set(0, -CC.MAG_H - h, 0); v.group.rotation.set(0, rel, 0);
   R.held = { v, h, rel, relT: CC.crosswise(rel), seen, world: w, at: R.t, name: nameOf(v) };
@@ -199,11 +199,11 @@ function latch(tc, rig, v) {
   if (owner) bark(owner, 'crane_owner', owner.name || 'Owner'); else bark({ x: v.x, z: v.z }, 'crane_owner', 'Owner');
   if (!seen) R.calls.push({ t: R.t + CC.OWNER_CALL_T, v, name: R.held.name });
   try { SSX().hudx?.setWaypoint?.((() => { const d = yardDrop(); return d ? { x: d.x, z: d.z, label: 'Hook & Crook: sell or keep' } : null; })(), true); } catch (e) { /* */ }
-  toast(`\ud83e\uddf2 Got the ${R.held.name}${seen ? ' \u2014 and somebody saw. +1\u2605' : '. Nobody saw\u2026 yet'}. Haul it to HOOK & CROOK to sell or keep it.`, 3400);
+  toast(`\ud83e\uddf2 Got the ${R.held.name}${copSaw && (w?.wanted | 0) > before ? ' \u2014 right in front of ColSec. 1\u2605' : seen ? ' \u2014 the owner\u2019s screaming' : '. Nobody saw'}. Haul it to HOOK & CROOK to sell or keep it.`, 3400);
   emit({ type: 'grab', kind: v.kind, seen });
 }
 // +1 star through the world's own crime() (its 2.5 s crime cooldown can swallow it right after another crime: then setWanted)
-function heat(w, before, why) { try { w?.crime?.(1, why); if ((w?.wanted | 0) <= before) w?.setWanted?.(CC.heatOnGrab(true, before), why); } catch (e) { /* */ } }
+function heat(w, before, why) { try { w?.crime?.(1, why); const to = CC.heatOnGrab(true, before); if ((w?.wanted | 0) < to) w?.setWanted?.(to, why); } catch (e) { /* */ } }
 function detach(tc, rig, quiet) { // let go: the ride lands where it hangs and becomes a parked world vehicle again
   const H = R.held; if (!H) return null; R.held = null; const v = H.v;
   try {
@@ -332,7 +332,7 @@ function tick(dt, tc) {
   // owner calls for unseen lifts
   for (let i = R.calls.length - 1; i >= 0; i--) { const c = R.calls[i]; if (R.t < c.t) continue; R.calls.splice(i, 1);
     const close = R.held?.v === c.v || Math.hypot(c.v.x - tc.player.x, c.v.z - tc.player.z) < 200;
-    if (CC.ownerCalls(c.force ? 0 : Math.random(), close)) { const p = CC.LINES.crane_call; toast(p[Math.floor(Math.random() * p.length)], 3200); heat(tc.world, tc.world?.wanted | 0, `the ${c.name.toLowerCase()} owner called it in`); emit({ type: 'call', kind: c.v.kind }); } }
+    if (CC.ownerCalls(c.force ? 0 : Math.random(), close)) { const p = CC.LINES.crane_call; toast(p[Math.floor(Math.random() * p.length)], 3200); /* v7.5.28: ColSec logs it and shrugs, no stars */ emit({ type: 'call', kind: c.v.kind }); } }
   // target + mode + ring
   let hp = null; R.target = null;
   if (rig && R.st === 'idle' && !R.held) { hp = hookPos(rig); R.target = CC.pickTarget(hp.x, hp.z, targets(tc), { skip: car }); }

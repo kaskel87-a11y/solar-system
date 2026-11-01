@@ -61,7 +61,7 @@ const tag = `raccoon-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await G(() => window.__app.surface.interact());
     ok('stealDrive', await wait(() => window.__app.surface.info.driving && window.__app.surface.info.vehicle === 'raccoon_rover', 15000));
     ok('stealOwned', await wait(() => window.SSX.raccoon.state.owned && window.SSX.raccoon.state.how === 'stole', 15000));
-    ok('stealHeat', await G(() => window.__app.surface.world.wanted), (await G(() => window.__app.surface.world.wanted)) >= 1);
+    ok('stealHeat (v7.5.28: taking a car = 0 stars)', await G(() => window.__app.surface.world.wanted), (await G(() => window.__app.surface.world.wanted)) === 0);
     ok('stealGarage', await G(() => { const r = window.SSX.garage?.rides || []; return `${r.length} rides, last ${r[r.length - 1]?.vehicle || r[r.length - 1]?.kind} noPlates=${r[r.length - 1]?.noPlates}`; }),
       await G(n => { const r = window.SSX.garage?.rides || []; const l = r[r.length - 1]; return r.length === n + 1 && l?.noPlates === true; }, ridesBefore));
     ok('stealBark', await wait(() => window.__raccoon.debug.barks().some(b => b.cat === 'raccoon_steal'), 5000));

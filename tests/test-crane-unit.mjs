@@ -34,9 +34,9 @@ ok('grab / empty / busy / drop / sell', C.mode({ driving: true, aboard: true, ta
   && C.mode({ driving: true, aboard: true, busy: true }) === 'busy' && C.mode({ driving: true, aboard: true, held: true }) === 'drop' && C.mode({ driving: true, aboard: true, held: true, inYard: true }) === 'sell');
 ok('labels', C.label('grab', { name: 'Dust Runner' }).includes('Grab Dust Runner') && C.label('buy').includes('1,800') && C.label('sell').includes('Lou') && C.label('') === '');
 // heat
-ok('seen lift = +1 star (min 1)', C.heatOnGrab(true, 0) === 1 && C.heatOnGrab(true, 2) === 3 && C.heatOnGrab(true, 5) === 5);
-ok('unseen lift = no heat now', C.heatOnGrab(false, 2) === 2);
-ok('stealing the crane = at least 2 stars', C.wantedOnEnter(false, 0, 0) === 2 && C.wantedOnEnter(false, 0, 3) === 3);
+ok('lift seen by a cop right there = 1 star if clean, never stacks', C.heatOnGrab(true, 0) === 1 && C.heatOnGrab(true, 2) === 2 && C.heatOnGrab(true, 5) === 5);
+ok('lift with no cop close = no heat', C.heatOnGrab(false, 0) === 0 && C.heatOnGrab(false, 2) === 2);
+ok('stealing the crane = no forced stars (v7.5.28)', C.wantedOnEnter(false, 0, 0) === 0 && C.wantedOnEnter(false, 0, 3) === 3);
 ok('owned crane restores previous heat', C.wantedOnEnter(true, 1, 2) === 1 && C.wantedOnEnter(true, 0, 0) === 0);
 ok('owner call: only if close, ~60%', C.ownerCalls(0.1, true) && !C.ownerCalls(0.9, true) && !C.ownerCalls(0.1, false));
 // cable

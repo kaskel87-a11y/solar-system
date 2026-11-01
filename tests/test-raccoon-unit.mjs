@@ -54,8 +54,8 @@ ok('floating pauses loot + pickpocket', /floating/.test(RC.blocked({ onMars: tru
 ok('race / job / inside block', /race/.test(RC.blocked({ onMars: true, race: true })) && /job/.test(RC.blocked({ onMars: true, job: true })) && /indoors/.test(RC.blocked({ onMars: true, inside: true })));
 ok('off Mars blocked', RC.blocked({}) === 'Mars only');
 // heat
-ok('stealing: at least +1 heat', RC.wantedOnEnter(false, 0, 0) === 1 && RC.wantedOnEnter(false, 2, 2) === 3);
-ok('stealing seen by witness: no double count', RC.wantedOnEnter(false, 0, 1) === 1);
+ok('stealing (v7.5.28): no extra heat', RC.wantedOnEnter(false, 0, 0) === 0 && RC.wantedOnEnter(false, 2, 2) === 2);
+ok('stealing in front of a cop: keeps the core star, no double count', RC.wantedOnEnter(false, 0, 1) === 1);
 ok('stealing caps at 5', RC.wantedOnEnter(false, 5, 5) === 5);
 ok('owned: undo core car-theft heat', RC.wantedOnEnter(true, 0, 1) === 0 && RC.wantedOnEnter(true, 2, 3) === 2);
 ok('bump clamps 0..5', RC.bump(4) === 5 && RC.bump(5) === 5 && RC.bump(0, -1) === 0);

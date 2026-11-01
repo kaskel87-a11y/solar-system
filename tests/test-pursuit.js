@@ -37,12 +37,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const tiers = {};
     for (const n of [1, 2, 3, 4, 5]) {
       await G(n => { const P = window.SSX.pursuit; P.debug.setHeat(n); P.debug.los(true); P.debug.sync(); }, n);
-      const cond = { 1: 'u.filter(q=>q.own&&q.kind==="rover").length>=1', 2: 'u.filter(q=>q.own&&q.kind==="rover").length>=P.tier().rovers', 3: 'P.debug.state().cones>=1', 4: 'P.roadblocks().length>=1', 5: 'u.filter(q=>q.own&&q.kind==="swat").length>=1' }[n];
+      const cond = { 1: 'P.tier().rovers===0&&u.filter(q=>q.own&&q.kind==="rover").length===0', 2: 'u.filter(q=>q.own&&q.kind==="rover").length>=P.tier().rovers', 3: 'P.debug.state().cones>=1', 4: 'P.roadblocks().length>=1', 5: 'u.filter(q=>q.own&&q.kind==="swat").length>=1' }[n];
       const got = await wait(new Function(`const P=window.SSX.pursuit,u=P.units();return P.heat()===${n} && window.__pev.some(e=>e.type==='tier'&&e.to===${n}) && ${cond};`), n === 3 ? 60000 : 15000);
       tiers[n] = { got, tier: await G(() => window.SSX.pursuit.tier()), own: await G(() => window.SSX.pursuit.units().filter(u => u.own).map(u => u.kind).join(',')), core: await G(() => window.SSX.pursuit.units().filter(u => !u.own).map(u => u.kind).join(',')), blocks: await G(() => window.SSX.pursuit.roadblocks().map(b => b.id).join(',')) };
       if (n === 3 && !desk) await page.screenshot({ path: out + `pursuit-spot-${tag}.png` });
     }
-    ok('tiers', tiers, Object.values(tiers).every(t => t.got) && tiers[1].tier.rovers === 1 && tiers[5].tier.swat >= 1 && tiers[4].tier.roadblocks >= 1);
+    ok('tiers', tiers, Object.values(tiers).every(t => t.got) && tiers[1].tier.rovers === 0 /* v7.5.28: 1★ is a nuisance, no pursuit rovers */ && tiers[5].tier.swat >= 1 && tiers[4].tier.roadblocks >= 1);
     R.allEv = await G(() => window.__pev.map(e => e.type).join(',')); R.tierEv = await G(() => window.__pev.filter(e => e.type === 'tier').map(e => e.to).join(',')); ok('tierEvents', R.tierEv, R.tierEv === '1,2,3,4,5');
     await G(() => window.SSX.pursuit.debug.setHeat(0));
     ok('standDown', await wait(() => window.SSX.pursuit.units().filter(u => u.own).length === 0 && window.SSX.pursuit.roadblocks().length === 0, 15000));

@@ -94,11 +94,12 @@ export function lootPick(car, targets, seen, now, lastLoot = -1e9, cfg = LOOT) {
   return best;
 }
 // heat: what wanted level should be after getting into the junker. prev = wanted before you got in, cur = wanted now
-// (core already adds +1 if a witness saw the theft). owned -> undo the core's car-theft heat; stolen -> at least prev + 1.
+// (core world.take() decides car-theft heat: v7.5.28 none unless a ColSec officer right there saw it). owned -> undo any
+// car-theft heat; stolen -> whatever the core gave (no extra star: taking a car isn't a police matter by default).
 export function wantedOnEnter(owned, prev, cur) {
   prev = prev | 0; cur = cur | 0;
   if (owned) return Math.min(cur, prev);
-  return Math.min(5, Math.max(cur, prev + 1));
+  return Math.min(5, Math.max(cur, prev));
 }
 export const bump = (w, n = 1) => Math.min(5, Math.max(0, (w | 0) + n));
 // co-pilot bark rate limiter: global gap + per-category gap; urgent categories only need half the global gap

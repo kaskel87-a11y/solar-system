@@ -146,7 +146,7 @@ export function createTow(K) {
     always(dt, c, loaded) {
       regOffer(); const rv = c.rover; if (!rv || !K.D) return; if (K.surf()) K.surf().__lastRover = rv;
       const I = K.ST.impound;
-      if (I) { const away = Math.hypot(rv.x - I.x, rv.z - I.z); if (c.car === rv || away > 8) { K.ST.impound = null; K.save(); K.crime(1, 'skipped the Hook & Crook impound fee'); const p = louPos(); K.say(p, 'Lou', 'louJumped', { toastToo: true }); K.emit('impoundJumped', {}); } return; }
+      if (I) { const away = Math.hypot(rv.x - I.x, rv.z - I.z); if (c.car === rv || away > 8) { K.ST.impound = null; K.save(); /* v7.5.28: Lou yells, he doesn't call ColSec (taking a car is no police matter) */ const p = louPos(); K.say(p, 'Lou', 'louJumped', { toastToo: true }); K.emit('impoundJumped', {}); } return; }
       const parkedHere = c.car !== rv && Math.hypot(rv.x - K.D.x, rv.z - K.D.z) < 72, pl = c.car || c.player, far = Math.hypot(pl.x - rv.x, pl.z - rv.z) > 30 || !!c.world?.inside;
       if (!parkedHere) { parkT = 0; return; } if (!far) { parkT = Math.max(0, parkT - dt * 2); return; }
       parkT += dt; if (parkT < 75) return; if ((rollT -= dt) > 0) return; rollT = 20;

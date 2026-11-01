@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
 import * as ROOF from './roofs.js';
 import { bountyFor } from './copbounty.js'; // v7.5.12 flat 500 cr + 100 ⭐ per cop kill
+import * as CP from './copcore.js'; // v7.5.28 cops calm down (car theft = no heat unless a cop is right there)
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -518,7 +519,7 @@ export function createWorld(ctx) {
       if (v === st.car && st.driving) { traffic.splice(traffic.indexOf(v), 1); delete v.traffic; continue; } // carjacked
       const dP = Math.hypot(v.x - player.x, v.z - player.z);
       if (dP > 210 || inCore(v.x, v.z) || (!HW.closed && (t.s <= 1 || t.s >= HW.len - 1))) { despawnCar(v); continue; }
-      if (t.cop && wanted > 0 && dP < 50) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
+      if (t.cop && CP.trafficCopsJoin(wanted) && dP < 50) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
       if (t.wreck > 0) { t.wreck -= dt; t.v = 0; v.speed = 0; v.group.position.set(v.x, v.y, v.z); continue; }
       const p = roadAt(t.s), fx = p.fx * t.dir, fz = p.fz * t.dir;
       // brake for anything in the lane ahead: you, your car, other traffic
@@ -613,10 +614,10 @@ export function createWorld(ctx) {
     if (n === wanted) return;
     const up = n > wanted; wanted = n; evade = 0;
     if (up) onEvent('wanted', { stars: n, why: why || '' });
-    else if (n === 0) { easeCarry = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
+    else if (n === 0) { easeCarry = 0; strikes = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
   }
-  let crimeCd = 0;
-  function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; setWanted(wanted > 0 ? Math.min(5, Math.max(wanted + 1, min)) : min, why); }
+  let crimeCd = 0, strikes = 0;
+  function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; const r = CP.escalate(wanted, min, why, strikes); strikes = r.strikes; if (r.to !== wanted) setWanted(r.to, why); } // v7.5.28: minor crimes on top of heat escalate at half speed
   function witnessed(x, z) {
     if (!C) return false;
     if (Math.hypot(x - cx, z - cz) < 70) return true; // colony cameras
@@ -707,7 +708,7 @@ export function createWorld(ctx) {
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 9 + Math.sin(s.phase) - s.y) * Math.min(1, dt * 2);
         s.cd -= dt * E; if (!inside && d < 60 && s.cd <= 0) { s.burst = (s.burst || 0) + 1; s.cd = s.burst % 4 ? 0.14 : 1.8; secShoot(s, 6 + wanted); }
       } else if (s.kind === 'drone') {
-        const keep = 9, sp = 26 * FK; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
+        const keep = 9, sp = CP.droneSpeed(wanted) * FK; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 5 + Math.sin(s.phase * 2) - s.y) * Math.min(1, dt * 3);
         s.cd -= dt * E; if (!inside && d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
       } else {
@@ -736,12 +737,12 @@ export function createWorld(ctx) {
       if (inside) close = false; // they can't see you in here
       if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
-      if (bustT > (st.driving ? 3 : 2)) { bustT = 0; game.bust(); }
+      if (bustT > CP.bustNeed(wanted, st.driving)) { bustT = 0; game.bust(); } // v7.5.28: 1★ takes longer to grab you
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
       const lyingLow = !st.driving && (player.moving || 0) < 0.05;
       if (inside) evade += dt * 1.5; // hiding indoors: the heat cools off (faster at low stars)
-      else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else evade = Math.max(0, evade - dt * 0.5);
-      if (evade > (5 + wanted * 2.5) * E) setWanted(0); // mission ease: heat cools twice as fast
+      else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else if (CP.lowHeatCools(wanted, nearest)) evade += dt; else evade = Math.max(0, evade - dt * 0.5); // v7.5.28: 1-2★ cool off out of sight, even in town
+      if (evade > CP.evadeNeed(wanted) * E) setWanted(0); // mission ease: heat cools twice as fast
     }
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
@@ -813,13 +814,30 @@ export function createWorld(ctx) {
     return best;
   }
   function nearestVehicle() { let best = null, bd = 1e9; for (const v of vehicles) { const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } } return best; }
+  // v7.5.28: taking a car is no police matter unless a ColSec officer / guard is within CP.THEFT_COP_R m with line of sight
+  // (1★ if you were clean) or the ride is a marked ColSec cruiser (2★). Otherwise the owner shouts and runs, nobody calls it in.
+  function los(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }
+  function copSees(x, z, R = CP.THEFT_COP_R) { // nearest ColSec eyes within R that can actually see the spot: { d, los }
+    let best = { d: Infinity, los: false };
+    const look = (ox, oz) => { const d = Math.hypot(ox - x, oz - z); if (d < R && d < best.d) { const l = los(ox, oz, x, z); if (l || !best.los) best = { d, los: l }; } };
+    for (const s of security) if (s.kind !== 'drone' && s.kind !== 'gunship') look(s.x, s.z);
+    for (const p of people) if (p.kind === 'guard' && p.on !== false && !p.stun) look(p.x, p.z);
+    for (const t of traffic) if (t.traffic?.cop) look(t.x, t.z);
+    return best;
+  }
+  const isPolice = v => !!(v?.traffic?.cop || v?.cop || v?.police || v?.sec);
+  function theftHeat(v, what, police = isPolice(v)) {
+    const c = copSees(v.x, v.z), n = CP.theftStars({ police, copDist: c.d, copLOS: c.los, wanted });
+    if (n > 0) crime(n, police ? 'stole a ColSec cruiser' : `${what} a ${v.spec.name.toLowerCase()} in front of ColSec`);
+    return n;
+  }
   function take(v) {
-    if (v.traffic) { const j = traffic.indexOf(v); if (j >= 0) traffic.splice(j, 1); delete v.traffic; v.speed = 0; onEvent('take', { kind: v.kind, name: v.spec.name, seen: true, carjack: true }); crime(1, `carjacked a ${v.spec.name.toLowerCase()}`); v.parked = false; v.taken = true; return; }
+    if (v.traffic) { const police = isPolice(v), j = traffic.indexOf(v); if (j >= 0) traffic.splice(j, 1); delete v.traffic; v.speed = 0; onEvent('take', { kind: v.kind, name: v.spec.name, seen: true, carjack: true }); theftHeat(v, 'carjacked', police); v.parked = false; v.taken = true; return; } // the driver bails and runs
     v.parked = false;
     if (!v.taken) { v.taken = true; const g = ctx.game(); g.progress.stats.stolen = (g.progress.stats.stolen || 0) + 1; }
-    const seenBy = witnessed(v.x, v.z);
+    const seenBy = witnessed(v.x, v.z); // seen = the owner / passers-by shout (barks), not a police matter
     onEvent('take', { kind: v.kind, name: v.spec.name, seen: seenBy });
-    if (seenBy) crime(1, `stole a ${v.spec.name.toLowerCase()}`);
+    theftHeat(v, 'stole');
   }
   function leave(v) { v.parked = true; v.speed = 0; }
   // player bolts can hit people and security (that\u2019s a crime, obviously)
@@ -1070,7 +1088,7 @@ export function createWorld(ctx) {
     npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), parkedVehicles: () => vehicles.filter(v => v.parked && !v.traffic), // v7.5.22 raw parked cars (mars/crane.js lifts them)
     despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
-    coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
+    coverNear, hostileAt: (x, z) => witnessed(x, z), copSees: (x, z, r) => copSees(x, z, r), freeSpot,
     // v7.5.4 API: add-on solids (street dressing). nocam defaults to true. Cleared on world exit; returns a remover.
     addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },

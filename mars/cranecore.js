@@ -70,11 +70,13 @@ export function label(m, { name = '', price = PRICE } = {}) {
   return { buy: `\ud83e\uddf2 Buy crane \u00b7 ${price.toLocaleString('en-US')} cr`, grab: `\ud83e\uddf2 Grab ${name}`.trim(), empty: '\ud83e\uddf2 Magnet', busy: '\ud83e\uddf2 \u2026',
     drop: '\ud83e\uddf2 Drop', sell: '\ud83d\udd27 Drop for Lou' }[m] || '';
 }
-// heat for lifting a ride: witnessed -> the game's crime() (+1 star, at least 1); unseen -> nothing now, maybe an owner call later
-export const heatOnGrab = (seen, wanted) => seen ? Math.min(5, wanted > 0 ? wanted + 1 : 1) : wanted | 0;
-// stealing the crane itself (not bought): at least 2 stars, Lou knows exactly who you are. Owned: whatever you had before.
-export function wantedOnEnter(owned, before, now) { return owned ? Math.min(now | 0, before | 0) : Math.max(now | 0, 2); }
-// unseen lift: does the owner call it in? (rand in [0, 1)); only if you still have it or are still close
+// v7.5.28 cops calm down: lifting a ride is car theft, so no heat unless a ColSec officer right there saw it (copSaw: within
+// copcore THEFT_COP_R with line of sight) -> 1 star if you were clean, never stacks. Bystanders / owners just shout.
+export const heatOnGrab = (copSaw, wanted) => copSaw ? Math.max(wanted | 0, 1) : wanted | 0;
+// stealing the crane itself: whatever world.take() decided (0 unless a cop saw), no forced stars. Owned: whatever you had before.
+export function wantedOnEnter(owned, before, now) { return owned ? Math.min(now | 0, before | 0) : now | 0; }
+// unseen lift: does the owner call it in? (rand in [0, 1)); only if you still have it or are still close.
+// v7.5.28: the call is just a toast / bark now (ColSec doesn't chase car thefts), no stars
 export const ownerCalls = (rand, stillClose) => !!stillClose && rand < OWNER_CALL_P;
 // cable length that hangs a ride of height h (ground to roof) with its belly CARRY_GAP above the truck's ground
 export const carryLen = (h, tipY = TIP.y) => Math.max(STOW_L, tipY - MAG_H - CARRY_GAP - Math.max(0.6, h));
