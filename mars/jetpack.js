@@ -75,7 +75,7 @@ function why(tc) { // null = jetpack can fly right now
   if (tryv(() => tc.game?.isDown?.())) return 'down';
   return null;
 }
-function groundY(tc, x, z) { const h = tryv(() => tc.world?.groundAt?.(x, z)); return Number.isFinite(h) ? h : tc.height ? tc.height(x, z) : 0; }
+function groundY(tc, x, z, feet) { const h = tryv(() => tc.world?.playerGround && Number.isFinite(feet) ? tc.world.playerGround(x, z, feet) : tc.world?.groundAt?.(x, z)); return Number.isFinite(h) ? h : tc.height ? tc.height(x, z) : 0; } // v7.5.39: a roof under you counts as ground
 function tick(dt, tc) {
   simT += dt; lastTc = tc;
   if (window.SSX && window.SSX.jetpack !== api) window.SSX.jetpack = api; // index.html may (re)assign window.SSX
@@ -92,7 +92,7 @@ function tick(dt, tc) {
   const intro = tryv(() => surf()?.info?.intro, 0) > 0;
   const jump = !intro && !!(keys.Space || tb.jump);
   const dive = !!(window.__gravity?.pad?.down);
-  const feet = p.y - EYE, gy = groundY(tc, p.x, p.z); alt = Math.max(0, feet - gy);
+  const feet = p.y - EYE, gy = groundY(tc, p.x, p.z, feet); alt = Math.max(0, feet - gy);
   const airborne = !p.grounded;
   const wasLit = s.lit;
   p.vy = C.step(s, { jump, dive, airborne, alt, vy: p.vy, g: planetG * 9.81, mode, dt });
@@ -104,7 +104,7 @@ function tick(dt, tc) {
     const mx = (keys.KeyD || (!kb && keys.ArrowRight) ? 1 : 0) - (keys.KeyA || (!kb && keys.ArrowLeft) ? 1 : 0) + (joy.x || 0);
     const mz = (keys.KeyW || (!kb && keys.ArrowUp) ? 1 : 0) - (keys.KeyS || (!kb && keys.ArrowDown) ? 1 : 0) - (joy.y || 0);
     const [dx, dz] = C.airSteer(mx, mz, p.yaw, dt, true);
-    if (dx || dz) { let nx = p.x + dx, nz = p.z + dz; const c = tryv(() => tc.world?.collidePlayer?.(nx, nz, 0.45)); if (c) { nx = c.x; nz = c.z; } p.x = nx; p.z = nz; }
+    if (dx || dz) { let nx = p.x + dx, nz = p.z + dz; const c = tryv(() => tc.world?.collidePlayer?.(nx, nz, 0.45, p.y - EYE)); if (c) { nx = c.x; nz = c.z; } p.x = nx; p.z = nz; } // v7.5.39: feet height, so you fly over a roof edge and land on it
   }
   // ColSec fire at 3★+
   const stars = +(tryv(() => tc.world?.wanted, 0) || 0);

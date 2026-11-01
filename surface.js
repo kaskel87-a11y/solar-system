@@ -728,13 +728,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     player.moving = Math.min(1, len); player.running = running && len > 0.3;
     if (dx || dz) {
       let nx = player.x + dx, nz = player.z + dz;
-      const gh = groundAt(nx, nz);
+      const feet = player.y - EYE, gh = footGround(nx, nz, feet);
       if (!indoor && cfg.water !== undefined && gh < cfg.water - 0.4) { nx = player.x; nz = player.z; }
       else { player.walked += Math.hypot(dx, dz); player.moveYaw = Math.atan2(-dx, -dz); }
-      const c = world.collidePlayer(nx, nz, 0.45); if (c) { nx = c.x; nz = c.z; }
+      const c = world.collidePlayer(nx, nz, 0.45, feet); if (c) { nx = c.x; nz = c.z; } // v7.5.39: height-aware, roofs you're above don't block
       player.x = nx; player.z = nz;
     }
-    const ground = groundAt(player.x, player.z) + EYE;
+    const ground = footGround(player.x, player.z, player.y - EYE) + EYE; // v7.5.39: roofs hold you up (land, walk, snipe)
+    roofCheck(ground - EYE);
     if (state.outro > 0) {
       state.outro -= dt; player.vy += 25 * dt; player.y += player.vy * dt;
     } else {
@@ -1251,6 +1252,15 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   const nearRover = () => rover && !driving && !indoor && Math.hypot(rover.x - player.x, rover.z - player.z) < NEAR_ROVER;
   // ----- v7.3 enterable buildings: walk through a door into a small interior parked above the colony -----
   const groundAt = (x, z) => indoor ? world.inside.floor : height(x, z);
+  // v7.5.39 rooftops: ground under your feet = terrain or a roof / ledge you're on (world.playerGround, roofs.js surfaces)
+  const footGround = (x, z, feet) => indoor ? world.inside.floor : (world.playerGround ? world.playerGround(x, z, feet) : height(x, z));
+  let onRoof = false, roofHinted = false;
+  function roofCheck(g) {
+    const up = !indoor && !driving && g > height(player.x, player.z) + 2.5;
+    if (up && !onRoof && player.grounded && !roofHinted) { roofHinted = true; const t = document.body.classList.contains('touch');
+      onEvent('toast', { text: t ? '🏙️ On the roof. Rail rifle + 🎯 Scope to snipe. Jet or walk off the edge to get down.' : '🏙️ On the roof. Rail rifle + Z (or right-click) to snipe. Space to jet, or walk off the edge.' }); }
+    onRoof = up && player.grounded;
+  }
   function enterBuilding(door) {
     if (!cfg || indoor || driving || state.intro > 0 || state.outro > 0 || game.isDown()) return null;
     const r = world.enterBuilding(door); if (!r.ok) { if (r.msg) onEvent('toast', { text: r.msg, long: true }); return r; }
@@ -1275,11 +1285,13 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (!cfg || state.intro > 0 || state.outro > 0) return null;
     if (indoor) return null;
     if (driving) {
-      const rx = Math.cos(car.yaw), rz = -Math.sin(car.yaw);
+      const rx = Math.cos(car.yaw), rz = -Math.sin(car.yaw), cf = car.y + 0.05; // v7.5.39: car's floor height (a roof it's parked on)
+      const lvl = (x, z) => footGround(x, z, cf) > cf - 0.7; // this side keeps you on the car's level (roof, not a drop)
       let ex = car.x - rx * 2.9, ez = car.z - rz * 2.9;
-      if (cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) { ex = car.x + rx * 2.9; ez = car.z + rz * 2.9; }
-      player.x = ex; player.z = ez; player.y = height(ex, ez) + EYE; player.vy = 0; player.grounded = true;
-      const c = world.collide(ex, ez, 0.45, car); if (c) { player.x = c.x; player.z = c.z; }
+      if ((cfg.water !== undefined && height(ex, ez) < cfg.water - 0.3) || (!lvl(ex, ez) && lvl(car.x + rx * 2.9, car.z + rz * 2.9))) { ex = car.x + rx * 2.9; ez = car.z + rz * 2.9; }
+      else if (!lvl(ex, ez)) { for (const [fx, fz] of [[-Math.sin(car.yaw), -Math.cos(car.yaw)], [Math.sin(car.yaw), Math.cos(car.yaw)]]) { const x = car.x + fx * 3.6, z = car.z + fz * 3.6; if (lvl(x, z)) { ex = x; ez = z; break; } } }
+      const c = world.collide(ex, ez, 0.45, car, cf); if (c) { ex = c.x; ez = c.z; }
+      player.x = ex; player.z = ez; player.y = Math.max(footGround(ex, ez, cf), height(ex, ez)) + EYE; player.vy = 0; player.grounded = true;
       player.yaw = car.yaw + camYawOff; player.faceYaw = player.yaw;
       car.speed = 0; car.group.visible = true; driveGoal = camGoal; saveView(); driving = false; camGoal = walkGoal;
       const was = car; if (car !== rover) world.leave(car); car = null;
@@ -1363,8 +1375,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (driving) return { ok: false, why: 'you are already driving' };
     // v7.5.8: an impounded rover stays in the ColSec lot; never fake a summon (the impound would drag it straight back)
     try { if (globalThis.SSX?.consequences?.roverImpounded?.()) return { ok: false, impounded: true, why: 'your rover\u2019s impounded at ColSec (Olympus Row)' }; } catch (e) { /* no consequences module */ }
+    const feet = player.y - EYE, up = !indoor && footGround(player.x, player.z, feet) > height(player.x, player.z) + 1; // v7.5.39: on a roof, deliver it onto the roof
+    if (up) rover.y = feet;
     const p = summonSpot();
-    rover.x = p.x; rover.z = p.z; rover.y = height(p.x, p.z); rover.yaw = Math.atan2(-(player.x - p.x), -(player.z - p.z)) + Math.PI / 2;
+    rover.x = p.x; rover.z = p.z; rover.y = up ? Math.max(height(p.x, p.z), world.vehicleGround(rover)(p.x, p.z)) : height(p.x, p.z); rover.yaw = Math.atan2(-(player.x - p.x), -(player.z - p.z)) + Math.PI / 2;
     rover.vy = 0; rover.speed = 0; rover.steer = 0; rover.prevG = null; rover.air = false; rover.pitch = 0; rover.roll = 0;
     rover.group.position.set(rover.x, rover.y, rover.z); rover.group.rotation.set(0, rover.yaw, 0);
     updateChunks(player.x, player.z, true); dustRing(p.x, p.z);

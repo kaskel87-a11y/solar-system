@@ -391,6 +391,17 @@ export function createWorld(ctx) {
       return g;
     };
   }
+  // v7.5.39 rooftops on foot: ground under a person at (x,z) whose feet are at `feet` = terrain or any roof / ledge / parked
+  // car top they're on (or within ROOF.CLEAR above). Support radius is negative so you stand on the visible roof, not the
+  // 0.4 m collision margin around it. Same surfaces vehicles land on (roofs.js), so a jetpack or a parked ride both work.
+  const FOOT_R = -0.2;
+  function playerGround(x, z, feet) {
+    const t = height(x, z);
+    if (!C || inside || !Number.isFinite(feet) || feet < t - 0.5) return t;
+    let g = ROOF.groundUnder(solids, x, z, FOOT_R, feet, height, vehicles).g;
+    const cs = ROOF.colliderSolids(x, z, 0.1, height); if (cs.length) { const h = ROOF.groundUnder(cs, x, z, FOOT_R, feet, height).g; if (h > g) g = h; }
+    return g;
+  }
   function solidAt(x, y, z) {
     if (!C) return false;
     for (const s of solids) { if (y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
@@ -807,7 +818,7 @@ export function createWorld(ctx) {
     if (inside) inside.room.tick(dt); else warmRooms(dt);
     // parked vehicles hug the ground (hover ones bob)
     const st = ctx.st();
-    for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = height(v.x, v.z) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
+    for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = (v.restY != null && v.restX === v.x && v.restZ === v.z ? v.restY : height(v.x, v.z)) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
   }
 
   // ----- vehicles: take one (stealing is a crime if anyone sees), leave it wherever -----
@@ -842,7 +853,9 @@ export function createWorld(ctx) {
     onEvent('take', { kind: v.kind, name: v.spec.name, seen: seenBy });
     theftHeat(v, 'stole');
   }
-  function leave(v) { v.parked = true; v.speed = 0; }
+  function leave(v) { v.parked = true; v.speed = 0; // v7.5.39: a ride left on a roof stays up there (rest height, valid while it isn't moved)
+    const g = ROOF.groundUnder(solids, v.x, v.z, (v.spec?.r || 2) * 0.75, v.y, height, vehicles, v).g;
+    if (g > height(v.x, v.z) + 0.3) { v.restY = g; v.restX = v.x; v.restZ = v.z; } else v.restY = null; }
   // player bolts can hit people and security (that\u2019s a crime, obviously)
   const seg = new THREE.Vector3(), q = new THREE.Vector3(), tv = new THREE.Vector3();
   function segHit(p0, p1, c, r) { seg.copy(p1).sub(p0); const L2 = seg.lengthSq(); const t = L2 ? Math.max(0, Math.min(1, tv.copy(c).sub(p0).dot(seg) / L2)) : 0; q.copy(p0).addScaledVector(seg, t); return q.distanceTo(c) < r; }
@@ -1091,8 +1104,8 @@ export function createWorld(ctx) {
     onEvent('door', {});
     return { x: door.x, z: door.z + 0.6, yaw: Math.PI };
   }
-  function collidePlayer(x, z, r) {
-    if (!inside) return collide(x, z, r);
+  function collidePlayer(x, z, r, feet) {
+    if (!inside) return collide(x, z, r, null, Number.isFinite(feet) ? feet : undefined); // v7.5.39 rooftops: with feet height, roofs you're above don't block (land / walk on them)
     const c = inside.room.collide(x - inside.ax, z - inside.az, r); return c ? { x: c.x + inside.ax, z: c.z + inside.az } : null;
   }
   function camBlockedIn(x, y, z) { return !!inside && inside.room.camBlocked(x - inside.ax, y - inside.ay, z - inside.az); } // v7.4 indoor camera vs partitions/shelving
@@ -1106,7 +1119,7 @@ export function createWorld(ctx) {
   return {
     // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
-    vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
+    vehicleGround: car => roofGround(car), playerGround, addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
