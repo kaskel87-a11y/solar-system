@@ -19,6 +19,7 @@ import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem
 import { boost } from './economy.js'; // v7.5.9: the 'Safe's open' line shows the boosted take (what the heist / its mission pays)
 import { createGuards } from './guards.js';
 import { losClear, boxHit, pushOut, losCache } from './heistlos.js';
+import { grantStars, heistStars } from './starmixcore.js';
 
 const listeners = {};
 function emit(name, detail) {
@@ -204,10 +205,11 @@ function resolve(world, d) {
 }
 function finish(success, fail) {
   if (!run) return; const d = run.def;
-  if (success) { run.advance('done'); if (d.payout) payout(ctxL?.game, d.loot.credits); } else { run.failWith(fail); if (safeOpen()) cancelSafe(); }
-  const res = { id: d.id, success, loot: success ? run.loot : null, fail: success ? null : fail, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm };
+  let stars = 0; // v7.5.46 (Collin): every clean score pays stars too, scaled with the score (starmixcore.heistStars)
+  if (success) { run.advance('done'); if (d.payout) payout(ctxL?.game, d.loot.credits); stars = grantStars(ctxL?.game, heistStars(d.loot?.credits)); } else { run.failWith(fail); if (safeOpen()) cancelSafe(); }
+  const res = { id: d.id, success, loot: success ? run.loot : null, fail: success ? null : fail, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, stars };
   emit(success ? 'done' : 'fail', res); if (success) emit('clean', { id: d.id });
-  toast(success ? `🕵️ ${d.title}: clean getaway.` : `🕵️ ${d.title} blown: ${fail}.`, 3500);
+  toast(success ? `🕵️ ${d.title}: clean getaway.${stars ? ` +${stars} ⭐` : ''}` : `🕵️ ${d.title} blown: ${fail}.`, 3500);
   cams.removeWhere(c => c.heistId === d.id); guards.stop(); dropMarks(); setAction(null);
   const r = runDone; run = null; runDone = null; renderChip(0, null); r?.(res);
 }

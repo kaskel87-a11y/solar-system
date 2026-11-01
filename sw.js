@@ -70,6 +70,7 @@ const PRECACHE = [
   `perfgov.js${q}`, `hud/hudslim.js${q}`, `copbounty.js${q}`, `hud/cardfit.js${q}`, `hud/keys.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
+  ...['ridestars', 'starmixcore'].map(n => `${n}.js${q}`), // v7.5.46 ride/heist/front stars
   `clubdancers.js${q}`, `privateshow.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   `savecode.js${q}`, // 💾 Save Code (SSX.savecode)
   `copcore.js${q}`, // v7.5.28 cops calm down: car theft heat, minor-crime escalation, 1★ nuisance rules

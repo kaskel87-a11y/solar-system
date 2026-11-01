@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import * as EC from './empirecore.js';
 import { marsHour } from './dangercore.js';
+import { grantStars, frontStars } from './starmixcore.js'; // v7.5.46 fronts pay stars
 
 const W = () => (typeof window !== 'undefined' ? window : null), SSX = () => W()?.SSX, APP = () => W()?.__app;
 const surf = () => APP()?.surface, game = () => surf()?.game, wld = () => surf()?.world;
@@ -209,7 +210,7 @@ function buy(id, o = {}) {
 function collect(id, o = {}) {
   const p = EC.propById(id), ow = D.owned[id]; if (!p || !ow) return { ok: false, why: 'Not yours.' }; if (!EC.isFront(p)) return { ok: false, why: 'Safehouses don\u2019t earn.' };
   if (!o.force && !near(id)) return { ok: false, why: `Collect at ${p.name}.` }; const n = EC.collect(D, id); if (!n) return { ok: false, why: 'Till is empty.' };
-  H.give(n); save(); toast(`💵 +${n} cr from ${p.name}`, 2400); emit('collect', { prop: id, amount: n }); renderPanel(); return { ok: true, amount: n };
+  H.give(n); const stars = grantStars(game(), frontStars(n)); save(); toast(`💵 +${n} cr${stars ? ` · +${stars} ⭐` : ''} from ${p.name}`, 2400); emit('collect', { prop: id, amount: n, stars }); renderPanel(); return { ok: true, amount: n, stars }; // v7.5.46: fronts pay stars too (1 per 10 cr)
 }
 function upgrade(id) { const p = EC.propById(id), o = D.owned[id]; if (!o) return { ok: false, why: 'Not yours.' }; if (o.security) return { ok: false, why: 'Already done.' }; const c = EC.securityCost(p); if (!H.spend(c)) return { ok: false, why: `Need ${c} cr.` }; o.security = true; save(); emit('security', { prop: id, cost: c }); toast(`🔒 ${p.name}: shutters, cameras and a guy on the door. Crews think twice.`, 2800); renderPanel(); return { ok: true, cost: c }; }
 function repair(id) { const p = EC.propById(id), o = D.owned[id]; if (!o || !(o.closedH > 0)) return { ok: false, why: 'Nothing to fix.' }; const c = EC.repairCost(p); if (!H.spend(c)) return { ok: false, why: `Need ${c} cr.` }; o.closedH = 0; save(); refreshLooks(); emit('repair', { prop: id, cost: c }); toast(`🔨 ${p.name} is open again.`, 2200); renderPanel(); return { ok: true, cost: c }; }
