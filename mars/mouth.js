@@ -11,6 +11,7 @@
 // Window API: SSX.mouth = { state(), foul(), honk(), say(i, type), tts(on?) }
 import * as M from './mouthcore.js';
 import { babble } from '../synth.js';
+import { getAudioCtx, realDest } from '../audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const TTS_KEY = 'ssx.mouth.tts';
 const S = { on: true, foul: new Set(), zones: new Set(), lines: [], said: 0, spoken: 0, last: null, honkAt: -1e9, lastPos: null, acc: 0, scanT: 0, ttsOff: false, unlocked: false, bubbles: 0 };
@@ -53,7 +54,7 @@ function unlock() { try { if (hornCtx?.state === 'suspended') hornCtx.resume()?.
 let hornCtx = null;
 function hornSound() {
   let mix = null; try { mix = window.SSX?.audio?.mix?.get?.(); } catch { /* */ } if (mix?.mute || (mix && +mix.master <= 0.01)) return;
-  try { const A = window.AudioContext || window.webkitAudioContext; if (!A) return; hornCtx ||= new A(); const a = hornCtx, t = a.currentTime, g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12 * (mix ? +mix.master : 0.9), t + 0.02); g.gain.setValueAtTime(0.12 * (mix ? +mix.master : 0.9), t + 0.32); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); g.connect(a.destination);
+  try { hornCtx ||= getAudioCtx(); if (!hornCtx) return; const a = hornCtx, t = a.currentTime, g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12 * (mix ? +mix.master : 0.9), t + 0.02); g.gain.setValueAtTime(0.12 * (mix ? +mix.master : 0.9), t + 0.32); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); g.connect(a.destination);
     for (const f of [392, 494]) { const o = a.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 0.42); } } catch (e) { warnOnce('horn', e); }
 }
 function honk() { const info = app()?.surface?.info; if (!info?.driving) return false; S.honkAt = now(); hornSound(); return true; }
@@ -119,8 +120,8 @@ function place() { // stick to the speaker; clamp into the band between the top 
 // no text-to-speech (or it's busy): Pumpkin's bark babble, through the same mute / master rules
 function babbleFor(line, key, insult, d) {
   let mix = null; try { mix = window.SSX?.audio?.mix?.get?.(); } catch { /* */ } if (mix?.mute || (mix && +mix.master <= 0.01) || document.hidden) return false;
-  try { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false; hornCtx ||= new AC(); const a = hornCtx; if (a.state !== 'running') { a.resume?.()?.catch?.(() => {}); return false; } // iOS: wakes on the first tap
-    const g = a.createGain(); g.gain.value = (mix ? +mix.master : 0.9) * (mix ? +(mix.amb ?? 1) : 1); g.connect(a.destination);
+  try { hornCtx ||= getAudioCtx(); if (!hornCtx) return false; const a = hornCtx; if (a.state !== 'running') { a.resume?.()?.catch?.(() => {}); return false; } // iOS: wakes on the first tap
+    const g = a.createGain(); g.gain.value = (mix ? +mix.master : 0.9) * (mix ? +(mix.amb ?? 1) : 1); g.connect(realDest(a));
     babble(a, g, a.currentTime, { pitch: 120 + M.hash(key) % 110, syll: 3 + (line.length / 14 | 0), rate: 9, vol: 0.06 * Math.max(0.2, 1 - d / 22), angry: insult, lp: 2400 }); return true; } catch (e) { warnOnce('babble', e); return false; }
 }
 function say(p, i, type, line) {

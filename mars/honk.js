@@ -7,6 +7,7 @@
 // window.SSX.honk = { honk(kind), taunt(), state(), on(fn) }   window.__honk = test helpers
 import * as H from './honkcore.js';
 import { noiseBuf } from '../synth.js';
+import { getAudioCtx, realDest } from '../audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const X = () => window.SSX || {}, app = () => window.__app, surf = () => app()?.surface, game = () => surf()?.game;
 const tryv = (f, d = null) => { try { const v = f(); return v === undefined ? d : v; } catch (e) { return d; } };
@@ -22,7 +23,7 @@ let ac = null, out = null;
 function mix() { try { const m = X().audio?.mix?.get?.(); if (m) return m.mute ? 0 : (fin(m.master) ? m.master : 1); } catch (e) { /* */ } try { if (localStorage.getItem('ssx.muted') === '1') return 0; } catch (e) { /* */ } return 1; }
 function audio() {
   try {
-    if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); out = ac.createGain(); out.connect(ac.destination); }
+    if (!ac) { ac = getAudioCtx(); if (!ac) return null; out = ac.createGain(); out.connect(realDest(ac)); }
     if (ac.state === 'suspended') ac.resume?.()?.catch?.(() => {});
     out.gain.value = 0.9 * mix(); return mix() > 0 ? ac : null;
   } catch (e) { return null; }

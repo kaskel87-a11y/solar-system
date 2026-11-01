@@ -12,6 +12,7 @@
 // window.SSX.jetpack = { owned, on, ready, fuel, flying, lit, down, price, buy(), setOn(bool), subscribe(fn) }  window.__jetpack = test helpers
 import * as THREE from 'three';
 import * as C from './jetpackcore.js';
+import { getAudioCtx, realDest } from '../audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => surf()?.game;
 const KEY = 'ssx.jetpack.v1', EYE = 1.7;
@@ -159,11 +160,11 @@ function mix() { return tryv(() => window.SSX?.audio?.mix?.get?.()); }
 function audioUp() {
   if (actx) { if (actx.state !== 'running') actx.resume?.()?.catch?.(() => {}); return; }
   try {
-    const A = window.AudioContext || window.webkitAudioContext; if (!A) return; actx = new A();
+    actx = getAudioCtx(); if (!actx) return;
     const n = actx.sampleRate, buf = actx.createBuffer(1, n, n), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
     af = actx.createBiquadFilter(); af.type = 'bandpass'; af.frequency.value = 700; af.Q.value = 0.7;
-    ag = actx.createGain(); ag.gain.value = 0; src.connect(af); af.connect(ag); ag.connect(actx.destination); src.start();
+    ag = actx.createGain(); ag.gain.value = 0; src.connect(af); af.connect(ag); ag.connect(realDest(actx)); src.start();
   } catch (e) { actx = null; }
 }
 let vol = 0;
