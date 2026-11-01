@@ -26,7 +26,7 @@
     'ssx.grime.v1', 'ssx.hudx.more', 'ssx.hudx.v1', 'ssx.jobs.v1', 'ssx.lab.v1', 'ssx.mars.act.v1', 'ssx.marstracks.snap', 'ssx.mix.v1',
     'ssx.onboard.v1', 'ssx.planets.v1', 'ssx.pursuit.v1', 'ssx.r2r.v1', 'ssx.raccoonRover.v1', 'ssx.race.v1', 'ssx.radioBanner', 'ssx.rep.v1',
     'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1',
-    'ssx.still.v1', 'ssx.still.v1.bak', 'ssx.hydroden.v1', /* Hydro Den rented grow rack (v7.5.30) */ // moonshine still (mars/still.js) + its #83-style mirror
+    'ssx.still.v1', 'ssx.still.v1.bak', 'ssx.hydroden.v1', /* Hydro Den rented grow rack (v7.5.30) */ 'ssx.shoptiers.v1', /* shop restock tiers + dealer waves (v7.5.45) */ // moonshine still (mars/still.js) + its #83-style mirror
     'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)

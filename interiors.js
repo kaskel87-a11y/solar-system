@@ -280,6 +280,7 @@ export const INTERIORS = {
       for (let k = 0; k < 3; k++) box(-w / 2 + 0.7, 0.3 + k * 0.6, 2.6 + (k % 2) * 0.2, 0.9, 0.55, 0.7, mat(0x3d4a2a)); api.col(-w / 2 + 0.7, 2.7, 0.55, 0.5);
       const tt = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 192; const x = c.getContext('2d'); x.fillStyle = '#e8e0c8'; x.fillRect(0, 0, 128, 192); x.fillStyle = '#222'; x.beginPath(); x.arc(64, 44, 26, 0, 7); x.fill(); x.fillRect(24, 74, 80, 118); x.strokeStyle = '#e8e0c8'; x.lineWidth = 3; for (const r of [14, 30, 46]) { x.beginPath(); x.arc(64, 120, r, 0, 7); x.stroke(); } x.fillStyle = '#c22'; for (let i = 0; i < 7; i++) { x.beginPath(); x.arc(50 + (i * 37) % 30, 100 + (i * 53) % 50, 3, 0, 7); x.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
       api.disposables.push(tt); const tg = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: tt })); api.disposables.push(tg.material); tg.position.set(w / 2 - 0.05, 2.0, -3.0); tg.rotation.y = -Math.PI / 2; tg.scale.set(0.9, 1.35, 1); api.g.add(tg);
+      window.SSX_SHOPTIER?.rack(api, o, 'guns', { x: -w / 2 + 0.5, z: -2.0, face: 'e', len: 3.6 }); // v7.5.45: buy out the shop, new stock rolls in here
       api.spot({ id: 'counter', x: 3.4, z: -1.0, r: 1.0, label: '🧾 ' + (o.dealer || 'Dealer') + ': full list', act: 'shop', venue: 'guns', who: o.dealer || 'Dealer' });
       if (o.talk) api.spot({ id: 'talk', x: 3.4, z: 0.7, r: 0.9, label: '💬 ' + o.talk, act: 'talk', who: o.talk });
     }
@@ -337,6 +338,7 @@ export const INTERIORS = {
       for (let k = 0; k < 3; k++) box(w / 2 - 1.2 - k * 0.2, 0.45 + k * 0.85, -d / 2 + 1.6, 1.2, 0.85, 1.2, k % 2 ? crate : crate2); api.col(w / 2 - 1.3, -d / 2 + 1.6, 0.75, 0.75);
       const cs = box(w / 2 - 2.6, 0.22, -d / 2 + 1.9, 0.7, 0.4, 0.45, mat(0x2a2a30, { metalness: 0.6 })); const gl = box(w / 2 - 2.6, 0.43, -d / 2 + 1.9, 0.6, 0.03, 0.35, mat(0x3cff8a, { basic: true }));
       api.ticks.push(t => { const on = !(o.taken?.('depot-stash')); cs.visible = gl.visible = on; gl.material.color.setHSL(0.38, 1, 0.35 + Math.sin(t * 4) * 0.15); });
+      window.SSX_SHOPTIER?.rack(api, o, 'depot', { x: -w / 2 + 0.5, z: -3.2, face: 'e', len: 3.6 }); // v7.5.45 restock tiers
       api.spot({ id: 'counter', x: -w / 2 + 2.2, z: 3, r: 1.4, label: '🧾 Parts counter: full list', act: 'shop', venue: 'depot', who: o.qm || 'Dez' });
       api.spot({ id: 'stash', x: w / 2 - 2.6, z: -d / 2 + 2.9, r: 1.0, label: '📦 Search the crates', act: 'stash', stash: 'depot-stash', perm: 'maxammo', cond: () => !o.taken?.('depot-stash') });
     }

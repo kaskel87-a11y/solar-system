@@ -18,16 +18,30 @@ export const DEALER_CONFIG = {
 // ---------- dealer models (registered as vehicle kinds by dealership.js) ----------
 // price: credits; tier 1-4 scales upgrade prices and rep; rep: street rep needed before the dealer sells it to you.
 export const MODELS = {
+  // v7.5.45 the bigger lot: six grungy new rides (rust_rat, dune_hog, junk_hauler, black_widow + WAR RIGS regolith_reaper, ghost_sled; rides.js SHAPES).
+  // WAR RIGS roll onto the lot once you've owned every other Red Line model (mars/shoptierscore.js DEALER_WAVES). Kept in price order.
+  rust_rat: { name: 'Rust Rat', icon: '🐀', tier: 1, price: 520, rep: 0, vmax: 19, boost: 29, acc: 12, bacc: 17, turn: 1.95, r: 2.0, wy: 0.45, wr: 0.45,
+    blurb: 'Roll-cage buggy welded out of three dead ones. Half rust, half zip ties, all go. The cheapest wheels in Ares Junction.' },
   dust_runner: { name: 'Dust Runner', icon: '🚙', tier: 1, price: 850, rep: 0, vmax: 20, boost: 31, acc: 11, bacc: 16, turn: 1.75, r: 2.2, wy: 0.5, wr: 0.5,
     blurb: 'Three-door hatch on fat tyres. Cheap, forgiving, eats potholes. Every kid in the Junction learned to drive in one.' },
   red_comet: { name: 'Red Comet', icon: '🏎', tier: 2, price: 1900, rep: 0, vmax: 25, boost: 38, acc: 13, bacc: 19, turn: 1.85, r: 2.3, wy: 0.46, wr: 0.46,
     blurb: 'Low two-door coupe. Twitchy at the limit, gorgeous everywhere else. Insurance won\u2019t touch it.' },
+  dune_hog: { name: 'Dune Hog', icon: '🐗', tier: 2, price: 2200, rep: 0, vmax: 23, boost: 35, acc: 12, bacc: 18, turn: 1.6, r: 2.5, wy: 0.78, wr: 0.75,
+    blurb: 'Lifted dune basher on balloon tyres, twin stacks coughing black. Flies off crater lips and lands laughing.' },
   ares_brute: { name: 'Ares Brute', icon: '🛻', tier: 2, price: 2600, rep: 0, vmax: 18, boost: 27, acc: 8, bacc: 12, turn: 1.15, r: 3.0, wy: 0.72, wr: 0.72, tough: true,
     blurb: 'Six-wheel crew truck with a cattle-catcher. Slow off the line, never stops. Security buggies bounce off it.' },
+  junk_hauler: { name: 'Junk Hauler', icon: '🚛', tier: 2, price: 3100, rep: 0, vmax: 17, boost: 25, acc: 7, bacc: 11, turn: 1.05, r: 3.2, wy: 0.8, wr: 0.8, tough: true,
+    blurb: 'Six-wheel scrap flatbed bolted with salvage plate. Drives like a fridge, hits like a freight train. Nobody tailgates it twice.' },
   olympus_gt: { name: 'Olympus GT', icon: '🏁', tier: 3, price: 4800, rep: 40, vmax: 31, boost: 46, acc: 16, bacc: 24, turn: 1.7, r: 2.4, wy: 0.45, wr: 0.45,
     blurb: 'Grand tourer for Meridian money. Long nose, longer legs. Dealer only sells to drivers with a name at the meets.' },
+  black_widow: { name: 'Black Widow', icon: '🕷', tier: 3, price: 5600, rep: 20, vmax: 32, boost: 47, acc: 17, bacc: 24, turn: 1.78, r: 2.4, wy: 0.46, wr: 0.48,
+    blurb: 'Matte black muscle with a blower scoop and side pipes. Loud enough to set off dome alarms. Sold to drivers with a name.' },
   phobos_phantom: { name: 'Phobos Phantom', icon: '🛸', tier: 4, price: 7500, rep: 100, vmax: 34, boost: 50, acc: 17, bacc: 25, turn: 1.9, r: 2.2, hover: 0.9, lean: 0.35,
-    blurb: 'Hover coupe on mag cushions. No wheels, no friction, no mercy. Reserved for the meet\u2019s top names.' }
+    blurb: 'Hover coupe on mag cushions. No wheels, no friction, no mercy. Reserved for the meet\u2019s top names.' },
+  regolith_reaper: { name: 'Regolith Reaper', icon: '💀', tier: 4, price: 9200, rep: 60, vmax: 27, boost: 40, acc: 12, bacc: 18, turn: 1.3, r: 3.1, wy: 0.82, wr: 0.78, tough: true,
+    blurb: 'WAR RIG. Armoured six-wheeler with a spiked ram and a cage full of floodlights. Built for the wastes past the Loop.' },
+  ghost_sled: { name: 'Ghost Sled', icon: '👻', tier: 4, price: 12500, rep: 120, vmax: 37, boost: 54, acc: 19, bacc: 27, turn: 2.0, r: 2.2, hover: 1.0, lean: 0.4,
+    blurb: 'WAR RIG. Stolen military mag-sled, sanded to bare metal. Silent, stupid fast, and very much on a wanted list somewhere.' }
 };
 export const STOCK = { id: 'stock', kind: 'rover', name: 'Your rover', tier: 1 };
 

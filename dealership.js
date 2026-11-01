@@ -14,9 +14,25 @@ import * as GC from './garagecore.js';
 import { buildRide, decorate, shapeOf } from './rides.js';
 import { createMeet } from './carmeet.js';
 import { createMyRides } from './myrides.js';
+import * as TC from './mars/shoptierscore.js';
 
 // ---------- registration: our models are ordinary vehicle kinds with a price (so they also show up for other mods) ----------
 for (const [kind, m] of Object.entries(GC.MODELS)) registerVehicle(kind, { ...m }, () => buildRide(kind));
+// v7.5.45 restock waves: WAR RIGS stay off the lot until you've owned every other Red Line model (save: ssx.shoptiers.v1)
+const WAVE_KINDS = new Set(TC.DEALER_WAVES.flatMap(w => w.kinds || []));
+const LOT_KINDS = Object.keys(GC.MODELS).filter(k => !WAVE_KINDS.has(k));
+function applyWave() { const hid = new Set(TC.dealerHidden(TC.shared().dealer.wave)); for (const k of WAVE_KINDS) if (VEHICLES[k]) VEHICLES[k].hidden = hid.has(k); }
+applyWave();
+function noteBought(kinds, loud) {
+  const D = TC.shared().dealer; let ch = false;
+  for (const k of kinds) if (GC.MODELS[k] && !D.bought.includes(k)) { D.bought.push(k); ch = true; }
+  const n = TC.dealerNext(D.wave, LOT_KINDS, D.bought);
+  if (n !== D.wave) { D.wave = n; ch = true; applyWave(); if (loud !== false) toast(`🆕 New stock in! ${CFG.name} \u00b7 ${TC.DEALER_WAVES[n - 1].label} just rolled onto the lot.`, 5200); }
+  if (ch) TC.save(TC.shared());
+  return n;
+}
+const waveLine = () => { const D = TC.shared().dealer, W = TC.DEALER_WAVES; if (D.wave >= W.length) return `🆕 ${W[W.length - 1].label} on the lot \u00b7 fully stocked`;
+  const have = LOT_KINDS.filter(k => D.bought.includes(k)).length; return `🔒 Next stock: ${W[D.wave].label}. Own every model on the lot once (${have}/${LOT_KINDS.length}).`; };
 const EXPLICIT = {}; // SSX.registerDealerVehicle listings
 const CFG = { ...GC.DEALER_CONFIG, strip: { ...GC.DEALER_CONFIG.strip } };
 const app = () => window.__app;
@@ -158,13 +174,22 @@ function buildLot() {
   const a = assets(), S = spots(); lot = { podiums: [], stockKey: '' };
   // --- dealer: concrete apron, neon sign on a gantry, a row of lit podiums ---
   const d = new THREE.Group(); d.position.set(S.dealer.x, H(S.dealer.x, S.dealer.z), S.dealer.z); d.rotation.y = CFG.yaw; root.add(d); lot.dealer = d;
-  d.add(put(a.box, a.mConc, 34, 0.3, 16, 0, -0.05, 0));
+  // v7.5.45 the lot grew west: 50 x 22 m apron, two rows of podiums (LOT box below), more floods, a WAR RIGS gantry
+  d.add(put(a.box, a.mConc, LOT.w, 1.2, LOT.d, LOT.cx, -0.5, LOT.cz));
+  for (let i = 0; i < 9; i++) d.add(put(a.box, a.mNeonC, 0.12, 0.03, 4, LOT.cx - LOT.w / 2 + 3 + i * (LOT.w - 6) / 8, 0.12, LOT.rowB + 4.4)); // bay lines
+  d.add(put(a.box, a.mNeonR, 0.08, 0.08, LOT.d - 0.2, LOT.cx - LOT.w / 2 + 0.05, 0.14, LOT.cz));
   for (const s of [-1, 1]) d.add(put(a.box, a.mSteel, 0.4, 7, 0.4, s * 7.5, 3.5, -7.5));
   d.add(put(a.box, a.mDark, 15.4, 0.6, 0.5, 0, 7, -7.5));
   const sign = signMesh(CFG.name, 0xff2a4a, 14, 2.4); sign.position.set(0, 8.6, -7.5); d.add(sign);
   const sub = signMesh('NEW RIDES · TRADE-INS · NO QUESTIONS', 0x38e1ff, 12, 0.9); sub.position.set(0, 6.2, -7.45); d.add(sub);
-  d.add(put(a.box, a.mNeonR, 33.8, 0.08, 0.08, 0, 0.14, 7.95));
-  for (const s of [-1, 1]) { d.add(put(a.box, a.mSteel, 0.25, 6, 0.25, s * 16, 3, 7)); d.add(put(a.box, a.mFlood, 0.9, 0.3, 0.5, s * 16, 6, 6.6)); d.add(put(a.disc, a.mPool, 5, 1, 5, s * 11, 0.13, 3)); }
+  d.add(put(a.box, a.mNeonR, LOT.w - 0.2, 0.08, 0.08, LOT.cx, 0.14, LOT.cz + LOT.d / 2 - 0.05));
+  for (const fx of [-36, -12, 12]) for (const fz of [-6, LOT.cz + LOT.d / 2 - 0.6]) { d.add(put(a.box, a.mSteel, 0.25, 6, 0.25, fx, 3, fz)); d.add(put(a.box, a.mFlood, 0.9, 0.3, 0.5, fx, 6, fz - 0.4)); }
+  for (const px of [-28, -12, 4]) for (const pz of [LOT.rowA + 2.5, LOT.rowB + 2.5]) d.add(put(a.disc, a.mPool, 5.5, 1, 5.5, px, 0.13, pz));
+  // WAR RIGS gantry at the west end: sealed until the wave rolls in
+  for (const s of [-1, 1]) d.add(put(a.box, a.mSteel, 0.4, 5.5, 0.4, -28 + s * 6, 2.75, -7.5));
+  d.add(put(a.box, a.mDark, 12.4, 0.5, 0.5, -28, 5.5, -7.5));
+  lot.waveSigns = [signMesh('MORE RIGS INBOUND', 0x888888, 11, 1.4), signMesh('🆕 WAR RIGS \u00b7 NEW STOCK', 0xffb020, 11, 1.4)];
+  for (const sg of lot.waveSigns) { sg.position.set(-28, 6.7, -7.5); d.add(sg); }
   lot.podG = new THREE.Group(); d.add(lot.podG); rebuildPodiums();
   // --- garage: quonset lock-up with a roller door and a work bay in front ---
   const g = new THREE.Group(); g.position.set(S.garage.x, H(S.garage.x, S.garage.z), S.garage.z); g.rotation.y = CFG.yaw; root.add(g); lot.garage = g;
@@ -179,17 +204,23 @@ function buildLot() {
   meet = meet || createMeet({ THREE, GC, ctx: () => C, root: () => root, spots, assets, signMesh, put, H, toast, garage, save, activeRide, specOf, tierOf, rideName, buildVehicle, decorate, isMobile, credits, spend, app, openSheet, closeSheet, sheetOpen: () => !!sheet, esc, statBars, cfg: () => CFG });
   meet.buildLot();
 }
+// the lot in dealer-local metres (yaw-rotated with the group): centre, size, the two podium rows
+const LOT = { cx: -12, cz: 2, w: 50, d: 22, rowA: -1, rowB: 7.5, span: 46 }; // kept on the colony's flattened ground (it drops off south of z +13, rises east of x +6)
+const onLot = p => { const S = spots(), dx = p.x - S.dealer.x, dz = p.z - S.dealer.z, c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw), lx = dx * c - dz * s, lz = dx * s + dz * c;
+  return Math.abs(lx - LOT.cx) < LOT.w / 2 + 2 && Math.abs(lz - LOT.cz) < LOT.d / 2 + 2; };
 function rebuildPodiums() {
-  if (!lot) return; const stock = dealerStock().slice(0, isMobile ? 5 : 7), key = stock.map(s => s.kind).join(',');
+  if (!lot) return; const stock = dealerStock().slice(0, isMobile ? 8 : 12), key = stock.map(s => s.kind).join(',');
+  if (lot.waveSigns) { const full = TC.shared().dealer.wave >= TC.DEALER_WAVES.length; lot.waveSigns[0].visible = !full; lot.waveSigns[1].visible = full; }
   if (key === lot.stockKey) return; lot.stockKey = key;
   for (const p of lot.podiums) { lot.podG.remove(p.g); disposeRoot(p.g); } lot.podiums = [];
-  const a = assets(), n = stock.length, gap = Math.min(6.4, 30 / Math.max(1, n));
+  const a = assets(), per = Math.max(1, Math.ceil(stock.length / 2)), gap = Math.min(7.2, LOT.span / per);
   stock.forEach((s, i) => {
-    const pg = new THREE.Group(); pg.position.set((i - (n - 1) / 2) * gap, 0, 0.5); lot.podG.add(pg);
+    const row = i < per ? 0 : 1, k = row ? i - per : i, n = row ? stock.length - per : per;
+    const pg = new THREE.Group(); pg.position.set(LOT.cx + (k - (n - 1) / 2) * gap, 0, row ? LOT.rowB : LOT.rowA); lot.podG.add(pg);
     pg.add(put(a.cyl, a.mDark, 2.9, 0.35, 2.9, 0, 0.17, 0)); pg.add(put(a.cyl, a.mNeonC, 2.95, 0.05, 2.95, 0, 0.35, 0));
     let v = null; try { v = buildVehicle(s.kind); } catch (e) { v = null; }
     if (v) { const sc = Math.min(1, (gap - 0.4) / 6.2); v.group.scale.setScalar(Math.max(0.55, sc)); v.group.position.y = 0.38; v.group.rotation.y = 0.6; decorate(v, GC.newRide('show', s.kind), { wheelScale: false }); pg.add(v.group); }
-    const tag = signMesh(`${s.name} · ${s.price} cr`, s.rep > 0 ? 0xffd25a : 0x3cff8a, 5, 0.6); tag.position.set(0, 0.4, 2.2); tag.rotation.x = -0.9; tag.scale.setScalar(Math.min(1, gap / 5.6)); pg.add(tag);
+    const tag = signMesh(`${WAVE_KINDS.has(s.kind) ? '🆕 ' : ''}${s.name} · ${s.price} cr`, WAVE_KINDS.has(s.kind) ? 0xffb020 : s.rep > 0 ? 0xffd25a : 0x3cff8a, 5, 0.6); tag.position.set(0, 0.4, 2.2); tag.rotation.x = -0.9; tag.scale.setScalar(Math.min(1, gap / 5.6)); pg.add(tag);
     lot.podiums.push({ g: pg, v, kind: s.kind });
   });
 }
@@ -245,7 +276,7 @@ const CSS = `
 #dlrSheet{position:fixed;left:0;right:0;bottom:0;z-index:15;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(6,8,18,.95);border-top:1px solid rgba(255,255,255,.18);border-radius:18px 18px 0 0;color:#fff;padding:12px calc(12px + var(--sar,0px)) calc(14px + var(--sab,0px)) calc(12px + var(--sal,0px));box-sizing:border-box;font-size:.84rem;touch-action:pan-y}
 @media (orientation:landscape){#dlrSheet{left:auto;top:0;width:min(400px,46vw);max-height:none;border-radius:18px 0 0 18px;border-top:none;border-left:1px solid rgba(255,255,255,.18);padding-top:calc(12px + var(--sat,0px))}}
 #dlrSheet h3{margin:0 0 2px;font-size:1.02rem;letter-spacing:.02em}#dlrSheet .sub{opacity:.72;font-size:.76rem;margin-bottom:8px}
-#dlrSheet .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;-webkit-overflow-scrolling:touch}
+#dlrSheet .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;-webkit-overflow-scrolling:touch}#dlrSheet .dchips button{padding:6px 9px;font-size:.78rem}
 #dlrSheet button{min-height:44px;border-radius:12px;font-weight:800;color:#fff;background:#000;border:1px solid rgba(255,255,255,.55);padding:0 12px;font-size:.8rem;touch-action:manipulation;flex:none}
 #dlrSheet button.on{border-color:#38e1ff;box-shadow:inset 0 0 0 2px #38e1ff}#dlrSheet button.go{background:#000;border-color:#ff5a7a;box-shadow:inset 0 0 0 2px #ff2a4a;flex:1}
 #dlrSheet button:disabled{opacity:.45}#dlrSheet .row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}#dlrSheet .close{position:sticky;top:0;float:right;z-index:2}
@@ -285,8 +316,8 @@ function updateCtx() {
   const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
   const me = meOf(), S = spots();
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
-  if (dist(me, S.dealer) < 17) return setCtx('🚗 Dealer', () => openDealer());
   if (dist(me, S.garage) < 11) return setCtx('🔧 Garage', () => openGarage());
+  if (onLot(me)) return setCtx('🚗 Dealer', () => openDealer());
   setCtx(null);
 }
 
@@ -305,7 +336,7 @@ function openSheet(kind, render, cam) {
   el.addEventListener('click', e => { if (performance.now() - t < 700) return; const b = e.target.closest('button'); if (b && !b.disabled) onSheetTap(b); });
   rerender(); return el;
 }
-function rerender() { if (!sheet) return; const top = sheet.el.scrollTop; sheet.el.innerHTML = sheet.render(); sheet.el.scrollTop = top; }
+function rerender() { if (!sheet) return; const top = sheet.el.scrollTop, cl = sheet.el.querySelector('.dchips')?.scrollLeft || 0; sheet.el.innerHTML = sheet.render(); sheet.el.scrollTop = top; const ch = sheet.el.querySelector('.dchips'); if (ch) ch.scrollLeft = cl; }
 export function closeSheet(quiet) { if (!sheet) return; sheet.el.remove(); sheet = null; sheetCam = null; document.body.classList.remove('dlr-open'); if (!quiet) meet?.onSheetClosed?.(); clearBay(); }
 const handlers = {};
 function onSheetTap(b) {
@@ -329,7 +360,7 @@ const wallet = () => `💰 ${credits()} cr · ⭐ ${Math.round(garage().rep)} re
 let dSel = null;
 function openDealer() {
   if (!here()) return toast('🚗 Red Line Motors is on Mars, by Ares Junction.');
-  rebuildPodiums(); const st = dealerStock(); if (!dSel || !st.some(s => s.kind === dSel)) dSel = st[0]?.kind;
+  noteBought(garage().rides.map(r => r.kind)); rebuildPodiums(); const st = dealerStock(); if (!dSel || !st.some(s => s.kind === dSel)) dSel = st[0]?.kind;
   openSheet('dealer', renderDealer, () => { const p = lot.podiums.find(p => p.kind === dSel) || lot.podiums[0]; return p ? p.g : null; });
 }
 function renderDealer() {
@@ -337,11 +368,12 @@ function renderDealer() {
   const spec = specOf(GC.newRide('x', s.kind)), price = GC.sellPrice(s, G.rep), full = G.rides.length >= GC.MAX_RIDES, owned = G.rides.filter(r => r.kind === s.kind).length;
   const why = G.rep < s.rep ? `Needs ${s.rep} rep. Make a name at the car meets first.` : full ? `Garage full (${GC.MAX_RIDES}). Sell a ride first.` : credits() < price ? `You’re ${price - credits()} cr short.` : '';
   return head(`🚗 ${esc(CFG.name)}`, wallet()) +
-    `<div class="chips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
+    `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
     <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
-    <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
-    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>`;
+    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>
+    <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
+    <div class="blurb">${esc(waveLine())}</div>`;
 }
 handlers.dsel = k => { dSel = k; rerender(); };
 handlers.buy = k => { const r = buy(k); toast(r.msg, 3200); if (r.ok) closeSheet(); else rerender(); };
@@ -353,13 +385,13 @@ export function buy(kind) {
   if (G.rides.length >= GC.MAX_RIDES) return { ok: false, msg: '🔧 Garage full. Sell something first.' };
   if (!spend(price)) return { ok: false, msg: `💸 ${s.name} is ${price} cr. You’re short, pal.` };
   const r = GC.newRide('r' + G.nextId++, kind); r.spent = 0; MR.parkOutgoing(); G.rides.push(r); G.active = r.id; save(); // live fix: the old ride stays parked where it is
-  parkActiveAt('dealer');
+  parkActiveAt('dealer'); noteBought([kind]); rebuildPodiums();
   return { ok: true, id: r.id, msg: `🔑 ${s.name} is yours. Parked out front, keys in it. Customise it at the lock-ups next door.` };
 }
 // put your (newly selected) ride at a spot, facing out
 function parkActiveAt(where) {
   const rv = C?.rover; if (!rv || !here()) return; if (C.car && C.car !== rv) return;
-  const S = spots(), p = where === 'garage' ? S.garage : S.dealer, z = p.z + (where === 'garage' ? 9 : 11), x = p.x + (where === 'garage' ? 0 : -4);
+  const S = spots(), p = where === 'garage' ? S.garage : S.dealer, z = p.z + (where === 'garage' ? 9 : 12), x = p.x + (where === 'garage' ? 0 : -12);
   rv.x = x; rv.z = z; rv.y = H(x, z); rv.prevG = null; rv.vy = 0; rv.speed = 0; rv.yaw = Math.PI; rv.air = false;
   if (!C.car) { C.player.x = x + 3; C.player.z = z + 1; }
 }
@@ -501,7 +533,7 @@ export function dealerTick(dt, ctx) {
 const rockDone = new WeakSet(), rm = new THREE.Matrix4(), rp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); let rockT = 0;
 function clearRocks(dt) {
   if ((rockT -= dt) > 0) return; rockT = 0.5; const S = spots(), cx = S.stripFrom.x, z0 = Math.min(S.stripFrom.z, S.stripTo.z) - 20, z1 = Math.max(S.stripFrom.z, S.stripTo.z) + 10;
-  const zones = [[S.dealer, 22], [S.garage, 14], [S.meet, 27]];
+  const zones = [[{ x: S.dealer.x + LOT.cx, z: S.dealer.z + LOT.cz }, 29], [S.garage, 14], [S.meet, 27]];
   for (const g of C.scene.children) if (g.isGroup && g !== root) for (const o of g.children) {
     if (!o.isInstancedMesh || rockDone.has(o) || o.geometry?.type !== 'IcosahedronGeometry') continue; rockDone.add(o); let hit = false;
     for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, rm); rp.setFromMatrixPosition(rm); rp.applyMatrix4(o.matrixWorld);
@@ -529,6 +561,6 @@ window.__dealer = {
   get brakeAssist() { return brakeAssist; }, get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
-  get myrides() { return MR; },
+  get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, noteBought, rebuildPodiums,
   tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };

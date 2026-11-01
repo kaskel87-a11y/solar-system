@@ -44,7 +44,7 @@ export const TYPES = {
   ap: { name: 'Armour-piercing', short: 'AP', dmg: 1.1, armor: 1 / 0.6, pierceArmor: true },
   slug: { name: 'Coil slug', short: 'SLUG', dmg: 1 }
 };
-export const CALS = { light: { name: 'Light rounds', types: ['std', 'hollow', 'ap'], core: 'rounds' }, shell: { name: 'Shells', types: ['std', 'ap'], core: 'shells' }, heavy: { name: 'Heavy rounds', types: ['std', 'hollow', 'ap'] }, rail: { name: 'Coil slugs', types: ['slug'] } };
+export const CALS = { light: { name: 'Light rounds', types: ['std', 'hollow', 'ap'], core: 'rounds' }, shell: { name: 'Shells', types: ['std', 'ap'], core: 'shells' }, heavy: { name: 'Heavy rounds', types: ['std', 'hollow', 'ap'] }, rail: { name: 'Coil slugs', types: ['slug'] }, frag: { name: 'Frag grenades', types: ['std'], core: 'grenades' } }; // v7.5.45 frag: the Thumper's drum feeds from the game's own grenades
 export const KEYS = { wheel: 'KeyQ', reload: 'KeyI', ammo: 'Digit0', scope: 'Digit0' }; /* v7.5.5: 0 ammo type, Shift+0 scope; ' is the legal panel, \ the empire panel, Shift+I the texts */ // + right mouse for scope. v7.5.5: . is the Beltway panel, , is base build
 export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No "discharging a weapon" crime, quieter shots, -8% damage.' }, extmag: { name: 'Extended mag', icon: '➕', blurb: '+50% magazine, slightly slower reload.' }, scope: { name: 'Scope', icon: '🔭', blurb: 'Zoom (right mouse / , / 🔭) and half the bloom while scoped.' } };
 // core = the game.js WEAPONS id this gun fires through. smg + shotgun are the game's own guns (Ozzie's / colony shop).
@@ -59,6 +59,26 @@ export const ARS = {
     base: { name: 'Halcyon coil lance', cd: 0.6, dmg: 16, speed: 460, color: 0xff5cf0, size: 1.5, life: 0.45, pierce: true, beam: true, rail: true } },
   knife: { core: 'ar_knife', name: 'Gutter knife', icon: '🔪', kind: 'melee', mult: 3, knockMult: 0.7, mods: [], base: { name: 'Gutter knife', cd: 0.4, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   bat: { core: 'ar_bat', name: 'Slugger bat', icon: '🏏', kind: 'melee', mult: 2.2, knockMult: 2.6, mods: [], base: { name: 'Slugger bat', cd: 0.5, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  // v7.5.45 shop restock tiers (mars/shoptiers.js): new stock the gun shops roll out once you buy them out. Same fire path as above.
+  revolver: { core: 'ar_revolver', name: 'Gutterking .50 revolver', icon: '🔫', kind: 'gun', cal: 'heavy', mag: 6, reload: 1.8, recoil: 0.11, bloom: 0.02, bloomMax: 0.05, knock: 1.1, mods: ['scope'], tier: 2,
+    base: { name: 'Gutterking .50', cd: 0.42, dmg: 4.4, speed: 185, color: 0xffc040, size: 0.75, life: 0.9, spread: 0.003 } },
+  riothog: { core: 'ar_riothog', name: 'Riot Hog drum shotgun', icon: '🐗', kind: 'gun', cal: 'shell', mag: 12, reload: 2.6, recoil: 0.07, bloom: 0.015, bloomMax: 0.05, knock: 0.4, mods: ['extmag'], tier: 2,
+    base: { name: 'Riot Hog', cd: 0.3, dmg: 0.9, pellets: 8, spread: 0.09, speed: 85, color: 0xffa040, size: 0.7, life: 0.4 } },
+  hatchet: { core: 'ar_hatchet', name: 'Rust Belt hatchet', icon: '🪓', kind: 'melee', mult: 2.6, knockMult: 1.4, mods: [], tier: 2, base: { name: 'Rust Belt hatchet', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  needler: { core: 'ar_needler', name: 'Needle-Rat flechette SMG', icon: '🐀', kind: 'gun', cal: 'light', mag: 45, reload: 1.7, recoil: 0.012, bloom: 0.005, bloomMax: 0.07, knock: 0.15, mods: ['suppressor', 'extmag'], tier: 3,
+    base: { name: 'Needle-Rat', cd: 0.055, dmg: 0.85, speed: 150, color: 0xa0ffd0, size: 0.45, life: 0.8, spread: 0.02, pierce: true } },
+  dustbiter: { core: 'ar_dustbiter', name: 'Dustbiter LMG', icon: '🦷', kind: 'gun', cal: 'heavy', mag: 90, reload: 3.4, recoil: 0.022, bloom: 0.006, bloomMax: 0.09, knock: 0.45, mods: ['extmag', 'scope'], tier: 3,
+    base: { name: 'Dustbiter LMG', cd: 0.085, dmg: 2.0, speed: 165, color: 0xffe066, size: 0.6, life: 0.9, spread: 0.012 } },
+  gnasher: { core: 'ar_gnasher', name: 'Gnasher chain-machete', icon: '⛓️', kind: 'melee', mult: 4.2, knockMult: 1.2, mods: [], tier: 3, base: { name: 'Gnasher chain-machete', cd: 0.38, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  thumper: { core: 'ar_thumper', name: 'Thumper drum launcher', icon: '💣', kind: 'gun', cal: 'frag', mag: 6, reload: 3.0, recoil: 0.14, bloom: 0.01, bloomMax: 0.03, knock: 2.2, mods: [], tier: 4,
+    base: { name: 'Thumper', cd: 0.55, dmg: 2.4, speed: 34, color: 0xff7a20, size: 1.6, life: 3, splash: 5.5, splashDmg: 10, grav: 14, lob: 0.22, rocket: true } },
+  widowmaker: { core: 'ar_widowmaker', name: 'Widowmaker gauss rifle', icon: '🕷️', kind: 'gun', cal: 'rail', mag: 4, reload: 2.6, charge: 0.9, recoil: 0.14, bloom: 0, bloomMax: 0, knock: 2.0, mods: ['scope'], tier: 4,
+    base: { name: 'Widowmaker', cd: 0.7, dmg: 24, speed: 480, color: 0xff3040, size: 1.6, life: 0.45, pierce: true, beam: true, rail: true } },
+  kingpin: { core: 'ar_kingpin', name: 'Gilded Gutterking', icon: '👑', kind: 'gun', cal: 'heavy', mag: 6, reload: 1.5, recoil: 0.1, bloom: 0.015, bloomMax: 0.04, knock: 1.4, mods: ['scope', 'suppressor'], tier: 5,
+    base: { name: 'Gilded Gutterking', cd: 0.36, dmg: 6.2, speed: 200, color: 0xffd700, size: 0.8, life: 0.9, spread: 0.002 } },
+  hellhound: { core: 'ar_hellhound', name: 'Hellhound slug-thrower', icon: '🐕', kind: 'gun', cal: 'shell', mag: 8, reload: 2.4, recoil: 0.12, bloom: 0.02, bloomMax: 0.05, knock: 1.0, mods: ['extmag'], tier: 5,
+    base: { name: 'Hellhound', cd: 0.6, dmg: 1.45, pellets: 10, spread: 0.07, speed: 95, color: 0xff5020, size: 0.8, life: 0.45 } },
+  skullsplitter: { core: 'ar_skullsplitter', name: 'Skullsplitter warhammer', icon: '🔨', kind: 'melee', mult: 5.5, knockMult: 3.0, mods: [], tier: 5, base: { name: 'Skullsplitter', cd: 0.62, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   // v7.5.31: the Grin Reaper's brass bulb horn (mars/honk.js gives it on first wear, honks + scares on every swing): a weak bonk
   horn: { core: 'ar_horn', name: 'Brass bulb horn', icon: '📯', kind: 'melee', mult: 0.35, knockMult: 0.6, mods: [], base: { name: 'Brass bulb horn', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } }
 };
