@@ -60,7 +60,7 @@ export function addSlotBank(api, o = {}) {
   const pm = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), pg = new THREE.PlaneGeometry(2.0, 1.0), panel = new THREE.Mesh(pg, pm);
   panel.position.set(C.x + 0.37, 4.05, zc); panel.rotation.y = Math.PI / 2; api.g.add(panel); api.disposables?.push(pg, pm, tex);
   api.sign('OLYMPUS MEGA', 0xffd040, C.x + 0.3, 5.3, zc, Math.PI / 2, 2.6, { w: 512, h: 96, font: 'bold 60px system-ui, sans-serif' });
-  spots.push(api.spot({ id: 'megaslot', x: C.x + 1.75, z: zc, r: 1.15, label: '🎰 Mega Jackpot · 100 cr', act: 'slots', big: true }));
+  spots.push(api.spot({ id: 'megaslot', x: C.x + 1.75, z: zc, r: 1.15, label: '🎰 Mega Jackpot · 100–1000 cr', act: 'slots', big: true }));
   const baked = bakeInto(tmp, api), lights = phase.map(g => bakeInto(g, api));
   let amb = 0, lastT = 0;
   api.ticks.push(t => {

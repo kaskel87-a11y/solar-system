@@ -118,7 +118,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('megaJackpot', `${m0} -100 +${L2.win} (pot ${pot}+5)`, L2.kind === 'mega' && L2.win === Math.round(pot + 5) && (await credits()) === m0 - 100 + L2.win);
     ok('megaCelebration', await G(() => window.__megaFlash > performance.now() && document.querySelectorAll('.slCoin').length > 10 && /MEGA JACKPOT/.test(document.getElementById('slMsg').textContent)));
     ok('potReset', await G(() => window.__slots.pot() >= 25000 && window.__slots.pot() < 25010 && +localStorage.getItem('ssx.megaPot') >= 25000));
-    await sleep(700); await shot('mega');
+    await sleep(400); if (!desk) await tapSel('.slMBet[data-b="1000"]'); else await G(() => window.__slots.setBet(1000));
+    ok('megaBet1000', await wait(() => /SPIN · 1000 cr/.test(document.getElementById('slSpin').textContent) && localStorage.getItem('ssx.megaBet') === '1000' && document.querySelector('.slMBet.sel')?.dataset.b === '1000' && /× 900 cr/.test(document.getElementById('slFt').textContent), 3000));
+    ok('spinOnScreen', await G(() => { const r = document.getElementById('slSpin').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; }));
+    await sleep(700); await shot('mega-bet1000');
     if (desk) await page.keyboard.press('Escape'); else await tapSel('#slLeave'); ok('megaClosed', await wait(() => !window.__slots.isOpen, 3000));
     await sleep(900); await shot('mega-marquee');
     // 6) Danny's own flow untouched (her 150 show from the VIP room)

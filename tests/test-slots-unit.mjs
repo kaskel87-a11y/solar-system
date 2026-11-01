@@ -38,6 +38,8 @@ if (bad.length) { console.log('FAIL: ' + bad.join(', ')); process.exit(1); } con
   t('mega jackpot is very rare (1 in 21,952)', Math.round(o.jackpotOneIn) === 21952);
   t('mega has a house edge at the seed (88-95 %)', o.rtp > 0.88 && o.rtp < 0.95);
   t('mega pays the pot on 🌋🌋🌋', S.megaPayout(['olympus', 'olympus', 'olympus'], 31234.5).win === 31235 && S.megaPayout(['olympus', 'olympus', 'olympus'], 31234).kind === 'mega');
+  t('mega lines scale with bet', S.megaPayout(['alien', 'alien', 'alien'], 30000, 1000).win === 18000 && S.megaPayout(['red', 'dust', 'meteor'], 30000, 250).win === 225);
+  { const r = S.mulberry32(7); let n = 0; const N = 400000; for (let i = 0; i < N; i++) if (S.megaSpinReels(1000, r).every(x => x === 'olympus')) n++; const exp = N * 10 * S.megaJackpotP(); t('mega 1000 bet ≈ 10x jackpot odds', Math.abs(n - exp) < 4 * Math.sqrt(exp)); }
   t('mega other lines × 90 cr', S.megaPayout(['alien', 'alien', 'alien'], 30000).win === 1800 && S.megaPayout(['red', 'dust', 'meteor'], 30000).win === 90);
   t('mega strip: 🌋 1 of 28', (() => { let n = 0, r = S.mulberry32(7); for (let i = 0; i < 56000; i++) if (S.megaStop(r) === 'olympus') n++; return Math.abs(n / 56000 - 1 / 28) < 0.004; })());
   const store = {}; globalThis.window = { localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; } } };
