@@ -50,4 +50,15 @@ ok('product buttons bound with onTap', /onTap\(b, \(\) => payProd\(mode, o\)\)/.
 ok('velvetdeal uses registerOffer + registerMission + accept', /registerOffer\(/.test(vd) && /registerMission\(/.test(vd) && /\.accept\(/.test(vd));
 ok('index.html loads velvetdeal + map entry', /src="\.\/mars\/velvetdeal\.js\?v=/.test(idx) && /"\.\/mars\/velvetdealcore\.js": /.test(idx));
 ok('sw.js precaches both', /mars\/velvetdeal\.js\$\{q\}/.test(sw) && /mars\/velvetdealcore\.js\$\{q\}/.test(sw));
+// v7.5.27 Ines buys bottles (no cap)
+const inv = [{ id: 'potato-shine', name: 'Potato Moonshine', qty: 9 }, { id: 'x', qty: 0 }, { id: 'y', qty: 2 }];
+const bq = V.shineQuote(inv, it => it.id === 'potato-shine' ? 50 : it.id === 'y' ? 0 : 0);
+ok('shineQuote: 9 potato shine at 1.2x', bq.n === 9 && bq.rows.length === 1 && bq.rows[0].each === 60 && bq.total === 540);
+ok('shineQuote: no cap', V.shineQuote([{ id: 'a', qty: 200 }], () => 40).n === 200);
+ok('shineQuote: junk safe', V.shineQuote(null, null).n === 0 && V.shineQuote([{ id: 'a', qty: 'z' }], () => 10).n === 0);
+ok('Ines under Nova per bottle, over the aliens', V.SHINE.mult > 1 && V.SHINE.mult < 1.3);
+ok('shine rep', V.shineRep(4) === 0 && V.shineRep(9) === 1 && V.shineRep(20) === 4 && V.shineRep(99) === 4);
+ok('shine label', /9 you carry/.test(V.shineLabel(bq)) && /540 cr/.test(V.shineLabel(bq)) && /no daily cap/.test(V.shineLabel({ n: 0 })));
+ok('state keeps bottle counters', V.loadState({ v: 1, bottles: 9, bottleCr: 540 }).bottles === 9);
+ok('velvetdeal registers ines-side-shine via bar.js liquorAdapter', /id: 'ines-side-shine'/.test(vd) && /from '\.\.\/bar\.js'/.test(vd));
 console.log(fails ? `${fails} FAILED` : 'ALL OK'); process.exit(fails ? 1 : 0);

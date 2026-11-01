@@ -34,7 +34,8 @@ ok('junk inventory -> []', normInventory(null).length === 0 && normInventory(5).
 
 // daily cap
 const day = '2026-10-29';
-ok('cap 8-20 a day', BAR.dailyCap >= 8 && BAR.dailyCap <= 20, BAR.dailyCap);
+ok('cap 20-40 a day (v7.5.27: a 10-20 bottle haul fits)', BAR.dailyCap >= 20 && BAR.dailyCap <= 40, BAR.dailyCap);
+ok('full line points to Ines + Hydro Den', /Ines/.test(BAR.fullLine) && /Hydro Den/.test(BAR.fullLine) && /stocked up for today/.test(BAR.fullLine));
 ok('fresh save: full cap', capLeft({}, day) === BAR.dailyCap);
 let s = recordSale({}, day, 5); ok('5 sold -> cap-5 left', capLeft(s, day) === BAR.dailyCap - 5);
 s = recordSale(s, day, BAR.dailyCap); ok('cap never negative', capLeft(s, day) === 0);

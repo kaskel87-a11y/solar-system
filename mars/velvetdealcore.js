@@ -47,6 +47,18 @@ export const BUYOUT = [
   { id: 'ines-side-buy-honey', item: 'voidhoney', qty: 1, credits: 400, cooldownSec: 600 },
 ];
 export const BUY_REP = 2; // velvet rep per lot
+// v7.5.27 Ines buys bottles too (Collin: Nova was "stocked up for today" with 9 potato moonshine on him). Every kind,
+// no daily cap, SHINE.mult x what the Xen-7 aliens pay (Nova pays BAR.mult 1.3x but only BAR.dailyCap a day).
+export const SHINE = { mult: 1.2, rep: 1, repMax: 4 }; // +1 Velvet rep per sale of 5+ bottles, up to +4
+// inv: [{ id, name, icon, qty }] (bar.js normInventory shape); base(it) -> alien cr a bottle
+export function shineQuote(inv, base, mult = SHINE.mult) {
+  const rows = []; let n = 0, total = 0;
+  for (const it of Array.isArray(inv) ? inv : []) { const q = Math.floor(+it?.qty || 0); if (!(q > 0)) continue; const b = +base?.(it) || 0; if (!(b > 0)) continue;
+    const each = Math.round(b * mult); rows.push({ id: it.id, name: it.name || it.id, icon: it.icon || '\u{1F37E}', qty: q, each, total: each * q }); n += q; total += each * q; }
+  return { n, total, rows };
+}
+export const shineRep = n => n >= 5 ? Math.min(SHINE.repMax, Math.max(SHINE.rep, Math.floor(n / 5))) : 0;
+export function shineLabel(q) { return q && q.n ? `Bottles: all ${q.n} you carry \u2192 ${q.total} cr (${SHINE.mult}\u00d7 alien, no cap)` : `Bottles: she buys every kind, ${SHINE.mult}\u00d7 alien price, no daily cap`; }
 
 // ---------- 2b) Ines's errands: a 3-job chain that loops ----------
 // Steps use only the core mission engine's step types (goto / defeat / take / clean). Ids start with 'ines-' so
@@ -80,7 +92,7 @@ export function missionDef(j) {
 }
 
 // ---------- state ----------
-export function fresh() { return { v: 1, next: 0, runs: 0, chains: 0, comps: 0, usedComps: 0, paid: 0, bought: 0, productShows: 0 }; }
+export function fresh() { return { v: 1, next: 0, runs: 0, chains: 0, comps: 0, usedComps: 0, paid: 0, bought: 0, productShows: 0, bottles: 0, bottleCr: 0 }; }
 export function loadState(raw) {
   let o = raw; if (typeof raw === 'string') { try { o = JSON.parse(raw); } catch (e) { o = null; } }
   const s = fresh(); if (!o || typeof o !== 'object' || o.v !== 1) return s;

@@ -24,7 +24,8 @@ export const DRUNK = {
 };
 export const BAR = {
   mult: 1.3, // the Velvet Airlock pays 1.3x the alien trading-post price: best in town
-  dailyCap: 12, // bottles the bar buys per day (real calendar day, local time)
+  dailyCap: 30, // bottles the bar buys per day (real calendar day, local time). v7.5.27: 12 -> 30, a typical 10-20 bottle haul fits
+  fullLine: 'Nova is stocked up for today. Ines (her \u{1F91D} beacon on the map) buys every bottle, no daily cap; the Hydro Den in the ARES JUNCTION dome trades shine for product.',
   key: 'ssx.bar.v1',
   // alien base price per bottle when SSX.liquor doesn't expose one (matched against the bottle's id/type/name)
   base: [['brandy', 80], ['whisk', 75], ['wine', 70], ['moonshine', 60], ['shine', 60], ['gin', 55], ['vodka', 55], ['rum', 55], ['hooch', 40], ['beer', 20], ['ale', 20], ['cider', 25]],
@@ -195,7 +196,7 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
     else {
       sell.style.display = '';
       const rows = inv.map(it => { const p = liquor.price(it), q = quote(it, it.qty, liquor.raw, n); return `<div class="barRow"><span class="n">${it.icon} ${esc(it.name)} ×${it.qty}<small>${p} cr each · aliens pay ${liquor.base(it)}</small></span><button class="barBtn" data-sell="${esc(it.id)}" data-n="1"${n ? '' : ' disabled'}>Sell 1</button><button class="barBtn all" data-sell="${esc(it.id)}" data-n="all"${n ? '' : ' disabled'}>All · ${q.total} cr</button></div>`; }).join('');
-      sell.innerHTML = `<h4 class="main">💰 Sell your bottles</h4><div class="sub">Best price in town: ${BAR.mult}× what the aliens pay. ${n ? `Nova buys ${n} more today.` : 'Nova is stocked up for today. Come back tomorrow.'}</div>${rows || '<div class="sub">No bottles on you. Run some through the farm still.</div>'}`;
+      sell.innerHTML = `<h4 class="main">💰 Sell your bottles</h4><div class="sub">Best price in town: ${BAR.mult}× what the aliens pay. ${n ? `Nova buys ${n} more today.` : BAR.fullLine}</div>${rows || '<div class="sub">No bottles on you. Run some through the farm still.</div>'}`;
     }
     // 2) house drinks
     $('barDrinks').innerHTML = `<h4>🍸 House drinks</h4>` + DRINKS.map(d => `<div class="barRow"><span class="n">${d.icon} ${d.name}<small>${d.line}</small></span><button class="barBtn" data-drink="${d.id}">${d.price} cr</button></div>`).join('');
@@ -215,7 +216,7 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
     if (!force && (!open || ghost())) return null;
     if (!liquor.ok) return { ok: false, why: 'noliquor' };
     const it = liquor.list().find(x => x.id === id); if (!it) { say('You don’t have that bottle.', 'bad'); return { ok: false, why: 'none' }; }
-    const n = left(); if (!n) { say('Nova: “Shelf’s full today, hon. Tomorrow.”', 'bad'); fx.dry?.(); toast('🥃 The bar is stocked up for today.'); render(); return { ok: false, why: 'cap' }; }
+    const n = left(); if (!n) { say('Nova: “Shelf’s full today, hon. Ines takes bottles out back, no limit. Or try the Hydro Den in the dome.”', 'bad'); fx.dry?.(); toast('🥃 Bar’s stocked up today. Ines (🤝) buys the rest.'); render(); return { ok: false, why: 'cap' }; }
     const q = quote(it, want === Infinity ? it.qty : want, liquor.raw, n); if (!q.n) return { ok: false, why: 'none' };
     const took = liquor.take(id, q.n); if (!took) { say('The bottle won’t come out of your bag. (Still error.)', 'bad'); return { ok: false, why: 'take' }; }
     const pay = took * q.each; grant(pay); saveS(recordSale(loadS(), today(), took));

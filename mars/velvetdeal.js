@@ -10,6 +10,7 @@
 // Window API: SSX.velvetDeal = { state(), jobs, buyout, next(), registered, debug: { reset(), set(patch) } }.
 // Wiring: one <script type="module"> in index.html, import map, sw.js precache. Rules: mars/velvetdealcore.js.
 import * as V from './velvetdealcore.js';
+import { liquorAdapter } from '../bar.js'; // v7.5.27 the same bottle inventory + alien prices Nova's counter uses
 
 const app = () => window.__app, game = () => app()?.game || app()?.surface?.game;
 const toast = (m, ms = 3400) => { try { app()?.toast?.(m, ms); } catch (e) { /* */ } };
@@ -33,6 +34,25 @@ function jobOffer(C) {
       return { ok: true, msg: `New job: ${j.title}.` };
     } });
 }
+// v7.5.27 Ines buys your bottles (all kinds, no cap): one tap sells everything you carry through SSX.liquor
+const liquor = liquorAdapter();
+const shineQ = () => liquor.ok ? V.shineQuote(liquor.list(), it => liquor.base(it)) : { n: 0, total: 0, rows: [] };
+const grant = n => { const g = game(); if (!g || !(n > 0)) return; if (typeof g.debug?.credits === 'function') g.debug.credits(n); else { g.progress.credits += n; try { g.save?.(); } catch (e) { /* */ } } };
+function shineOffer(C) {
+  C.registerOffer({ id: 'ines-side-shine', npc: V.NPC, district: V.DISTRICT, wants: [], gives: { type: 'custom' }, label: V.shineLabel(shineQ()), repeatable: true,
+    lines: { accept: 'Ines: Top shelf or bathtub, I pour it all. The VIPs never know the difference.' },
+    onTrade: () => {
+      if (!liquor.ok) return { ok: false, msg: 'Ines: No still, no bottles, no deal.' };
+      const q = shineQ(); if (!q.n) return { ok: false, msg: 'Ines: You\u2019re dry, sugar. Run some through the farm still and come back.' };
+      let n = 0, pay = 0; for (const r of q.rows) { const took = liquor.take(r.id, r.qty); n += took; pay += took * r.each; }
+      if (!n) return { ok: false, msg: 'Ines: The crate\u2019s stuck. Bring them in by hand.' };
+      grant(pay); S = reload(); S.bottles = (S.bottles | 0) + n; S.bottleCr = (S.bottleCr | 0) + pay; save();
+      const rp = V.shineRep(n); if (rp) { try { window.SSX?.rep?.add?.('velvet', rp, 'sold Ines bottles'); } catch (e) { /* */ } }
+      try { app()?.surface?.hud?.(); } catch (e) { /* */ }
+      setTimeout(() => { try { R.shineK = ''; shineOffer(window.SSX.contraband); } catch (e) { /* */ } }, 0);
+      return { ok: true, msg: `Sold ${n} bottle${n === 1 ? '' : 's'} \u00b7 +${pay} cr.`, n, total: pay };
+    } });
+}
 function registerOffers(C) {
   const have = (C.npcs?.() || []).some(n => n.id === V.NPC);
   const npcDef = have ? undefined : { name: 'Ines', role: 'Velvet Airlock', district: V.DISTRICT, at: V.AT, line: 'Ines: VIP is for people who bring something.' };
@@ -42,7 +62,8 @@ function registerOffers(C) {
       lines: { accept: ['Ines: Off the floor and into my safe. Here.', 'Ines: Count it later. Not here.', 'Ines: My girls stay clean, my patrons stay happy. Take the money.'][Math.floor(Math.random() * 3)] },
       onTrade: () => { try { window.SSX?.rep?.add?.('velvet', V.BUY_REP, 'sold product to Ines'); } catch (e) { /* */ } S = reload(); S.bought++; save(); return { ok: true }; } });
   }
-  jobOffer(C); R.offers = true;
+  jobOffer(C); shineOffer(C); R.offers = true;
+  setInterval(() => { try { const q = shineQ(), k = q.n + ':' + q.total; if (k !== R.shineK) { R.shineK = k; shineOffer(C); } } catch (e) { /* */ } }, 2000);
 }
 function registerMissions(g) { for (const j of V.JOBS) g.registerMission(V.missionDef(j)); R.missions = true; }
 function onQuest(ev) {

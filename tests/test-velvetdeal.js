@@ -56,6 +56,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     R.buyoutPaid = (await cr()) - c1;
     ok('buyoutRep', await G(() => window.SSX.rep?.get?.('velvet') ?? null), await G(r => (window.SSX.rep?.get?.('velvet') ?? r + 2) >= r + 2, rep0));
     ok('buyoutCooldown', await G(() => window.SSX.contraband.barter('glowdust', 3, 'ines-side-buy-dust').ok === false));
+    // ---- v7.5.27 Ines buys bottles (no cap) + Nova's cap 30 ----
+    const hasLiquor = await G(() => !!window.SSX.liquor?.add);
+    ok('liquor', hasLiquor);
+    if (hasLiquor) {
+      await G(() => window.SSX.liquor.add('potato_moonshine', 9)); await sleep(2300);
+      R.shineLabel = await G(() => window.SSX.contraband.offer('ines-side-shine')?.label);
+      ok('shineLabelLive', R.shineLabel, /all 9 you carry/.test(R.shineLabel || ''));
+      const alien = await G(() => window.SSX.liquor.alienPrice('potato_moonshine')), c5 = await cr();
+      const sr = await G(() => window.SSX.contraband.barter(null, null, 'ines-side-shine'));
+      R.shine = { msg: sr.msg, alien, paid: (await cr()) - c5 };
+      ok('shineSold', R.shine, sr.ok && R.shine.paid === 9 * Math.round(alien * 1.2) && !(await G(() => (window.SSX.liquor.inventory() || []).some(b => b.id === 'potato_moonshine' && (b.n || b.qty) > 0))));
+      await G(() => window.SSX.liquor.add('potato_moonshine', 3));
+      ok('shineNoCap', await G(() => window.SSX.contraband.barter(null, null, 'ines-side-shine').ok));
+      ok('shineDryRefused', await G(() => window.SSX.contraband.barter(null, null, 'ines-side-shine').ok === false));
+      ok('novaCap30', await G(() => window.__bar?.capLeft), await G(() => window.__bar?.capLeft === 30));
+    }
     // ---- Ines: errand chain ----
     await G(() => window.__app.game.abandon?.());
     const jobs = [];

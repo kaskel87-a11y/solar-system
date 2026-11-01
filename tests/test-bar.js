@@ -63,6 +63,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { const inv = { moonshine: { qty: 10, name: 'Red Rock Moonshine', icon: '🫙' }, hooch: { qty: 6, name: 'Dust Hooch', icon: '🍶' }, glow_wine: { qty: 2, name: 'Glowberry Wine', icon: '🍷' } };
       window.__inv = inv; (window.SSX = window.SSX || {}).liquor = { inventory: () => Object.fromEntries(Object.entries(inv).map(([k, v]) => [k, { ...v }])), take: (id, n) => { if (!inv[id] || inv[id].qty < n) return false; inv[id].qty -= n; return true; }, alienPrice: id => ({ moonshine: 50, hooch: 30 })[id] }; });
     ok('liquorOn', await G(() => window.__bar.liquor.ok));
+    // v7.5.27 the cap is BAR.dailyCap (30): pre-sell CAP-12 today so the flow below still ends exactly at the cap
+    const CAP = await G(async () => (await import('./bar.js')).BAR.dailyCap); R.cap = CAP;
+    await G(c => localStorage.setItem('ssx.bar.v1', JSON.stringify({ day: window.__bar.day, sold: c - 12 })), CAP);
     ok('openWithLiquor', await openMenu());
     const order = await G(() => { const c = document.getElementById('barCard'), ids = ['barSell', 'barDrinks', 'barOwn'].map(i => document.getElementById(i).getBoundingClientRect().top); return { ids, first: c.querySelector('h4')?.textContent }; });
     ok('sellIsMain', JSON.stringify(order), /Sell your bottles/.test(order.first) && order.ids[0] < order.ids[1] && order.ids[1] < order.ids[2]);
@@ -86,12 +89,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     c0 = await credits(); await tapSel('#barSell .all[data-sell="hooch"]');
     ok('soldToCap', await wait(c => window.__app.game.progress.credits === c + 78 && window.__inv.hooch.qty === 4, 3000, c0));
     ok('toastCap', await wait(() => window.__toasts.some(t => /Sold 2 bottles · \+78 cr/.test(t)), 4000));
-    ok('capSaved', await G(() => JSON.stringify(JSON.parse(localStorage.getItem('ssx.bar.v1')))), await G(() => { const s = JSON.parse(localStorage.getItem('ssx.bar.v1')); return s.sold === 12 && s.day === window.__bar.day; }));
-    ok('capButtonsOff', await G(() => window.__bar.capLeft === 0 && [...document.querySelectorAll('#barSell [data-sell]')].every(b => b.disabled) && /stocked up for today/.test(document.getElementById('barSell').textContent)));
+    ok('capSaved', await G(() => JSON.stringify(JSON.parse(localStorage.getItem('ssx.bar.v1')))), await G(c => { const s = JSON.parse(localStorage.getItem('ssx.bar.v1')); return s.sold === c && s.day === window.__bar.day; }, CAP));
+    ok('capButtonsOff', await G(() => window.__bar.capLeft === 0 && [...document.querySelectorAll('#barSell [data-sell]')].every(b => b.disabled) && /stocked up for today/.test(document.getElementById('barSell').textContent) && /Ines/.test(document.getElementById('barSell').textContent)));
     c0 = await credits(); const capRes = await G(() => window.__bar.sell('hooch', 1, true));
     ok('capBlocks', JSON.stringify(capRes), capRes.why === 'cap' && (await credits()) === c0 && (await G(() => window.__inv.hooch.qty)) === 4);
     await sleep(300); await G(() => document.getElementById('barCard').scrollTop = 0); await shot('sold-cap');
-    await G(() => window.__bar.debug.setDay('2099-01-01')); ok('newDayResets', await G(() => window.__bar.capLeft === 12)); await G(() => window.__bar.debug.setDay(null));
+    await G(() => window.__bar.debug.setDay('2099-01-01')); ok('newDayResets', await G(c => window.__bar.capLeft === c, CAP)); await G(() => window.__bar.debug.setDay(null));
     // 5) drinks for cr: lager + negroni -> tipsy
     c0 = await credits(); await tapSel('[data-drink="lager"]'); await sleep(350); await tapSel('[data-drink="nebula"]');
     ok('paidDrinks', await wait(c => window.__app.game.progress.credits === c - 45, 3000, c0));
