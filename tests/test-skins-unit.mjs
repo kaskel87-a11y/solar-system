@@ -5,16 +5,16 @@ const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('
 const fin = Number.isFinite;
 
 // catalogue: 10-12 skins, first is free, the rest 300-5,000 cr, unique ids, cheapest first
-ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 12, C.SKINS.length);
+ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 13, C.SKINS.length);
 ok('freeFirst', C.SKINS[0].price === 0 && C.FREE === C.SKINS[0].id);
-ok('prices', C.SKINS.slice(1).every(k => k.price >= 300 && k.price <= 5000), C.SKINS.map(k => k.price).join());
+ok('prices', C.SKINS.slice(1).every(k => (k.gift && k.price === 0) || (k.price >= 300 && k.price <= 5000)), C.SKINS.map(k => k.price).join()); // v7.5.31: free gifts (Grin Reaper)
 ok('topIs5000', Math.max(...C.SKINS.map(k => k.price)) === 5000 && C.SKINS.slice(1).some(k => k.price === 300));
 ok('sorted', C.SKINS.every((k, i) => !i || k.price >= C.SKINS[i - 1].price));
 ok('uniqueIds', new Set(C.SKINS.map(k => k.id)).size === C.SKINS.length && !C.BY_ID[C.STOCK]);
 ok('names', C.SKINS.every(k => k.name && k.icon && k.blurb && k.blurb.length <= 110));
 const SHAPES = { box: 3, cyl: 3, sph: 1, tor: 2, cone: 2 };
 for (const k of C.SKINS) {
-  ok('parts:' + k.id, Array.isArray(k.parts) && k.parts.length >= 5 && k.parts.length <= 30, k.parts?.length);
+  ok('parts:' + k.id, Array.isArray(k.parts) && k.parts.length >= 5 && k.parts.length <= 40, k.parts?.length);
   for (const [i, p] of k.parts.entries()) {
     const [slot, shape, dims, pos, rot, mk, sc] = p, tag = `${k.id}#${i}`;
     ok('slot:' + tag, C.SLOTS.includes(slot), slot);
@@ -38,10 +38,10 @@ ok('matShared', C.matSpec({ pal: {} }, 'gold')?.m > 0.5 && C.matSpec({ pal: {} }
 ok('matKeyStable', C.matKey(C.matSpec({ pal: { a: 0x10 } }, 'a')) === C.matKey(C.matSpec({ pal: { b: { c: 0x10 } } }, 'b')));
 ok('geoKey', C.geoKey('box', [0.1, 0.20000001, 3]) === 'box:0.1,0.2,3');
 // save state
-const f = C.fresh(); ok('fresh', f.owned.join() === C.FREE && f.eq === C.STOCK);
+const f = C.fresh(), OWN0 = [C.FREE, ...C.GIFTS]; ok('fresh', f.owned.join() === OWN0.join() && f.eq === C.STOCK);
 ok('normJunk', JSON.stringify(C.norm(null)) === JSON.stringify(f) && JSON.stringify(C.parse('{bad')) === JSON.stringify(f) && JSON.stringify(C.parse('"x"')) === JSON.stringify(f));
 const n1 = C.norm({ owned: ['chrome', 'punk', 'punk', 'ghost', 7], eq: 'chrome' });
-ok('normOwned', n1.owned.join() === [C.FREE, 'punk', 'chrome'].join(), n1.owned.join());
+ok('normOwned', n1.owned.join() === [...OWN0, 'punk', 'chrome'].join(), n1.owned.join());
 ok('normEq', n1.eq === 'chrome' && C.norm({ owned: [], eq: 'chrome' }).eq === C.STOCK && C.norm({ eq: C.STOCK }).eq === C.STOCK);
 ok('roundTrip', JSON.stringify(C.parse(JSON.stringify(n1))) === JSON.stringify(n1));
 ok('owns', C.owns(f, C.FREE) && C.owns(f, C.STOCK) && !C.owns(f, 'punk') && !C.owns(null, 'punk'));
@@ -50,7 +50,7 @@ ok('canBuy', JSON.stringify(C.canBuy(f, 'punk', 300)) === JSON.stringify({ ok: t
 ok('broke', C.canBuy(f, 'punk', 299).why === 'broke' && C.canBuy(f, 'punk', 299).need === 1 && C.canBuy(f, 'punk', NaN).why === 'broke');
 ok('owned', C.canBuy(f, C.FREE, 1e9).why === 'owned' && C.canBuy(n1, 'chrome', 1e9).why === 'owned');
 ok('unknown', C.canBuy(f, 'nope', 1e9).why === 'unknown');
-const a = C.addOwned(f, 'cowboy'); ok('addOwned', a.owned.includes('cowboy') && a.eq === C.STOCK && f.owned.length === 1);
+const a = C.addOwned(f, 'cowboy'); ok('addOwned', a.owned.includes('cowboy') && a.eq === C.STOCK && f.owned.length === OWN0.length);
 // equip
 ok('equipOwned', C.equip(a, 'cowboy').ok && C.equip(a, 'cowboy').state.eq === 'cowboy' && a.eq === C.STOCK);
 ok('equipStock', C.equip(a, C.STOCK).ok);
@@ -58,7 +58,7 @@ ok('equipNotOwned', !C.equip(a, 'chrome').ok && C.equip(a, 'chrome').state === a
 // rows
 const rs = C.rows(a, 1000), rw = C.rows(C.equip(a, 'cowboy').state, 1000, 'wardrobe');
 ok('rowsShop', rs.length === C.SKINS.length && rs.find(r => r.id === 'punk').afford && !rs.find(r => r.id === 'chrome').afford && rs.find(r => r.id === 'cowboy').owned);
-ok('rowsWardrobe', rw.map(r => r.id).join() === [C.STOCK, C.FREE, 'cowboy'].join() && rw.find(r => r.id === 'cowboy').worn && !rw[0].worn);
+ok('rowsWardrobe', rw.map(r => r.id).join() === [C.STOCK, ...OWN0, 'cowboy'].join() && rw.find(r => r.id === 'cowboy').worn && !rw[0].worn);
 // real taps
 const d = { id: 3, x: 100, y: 100 };
 ok('tap', C.isRealTap(d, { id: 3, x: 104, y: 103 }));

@@ -871,6 +871,16 @@ export function createWorld(ctx) {
     for (const s of security) if ((s.kind !== 'drone' && s.kind !== 'gunship') || Math.abs(s.y - player.y) < 3) consider(s, s.kind);
     return best;
   }
+  // v7.5.31: a scare (the Grin Reaper's bulb horn): colonists within r flinch and run from (x, z) for t s. No damage, no crime.
+  function scare(x, z, r = 10, t = 2.5) {
+    let n = 0; if (!C) return 0;
+    for (const p of people) {
+      if (p.on === false || p.stun > 0 || p.kind !== 'colonist' || p.fighter || p.watch !== undefined || (duel && p === duel.p)) continue;
+      const dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d > r) continue;
+      p.flee = Math.max(p.flee || 0, t); p.fx = d > 0.01 ? dx / d : 1; p.fz = d > 0.01 ? dz / d : 0; n++;
+    }
+    return n;
+  }
   // a punch/kick/blade hit on colony folk or security. Returns true if something was hit.
   function meleeWorld(x, z, fx, fz, range, dmg, knock) {
     if (!C) return false;
@@ -1097,7 +1107,7 @@ export function createWorld(ctx) {
     vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
-    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
+    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; }, get inDuel() { return !!duel; },
     securityList: () => security.map(s => ({ kind: s.kind, x: s.x, y: s.y, z: s.z, hp: s.hp })), // v7.4: stable read-only view for add-on modules (street danger)

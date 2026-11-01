@@ -46,7 +46,7 @@ const tag = `wardrobe-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('farFromStall', await G(() => !window.SSX.skins.near()));
     ok('wardrobeOpens', await viaMenu());
     const r0 = await rows();
-    ok('ownedRowsUnchanged', r0.owned, r0.owned.join() === 'stock,rusty');
+    ok('ownedRowsUnchanged', r0.owned, r0.owned.join() === 'stock,rusty,grinreaper');
     ok('lockedRows', r0.locked, r0.locked.join() === 'punk,overalls,biker,hazmat,mack,hustler,cowboy,alien,clown,kingpin,chrome');
     ok('lockedLook', await G(() => { const r = document.querySelector('#skPanel .lk'); return { t: r.textContent, h: Math.round(r.getBoundingClientRect().height) }; }), await G(() => { const r = document.querySelector('#skPanel .lk'); return /🔒/.test(r.textContent) && /Ripped Punk/.test(r.textContent) && /300 cr/.test(r.textContent) && r.getBoundingClientRect().height <= 40; }));
     ok('noBuyFar', r0.buys, r0.buys.length === 0);
@@ -81,7 +81,7 @@ const tag = `wardrobe-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await tap('#skPanel .lk[data-id="punk"] button'); await sleep(400);
     const s1 = await S(), r2 = await rows();
     ok('boughtPunk', { s1, cr: await cr(), toast: await toastTx() }, s1.owned.includes('punk') && s1.eq === 'punk' && s1.applied === 'punk' && (await cr()) === 109);
-    ok('rowsAfterBuy', r2, r2.owned.join() === 'stock,rusty,punk' && !r2.locked.includes('punk') && r2.locked.length === 10 && (await open()));
+    ok('rowsAfterBuy', r2, r2.owned.join() === 'stock,rusty,grinreaper,punk' && !r2.locked.includes('punk') && r2.locked.length === 10 && (await open()));
     ok('sameAsShop', await G(() => { const k = JSON.parse(localStorage.getItem('ssx.skins.v1')); return k.owned.includes('punk') && k.eq === 'punk'; }));
     await sleep(300); await shot('4-after-buy');
     // walk away with it open: the Buy buttons go

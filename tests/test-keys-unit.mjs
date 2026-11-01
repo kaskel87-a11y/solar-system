@@ -12,7 +12,7 @@ const CODE = /(['"`])((?:Key[A-Z])|(?:Digit[0-9])|Comma|Period|Slash|Semicolon|B
 const KNOWN = {
   KeyQ: ['index.html', 'mars/arsenal.js', 'mars/gravity.js'], // core weapon switch | arsenal wheel on foot | zero-G vehicle roll
   KeyE: ['index.html', 'mars/gravity.js', 'mars/flats-interiors.js', 'privateshow.js', 'clubprivate.js', 'myrides.js', 'slots.js', 'mars/hydroden.js'], KeyT: ['index.html', 'privateshow.js', 'clubprivate.js'], // booth is modal: capture-phase handler eats the key // myrides.js: E enters your closest parked ride (same meaning as E) // slots.js: modal capture-phase like the booth (v7.5.9) // mars/hydroden.js: E = talk to Nettle only on her spot inside the den (same meaning as E) (v7.5.25)
-  KeyC: ['index.html', 'mars/gravity.js'], // interact/melee on foot | zero-G roll/descend in a vehicle
+  KeyC: ['index.html', 'mars/gravity.js', 'mars/honk.js'], // interact/melee on foot | zero-G roll/descend in a vehicle | Shift+C bulb-horn taunt (Grin Reaper outfit on, v7.5.31)
   KeyW: ['index.html', 'mars/gravity.js', 'trackbuilder.js'], KeyS: ['index.html', 'mars/gravity.js', 'trackbuilder.js'],
   KeyA: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'], KeyD: ['index.html', 'mars/gravity.js', 'safecrack.js', 'trackbuilder.js'],
   Slash: ['index.html', 'help/stuckcore.js'], // ? (Shift+/) opens Controls | plain / = Stuck? hint (v7.5.16)

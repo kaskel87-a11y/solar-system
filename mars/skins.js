@@ -1,5 +1,5 @@
 // Mars player skins (Pumpkin). Threadbare, a grimy second-hand clothes stall in downtown Ares Junction: walk up and a black
-// "👕 Threadbare" button opens the shop. Eleven outfits from 0 to 5,000 cr (the Rusty Spacesuit is free), bought with in-game
+// "👕 Threadbare" button opens the shop. Thirteen outfits from 0 to 5,000 cr (the Rusty Spacesuit and the Halloween Grin Reaper are free), bought with in-game
 // cr; ☰ → 👕 Wardrobe swaps between the ones you own (and back to the stock white suit) anywhere.
 // A skin recolours the actual player rig (models.js buildAstronaut: torso, arms, legs, helmet, pack, chest, visor, boots)
 // and adds low-poly parts (hats, masks, chains, duster, mohawk, duffel...) to the rig's own limbs, so they swing with it.
@@ -349,7 +349,8 @@ function weaponOut() {
 }
 function syncProp() {
   const a = player?.applied, k = a && C.BY_ID[a.id]; if (!k?.prop) { PROP.out = null; PROP.n = 0; return; }
-  const out = weaponOut(), ms = new Set(k.prop.map(key => mat(C.matSpec(k, key)))); let n = 0;
+  // v7.5.31 propOn (Grin Reaper's bulb horn): the prop is a weapon itself, so it shows only while that arsenal core is in hand
+  const out = k.propOn ? (tryv(() => game()?.progress?.equip?.weapon) === k.propOn && !tryv(() => X().flame?.state?.().eq) ? null : 'stowed') : weaponOut(), ms = new Set(k.prop.map(key => mat(C.matSpec(k, key)))); let n = 0;
   for (const an of a.anchors) for (const o of an.children) if (ms.has(o.material)) { o.visible = !out; n++; }
   PROP.out = out; PROP.n = n;
 }

@@ -31,6 +31,7 @@
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
     'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
+    'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
     'ssx.velvetdeal.v1' // v7.5.26 Ines's side deal (job chain, comps, product shows)
   ];
   const PREFIXES = ['ssx.race.ghost.'];

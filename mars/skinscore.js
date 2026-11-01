@@ -34,6 +34,45 @@ export const SKINS = [
       ['head', 'cyl', [0.01, 0.012, 0.36, 4], [0.15, 0.3, 0.06], [0, 0, -0.35], 'silver'], ['head', 'sph', [0.028, 6, 4], [0.21, 0.46, 0.06], 0, 'tip'],
       ['torso', 'box', [0.12, 0.06, 0.03], [0.05, 0.25, -0.19], [0, 0, -0.2], 'grime']
     ] }),
+  // v7.5.31 Halloween (Collin): free, owned by everyone. A split black/white harlequin jumpsuit (wearer's right half white,
+  // left half black, sleeves crossed), white hood + face paint with a black-lipped rotten grin, a tiny black top hat, big white
+  // ruff, two black pom-poms, fingerless gloves, chunky black shoes. propOn: the brass bulb horn in the right hand shows only
+  // while the arsenal's horn (core 'ar_horn') is the weapon in hand (mars/honk.js gives it on first wear).
+  S('grinreaper', 'Grin Reaper', 0, 'Split black-and-white jumpsuit, ruff collar, tiny top hat, a rotten grin and a brass horn. Free for Halloween.', {
+    icon: '🃏', face: true, gift: true, prop: ['brass', 'bulb'], propOn: 'ar_horn',
+    pal: { skin: { c: 0xf6f5f0, e: 0x3c3c3c, r: 0.55 }, torso: { c: 0xf2f0ea, e: 0x2e2e2e, r: 0.9 }, arms: { c: 0xf2f0ea, e: 0x2e2e2e, r: 0.9 }, legs: { c: 0xf2f0ea, e: 0x2e2e2e, r: 0.9 }, pack: null, chest: null, helmet: null, visor: null, // e: a little self-light keeps the paint white under the orange sky
+      boots: { c: 0x0c0c0c, r: 0.35, m: 0.1 }, suitB: { c: 0x141414, r: 0.85 }, ruff: { c: 0xfbfbf8, e: 0x3c3c3c, r: 0.75 },
+      gum: { c: 0x6a0c10, r: 0.5 }, tooth: { c: 0xcfc38a, r: 0.45 }, glove: { c: 0xd8d6cf, r: 0.8 }, finger: { c: 0xd9a88a, r: 0.7 },
+      brass: { c: 0xc8962e, r: 0.3, m: 0.75, e: 0x2a1a00 }, bulb: { c: 0x101010, r: 0.55 } },
+    parts: [
+      // the black half (wearer's left, -x) + the crossed sleeve (right arm black) + the black leg
+      ['torso', 'box', [0.286, 0.664, 0.366], [-0.1425, 0, 0], 0, 'suitB'],
+      ['armR', 'cyl', [0.093, 0.09, 0.6, 8], [0, -0.3, 0], 0, 'suitB'], ['armR', 'cyl', [0.1, 0.094, 0.07, 8], [0, -0.57, 0], 0, 'suitB'],
+      ['legL', 'cyl', [0.128, 0.13, 0.76, 8], [0, -0.38, 0], 0, 'suitB'], ['legL', 'cyl', [0.135, 0.12, 0.08, 8], [0, -0.74, 0], 0, 'suitB'],
+      // white hood over the head (back + top), the painted face sphere is the face: black eyes, brows, nose tip and a wide red-gummed grin
+      ['head', 'sph', [0.182, 10, 8], [0, 0.012, 0.022], 0, 'skin', [1, 1.04, 1]],
+      ['head', 'sph', [0.042, 6, 4], [-0.062, 0.035, -0.146], 0, 'black', [1, 1.25, 0.5]], ['head', 'sph', [0.042, 6, 4], [0.062, 0.035, -0.146], 0, 'black', [1, 1.25, 0.5]],
+      ['head', 'box', [0.075, 0.016, 0.02], [-0.062, 0.09, -0.152], [0, 0, -0.38], 'black'], ['head', 'box', [0.075, 0.016, 0.02], [0.062, 0.09, -0.152], [0, 0, 0.38], 'black'],
+      ['head', 'sph', [0.022, 6, 4], [0, -0.01, -0.172], 0, 'black'],
+      ['head', 'box', [0.15, 0.06, 0.03], [0, -0.085, -0.146], 0, 'black'], ['head', 'box', [0.13, 0.038, 0.02], [0, -0.084, -0.158], 0, 'gum'],
+      ['head', 'box', [0.12, 0.014, 0.02], [0, -0.072, -0.163], 0, 'tooth'], ['head', 'box', [0.12, 0.014, 0.02], [0, -0.097, -0.163], 0, 'tooth'],
+      ['head', 'box', [0.045, 0.02, 0.025], [-0.085, -0.062, -0.142], [0, 0.4, 0.55], 'black'], ['head', 'box', [0.045, 0.02, 0.025], [0.085, -0.062, -0.142], [0, -0.4, -0.55], 'black'],
+      // tiny black top hat, cocked
+      ['head', 'cyl', [0.075, 0.075, 0.014, 10], [0.03, 0.188, 0.0], [0, 0, -0.18], 'black'], ['head', 'cyl', [0.048, 0.052, 0.085, 10], [0.038, 0.235, 0.0], [0, 0, -0.18], 'black'],
+      // big white ruff + black neck band, two black pom-poms on the white half (phone rule: pom-poms / band share the black-half material, hood = face paint, hat = black, ~17 draws)
+      ['torso', 'cyl', [0.3, 0.2, 0.09, 12], [0, 0.36, -0.01], 0, 'ruff'], ['torso', 'tor', [0.24, 0.045, 5, 12], [0, 0.33, -0.01], [Math.PI / 2, 0, 0], 'ruff'],
+      ['torso', 'cyl', [0.1, 0.1, 0.04, 10], [0, 0.42, 0], 0, 'suitB'],
+      ['torso', 'sph', [0.052, 7, 5], [0.085, 0.08, -0.2], 0, 'suitB'], ['torso', 'sph', [0.052, 7, 5], [0.095, -0.2, -0.2], 0, 'suitB'],
+      // fingerless gloves (both hands) with bare finger stubs
+      ['armL', 'cyl', [0.088, 0.08, 0.13, 8], [0, -0.69, 0], 0, 'glove'], ['armR', 'cyl', [0.088, 0.08, 0.13, 8], [0, -0.69, 0], 0, 'glove'],
+      ['armL', 'box', [0.1, 0.05, 0.07], [0, -0.775, -0.01], 0, 'finger'], ['armR', 'box', [0.1, 0.05, 0.07], [0, -0.775, -0.01], 0, 'finger'],
+      // chunky clown shoes (rounded toe)
+      ['legL', 'box', [0.24, 0.13, 0.38], [0, -0.87, -0.07], 0, 'black'], ['legR', 'box', [0.24, 0.13, 0.38], [0, -0.87, -0.07], 0, 'black'],
+      ['legL', 'sph', [0.125, 8, 5], [0, -0.87, -0.25], 0, 'black', [1, 0.55, 0.7]], ['legR', 'sph', [0.125, 8, 5], [0, -0.87, -0.25], 0, 'black', [1, 0.55, 0.7]],
+      // the brass bulb horn in the right hand (prop: only while the horn is in hand)
+      ['armR', 'sph', [0.055, 8, 6], [0, -0.79, -0.03], 0, 'bulb', [1, 1, 1.2]], ['armR', 'cyl', [0.014, 0.014, 0.16, 6], [0, -0.79, -0.15], [Math.PI / 2, 0, 0], 'brass'],
+      ['armR', 'cone', [0.065, 0.11, 10], [0, -0.79, -0.27], [Math.PI / 2, 0, 0], 'brass']
+    ] }),
   S('punk', 'Ripped Punk', 300, 'Torn vest, green mohawk, spiked collar. ColSec hates you on sight.', {
     icon: '🤘', face: true,
     pal: { skin: 0xd9a47e, torso: 0x161616, arms: 0xd9a47e, legs: 0x2a2f45, pack: null, chest: 0x161616, boots: 0x111111, hawk: { c: 0x39ff14, e: 0x0f5a05, r: 0.8 }, ink: 0x1e4a7a, rip: 0xd9a47e, stud: { c: 0xc8ccd2, r: 0.3, m: 0.55 } },
@@ -180,6 +219,7 @@ export const SKINS = [
 ];
 export const BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
 export const FREE = SKINS[0].id;
+export const GIFTS = SKINS.filter(k => k.gift && k.price === 0).map(k => k.id); // v7.5.31: free outfits everyone owns (Grin Reaper)
 export const REGIONS = ['torso', 'arms', 'legs', 'helmet', 'pack', 'chest', 'visor', 'boots'];
 export const SLOTS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
 
@@ -197,11 +237,11 @@ export const matKey = s => s.hidden ? 'hidden' : `${s.c.toString(16)}|${s.r}|${s
 export const geoKey = (shape, dims) => shape + ':' + dims.map(d => +(+d).toFixed(4)).join(',');
 
 // ---------- save state ----------
-export function fresh() { return { v: 1, owned: [FREE], eq: STOCK }; }
+export function fresh() { return { v: 1, owned: [FREE, ...GIFTS], eq: STOCK }; }
 export function norm(raw) {
   const s = fresh(); if (!raw || typeof raw !== 'object') return s;
   const owned = Array.isArray(raw.owned) ? raw.owned.filter(id => BY_ID[id]) : [];
-  s.owned = [...new Set([FREE, ...owned])].sort((a, b) => SKINS.indexOf(BY_ID[a]) - SKINS.indexOf(BY_ID[b]));
+  s.owned = [...new Set([FREE, ...GIFTS, ...owned])].sort((a, b) => SKINS.indexOf(BY_ID[a]) - SKINS.indexOf(BY_ID[b]));
   s.eq = raw.eq === STOCK || s.owned.includes(raw.eq) ? raw.eq : STOCK;
   return s;
 }

@@ -216,6 +216,7 @@ const API = {
   crowds: () => CROWDS.list(), npcs: () => CROWDS.npcs(), fight: i => CROWDS.fight(i),
   challenge: (o) => TWEAK.challenge(o), rockhead: () => TWEAK.state(), // force a rockhead fight challenge / read its state
   drops: () => COMBAT.drops(), blood: () => BLOOD.list(), night: () => NIGHT.debug(), colliders: () => COL.list('street'),
+  scare(x, z, r = 12) { if (!live) return 0; try { return COMBAT.witnesses(x, z, { x, z }, r); } catch (e) { return 0; } }, // v7.5.31 bulb horn: street folk scatter (no crime)
   hurt(key, dmg = 1, how = 'shot') { const s = CROWDS.slots().find(x => x.key === key || x.name === key); if (!s?.on) return false; COMBAT.hurt(s, dmg, how, K.player); return true; },
   tow: { get impound() { return ST.impound ? { ...ST.impound } : null; }, hook: () => TOW.hook(true), pay: () => TOW.payImpound(), yard: () => TOW.yard(), quote: () => TOW.quote(), sell: () => TOW.sell(false), strip: () => TOW.sell(true), fence: (kind, strip) => TOW.fence(kind, !!strip), quoteKind: kind => TOW.quoteKind(kind), buyHot: kind => TOW.buyHot(kind), stock: () => TOW.stock() },
   stats: () => ({ ...ST.stats }), state: () => JSON.parse(JSON.stringify(ST)),

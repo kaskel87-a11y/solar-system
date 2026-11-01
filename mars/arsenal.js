@@ -58,7 +58,9 @@ export const ARS = {
   rail: { core: 'ar_rail', name: 'Halcyon coil lance', icon: '⚡', kind: 'gun', cal: 'rail', mag: 3, reload: 2.8, charge: 1.2, recoil: 0.12, bloom: 0, bloomMax: 0, knock: 1.6, mods: ['scope'], rare: true,
     base: { name: 'Halcyon coil lance', cd: 0.6, dmg: 16, speed: 460, color: 0xff5cf0, size: 1.5, life: 0.45, pierce: true, beam: true, rail: true } },
   knife: { core: 'ar_knife', name: 'Gutter knife', icon: '🔪', kind: 'melee', mult: 3, knockMult: 0.7, mods: [], base: { name: 'Gutter knife', cd: 0.4, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
-  bat: { core: 'ar_bat', name: 'Slugger bat', icon: '🏏', kind: 'melee', mult: 2.2, knockMult: 2.6, mods: [], base: { name: 'Slugger bat', cd: 0.5, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } }
+  bat: { core: 'ar_bat', name: 'Slugger bat', icon: '🏏', kind: 'melee', mult: 2.2, knockMult: 2.6, mods: [], base: { name: 'Slugger bat', cd: 0.5, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  // v7.5.31: the Grin Reaper's brass bulb horn (mars/honk.js gives it on first wear, honks + scares on every swing): a weak bonk
+  horn: { core: 'ar_horn', name: 'Brass bulb horn', icon: '📯', kind: 'melee', mult: 0.35, knockMult: 0.6, mods: [], base: { name: 'Brass bulb horn', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } }
 };
 const CORE_EXTRA = [['blaster', 'rifle', '🔫', 'Plasma blaster', u => true], ['railrifle', 'railrifle', '⚡', 'Rail rifle', u => u.includes('weapon:railrifle')], ['launcher', 'launcher', '💣', 'Frag launcher', u => u.includes('weapon:launcher')],
   ['blade', 'blade', '🗡️', 'Vibro-machete', u => u.includes('melee:blade')], ['cleaver', 'cleaver', '🪓', 'Thermal cleaver', u => u.includes('melee:cleaver')]];
@@ -222,7 +224,7 @@ function afterHit(info, p0, p1, dmg) {
 function wrapMeleeWorld(x, z, fx, fz, range, dmg, knock) {
   const a = R.swing; if (!a || R.shove) return origMeleeWorld.call(world(), x, z, fx, fz, range, dmg, knock);
   const r = origMeleeWorld.call(world(), x, z, fx, fz, range + (a.id === 'bat' ? 0.4 : 0), dmg * a.mult, (knock || 0.9) * a.knockMult);
-  if (r) { stats.hits++; emit('hit', { kind: 'melee', id: a.id }); decal(x + fx * range * 0.8, z + fz * range * 0.8, a.id === 'knife' ? 0.8 : 0.5); }
+  if (r) { stats.hits++; emit('hit', { kind: 'melee', id: a.id }); if (a.id !== 'horn') decal(x + fx * range * 0.8, z + fz * range * 0.8, a.id === 'knife' ? 0.8 : 0.5); } // a horn bonk draws no blood
   return r;
 }
 
