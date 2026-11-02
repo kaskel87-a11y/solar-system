@@ -33,7 +33,7 @@ function emit(type, d = {}) { const ev = { type, contract: run?.c.id || d.contra
 
 // ---------- state ----------
 let run = null;                 // { c, stage: 'hunt'|'heat', spooked, escT, heatT, down, head, dist, t }
-let scoped = false, magI = 0, baseFov = 55, savedPitch = -0.05, savedOrder = 'XYZ', fovNow = 55, kick = 0, zoomAcc = 1, zoomAt = 0;
+let aimTrack = null, lastShot = null, clearWhy = null, scoped = false, magI = 0, baseFov = 55, savedPitch = -0.05, savedOrder = 'XYZ', fovNow = 55, kick = 0, zoomAcc = 1, zoomAt = 0;
 let perched = false, perchX = 0, perchZ = 0, perchY = 0, cool = 0, frame = 0, hookFrame = -9, passing = false;
 let steadyKey = false, steadyTouch = false, lastTc = null, built = false, G = null, tower = null, ring = null, marker = null, beam = null;
 const marks = new Map(); // contract id -> buildHuman rig
@@ -182,7 +182,7 @@ function setScope(on) {
     if (!isTouch() && !document.pointerLockElement) { try { const r = app()?.renderer?.domElement?.requestPointerLock?.(); r?.catch?.(() => {}); } catch (e) { /* drag works */ } }
     emit('scope', { on: true });
   } else {
-    if (!scoped) return true; scoped = false;
+    if (!scoped) return true; scoped = false; aimTrack = null;
     cam.fov = baseFov; cam.updateProjectionMatrix(); cam.rotation.order = savedOrder;
     if (tc) tc.player.pitch = savedPitch;
     document.body.classList.remove('sniping'); scopeEl?.classList.remove('show'); steadyTouch = false;
@@ -196,6 +196,7 @@ function trigger() {
   if (cool > 0) return true;
   if (slugs() <= 0) { cool = 0.6; toast('Out of slugs. Buy more at a gun counter (45 cr for 6).', 2200); return true; }
   const tc = lastTc, cam = tc.camera;
+  if (aimTrack) { aimNow(aimTrack); aimTrack = null; }
   poseCam(cam, tc.player);
   cam.getWorldPosition(vO); cam.getWorldDirection(vD);
   passing = true; let fired = false; try { fired = game().fire({ x: 0, y: 0 }) !== false; } catch (e) { console.warn('sniper fire', e); } passing = false;
@@ -205,14 +206,17 @@ function trigger() {
   // hitscan vs the mark: head sphere, body capsule, blocked by buildings / terrain
   if (run && !run.down && markPos.ok) {
     K.hitPerson(vO, vD, markPos.x, markPos.y, markPos.z, HIT);
-    if (HIT.part && clearShot(vO, vD, HIT.t, tc)) { killMark(HIT.part === 'head', Math.hypot(markPos.x - tc.player.x, markPos.z - tc.player.z), 'scope'); }
+    const clr = HIT.part ? clearShot(vO, vD, HIT.t, tc) : null;
+    lastShot = { part: HIT.part, t: +HIT.t.toFixed(2), clear: clr, o: [vO.x, vO.y, vO.z].map(v => +v.toFixed(2)), d: [vD.x, vD.y, vD.z].map(v => +v.toFixed(4)), mark: [markPos.x, markPos.y, markPos.z].map(v => +v.toFixed(2)), sw: [SW.yaw, SW.pitch, kick].map(v => +v.toFixed(4)), block: clearWhy };
+    if (HIT.part && clr) { killMark(HIT.part === 'head', Math.hypot(markPos.x - tc.player.x, markPos.z - tc.player.z), 'scope'); }
     else if (Math.hypot(markPos.x - vO.x, markPos.z - vO.z) < 260) spook();
   }
   updateScopeText(true); return true;
 }
 function clearShot(o, d, t, tc) {
   const w = tc.world, n = Math.ceil(t / 1.5);
-  for (let i = 1; i < n; i++) { const s = t * i / n, x = o.x + d.x * s, y = o.y + d.y * s, z = o.z + d.z * s; if (y < tc.height(x, z) + 0.05) return false; if (w?.camBlocked?.(x, y, z)) return false; }
+  clearWhy = null;
+  for (let i = 1; i < n; i++) { const s = t * i / n, x = o.x + d.x * s, y = o.y + d.y * s, z = o.z + d.z * s; if (y < tc.height(x, z) + 0.05) { clearWhy = ['ground', +s.toFixed(1)]; return false; } if (w?.camBlocked?.(x, y, z)) { clearWhy = ['wall', +s.toFixed(1), +x.toFixed(1), +y.toFixed(1), +z.toFixed(1)]; return false; } }
   return true;
 }
 function fireHook() {
@@ -291,6 +295,11 @@ function tickRun(dt, tc) {
   if (perched === false && tower?.visible && !scoped && !run.down) { /* climb offer handled by refreshBtns */ }
 }
 // scope eye: 0.9 m ahead of the head along the (swayed) aim; also called right before a shot so a fresh aim counts
+function aimNow(part) {
+  const p = lastTc?.player; if (!p || !markPos.ok) return false;
+  const ty = markPos.y + (part === 'head' ? 1.72 : 1.1), dx = markPos.x - p.x, dz = markPos.z - p.z, dy = ty - (p.y - 0.06);
+  p.yaw = Math.atan2(-dx, -dz) - (scoped ? SW.yaw : 0); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)) - (scoped ? SW.pitch + kick : 0); return true;
+}
 function poseCam(cam, p) {
   const yaw = p.yaw + SW.yaw, pitch = Math.max(-1.5, Math.min(1.5, p.pitch + SW.pitch + kick)), cp = Math.cos(pitch);
   const fx = -Math.sin(yaw) * cp, fy = Math.sin(pitch), fz = -Math.cos(yaw) * cp;
@@ -302,6 +311,7 @@ function tickScope(dt, tc) {
   const cam = tc.camera, p = tc.player, mag = K.ZOOMS[magI];
   K.breathStep(B, dt, steadyKey || steadyTouch); K.sway(B, dt, mag, SW);
   kick *= Math.exp(-dt * 7);
+  if (aimTrack) aimNow(aimTrack);
   // keyboard aim (arrows / WASD) while scoped: movement is frozen anyway
   const k = app()?.keys; if (k) { const r = 0.9 * K.lookScale(fovNow, baseFov) * dt, ax = (k.ArrowRight || k.KeyD ? 1 : 0) - (k.ArrowLeft || k.KeyA ? 1 : 0), ay = (k.ArrowUp || k.KeyW ? 1 : 0) - (k.ArrowDown || k.KeyS ? 1 : 0); if (ax || ay) { p.yaw -= ax * r; p.pitch = Math.max(-1.45, Math.min(1.45, p.pitch + ay * r)); } }
   p.faceYaw = p.yaw;
@@ -481,8 +491,12 @@ function boot() {
       tower: () => ({ x: TW.x, z: TW.z, ringX: TW.x, ringZ: TW.z + 3.25 }),
       mark: () => markPos.ok ? { x: markPos.x, y: markPos.y, z: markPos.z } : null,
       climb: () => { climbUp(); return perched; }, perched: () => perched,
-      aimAtMark(part = 'head') { const p = lastTc?.player; if (!p || !markPos.ok) return false; const ty = markPos.y + (part === 'head' ? 1.72 : 1.1), dx = markPos.x - p.x, dz = markPos.z - p.z, dy = ty - (p.y - 0.06); p.yaw = Math.atan2(-dx, -dz); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)); return true; },
+      // v7.5.49 (playtest m3): the old one-shot aim went stale while a slow test rig took screenshots (the mark keeps walking
+      // and the scope breathes), so 'dead-centre' shots missed. Now it puts the crosshair (camera centre, sway included) on
+      // the mark and keeps it there every tick until the next shot or scope-out. track=false = one-shot like before.
+      aimAtMark(part = 'head', track = true) { aimTrack = track ? part : null; return aimNow(part); },
       steady: on => { steadyTouch = !!on; }, breath: () => ({ ...B }), cool: () => cool, fov: () => lastTc?.camera?.fov, setCool: v => { cool = v; },
+      lastShot: () => lastShot,
       state: () => ({ run: !!run, scoped, perched, magI, fov: fovNow, base: baseFov }),
     },
   };

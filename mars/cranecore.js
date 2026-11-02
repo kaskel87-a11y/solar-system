@@ -67,7 +67,7 @@ export function mode({ driving, aboard, held, busy, target, inYard, nearForSale,
   return target ? 'grab' : 'empty';
 }
 export function label(m, { name = '', price = PRICE } = {}) {
-  return { buy: `\ud83e\uddf2 Buy crane \u00b7 ${price.toLocaleString('en-US')} cr`, grab: `\ud83e\uddf2 Grab ${name}`.trim(), empty: '\ud83e\uddf2 Magnet', busy: '\ud83e\uddf2 \u2026',
+  return { buy: `\ud83e\uddf2 Buy \u00b7 ${price.toLocaleString('en-US')}`, grab: `\ud83e\uddf2 Grab ${name}`.trim(), empty: '\ud83e\uddf2 Magnet', busy: '\ud83e\uddf2 \u2026',
     drop: '\ud83e\uddf2 Drop', sell: '\ud83d\udd27 Drop for Lou' }[m] || '';
 }
 // v7.5.28 cops calm down: lifting a ride is car theft, so no heat unless a ColSec officer right there saw it (copSaw: within

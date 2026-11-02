@@ -20,10 +20,21 @@
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, pdg, opt); });
   var isText = function (el) { return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)); };
   document.addEventListener('touchmove', function (e) { if (zoomed()) return; if (e.touches.length > 1 || (e.scale && e.scale !== 1)) pd(e); }, opt);
-  var last = 0;
+  var last = 0, t0x = 0, t0y = 0;
+  document.addEventListener('touchstart', function (e) { var t = e.touches[0]; if (t) { t0x = t.clientX; t0y = t.clientY; } }, { passive: true });
+  // v7.5.49 (playtest p2): blocking the 2nd quick touchend stops double-tap zoom but also ate that tap's click, so click-only
+  // buttons dropped fast taps. Re-send the click ourselves on the tapped control (onTap/__onTap ignore a click right after
+  // their own pointerup, so nothing fires twice).
+  var ACT = 'button,a[href],[role=button],summary,label,select,input[type=checkbox],input[type=radio],input[type=range],[onclick],.chip,[data-tap]';
   document.addEventListener('touchend', function (e) {
     var now = Date.now();
-    if (now - last < 300 && e.touches.length === 0 && !isText(e.target)) pd(e);
+    if (now - last < 300 && e.touches.length === 0 && !isText(e.target)) {
+      pd(e);
+      var c = e.changedTouches && e.changedTouches[0], el = e.target && e.target.closest && e.target.closest(ACT);
+      if (el && !el.disabled && (!c || Math.hypot(c.clientX - t0x, c.clientY - t0y) < 14)) {
+        try { el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: c ? c.clientX : 0, clientY: c ? c.clientY : 0 })); } catch (er) {}
+      }
+    }
     last = now;
   }, opt);
   document.addEventListener('dblclick', function (e) { if (!isText(e.target)) pd(e); }, opt);

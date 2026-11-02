@@ -43,7 +43,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(([x, z]) => window.__app.surface.debugPlace(x + 3.5, z + 4.5, 0), [cp.x, cp.z]); await sleep(800);
     ok('buy button', await ST().then(s => s.mode), (await ST()).mode === 'buy');
     const btn = await G(() => { const b = document.getElementById('craneBtn'), cs = b && getComputedStyle(b); return b ? { txt: b.textContent, vis: b.offsetParent !== null, bg: cs.backgroundColor, fg: cs.color } : null; });
-    ok('buy label', btn?.txt, !!btn?.vis && /Buy crane/.test(btn.txt) && /1,800/.test(btn.txt));
+    ok('buy label', btn?.txt, !!btn?.vis && /Buy/.test(btn.txt) && /1,800/.test(btn.txt));
     ok('black/white button', `${btn?.bg} ${btn?.fg}`, btn?.bg === 'rgb(0, 0, 0)' && btn?.fg === 'rgb(255, 255, 255)');
     await press(); await sleep(400);
     ok('bought', await G(() => window.SSX.crane.state.owned && window.SSX.crane.state.how === 'bought' && window.__app.game.progress.credits === 9999 - 1800));

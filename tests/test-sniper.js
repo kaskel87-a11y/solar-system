@@ -72,6 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.sniper.debug.aimAtMark('head'));
     if (desk) { await page.keyboard.down('KeyF'); await sleep(120); await page.keyboard.up('KeyF'); } else await tapSel('#snFire');
     await sleep(500);
+    R.lastShot = JSON.stringify(await G(() => window.SSX.sniper.debug.lastShot?.()));
     const a1 = await SN(); ok('killed', a1?.down === true);
     ok('ammoUsed', await G(n => window.__app.game.progress.inv.slugs === n - 1, before.slugs));
     ok('boltCycle', await G(() => window.SSX.sniper.debug.cool() > 0.4));

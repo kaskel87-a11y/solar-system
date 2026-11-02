@@ -85,7 +85,7 @@ const CSS = `#stAct{position:fixed;z-index:13;left:calc(10px + env(safe-area-ins
 #stPanel button{display:block;width:100%;min-height:48px;margin:0 0 8px;padding:10px 12px;background:#000;color:#fff;border:2px solid #fff;border-radius:4px;font:700 15px system-ui;text-align:left;touch-action:manipulation}
 #stPanel button:active{background:#fff;color:#000}#stPanel button[disabled]{opacity:.4}#stPanel button.alt{border-style:dashed;color:#bbb}#stPanel small{display:block;color:#999;margin:-4px 0 8px}
 .stBubble{position:fixed;left:0;top:0;z-index:12;max-width:min(70vw,300px);padding:6px 10px;background:#000;color:#fff;border:2px solid #fff;border-radius:10px;font:800 14px/1.25 system-ui,sans-serif;pointer-events:none;text-align:center}body.indoors .stBubble{display:none!important}
-#stChip{position:fixed;z-index:12;right:calc(10px + env(safe-area-inset-right));top:calc(108px + env(safe-area-inset-top));display:none;padding:6px 10px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 12px system-ui;pointer-events:none}#stChip.show{display:block}body.indoors #stChip{display:none!important}`;
+#stChip{position:fixed;z-index:12;right:calc(10px + env(safe-area-inset-right));top:calc(108px + env(safe-area-inset-top));display:none;padding:4px 8px;border-radius:9px;background:#000;color:#fff;border:2px solid #fff;font:800 11px system-ui;pointer-events:none;white-space:nowrap}#stChip.show{display:block}body.indoors #stChip{display:none!important}`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function onTap(el, fn) { if (window.__onTap) window.__onTap(el, fn); else el.addEventListener('click', fn); }
 function css() { if (document.getElementById('stCss')) return; const s = document.createElement('style'); s.id = 'stCss'; s.textContent = CSS; document.head.appendChild(s); }
@@ -113,7 +113,15 @@ function ensureUI() {
   // v7.5.16: no number key; hud/keys.js gives this button Enter (or the next free context key) and shows it in the label
 }
 function showAct(a) { act = a; if (!actBtn) return; if (!a) { actBtn.classList.remove('show'); return; } const l = a.label; if (actBtn.textContent !== l) actBtn.textContent = l; actBtn.classList.add('show'); }
-function showChip(t) { if (!chip) return; if (!t) { chip.classList.remove('show'); return; } if (chip.textContent !== t) chip.textContent = t; chip.classList.add('show'); }
+function showChip(t) { if (!chip) return; if (!t) { chip.classList.remove('show'); return; } if (chip.textContent !== t) chip.textContent = t; chip.classList.add('show'); placeChip(); }
+// v7.5.49 (playtest m2): the top-right slot sat on the tutorial / mission card on small phones; tuck the chip under the minimap
+let chipAt = 0;
+function placeChip() {
+  const now = performance.now(); if (now - chipAt < 500) return; chipAt = now;
+  const m = document.getElementById('miniMap'), r = m && m.getBoundingClientRect();
+  if (!r || !r.height || getComputedStyle(m).display === 'none') { chip.style.left = chip.style.top = chip.style.right = ''; return; }
+  chip.style.right = 'auto'; chip.style.left = Math.round(r.left) + 'px'; chip.style.top = Math.round(r.bottom + 5) + 'px';
+}
 
 // ---------- shared kit for the parts ----------
 const SH = {}; // shared geometry
