@@ -8,7 +8,8 @@
     'html,body{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;overflow:hidden!important;' +
     'position:fixed!important;left:0;top:0;width:100%!important;height:100%!important;max-width:100vw;margin:0}' +
     'input,textarea,select{font-size:max(16px,1em)!important}' +
-    'body.ssx-vvfit{transform-origin:0 0!important;will-change:transform}';
+    'body.ssx-vvfit{transform-origin:0 0!important;will-change:transform}' +
+    'body.ssx-vvfit>canvas.ssx-main{width:100%!important;height:100%!important}';
   (document.head || document.documentElement).appendChild(st);
   var opt = { passive: false }, vv = window.visualViewport;
   // zoomed in (iOS restores the old pinch scale + scroll on reload, or an auto-zoom slipped through): let a pinch through
@@ -49,9 +50,28 @@
       b.classList.add('ssx-vvfit');
       b.style.transform = 'translate(' + (vv.offsetLeft || 0).toFixed(1) + 'px,' + (vv.offsetTop || 0).toFixed(1) + 'px) scale(' + (1 / s).toFixed(4) + ')';
     } else if (b.classList.contains('ssx-vvfit')) { b.classList.remove('ssx-vvfit'); b.style.transform = ''; kicks = 0; }
+    sizeChanged();
   }
   var q = function () { if (!raf) raf = requestAnimationFrame(fit); };
-  window.SSX_FIT = { fit: fit, zoomed: zoomed };
+  // v7.5.48: iOS reports innerWidth/innerHeight as the *visible* (zoomed) size, so while zoomed the renderer was sized
+  // ~1/scale too small and the shrink-to-fit left black strips right + bottom. While the fit is on, innerWidth/innerHeight
+  // answer the real box the game is drawn in (the layout viewport = body), so renderer, camera aspect and HUD maths all
+  // fill the screen edge to edge. At 1x the browser's own values are returned untouched.
+  var de0 = document.documentElement;
+  function nativeGetter(k) { for (var o = window; o; o = Object.getPrototypeOf(o)) { var d = Object.getOwnPropertyDescriptor(o, k); if (d) return d.get ? function () { return d.get.call(window); } : (d.value !== undefined ? function () { return d.value; } : null); } return null; }
+  var nW = nativeGetter('innerWidth'), nH = nativeGetter('innerHeight');
+  var boxW = function () { return Math.round(de0.clientWidth || (nW && nW()) || 0); }, boxH = function () { return Math.round(de0.clientHeight || (nH && nH()) || 0); };
+  var fitted = function () { return !!(document.body && document.body.classList.contains('ssx-vvfit')); };
+  if (nW && nH) try {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, get: function () { return fitted() ? boxW() : nW(); }, set: function () {} });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, get: function () { return fitted() ? boxH() : nH(); }, set: function () {} });
+  } catch (e) {}
+  var lastKey = '';
+  function sizeChanged() { // tell the renderer (index.html onResize, surface, HUD fitters) whenever the drawn box changes
+    var k = innerWidth + 'x' + innerHeight + (fitted() ? 'f' : ''); if (k === lastKey) return; var first = !lastKey; lastKey = k;
+    if (!first) try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+  }
+  window.SSX_FIT = { fit: fit, zoomed: zoomed, fitted: fitted, box: function () { return { w: innerWidth, h: innerHeight }; } };
   if (vv) { vv.addEventListener('resize', q); vv.addEventListener('scroll', q); }
   addEventListener('resize', q); addEventListener('scroll', q, true);
   addEventListener('orientationchange', function () { q(); setTimeout(q, 300); setTimeout(q, 800); });

@@ -47,7 +47,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // redrawn inside the visible part of the screen.
     const zoom = async (sc, nokick) => { await G(nk => { window.SSX_FIT_NOKICK = nk; document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover'); }, nokick); await sleep(900);
       for (let i = 0; i < 8; i++) { await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 }); await sleep(150); await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: sc }); await sleep(120);
-        if (!nokick || await G(sc => visualViewport.scale > sc - 0.05, sc)) break; await sleep(400); } };
+        if (!nokick || await G(sc => visualViewport.scale > sc - 0.05, sc)) break; await sleep(400);
+        await G(() => { const m = document.querySelector('meta[name=viewport]'); m.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=6, viewport-fit=cover'); }); await sleep(700); } };
     const unzoom = async () => { await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 }); await G(() => { window.SSX_FIT_NOKICK = false; document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'); }); await sleep(900); };
     await zoom(1.3, false); await sleep(1600);
     a = await G(audit); ok(`${W}.zoomKickResets`, JSON.stringify(a), a.scale < 1.01 && !a.fit && a.over.length === 0);
@@ -82,6 +83,44 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     a = await G(audit); ok(`${W}.portraitAgain`, JSON.stringify(a), a.sw <= a.iw && a.over.length === 0);
     if (W === 390) await page.screenshot({ path: out + `fit-mars-hud-rotated-back-${W}.png` });
     ok(`${W}.noErrors`, JSON.stringify(errors.slice(0, 3)), errors.length === 0);
+    await ctx.close();
+  }
+  // v7.5.48: iOS reports innerWidth/innerHeight as the visible size while zoomed (Chromium doesn't), which left the 3D view
+  // ~1/scale too small (black strips right + bottom). Emulate iOS, zoom 1.1-1.3x with Chrome-style text zoom, and check the
+  // WebGL canvas fills the whole visible screen and its drawing buffer matches.
+  {
+    const { defaultBrowserType: _d, ...dev } = pw.devices['iPhone 14'];
+    const ctx = await browser.newContext({ ...dev, viewport: { width: 390, height: 664 } });
+    await ctx.addInitScript(() => { const P = Window.prototype, gw = Object.getOwnPropertyDescriptor(window, 'innerWidth') || Object.getOwnPropertyDescriptor(P, 'innerWidth');
+      const gh = Object.getOwnPropertyDescriptor(window, 'innerHeight') || Object.getOwnPropertyDescriptor(P, 'innerHeight');
+      Object.defineProperty(window, 'innerWidth', { configurable: true, get() { return Math.round(visualViewport ? visualViewport.width : gw.get.call(window)); } });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, get() { return Math.round(visualViewport ? visualViewport.height : gh.get.call(window)); } }); });
+    const page = await ctx.newPage(); const cdp = await ctx.newCDPSession(page); const G = (f, a) => page.evaluate(f, a);
+    const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
+    await page.goto(base + '?t=' + Date.now()); await page.waitForFunction(() => window.__frames > 3 && !document.getElementById('loading'), null, { timeout: 120000 }); await sleep(800);
+    await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
+    await page.waitForFunction(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, null, { timeout: 90000 }); await sleep(1200);
+    await G(() => document.getElementById('radioLater')?.click());
+    const fill = () => { const c = document.querySelector('canvas.ssx-main') || [...document.querySelectorAll('body>canvas')][0], b = c.getBoundingClientRect(), vv = visualViewport;
+      const L = vv.offsetLeft, T = vv.offsetTop, W = vv.width, H = vv.height, de = document.documentElement;
+      return { scale: +vv.scale.toFixed(2), fit: document.body.classList.contains('ssx-vvfit'), cv: [b.left, b.top, b.right, b.bottom].map(v => Math.round(v)), vv: [L, T, L + W, T + H].map(v => Math.round(v)),
+        buf: [c.width, c.height], box: [de.clientWidth, de.clientHeight], dpr: devicePixelRatio,
+        fills: b.left <= L + 1 && b.top <= T + 1 && b.right >= L + W - 1 && b.bottom >= T + H - 1, bufOk: Math.abs(c.width / c.height - de.clientWidth / de.clientHeight) < 0.02 && c.width >= de.clientWidth * Math.min(devicePixelRatio, 1) - 2 }; };
+    let f = await G(fill); ok('ios1x.fills', JSON.stringify(f), f.fills && f.bufOk && !f.fit);
+    await page.screenshot({ path: out + 'fill-1x-390.png' });
+    await G(() => { document.documentElement.style.webkitTextSizeAdjust = '130%'; document.body.style.webkitTextSizeAdjust = '130%'; });
+    for (const sc of [1.1, 1.2, 1.3]) {
+      await G(() => { window.SSX_FIT_NOKICK = true; document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover'); }); await sleep(900);
+      for (let i = 0; i < 8; i++) { await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 }); await sleep(150); await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: sc }); await sleep(150); if (await G(sc => visualViewport.scale > sc - 0.03, sc)) break; await sleep(400);
+        await G(i => document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=' + (5 + i) + ', viewport-fit=cover'), i); await sleep(700); }
+      await sleep(1500);
+      f = await G(fill); ok(`ios${sc}x.fills`, JSON.stringify(f), f.scale > sc - 0.03 && f.fit && f.fills && f.bufOk);
+      const a = await G(audit); ok(`ios${sc}x.hudFits`, JSON.stringify(a.over), a.over.length === 0);
+      await page.screenshot({ path: out + `fill-zoom${sc}-390.png` });
+    }
+    await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 }); await G(() => { window.SSX_FIT_NOKICK = false; document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'); }); await sleep(1800);
+    f = await G(fill); ok('iosBackTo1x.fills', JSON.stringify(f), f.scale < 1.01 && !f.fit && f.fills && f.bufOk);
+    ok('ios.noErrors', JSON.stringify(errors.slice(0, 3)), errors.length === 0);
     await ctx.close();
   }
   await browser.close();
