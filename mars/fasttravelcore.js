@@ -20,7 +20,8 @@ export const KINDS = {
   gated: { icon: '🏰', name: 'Gated community' },
   pit: { icon: '🥊', name: 'The Pit' },
   club: { icon: '🍸', name: "Danny's club" },
-  turf: { icon: '🏴', name: 'Your turf' }
+  turf: { icon: '🏴', name: 'Your turf' },
+  icecap: { icon: '❄️', name: 'Planum Australe' }
 };
 export const ORDER = Object.keys(KINDS);
 

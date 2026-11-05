@@ -33,6 +33,8 @@ function rawPlaces() {
   tryv(() => { const d = world()?.doorFor?.('velvet') || world()?.doorFor?.('club'); add('club', d && C.fin(d.x) ? { x: d.x, z: d.z } : aj([-30, -27]), { name: "Danny's club · Velvet Airlock" }); });
   // owned turf: SSX.turf.blocks() owner 'player', at the flag
   tryv(() => { for (const b of X().turf?.blocks?.() || []) if (b.owner === 'player') add('turf', aj(b.flag), { id: 'turf:' + b.id, name: `Your turf · ${b.name}` }); });
+  // the Planum Australe ice cap: SSX.icecap.place() (mars/icecap.js)
+  tryv(() => { const p = X().icecap?.place?.(); if (p) add('icecap', p, { id: 'icecap', name: p.name, sub: p.sub }); });
   return out;
 }
 let cache = { t: -1e9, list: [] };
