@@ -19,6 +19,7 @@ const PRECACHE = [
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, `activities/coords.js${q}`, `activities/deadends.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['hud/hudx', 'hud/hudmap', 'hud/hints'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter
   `hud/wpbeam.js${q}`, // v7.5.8 waypoint light beam
+  ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
   ...['help/stuck', 'help/stuckcore', 'help/foes'].map(n => `${n}.js${q}`), // Stuck? on the mission card + red ◆ over mission foes
   ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
