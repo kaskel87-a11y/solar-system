@@ -1,5 +1,7 @@
 // v7.5.x owned-place beams (Ben): on Mars, every business you own (SSX.empire owned props, the farm once bought) and the
 // Xen-7 Trading Post get a DARK GREEN column of light, so your places stand out from the city. Other beams keep their colours.
+// Red Static Gulch is not one of these: once owned it gets its own red column (mars/gulchbeam.js). A green site that sits
+// on the gulch is dropped here so the two never stack.
 // - Live: the site list is re-read 4x a second, so buying a business lights its beam at once; on load it comes from the save.
 // - The blue waypoint beam (hud/wpbeam.js) turns dark green while its target is one of these places (one guarded hook there:
 //   SSX.ownedbeams.colorAt(x, z)). The farm guide's yellow beacon (mars/farm.js) stays yellow, matching its text.
@@ -7,6 +9,7 @@
 import * as THREE from 'three';
 
 import { GREEN, NEAR, H, R, greenSites, siteAt } from './ownedbeamscore.js';
+import { withoutGulch } from './gulchbeamcore.js';
 export { GREEN, greenSites, siteAt };
 
 let G = null, geo = null, mat = null, sites = [], readT = 0, key = '', warned = false, onMars = false;
@@ -21,7 +24,9 @@ function read(tc) {
   try { props = X.empire?.props?.() || []; } catch (e) { /* no empire */ }
   try { fo = !!X.farm?.status?.()?.owned; pl = X.farm?.places?.() || []; } catch (e) { /* no farm */ }
   try { if (X.velvetArc?.owned?.()) { const c = tc?.world?.colonyAt?.([-30, -38]) || window.__app?.surface?.world?.doorFor?.('club'); if (c) ex.push({ id: 'velvet', name: 'The Velvet Airlock', owned: true, x: c.x, z: c.z }); } } catch (e) { /* no velvet */ }
-  sites = greenSites(props, fo, pl, ex);
+  let gulch = null;
+  try { const st = X.farm2?.status?.(); if (st?.owned && Number.isFinite(+st.site?.x) && Number.isFinite(+st.site?.z)) gulch = { x: +st.site.x, z: +st.site.z }; } catch (e) { /* no gulch */ }
+  sites = withoutGulch(greenSites(props, fo, pl, ex), gulch);
 }
 function place(tc) {
   const k = sites.map(s => s.id + '@' + Math.round(s.x) + ',' + Math.round(s.z)).join('|'); if (k === key) return; key = k;
