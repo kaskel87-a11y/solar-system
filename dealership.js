@@ -712,12 +712,12 @@ function tickShowFX(dt) {
 function showroomCam(obj, dt) {
   // dealer focus: tighter orbit so the selected car fills the free window above / beside the sheet
   obj.getWorldPosition(tv); camA += dt * 0.35; const cam = C.camera, land = innerWidth > innerHeight, dealer = sheet?.kind === 'dealer';
-  const R = dealer ? (land ? 6.4 : 5.6) : (land ? 10 : 11.5), a = CFG.yaw + (dealer ? 0.4 : 0.75) * Math.sin(camA);
-  const yOff = dealer ? 2.5 : 4.2;
+  const R = dealer ? (land ? 8 : 9.5) : (land ? 10 : 11.5), a = CFG.yaw + (dealer ? 0.4 : 0.75) * Math.sin(camA);
+  const yOff = dealer ? 3.4 : 4.2;
   const y = Math.max(tv.y + yOff, H(tv.x + Math.sin(a) * R, tv.z + Math.cos(a) * R) + 2);
   cam.position.set(tv.x + Math.sin(a) * R, y, tv.z + Math.cos(a) * R);
   // frame the car in the part of the screen the sheet leaves free (top in portrait, left in landscape)
-  const lookY = dealer ? (land ? 1.15 : 0.55) : (land ? 1 : -2.2);
+  const lookY = dealer ? (land ? 1.1 : -1.4) : (land ? 1 : -2.2);
   cam.lookAt(tv.x, tv.y + lookY, tv.z);
   if (land) cam.rotateY(dealer ? -0.12 : -0.22);
 }

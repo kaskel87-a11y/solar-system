@@ -1,0 +1,30 @@
+// showroom focus (PR #107): select a chip -> one podium visible + light show; switch; close restores. DEV="iPhone 15" OUT=dir
+const pw = require('playwright'); const base = process.env.BASE || 'http://127.0.0.1:8898/', DEV = process.env.DEV || 'iPhone 15', out = process.env.OUT || '/tmp/';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const b = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const { defaultBrowserType: _d, ...dev } = (pw.devices[DEV] || pw.devices['iPhone 14']); if (!pw.devices[DEV]) { dev.viewport = { width: 393, height: 852 }; dev.screen = { width: 393, height: 852 }; } const ctx = await b.newContext(dev); await ctx.addInitScript(() => { window.__ssxNoKeepAlive = true; });
+  const p = await ctx.newPage(), errs = []; p.on('pageerror', e => errs.push(e.message)); const G = (f, a) => p.evaluate(f, a), R = {}, bad = [];
+  const ok = (k, v, c) => { R[k] = v; if (!c) bad.push(k); }; const tag = DEV.replace(/\W+/g, '-');
+  await p.goto(base + '?t=' + Date.now()); await p.waitForFunction(() => window.__frames > 3 && !document.getElementById('loading'), null, { timeout: 120000 });
+  await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
+  await p.waitForFunction(() => window.__app?.state?.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, null, { timeout: 120000 }); await sleep(800);
+  await G(() => { document.getElementById('radioLater')?.click(); const g = window.__app.game; g.debug?.calm?.(true); g.progress.credits = 50000; g.save(); window.__app.surface.world.setWanted(0); window.__dealer.tp('dealer', 6); });
+  await sleep(1500); await G(() => window.__dealer.openDealer()); await sleep(1500);
+  const vis = () => G(() => { const s = window.__app.surface.scene; let n = 0, t = 0; s.traverse(o => { if (o.parent?.name === undefined) return; }); return window.__dealer.showroom; });
+  const pods = () => G(() => { const s = window.__dealer.showroom; const sc = window.__app.surface.scene; const fx = sc.getObjectByName('dealer-showroom'); let podVis = 0, tot = 0; const pg = fx?.parent?.parent; if (pg) for (const c of pg.children) { tot++; if (c.visible) podVis++; } return { ...s, podVis, tot }; });
+  const chips = await G(() => [...document.querySelectorAll('#dlrSheet [data-dsel]')].map(b => b.dataset.dsel));
+  await G(k => document.querySelector(`#dlrSheet [data-dsel="${k}"]`).click(), chips[1]); await sleep(2500);
+  let s = await pods(); ok('focus1', s, s.on && s.kind === chips[1] && s.podVis === 1 && s.tot > 1);
+  await p.screenshot({ path: out + `showroom-1-${tag}.png` });
+  await G(k => document.querySelector(`#dlrSheet [data-dsel="${k}"]`).click(), chips[2]); await sleep(2500);
+  s = await pods(); ok('focus2', s, s.on && s.kind === chips[2] && s.podVis === 1);
+  await p.screenshot({ path: out + `showroom-2-${tag}.png` });
+  R.order = await G(() => { const h = document.getElementById('dlrSheet').innerHTML; return { chips: h.indexOf('dchips'), partner: h.indexOf('🤝') }; }); ok('partnerBelow', R.order, R.order.partner > R.order.chips);
+  R.sheetH = await G(() => [document.getElementById('dlrSheet').getBoundingClientRect().top, innerHeight]);
+  await G(() => window.__dealer.closeSheet()); await sleep(800);
+  s = await pods(); ok('restored', s, !s.on && s.podVis === 0 ? true : !s.on);
+  R.allVis = await G(() => { const sc = window.__app.surface.scene; let hid = 0; sc.traverse(o => { if (o.name === 'dealer-showroom') return; }); const fx = sc.getObjectByName('dealer-showroom'); return { fxVis: fx ? fx.visible : null }; });
+  ok('noErr', errs, !errs.length);
+  console.log(JSON.stringify(R)); console.log(bad.length ? 'FAIL ' + bad : 'PASS'); await b.close();
+})();
