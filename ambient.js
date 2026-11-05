@@ -24,6 +24,7 @@ export function ambientAny(s, now) { return !!A && AC.eligibleEvents(A, s, now, 
 
 export function ambientStart(s, now, force) {
   if (!A || ev || !api) return null;
+  if (!force && typeof document !== 'undefined' && document.querySelector('#hpassPanel.on')) return null; // v7.5.57: never pop a choice card under the Helios bribe sheet
   const e = force ? A.events.find(x => x.id === force) : AC.pick(A, s, now, cooldowns);
   if (!e || (force && e._c.support === 'stub')) return null;
   const plan = AC.npcPlan(e, api.budget(), api.mobile());

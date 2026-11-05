@@ -140,6 +140,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await G(() => { window.__danger.clear(); window.__app.surface.world.setWanted(0, 'test'); const H = window.__app.surface.game.debug.H?.(); if (H) H.hp = 100; }); await rough(7); await sleep(300);
     ok('ambientLoaded', null, await wait(() => window.__danger.ambient.loaded, 10000));
     ok('ambientStubsListed', null, await G(() => window.__danger.ambient.stubs().length === 17));
+    await G(() => document.querySelector('#hpassPanel.on [data-x]')?.click()); // the drive through the Helios checkpoint can leave ColSec's bribe sheet up
     ok('ambientInitiation', JSON.stringify(await G(() => window.__danger.ambient.state.active)), await G(() => window.__danger.force('ambient', { id: 'ev-initiation-watch' })));
     ok('ambientCard', null, await wait(() => document.querySelectorAll('#dzEvChoices.on button').length === 3, 5000));
     ok('ambientCentreClear', null, await centreClear());

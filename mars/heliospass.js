@@ -90,6 +90,7 @@ let cpAt = -1e9;
 export function onCheckpoint(ev) {
   if (!ev || ev.id !== 'cp-helios' || !ev.ok || wanted() > 0) return;
   if (!S) S = read(); if (S.pass || now() - cpAt < 600000) return;
+  if (document.querySelector('#dzEvChoices.on')) return; // v7.5.57: a street-event card is up; don't cover it
   cpAt = now(); offer('ColSec', true);
 }
 
