@@ -64,7 +64,15 @@ ok('planumThreads', C.rows(C.fresh(), 5000, 'planum').map(r => r.id).join() === 
   ok('yetiNotAtThreadbare', !shop.some(r => r.id === 'yeti') && !locked.some(r => r.id === 'yeti') && C.rows(C.fresh(), 5000, 'planum').some(r => r.id === 'yeti' && r.price === 2400));
   const bought = C.addOwned(C.fresh(), 'yeti');
   ok('yetiBuyWear', C.canBuy(C.fresh(), 'yeti', 2400).ok && C.canBuy(C.fresh(), 'yeti', 2399).why === 'broke' && bought.owned.includes('yeti') && C.equip(bought, 'yeti').state.eq === 'yeti');
-  ok('yetiReadsAsYeti', y.pal.torso !== null && y.pal.legs !== null && y.parts.some(p => p[0] === 'head' && p[5] === 'fur') && y.parts.filter(p => p[0] === 'armL' || p[0] === 'armR').length >= 4 && y.parts.some(p => p[0].startsWith('leg')));
+  const head = y.parts.find(p => p[0] === 'head' && p[1] === 'sph' && p[5] === 'fur');
+  const barrel = y.parts.find(p => p[0] === 'torso' && p[1] === 'box');
+  const paw = y.parts.find(p => p[0] === 'armL' && p[1] === 'sph');
+  const foot = y.parts.find(p => p[0] === 'legL' && p[1] === 'box');
+  ok('yetiReadsAsYeti', y.name === 'Yeti Suit' && y.price === 2400 && y.venue === 'planum' && y.pal.torso !== null && y.pal.legs !== null
+    && head && head[2][0] >= 0.3 && barrel && barrel[2][0] >= 0.68 && barrel[2][0] <= 0.8 && barrel[2][1] <= 0.74
+    && paw && paw[2][0] >= 0.18 && foot && foot[2][0] >= 0.32
+    && y.parts.some(p => p[5] === 'muzzle') && y.parts.some(p => p[5] === 'fang') && y.parts.some(p => p[5] === 'claw')
+    && y.parts.filter(p => p[0] === 'armL' || p[0] === 'armR').length >= 4);
 }
 ok('rowsWardrobe', rw.map(r => r.id).join() === [C.STOCK, ...OWN0, 'cowboy'].join() && rw.find(r => r.id === 'cowboy').worn && !rw[0].worn);
 // real taps
