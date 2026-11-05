@@ -307,8 +307,8 @@ function ensureUI() {
   window.addEventListener('keydown', e => { if (!sheet) return; e.stopImmediatePropagation(); if (e.code === 'Escape') closeSheet(); }, true);
   // v7.5.56 (m1): E fences a stolen ride on the lot on desktop too (the button can be hidden there); same capture pattern as myrides' E
   window.addEventListener('keydown', e => {
-    if (e.code !== 'KeyE' || e.repeat || sheet || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) return;
-    if (!ui?.fence || ui.btn.style.display !== 'block') return; e.preventDefault(); e.stopImmediatePropagation(); ui.act?.();
+    if (e.code !== 'KeyE' || e.repeat || sheet || window.__dealerNoCapture || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) return;
+    if (!ui?.fence || ui.btn.style.display !== 'block') return; e.preventDefault(); e.stopImmediatePropagation(); window.__dealer.lastKey = 'capture'; ui.act?.();
   }, true);
   ui = { btn, menu, act: null, label: '', t: 0 };
   return ui;
@@ -639,6 +639,8 @@ window.__dealer = {
   get garage() { return garage(); }, get stock() { return dealerStock(); }, get spots() { return here() ? spots() : null; }, get sheet() { return sheet?.kind || null; },
   get brakeAssist() { return brakeAssist; }, get lotCenter() { if (!here()) return null; const S = spots(), c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw); return { x: S.dealer.x + LOT.cx * c + LOT.cz * s, z: S.dealer.z - LOT.cx * s + LOT.cz * c, on: p => onLot(p) }; },
   get ctxWhy() { return C ? { sheet: sheet?.kind || null, here: here(), down: !!C.game.isDown(), race: window.__race?.state || null, inside: !!app()?.surface?.info?.inside, stolen: !!stolenCar(), onLot: onLot(meOf()), age: Math.round(performance.now() - last) } : null; },
+  // v7.5.59 (M1): index.html's KeyE asks here first; true = the Fence ride action ran, so doInteract() must not
+  keyE() { if (!ui?.fence || ui.btn.style.display !== 'block' || sheet || !ui.act) return false; ui.act(); return true; },
   get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),

@@ -82,5 +82,11 @@ ok('realTap', C.isRealTap({ id: 1, x: 0, y: 0 }, { id: 1, x: 6, y: 6 }) && !C.is
 ok('rivalRoster', C.nextRival({}, 0)?.id === 'rusty' && C.nextRival({ rusty: { back: 100 } }, 50)?.id === 'jawbone' && C.nextRival({ rusty: { back: 9 }, jawbone: { back: 9 }, deacon: { back: 9 } }, 5) === null);
 ok('lines', C.LINES.benny.startsWith('Ten pins, one lane') && C.LINES.rival.length === 2 && C.RENT === 50 && C.RUN_SECS === 90);
 
+// v7.5.59 balance: ice drift + Perfect Cold cool-down
+ok('wobbleBounds', Math.abs(C.wobble(1, 0)) <= C.WOBBLE + 1e-9 && Math.abs(C.wobble(1, 1)) <= C.WOBBLE + 1e-9 && C.wobble(0.85, 0.5) === 0);
+{ let k = 0, h = 0; const N = 400; for (let i = 0; i < N; i++) { const r = C.simulate({ aim: C.wobble(0.85, i / (N - 1)), power: 0.85 }); if (r.count === 10) k++; if (r.headHit) h++; }
+  const rate = k / N, perfect = rate ** 3; ok('straightNotAlwaysStrike', rate > 0.45 && rate < 0.95, rate); ok('perfectRare', perfect < 0.75, perfect); ok('headPinStillHit', h === N, h); }
+ok('perfectCool', C.perfectPay(0, 1e12).full && !C.perfectPay(1e12, 1e12 + 60000).full && C.perfectPay(1e12, 1e12 + C.PERFECT_COOL_S * 1000).full && C.perfectPay(1e12, 1e12 + 1).cr === 0);
+
 console.log(fails ? `icecap unit: ${fails}/${n} FAILED` : `icecap unit: all ${n} passed`);
 process.exit(fails ? 1 : 0);

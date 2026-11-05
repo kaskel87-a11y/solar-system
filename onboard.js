@@ -46,7 +46,10 @@ const CSS = `
 #obLine .ob-t{flex:1 1 auto;min-width:0;overflow-wrap:anywhere} /* v7.5.50: full text, never clamped (SE cut the 4th line off) */
 @media (max-width:400px){#obLine{font-size:12px;line-height:1.25;padding:5px 5px 5px 8px}}
 @media (orientation:portrait){body.hudx #stackR:has(> #obLine:not([hidden])){max-height:calc(42vh - 62px - var(--sat))}}
-@media (orientation:landscape) and (max-height:500px){#obLine{font-size:11.5px;line-height:1.22}}
+@media (orientation:landscape) and (max-height:500px){#obLine{font-size:11.5px;line-height:1.22}
+ /* v7.5.59 (m2): SE landscape with a quest card: the tutorial line already says how to follow the arrow, so the card's how-to line steps aside and nothing clips */
+ body.hudx #stackR:has(> #obLine:not([hidden])) #questTrack .hxHow{display:none!important}
+ body.hudx #stackR:has(> #obLine:not([hidden])):has(#hxCard.on) > #radio.mini{display:none!important}}
 #obLine .ob-k{display:block;font:700 10px/1.2 system-ui,sans-serif;letter-spacing:.04em;color:#38e1ff;text-transform:uppercase;margin-bottom:1px}
 #obLine .ob-d{flex:none;font:700 12px/1 system-ui,sans-serif;color:#38e1ff;white-space:nowrap;text-align:center;min-width:34px}
 #obLine .ob-d i{display:block;font-style:normal;font-size:17px;line-height:1;margin-bottom:2px}

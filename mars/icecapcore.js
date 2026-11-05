@@ -27,6 +27,12 @@ export const SPOTS = {
 };
 export const RENT = 50, RUN_SECS = 90, TRICK_STARS = 5, AIR_CR_PER_S = 20;
 export const PAY = { pin: 10, head: 300, strike: 500, perfectCr: 2000, perfectStars: 200 };
+// v7.5.59 (m1 balance): the ice isn't perfect. Each roll drifts up to ±WOBBLE rad (a bit more at full power), so a
+// dead-straight roll still strikes most of the time but not every time; and Benny pays the Perfect Cold bonus in full
+// once per PERFECT_COOL_S. Inside that window a Perfect Cold pays PERFECT_REPEAT (bragging rights, a few stars).
+export const WOBBLE = 0.02, PERFECT_COOL_S = 1800, PERFECT_REPEAT = { cr: 0, stars: 25 };
+export const wobble = (power, r) => (r * 2 - 1) * WOBBLE * (0.6 + 0.4 * clamp(power ?? 0.7, 0, 1));
+export const perfectPay = (lastAt, now) => (!lastAt || now - lastAt >= PERFECT_COOL_S * 1000) ? { cr: PAY.perfectCr, stars: PAY.perfectStars, full: true } : { ...PERFECT_REPEAT, full: false };
 export const RIVAL_BACK_S = 90; // he limps off and is back at the hut after this
 export const LIEUTENANTS = [
   { id: 'rusty', name: 'Rusty Vane', gang: 'saltblood', gangName: 'Saltblood', col: 0xe0282e },

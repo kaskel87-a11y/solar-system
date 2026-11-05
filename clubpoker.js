@@ -53,5 +53,9 @@ export function addPokerRoom(api, { x = POKER_ROOM.x, z = POKER_ROOM.z } = {}, p
 }
 
 // index.html routes the 'poker' hotspot here
-export function openVelvetPoker(opts = {}) { if (pokerIsOpen()) return { ok: false, why: 'open' }; return openPokerTable({ ...opts, theme: VELVET_THEME }); }
+// v7.5.59 (p1): the Dome Room high-roller table is Grisby's, not Mags's
+export const GRISBY_THEME = { ...VELVET_THEME, title: 'High-roller Hold\u2019em', host: 'Grisby',
+  hint: 'Grisby deals and keeps the book, Tiny watches your hands. In-game credits only.',
+  offer: 'Grisby: \u201cHigh-roller table. Blinds are 5 and 10, and I write down every chip.\u201d', hint2: 'Tip Grisby mid-hand for a peek (25 cr). Get caught and Tiny walks you out the back.' };
+export function openVelvetPoker(opts = {}) { if (pokerIsOpen()) return { ok: false, why: 'open' }; const { who, ...o } = opts; return openPokerTable({ ...o, theme: who === 'Grisby' ? GRISBY_THEME : VELVET_THEME }); }
 export { pokerIsOpen };

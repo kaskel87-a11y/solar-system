@@ -37,6 +37,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const cd = await G(() => window.__app.surface.world.doorList().find(d => d.kind === 'club'));
     ok('noBeamUnowned', await G(() => !window.SSX?.ownedbeams?.state?.()?.beams?.some(b => b.name === 'owned-beam:velvet')));
     ok('doorKept', `${cd.x},${cd.z.toFixed(1)}`, !!cd);
+    // v7.5.59 (p2): the Enter button at the club door fits its label
+    await G(([x, z]) => { window.__app.surface.debugPlace(x, z + 2.2, 0); }, [cd.x, cd.z]); await sleep(1500);
+    await wait(() => { const b = document.getElementById('driveBtn'); return !!b?.offsetHeight && /Enter/.test(b.textContent); }, 6000); R.enterBtn = await G(() => { const b = document.getElementById('driveBtn'); return b && b.offsetHeight ? { t: b.textContent, fits: b.scrollHeight <= b.clientHeight + 1 && b.scrollWidth <= b.clientWidth + 1, h: b.offsetHeight } : null; });
+    ok('enterFits', JSON.stringify(R.enterBtn), !!R.enterBtn && /Enter/.test(R.enterBtn.t) && R.enterBtn.fits); await page.screenshot({ path: out + `velvet-enter-btn-${tag}.png` });
     await G(([x, z]) => { window.__app.surface.debugPlace(x + 10, z + 26, Math.atan2(-10, 36)); }, [cd.x, cd.z]); await sleep(2500);
     await page.screenshot({ path: out + `velvet-outside-${tag}.png` });
     // ---- inside ----
@@ -61,7 +65,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await page.screenshot({ path: out + `velvet-office-${tag}.png` });
     // high-roller table opens the Velvet Hold'em modal
     await at(18, 15.65, Math.PI); await sleep(300); await act();
-    ok('hrPokerOpens', await wait(() => /Velvet Hold/.test(document.getElementById('pokerPanel')?.textContent || ''), 4000));
+    ok('hrPokerOpens', await wait(() => /High-roller Hold/.test(document.getElementById('pokerPanel')?.textContent || ''), 4000));
+    ok('hrGrisby', await G(() => { const t = document.getElementById('pokerPanel')?.textContent || ''; return /Grisby/.test(t) && !/Mags deals/.test(t); })); await page.screenshot({ path: out + `velvet-domeroom-table-${tag}.png` }); // v7.5.59 (p1)
     await G(() => { const p = document.getElementById('pokerPanel'); const b = p && [...p.querySelectorAll('button')].find(b => /leave|close|✕|walk/i.test(b.textContent + (b.getAttribute('aria-label') || ''))); b?.click(); });
     await page.keyboard.press('Escape').catch(() => {}); await sleep(600);
     // ---- the arc: locked until 10 bottles or 3000 stars ----

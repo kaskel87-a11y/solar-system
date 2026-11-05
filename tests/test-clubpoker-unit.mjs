@@ -34,14 +34,14 @@ const pad = /pad: \[(-?\d+), (-?\d+), (\d+)\]/.exec(mars), crates = [...(/crates
 ok('clear of pad + crates', club && pad && !ov(club, { x: +pad[1], z: +pad[2], w: 2 * +pad[3], d: 2 * +pad[3] }) && crates.every(([x, z]) => !ov(club, { x: x + 0.65, z: z + 0.65, w: 2.6, d: 2.6 })));
 ok('perimeter lamps step out of blocks', /a lamp that would stand inside a block/.test(world));
 // poker: reused engine, re-themed, black/white buttons, routed from the hotspot
-ok('clubpoker reuses activities/poker.js', /import \{ openPokerTable, pokerIsOpen \} from '\.\/activities\/poker\.js'/.test(cp) && /openPokerTable\(\{ \.\.\.opts, theme: VELVET_THEME \}\)/.test(cp));
+ok('clubpoker reuses activities/poker.js', /import \{ openPokerTable, pokerIsOpen \} from '\.\/activities\/poker\.js'/.test(cp) && /openPokerTable\(\{ \.\.\.o, theme: who === 'Grisby' \? GRISBY_THEME : VELVET_THEME \}\)/.test(cp));
 ok('engine accepts a theme', /TH = \{ \.\.\.THEME0, \.\.\.\(opts\.theme \|\| \{\}\) \}/.test(poker) && /\$\{TH\.title\}/.test(poker) && /TH\.buyIns \|\| BUYINS/.test(poker));
 ok('Nyx table keeps its defaults', /title: "Static Hold'em", host: 'Nyx'/.test(poker));
 ok('buttons black with white text', /#pokerPanel button, [^{]*\{ background: #000; color: #fff;/.test(poker));
 ok('buttons bound with panelTap (tap-safe)', /panelTap\(el, on\)/.test(poker));
 ok('credit buy-ins, 3 seated regulars', /buyIns: \[100, 250, 600\]/.test(cp) && /nAi: 3/.test(cp));
 ok('poker spot + seated NPCs + dealer', /act: 'poker'/.test(cp) && /poses\.sit\?\.\(h\)/.test(cp) && /Mags, the dealer/.test(cp));
-ok('index routes act poker', /s\.act === 'poker'\) \{ try \{ const r = openVelvetPoker\(\)/.test(html) && /import \{ openVelvetPoker \} from '\.\/clubpoker\.js'/.test(html));
+ok('index routes act poker', /s\.act === 'poker'\) \{ try \{ const r = openVelvetPoker\(\{ who: s\.who \}\)/.test(html) && /import \{ openVelvetPoker \} from '\.\/clubpoker\.js'/.test(html));
 ok('sw precaches clubpoker.js', /`clubpoker\.js\$\{q\}`/.test(sw));
 ok('importmap has clubpoker', /"\.\/clubpoker\.js": "\.\/clubpoker\.js\?v=/.test(html));
 console.log(fails ? `${fails} FAIL` : 'all ok'); process.exit(fails ? 1 : 0);

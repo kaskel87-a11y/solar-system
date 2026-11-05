@@ -229,7 +229,8 @@ function roll(t) {
   const B = S.bowl; if (!B || B.anim) return res(false, B ? 'Wait for the pins.' : 'Not bowling.');
   if (t) B.t = { aim: C.clamp(+t.aim || 0, -0.1, 0.1), power: C.clamp(t.power ?? B.t.power, 0.15, 1), spin: C.clamp(+t.spin || 0, -1, 1) };
   const pos = C.position(B.rolls); if (pos.done) return res(false, 'Game over.');
-  const r = C.simulate(B.t, B.standing); B.anim = { r, t: 0, end: r.frames[r.frames.length - 1].t + 1.0, pos, standing: B.standing.slice(), headUp: B.standing[0] };
+  const drift = window.__icecapNoWobble ? 0 : C.wobble(B.t.power, Math.random()); B.lastDrift = drift; // v7.5.59: ice drift
+  const r = C.simulate({ ...B.t, aim: B.t.aim + drift }, B.standing); B.anim = { r, t: 0, end: r.frames[r.frames.length - 1].t + 1.0, pos, standing: B.standing.slice(), headUp: B.standing[0] };
   if (parts) { parts.aim.visible = false; }
   emit('roll', { ...B.t }); paintBowl(); return res(true, 'rolled');
 }
@@ -253,8 +254,10 @@ function sweep(standing) { // knocked pins cleared off the deck; a knocked-down 
 }
 function endGame() {
   const B = S.bowl, pay = C.payout(B.rolls, B.heads, B.rival), sc = C.score(B.rolls); save.games++; save.best = Math.max(save.best, sc.total); if (pay.perfect) save.perfect++; persist();
-  if (pay.perfect) { give(C.PAY.perfectCr, C.PAY.perfectStars); B.paid += C.PAY.perfectCr; toast(`🧊 PERFECT COLD! Three strikes. +${fmt(C.PAY.perfectCr)} cr +${C.PAY.perfectStars}★`, 4200); }
-  B.over = { total: sc.total, cr: pay.cr, stars: pay.stars, perfect: pay.perfect, strikes: pay.strikes, heads: pay.heads };
+  let pp = null; if (pay.perfect) { pp = C.perfectPay(save.perfectAt, Date.now()); if (pp.full) { save.perfectAt = Date.now(); persist(); }
+    give(pp.cr, pp.stars); B.paid += pp.cr; pay.cr += pp.cr - C.PAY.perfectCr; pay.stars = pp.stars;
+    toast(pp.full ? `🧊 PERFECT COLD! Three strikes. +${fmt(pp.cr)} cr +${pp.stars}★` : `🧊 PERFECT COLD again! Benny: \u201cI already paid you the big one, hotshot. Come back later.\u201d +${pp.stars}★`, 4200); }
+  B.over = { total: sc.total, cr: pay.cr, stars: pay.stars, bonusFull: pp ? pp.full : null, perfect: pay.perfect, strikes: pay.strikes, heads: pay.heads };
   emit('gameover', B.over); paintBowl(); if (B.rival) setTimeout(() => limpOff(), 1600);
 }
 function quit() { if (!S.bowl) return res(false, 'Not bowling.'); const B = S.bowl; if (B.anim) return res(false, 'Wait for the pins.'); const started = B.rolls.length > 0, over = !!B.over; S.bowl = null; bowlUi(false); restorePose();
@@ -348,7 +351,7 @@ function ragTick(h, dt) {
   if (settle >= 1) starsAt(h, S.simT, 0.2);
 }
 
-let bowlCam = null;
+let bowlCam = null, zoomCam = null; const BOWL_ZOOM = 1.7;
 function bowlTick(dt, tc) {
   const B = S.bowl, p = tc.player, cam = tc.camera; p.x = C.SPOTS.foul.x; p.z = C.SPOTS.foul.z - 0.6; p.y = tc.height(p.x, p.z) + EYE; p.vy = 0; p.yaw = Math.PI; p.faceYaw = Math.PI;
   const a = tc.astro; if (a?.group) { a.group.position.set(p.x, p.y - EYE, p.z); a.group.rotation.y = Math.PI; }
@@ -364,15 +367,16 @@ function bowlTick(dt, tc) {
       const o = parts.pins[j]; o.position.x = laneX(u); o.position.z = laneZ(w);
       if (q1[2]) { const fl = A.r.fall[j] || [0, 1]; if (!o.userData.fall) o.userData.fall = { t: 0 }; const F = o.userData.fall; F.t = Math.min(1, F.t + dt * 3); o.rotation.order = 'YXZ'; o.rotation.y = Math.atan2(-fl[0], fl[1]); o.rotation.x = F.t * Math.PI / 2; } });
     const cz = C.clamp(bw - 7, -5, C.PIN0 - 9), atPins = bw > C.PIN0 - 4;
-    if (atPins) { want = v3.set(C.CX + 3.6, 3.0, laneZ(C.PIN0 - 8.5)); look = v3b.set(C.CX + 0.4, -2.2, laneZ(C.PIN0 - 1)); /* look low: the bowl panel covers the bottom half */ } // side angle on the pin deck: watch the head pin go
+    if (atPins) { want = v3.set(C.CX + 2.8, 2.6, laneZ(C.PIN0 - 6.5)); look = v3b.set(C.CX + 0.4, -2.2, laneZ(C.PIN0 - 1)); /* look low: the bowl panel covers the bottom half */ } // side angle on the pin deck: watch the head pin go
     else { want = v3.set(C.CX - bu * 0.4, 3.4, laneZ(cz)); look = v3b.set(C.CX - bu * 0.3, 0.7, laneZ(Math.min(bw + 6, C.PIN0 + 1))); }
     if (A.t >= A.end) resolveRoll();
   } else {
-    want = v3.set(C.CX, 3.1, C.FOUL - 5.2); look = v3b.set(C.CX, 0.6, laneZ(C.PIN0 - 2));
+    want = v3.set(C.CX, 2.9, C.FOUL - 4.2); look = v3b.set(C.CX, 0.6, laneZ(C.PIN0 - 2));
     if (!B.over) aimDots(); else parts.aim.visible = false;
   }
   if (!bowlCam) bowlCam = want.clone(); else bowlCam.lerp(want, 1 - Math.exp(-dt * 5));
   cam.position.copy(bowlCam); cam.lookAt(look);
+  if (cam.zoom !== BOWL_ZOOM) { cam.zoom = BOWL_ZOOM; cam.updateProjectionMatrix(); zoomCam = cam; } // v7.5.59 (p3): pins + rival read clearly on a phone
 }
 let aimKey = '', aimPath = [];
 function aimDots() {
@@ -447,7 +451,7 @@ function ui() {
 }
 function msg(t) { const m = bowlEl?.querySelector('#icecapMsg'); if (m) m.textContent = t; }
 function fadeBlink() { if (!fadeEl) return; fadeEl.style.opacity = '1'; setTimeout(() => { fadeEl.style.opacity = '0'; }, 380); }
-function bowlUi(on) { ui(); bowlEl.classList.toggle('on', !!on); document.body.classList.toggle('icecapBowling', !!on); bowlCam = null; aimKey = ''; if (!on && parts) parts.aim.visible = false; }
+function bowlUi(on) { ui(); bowlEl.classList.toggle('on', !!on); document.body.classList.toggle('icecapBowling', !!on); bowlCam = null; aimKey = ''; if (!on && zoomCam) { zoomCam.zoom = 1; zoomCam.updateProjectionMatrix(); zoomCam = null; } if (!on && parts) parts.aim.visible = false; }
 function paintBowl(live) {
   const B = S.bowl; if (!B || !bowlEl) return; const sc = C.score(B.rolls), pos = C.position(B.rolls);
   bowlEl.querySelector('#icecapCard').innerHTML = sc.frames.map((f, i) => `<div class="fr${!pos.done && i === pos.frame ? ' cur' : ''}"><span>F${i + 1}</span><b>${f.marks.join(' ') || '&nbsp;'}</b><span>${f.score ?? '&nbsp;'}</span></div>`).join('') + `<div class="fr"><span>Total</span><b>${sc.total}</b><span>${fmt(B.paid)} cr</span></div>`;
