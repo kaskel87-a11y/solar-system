@@ -4,6 +4,7 @@ let fails = 0; const ok = (name, c) => { if (!c) { fails++; console.log('FAIL', 
 const mem = () => { const m = {}; return { getItem: k => m[k] ?? null, setItem: (k, v) => { m[k] = String(v); }, m }; };
 ok('3 plots, unique ids', B.PLOTS.length === 3 && new Set(B.PLOTS.map(p => p.id)).size === 3);
 ok('5 piece types', ['wall', 'gate', 'garage', 'stash', 'turret'].every(t => B.PIECES[t]));
+ok('hab and pad', B.PIECES.hab.fp.join() === '2,2' && B.PIECES.hab.max === 1 && B.PIECES.pad.fp.join() === '3,3' && B.PIECES.pad.colliders.length === 0 && B.PIECES.pad.cost === 700);
 const s = B.freshSave(), A = s.plots['aj-north'];
 ok('unowned refuses', !B.canPlace(A, 'wall', 0, 0, 0).ok);
 A.owned = true;
@@ -24,6 +25,14 @@ ok('wall collider rotates', (c0.x1 - c0.x0) > (c0.z1 - c0.z0) && (c1.z1 - c1.z0)
 const pc = B.pieceCentre(w); const po = B.pushOut(A, pc.x, pc.z + 0.3, 0.45);
 ok('pushOut moves you off a wall', po && Math.abs(po.z - pc.z) >= 0.25 + 0.45 - 1e-6);
 ok('gate passable at centre', B.pushOut({ pieces: [{ type: 'gate', i: 2, j: 2, r: 0 }] }, B.pieceCentre({ type: 'gate', i: 2, j: 2, r: 0 }).x, B.pieceCentre({ type: 'gate', i: 2, j: 2, r: 0 }).z, 0.45) === null);
+const hab = { type: 'hab', i: 2, j: 2, r: 0 }, hc = B.pieceCentre(hab);
+ok('hab door is open', B.pushOut({ pieces: [hab] }, hc.x, hc.z + 1.5, 0.45) === null);
+ok('hab back wall blocks', !!B.pushOut({ pieces: [hab] }, hc.x, hc.z - 1.86, 0.45));
+ok('pad does not shove you', B.pushOut({ pieces: [{ type: 'pad', i: 0, j: 0, r: 0 }] }, B.pieceCentre({ type: 'pad', i: 0, j: 0, r: 0 }).x, B.pieceCentre({ type: 'pad', i: 0, j: 0, r: 0 }).z, 0.45) === null);
+ok('hab cap 1', (() => { const p = B.freshSave().plots['aj-north']; p.owned = true; B.addPiece(p, 'hab', 0, 0, 0); return B.canPlace(p, 'hab', 6, 6, 0, { credits: 99999 }).why.startsWith('Max'); })());
+ok('rest cooldown', B.restReady(0, 1000).ok && !B.restReady(1000, 1000 + B.REST_MS - 1).ok && B.restReady(1000, 1000 + B.REST_MS).ok && B.REST_MS === 180000);
+const saved = B.freshSave(); saved.plots['aj-north'].owned = true; saved.plots['aj-north'].habRest = 123456; B.addPiece(saved.plots['aj-north'], 'hab', 1, 1, 0);
+ok('habRest survives migrate', B.migrate(saved).plots['aj-north'].habRest === 123456 && B.migrate(saved).plots['aj-north'].pieces[0].type === 'hab');
 ok('rotXZ matches THREE (r1: +z -> +x)', B.rotXZ(0, 1, 1).join() === '1,0' && B.rotXZ(1, 0, 1).join() === '0,-1');
 ok('snap centres the footprint', JSON.stringify(B.snap('wall', 0, 0.1, 0.1)) === '{"i":5,"j":5}' && JSON.stringify(B.snap('garage', 0, 0, 0)) === '{"i":4,"j":4}');
 ok('pickTarget nearest in range', B.pickTarget(0, 0, [{ x: 40, z: 0 }, { x: 10, z: 0 }, { x: 5, z: 3 }]).x === 5 && B.pickTarget(0, 0, [{ x: 40, z: 0 }]) === null);
