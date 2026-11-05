@@ -9,6 +9,7 @@ await p.goto(base+'?storm=0&t='+Date.now(),{timeout:180000});await W(()=>window.
 await G(()=>{localStorage.setItem('ssx.adult','1');localStorage.setItem('ssx.onboard.v1','{"v":1,"status":"done","done":true,"skipped":true}');window.__app.landOn(window.__app.bodies.find(b=>b.name==='Mars').mesh)});
 await W(()=>window.__app.state.onSurface&&!window.__app.state.transitioning&&window.__app.surface.info?.intro===0);await sleep(1500);
 await G(()=>{try{window.SSX.onboard?.skip?.()}catch(e){}});await W(()=>!!window.__dealer,30000);
+if(process.env.DOME){const buy=await G(()=>{const P=window.__app.game.progress;P.credits=(P.credits|0)+90000;P.xp=Math.max(P.xp|0,8000);return window.__dealer.buyDome('cr')});if(!buy.ok){console.log(JSON.stringify({buy}));console.log('FAIL');process.exit(1);}}
 const R={};
 const lot=await G(()=>{const d=window.__dealer.lotCenter;if(!window.__dealer.lotCenter.on(d))throw new Error('lot centre math');return {x:d.x,z:d.z}});
 // start 30 m off the lot, pull the nearest unowned parked car next to us, take it

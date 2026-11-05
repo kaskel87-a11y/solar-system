@@ -186,13 +186,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   let cfg = null, name = null, noise = null, noise2 = null;
   const chunks = new Map();
   const rockBlk = new Map(); // v7.5.1 (M4/m2): big rocks per chunk block the camera boom
-  const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
+  // v7.5.65: the showroom dome tucks boulders visually out to a wider footprint. The same rocks must not stay solid
+  // (an invisible wall under the glass kicks a stolen bike off the fence rectangle and E exits instead of fencing).
+  const rockHidden = r => { try { return !!globalThis.SSX_ROCK_CLEAR?.(r.x, r.z); } catch (e) { return false; } };
+  const rockAt = (x, y, z) => { const L = rockBlk.get(`${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`); if (L) for (const r of L) { if (rockHidden(r)) continue; const dx = x - r.x, dz = z - r.z, dy = (y - r.y) * 1.25; if (dx * dx + dy * dy + dz * dz < r.r * r.r) return true; } return false; };
   // v7.5.7: big rocks near (x, z) at ground level (summon keeps the rover out of them; tests count them)
   // v7.5.41 boulders are solid (playtest p1): big rocks out in the wastes stop you on foot (sc > 0.6) and in a ride (sc > 0.9);
   // jet or fly over the top and they don't. Cities and the Beltway are swept clear of rocks so streets never get a surprise wall.
   const rockPush = (x, z, rad, bottom, minSc) => { let ox = x, oz = z, hit = false; const ix = Math.floor(x / CHUNK), iz = Math.floor(z / CHUNK);
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = rockBlk.get(`${ix + i},${iz + j}`); if (L) for (const r of L) {
-      if (r.sc < minSc || bottom > r.top - 0.15) continue; const dx = ox - r.x, dz = oz - r.z, d = Math.hypot(dx, dz), m = r.sr + rad; if (d >= m) continue;
+      if (rockHidden(r) || r.sc < minSc || bottom > r.top - 0.15) continue; const dx = ox - r.x, dz = oz - r.z, d = Math.hypot(dx, dz), m = r.sr + rad; if (d >= m) continue;
       const k = d > 1e-4 ? m / d : 0; ox = d > 1e-4 ? r.x + dx * k : r.x + m; oz = d > 1e-4 ? r.z + dz * k : oz; hit = true; } }
     return hit ? { x: ox, z: oz, rock: true } : null; };
   const rockClear = (x, z) => { try { return !!world.districtAt?.(x, z) || !!globalThis.SSX_GROUND?.clear?.(x, z, name); } catch (e) { return false; } }; // world isn't built yet on the very first chunks; SSX_GROUND: mars/icecap.js keeps boulders off the snow
