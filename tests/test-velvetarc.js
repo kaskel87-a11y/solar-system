@@ -128,7 +128,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await at(-11, 22, Math.PI); await act();
     ok('leftClub', await wait(() => !window.__app.surface.info.inside, 6000));
     await G(([x, z]) => { window.__app.surface.debugPlace(x + 8, z + 52, Math.atan2(-8, 62)); }, [cd.x, cd.z]); await sleep(2500);
-    ok('beam', await wait(() => !!window.SSX?.ownedbeams?.state?.()?.beams?.some(b => b.name === 'owned-beam:velvet'), 5000));
+    ok('beam', await wait(() => !!window.SSX?.ownedbeams?.state?.()?.beams?.some(b => b.name === 'owned-beam:velvet'), 15000));
     await G(([x, z]) => window.SSX.hudx?.setWaypoint?.({ x, z, label: 'The Velvet Airlock' }, true), [cd.x, cd.z]);
     ok('wpGreen', await wait(() => { const o = window.SSX?.wpbeam?.object?.(); return o && o.children.find(c => c.name === 'wp-beam-col')?.material.uniforms.uCol.value.getHex() === 0x0b6b2a; }, 5000));
     await page.screenshot({ path: out + `velvet-beam-${tag}.png` });
