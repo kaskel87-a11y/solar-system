@@ -30,6 +30,7 @@
     'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
     'ssx.sandworm.v1', // the sandworm (mars/sandworm.js): last attack day, harvest count, Worm Teeth, regrow queue
+    'ssx.icecap.v1', // Planum Australe ice cap (mars/icecap.js): best run / game, rival repeat-target log
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
     'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
     'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
