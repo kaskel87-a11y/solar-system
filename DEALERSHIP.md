@@ -8,6 +8,23 @@ Files: `garagecore.js` (pure logic: models, prices, upgrade math, rep, clock, sa
 
 Tapping a stock chip isolates that one podium: other lot cars hide, a Pit-style light show (coloured spot beams, floor pool, ring, soft pillar — unlit additive meshes, same strobe palette as `mars/pitshowcore.js`) plays on the selected ride, and the showroom camera tightens so the car fills the free window above the sheet on a phone. Closing the sheet restores the full lot.
 
+## Showroom Dome upgrade (cr + ⭐)
+
+A one-time upgrade on the dealer sheet (**🏟️ Move into the Dome**) puts the whole Red Line lot under its own NEW glass dome
+(half-ellipsoid, 72 x 40 m, 14 m tall, centred on the lot; steel ribs, red neon base ring, cyan halo, polished floor slab,
+front portal with a **SHOWROOM DOME** sign). It is not the old small dome that used to sit by the Velvet Airlock.
+
+- **Price** (always a mix): `9000 cr + 300 ⭐` or `4500 cr + 750 ⭐` (`GC.DOME.offers`). Two taps: the first arms the button
+  (`Sure? Tap again`), the second pays. Partner buy-in is not required.
+- **Perk**: partners get +25% lot cut (rate and cap) while domed (`GC.DOME.lotCutBonus`).
+- **What changes**: the roadside concrete apron is swapped for the dome floor, the context button reads **🚗 Dealer · Dome**,
+  boulders are tucked out of the larger footprint. Stock, buying, partner buy-in, fencing stolen rides (same lot area) and the
+  showroom isolate + Pit light show work the same inside the dome. Without the upgrade the lot is unchanged.
+- **Save**: `progress.garage.dome` (`{ on, at }`) inside `ssx.progress.v1` (so savecode carries it). Migrated by
+  `migrateGarage()` / `migrateDome()`; old saves come in with `{ on: false, at: null }`.
+- **API**: `SSX.garage.buyDome(offerId)` / `SSX.garage.dome`; debug `__dealer.buyDome`, `__dealer.dome`
+  (`{ on, at, built, visible, apron }`). Fires `ssx:dealerdome` on purchase. Test: `tests/test-dealer-dome.js`.
+
 ## Listing a vehicle at Red Line Motors
 
 Any `SSX.registerVehicle(kind, spec, builder)` entry with a numeric **`price`** is listed automatically. Nothing else is needed:

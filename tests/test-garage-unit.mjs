@@ -126,5 +126,19 @@ ok('partner sell stacks with rep', GC.partnerSellPrice({ price: 1000 }, 150, tru
   ok('fence high heat sometimes pays', noBust.ok && noBust.cr > 0);
 }
 ok('freshGarage has partner', GC.freshGarage().partner.on === false);
+// Showroom Dome upgrade (progress.garage.dome): always cr + ⭐, a step up from partner buy-in, migrates cleanly
+{
+  ok('fresh dome off', GC.freshGarage().dome.on === false && GC.migrateGarage({ rides: [] }).dome.on === false);
+  ok('dome migrates', GC.migrateGarage({ dome: { on: 1, at: '123' } }).dome.on === true && GC.migrateGarage({ dome: { on: 1, at: '123' } }).dome.at === 123 && GC.migrateGarage({ dome: 'x' }).dome.on === false);
+  ok('dome offers mix cr + stars', GC.domeOffers().length === 2 && GC.domeOffers().every(o => o.cr > 0 && o.stars > 0));
+  ok('dome pricier than partner', GC.domeOffers().every(o => o.cr > GC.PARTNER.mixCr && o.stars > GC.PARTNER.mixStars));
+  const g = GC.freshGarage();
+  ok('dome check pays', GC.domeCheck(g, 'cr', { cr: 9000, stars: 300 }).ok && !GC.domeCheck(g, 'cr', { cr: 8999, stars: 300 }).ok && GC.domeCheck(g, 'cr', { cr: 0, stars: 0 }).shortStars === 300);
+  ok('dome check bad offer', GC.domeCheck(g, 'nope', { cr: 1e6, stars: 1e6 }).why === 'offer');
+  g.dome.on = true; ok('dome owned once', GC.domeCheck(g, 'cr', { cr: 1e6, stars: 1e6 }).why === 'owned');
+  ok('lot under dome', [[-37, -9], [13, -9], [-37, 13], [13, 13]].every(([x, z]) => GC.underDome(x, z)) && !GC.underDome(22, -16));
+  const p1 = { on: true, pending: 0 }, p2 = { on: true, pending: 0 }; GC.partnerAccrue(p1, 12, 2); GC.partnerAccrue(p2, 12, 2, 1 + GC.DOME.lotCutBonus);
+  ok('dome boosts lot cut', Math.abs(p2.pending - p1.pending * 1.25) < 1e-6);
+}
 
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);
