@@ -148,6 +148,9 @@ ok('swagSpot', W.clearOfLane() && W.SPOT.z < C.FOUL && Math.hypot(W.SPOT.x - C.S
   ok('boardTwice', W.buy(bought.state, 'dustrunner', 9999, 0).why === 'owned');
   const bib = W.buy(s0, 'frostbib', 400, 0);
   ok('buyThread', bib.ok && bib.price === 400 && bib.state.threads.includes('frostbib') && bib.state.wear === 'frostbib');
+  const yeti = W.buy(s0, 'yeti', 2400, 0);
+  ok('buyYeti', yeti.ok && yeti.price === 2400 && yeti.item.kind === 'thread' && yeti.state.wear === 'yeti' && W.rows(yeti.state, 0, 0).some(r => r.id === 'yeti' && r.owned && r.worn));
+  ok('yetiBroke', W.buy(s0, 'yeti', 2399, 0).why === 'broke');
   const ball = W.buy(s0, 'guttergod', 260, 0);
   ok('buyBall', ball.ok && ball.state.ball === 'guttergod' && W.bowlOf(ball.state).hook === 0.18 && W.ballLook(ball.state).color === 0x1a1a1c);
   ok('houseBall', W.equip(ball.state, 'house', 0).state.ball === null && W.equippedBall(W.fresh()).id === 'house');
