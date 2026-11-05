@@ -29,6 +29,7 @@
     'ssx.still.v1', 'ssx.still.v1.bak', 'ssx.farm2.v1', 'ssx.farm2.v1.bak', /* Red Static Gulch grow op (mars/farm2.js) + mirror */ 'ssx.hydroden.v1', /* Hydro Den rented grow rack (v7.5.30) */ 'ssx.shoptiers.v1', /* shop restock tiers + dealer waves (v7.5.45) */ // moonshine still (mars/still.js) + its #83-style mirror
     'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
     'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
+    'ssx.sandworm.v1', // the sandworm (mars/sandworm.js): last attack day, harvest count, Worm Teeth, regrow queue
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
     'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
     'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
