@@ -339,9 +339,21 @@ function installTapGuard() {
   const mouseClick = e => e.pointerType === 'mouse' || (lastPtr === 'mouse' && now() - lastPtrT < 1500);
   addEventListener('click', e => { if (mouseClick(e)) return; if ((now() < blockClick && blockSc?.some(el => el.contains(e.target))) || (e.isTrusted && e.detail !== 0 && recent(scrollers(e.target)))) { blockClick = 0; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
+// v7.5.56 (m2): #stackR never reaches down over the #surfBtns column (🏁 Red Tape Run etc. in landscape): cap it above the column's top
+function fitStack() {
+  const sr = document.getElementById('stackR'), col = document.getElementById('surfBtns'); if (!sr || !col) return;
+  const kids = [...col.children].filter(e => e.offsetWidth > 4 && getComputedStyle(e).display !== 'none'); 
+  if (!kids.length) { if (sr.style.maxHeight) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } return; }
+  let top = Infinity, l = Infinity, r = -Infinity; for (const e of kids) { const b = e.getBoundingClientRect(); top = Math.min(top, b.top); l = Math.min(l, b.left); r = Math.max(r, b.right); }
+  const c = sr.getBoundingClientRect(); if (c.right <= l || c.left >= r) { if (sr.style.maxHeight) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } return; }
+  const avail = Math.floor(top - c.top - 6), cur = parseFloat(sr.style.maxHeight) || 0;
+  if (sr.style.maxHeight && avail > cur + 1) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } // room again: back to the stylesheet cap, re-checked next tick
+  else if (c.bottom > top - 6 && avail > 0) { sr.style.maxHeight = avail + 'px'; sr.style.overflowY = 'auto'; }
+}
 function tick(force) {
   const now = performance.now(); if (!force && now - lastT < 140) return; lastT = now;
   if (!app()?.state) return;
+  try { fitStack(); } catch (e) { /* layout helper is optional */ }
   const md = app().state.onSurface ? mapData() : null;
   try { updCard(md); } catch (e) { /* card is optional */ }
   if (md) updWay(md); else way?.classList.remove('on');

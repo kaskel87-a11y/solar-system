@@ -305,6 +305,11 @@ function ensureUI() {
   const menu = addMenuItem(app(), { id: 'rmRides', label: '🚗 Rides & meets', onTap: () => openHub() });
   document.addEventListener('click', e => { if (performance.now() < ghostUntil && e.detail !== 0) { e.preventDefault(); e.stopPropagation(); ghostUntil = 0; } }, true);
   window.addEventListener('keydown', e => { if (!sheet) return; e.stopImmediatePropagation(); if (e.code === 'Escape') closeSheet(); }, true);
+  // v7.5.56 (m1): E fences a stolen ride on the lot on desktop too (the button can be hidden there); same capture pattern as myrides' E
+  window.addEventListener('keydown', e => {
+    if (e.code !== 'KeyE' || e.repeat || sheet || /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '')) return;
+    if (!ui?.fence || ui.btn.style.display !== 'block') return; e.preventDefault(); e.stopImmediatePropagation(); ui.act?.();
+  }, true);
   ui = { btn, menu, act: null, label: '', t: 0 };
   return ui;
 }
@@ -318,6 +323,7 @@ function pointerTap(el, fn) {
 }
 function setCtx(label, act) {
   if (!ui) return; ui.act = act;
+  ui.fence = !!label && label.startsWith('💸');
   if (!label) { if (ui.btn.style.display !== 'none') ui.btn.style.display = 'none'; return; }
   if (ui.btn.textContent !== label) ui.btn.textContent = label; if (ui.btn.style.display !== 'block') ui.btn.style.display = 'block';
 }

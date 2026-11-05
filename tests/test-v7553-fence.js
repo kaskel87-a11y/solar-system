@@ -2,7 +2,7 @@
 const pw=require('playwright');
 const base=process.env.BASE||'http://127.0.0.1:8897/',DEV=process.env.DEV||'iPhone 15',OUT=process.env.OUT,sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{const b=await pw.chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
-const{defaultBrowserType:_,...d}=pw.devices[DEV];const ctx=await b.newContext(d);await ctx.addInitScript(()=>{window.__ssxNoKeepAlive=true});
+const desk=DEV==='desktop';const{defaultBrowserType:_,...d}=desk?{}:pw.devices[DEV];const ctx=await b.newContext(desk?{viewport:{width:1440,height:900}}:d);await ctx.addInitScript(()=>{window.__ssxNoKeepAlive=true});
 const p=await ctx.newPage(),errs=[];p.on('pageerror',e=>errs.push(String(e).slice(0,200)));
 const G=(f,a)=>p.evaluate(f,a),W=(f,ms=180000)=>p.waitForFunction(f,null,{timeout:ms,polling:200});
 await p.goto(base+'?storm=0&t='+Date.now(),{timeout:180000});await W(()=>window.__frames>3&&!document.getElementById('loading'));
@@ -32,7 +32,8 @@ R.samp=await G(async()=>{const o=[];for(let i=0;i<30;i++){const b=document.getEl
 if(OUT)await p.screenshot({path:OUT+'fence-ride-'+DEV.replace(/ /g,'-')+'.png'});
 const cr0=await G(()=>window.__app.game.progress.credits),n0=await G(()=>window.__app.surface.world.parkedVehicles().length);
 const bb=await G(()=>{const r=document.getElementById('dlrCtxBtn')?.getBoundingClientRect();return r&&r.width?[r.x+r.width/2,r.y+r.height/2]:null});
-R.hit=bb&&await G(([x,y])=>{const e=document.elementFromPoint(x,y);return e&&(e.id||e.className)},bb);if(bb)await p.touchscreen.tap(bb[0],bb[1]);await sleep(1500);
+R.hit=bb&&await G(([x,y])=>{const e=document.elementFromPoint(x,y);return e&&(e.id||e.className)},bb);R.rect=await G(()=>{const e=document.getElementById('dlrCtxBtn');const r=e.getBoundingClientRect();let q=e.parentElement,h=[];while(q&&q!==document.body){const cs=getComputedStyle(q);if(cs.display==='none'||cs.visibility==='hidden')h.push(q.id||q.tagName);q=q.parentElement}return [Math.round(r.width),Math.round(r.height),h.join(','),document.body.className.slice(0,200)]});
+if(desk){if(process.env.KEY)await p.keyboard.press(process.env.KEY);else if(bb)await p.mouse.click(bb[0],bb[1]);}else if(bb)await p.touchscreen.tap(bb[0],bb[1]);await sleep(1500);
 R.cr=[cr0,await G(()=>window.__app.game.progress.credits)];R.veh2=await G(()=>window.__tc.car?.kind||null);R.toast=await G(()=>document.getElementById('toast')?.textContent.slice(0,120));
 R.errs=errs;console.log(JSON.stringify(R));
 console.log(/Fence ride/.test(R.lbl||'')&&R.cr[1]>R.cr[0]&&!R.veh2&&!errs.length?'PASS':'FAIL');await b.close()})().catch(e=>{console.log('CRASH',e);process.exit(1)});

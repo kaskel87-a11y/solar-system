@@ -418,6 +418,7 @@ function css() {
   st.textContent = `#wormCap{position:fixed;z-index:16;top:calc(122px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;width:min(360px,calc(100vw - 24px));padding:8px 14px 9px;border-radius:14px;border:3px solid #ff3b30;background:#000;color:#fff;font:800 16px/1.25 system-ui,sans-serif;pointer-events:none;box-sizing:border-box}
 #wormCap.on{display:block}#wormCap b{font-weight:900}#wormCap small{display:block;font-weight:700;font-size:13px;margin-top:4px}
 #wormCap .bar{height:10px;border:2px solid #fff;border-radius:6px;margin-top:6px;overflow:hidden;background:#222}#wormCap .bar i{display:block;height:100%;background:#ff3b30}
+@media (max-width:440px) and (orientation:portrait){#wormCap{left:auto;right:calc(8px + env(safe-area-inset-right));transform:none;width:calc(100vw - 132px - env(safe-area-inset-left) - env(safe-area-inset-right));padding:5px 9px 6px;font-size:13px}#wormCap small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} /* v7.5.56 (p1): clear of ▤ More on narrow phones */
 body.wormOn #hvCap,body.wormOn #stillCap,body.wormOn #f2Cap,body.wormOn #farmGuide{display:none!important}
 #wormAct{position:fixed;z-index:15;left:calc(14px + env(safe-area-inset-left));bottom:calc(250px + env(safe-area-inset-bottom));display:none;min-height:52px;min-width:120px;padding:6px 16px;border-radius:14px;border:3px solid #fff;background:#000;color:#fff;font:900 17px/1.1 system-ui,sans-serif;touch-action:manipulation;box-shadow:0 2px 10px #000}
 #wormAct.on{display:block}`;
