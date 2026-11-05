@@ -7,4 +7,6 @@ const s = greenSites(props, false, places).map(x => x.id); t('owned + post, not 
 t('bought farm', greenSites(props, true, places).some(x => x.id === 'farm'));
 t('nothing', greenSites(null, false, null).length === 0);
 const S = greenSites(props, true, places); t('siteAt near', siteAt(S, 12, 22)?.id === 'empire:a'); t('siteAt far', siteAt(S, 10 + NEAR + 1, 20) === null); t('siteAt NaN', siteAt(S, NaN, 0) === null);
+t('velvet owned', greenSites(props, false, places, [{ id: 'velvet', name: 'The Velvet Airlock', owned: true, x: -30, z: -238 }]).some(x => x.id === 'velvet'));
+t('velvet unowned', !greenSites(props, false, places, [{ id: 'velvet', owned: false, x: -30, z: -238 }]).some(x => x.id === 'velvet'));
 console.log(bad ? 'FAIL' : 'PASS ownedbeams-unit'); process.exit(bad ? 1 : 0);

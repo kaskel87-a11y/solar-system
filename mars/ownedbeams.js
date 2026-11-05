@@ -16,11 +16,12 @@ function build() {
   geo = new THREE.CylinderGeometry(R, R, H, 16, 1, true); geo.translate(0, H / 2, 0);
   mat = new THREE.MeshBasicMaterial({ color: GREEN, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: false });
 }
-function read() {
-  const X = window.SSX || {}; let props = [], fo = false, pl = [];
+function read(tc) {
+  const X = window.SSX || {}; let props = [], fo = false, pl = [], ex = [];
   try { props = X.empire?.props?.() || []; } catch (e) { /* no empire */ }
   try { fo = !!X.farm?.status?.()?.owned; pl = X.farm?.places?.() || []; } catch (e) { /* no farm */ }
-  sites = greenSites(props, fo, pl);
+  try { if (X.velvetArc?.owned?.()) { const c = tc?.world?.colonyAt?.([-30, -38]) || window.__app?.surface?.world?.doorFor?.('club'); if (c) ex.push({ id: 'velvet', name: 'The Velvet Airlock', owned: true, x: c.x, z: c.z }); } } catch (e) { /* no velvet */ }
+  sites = greenSites(props, fo, pl, ex);
 }
 function place(tc) {
   const k = sites.map(s => s.id + '@' + Math.round(s.x) + ',' + Math.round(s.z)).join('|'); if (k === key) return; key = k;
@@ -33,7 +34,7 @@ function tick(dt, tc) {
   if (!G) build();
   if (!onMars) { G.visible = false; return; }
   if (G.parent !== tc.scene) { tc.scene.add(G); key = ''; }
-  if ((readT -= dt) <= 0) { readT = 0.25; read(); place(tc); }
+  if ((readT -= dt) <= 0) { readT = 0.25; read(tc); place(tc); }
   G.visible = true;
 }
 export const ownedbeams = {

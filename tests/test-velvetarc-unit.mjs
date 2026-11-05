@@ -91,4 +91,5 @@ ok('raid guard + take hook are guarded', /raids/.test(arc) && /typeof .*spend ==
 ok('private show owner price', /ownerPrice/.test(ps));
 ok('no surname "Varga" in the game', !/Varga/.test(arc + wing + src('mars/velvetarccore.js')));
 ok('small dome gone from world.js', !/\[-22,\s*-16/.test(world));
+ok('green beam uses Ben\'s ownedbeams (no duplicate beam mesh)', !/velvetBeam/.test(arc) && /velvetArc\?\.owned/.test(src('mars/ownedbeams.js')));
 console.log(fails ? `${fails} FAILED` : 'ALL OK'); process.exit(fails ? 1 : 0);

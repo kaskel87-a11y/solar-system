@@ -321,7 +321,7 @@ function pitTick(app) {
 const inClub = () => APP()?.surface?.world?.inside?.kind === 'club';
 // the poker buy-in is paid while only the panel is up (pokerIsOpen() turns true once the table exists)
 const gameOpen = () => { try { return !!(window.__slots?.isOpen || window.__clubGames?.isOpen?.() || pokerIsOpen() || document.getElementById('pokerPanel')?.classList.contains('on')); } catch (e) { return false; } };
-const H = { spend: null, raids: null, beam: null, beamScene: null, barkT: 0, wasInside: false };
+const H = { spend: null, raids: null, barkT: 0, wasInside: false };
 function hookAll(app) {
   const g = app.surface?.game || app.game;
   if (g && typeof g.spend === 'function' && !g.spend.__varc) { // wager tap: only while you own it, inside the club, with a game open
@@ -336,14 +336,7 @@ function hookAll(app) {
 }
 function surfTick(dt, tc) {
   try { const h = X().time?.hour?.(); if (typeof h === 'number' && VA.tickHour(S, h)) save(); } catch (e) { /* */ }
-  // the beam: a dark green column over the club while it's yours (Mars only)
-  const want = S.owned && tc.name === 'Mars';
-  if (want && H.beamScene !== tc.scene) {
-    H.beam?.parent?.remove(H.beam);
-    const geo = new THREE.CylinderGeometry(2.4, 2.4, 110, 14, 1, true), m = new THREE.MeshBasicMaterial({ color: 0x0a6a2a, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
-    H.beam = new THREE.Mesh(geo, m); H.beam.frustumCulled = false; H.beam.name = 'velvetBeam'; tc.scene.add(H.beam); H.beamScene = tc.scene;
-  }
-  if (H.beam) { const c = tc.world?.colonyAt?.([-30, -42.5]); H.beam.visible = !!(want && c && !tc.world?.inside); if (c) H.beam.position.set(c.x, (tc.height?.(c.x, c.z) ?? 0) + 55, c.z); }
+  // the dark green ownership beam + green waypoint tint come from Ben's mars/ownedbeams.js (reads SSX.velvetArc.owned())
   // Ines the manager
   const ins = inClub();
   if (S.owned && ins && !H.wasInside) { H.barkT = 40; setTimeout(() => say(S.till >= 1 ? `Your house, your rules, boss. Till\u2019s at ${Math.floor(S.till)} cr. Office is open.` : 'Your house, your rules, boss.'), 900); }
@@ -352,7 +345,7 @@ function surfTick(dt, tc) {
 }
 function say(line) { try { if (X().bark?.('Ines', line, { force: true })) return; } catch (e) { /* */ } toast('\ud83d\udcac Ines: ' + line, 3600); }
 const ownedListeners = [];
-function emitOwned() { for (const f of ownedListeners) { try { f(); } catch (e) { /* */ } } try { window.dispatchEvent(new CustomEvent('velvet:owned', { detail: { ending: S.ending } })); } catch (e) { /* */ } }
+function emitOwned() { try { X().ownedbeams?.refresh?.(); } catch (e) { /* */ } for (const f of ownedListeners) { try { f(); } catch (e) { /* */ } } try { window.dispatchEvent(new CustomEvent('velvet:owned', { detail: { ending: S.ending } })); } catch (e) { /* */ } }
 
 // ---------- spot hooks for velvetwing.js (labels are read every HUD refresh) ----------
 function questStep() { const g = game(), q = g?.debug?.quest(); const s = q && mine(q.id)?.steps[q.step]; return s ? { g, q, s } : null; }
@@ -394,7 +387,7 @@ const api = {
   missions: IDS.slice(),
   get runner() { return { key: R.key, swipe: R.swipe.p || 0, tail: R.tail && { x: +R.tail.group.position.x.toFixed(1), z: +R.tail.group.position.z.toFixed(1), i: R.tail.i }, chase: R.chase && { t: R.chase.t || 0, i: R.chase.i }, boss: R.boss, pit: R.pit && { ...R.pit, seen: undefined }, sheet: sheetOpen() }; },
   debug: {
-    reset() { S = VA.fresh(); save(); }, own(ending = 'signed') { VA.own(S, ending); save(); emitOwned(); }, unown() { S.owned = false; save(); },
+    reset() { S = VA.fresh(); save(); try { X().ownedbeams?.refresh?.(); } catch (e) { /* */ } }, own(ending = 'signed') { VA.own(S, ending); save(); emitOwned(); }, unown() { S.owned = false; save(); try { X().ownedbeams?.refresh?.(); } catch (e) { /* */ } },
     addTake(n) { return VA.addTake(S, n); }, day() { if (!S.owned) return 0; S.days++; S.till = Math.min(VA.TAKE.cap, S.till + VA.TAKE.perDay); save(); return S.till; },
     set(p) { Object.assign(S, p || {}); save(); }, swipeDone() { R.swipe.p = VA.SWIPE.seconds - 0.01; }, chaseDone() { if (R.chase) R.chase.t = VA.CHASE.hold; },
     pick(id) { const b = sheet?.querySelector(`button[data-opt="${id}"]`); if (!b || b.disabled || !sheetOpen()) return false; sheetAt = 0; b.click(); return true; },

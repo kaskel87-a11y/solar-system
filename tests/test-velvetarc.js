@@ -35,6 +35,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { const g = window.__app.game, P = g.progress; P.credits = 20000; P.xp = 0; g.save(); window.__app.surface.world.setWanted(0); window.SSX.velvetArc.debug.reset(); });
     // ---- outside: the club grew, same door ----
     const cd = await G(() => window.__app.surface.world.doorList().find(d => d.kind === 'club'));
+    ok('noBeamUnowned', await G(() => !window.SSX?.ownedbeams?.state?.()?.beams?.some(b => b.name === 'owned-beam:velvet')));
     ok('doorKept', `${cd.x},${cd.z.toFixed(1)}`, !!cd);
     await G(([x, z]) => { window.__app.surface.debugPlace(x + 10, z + 26, Math.atan2(-10, 36)); }, [cd.x, cd.z]); await sleep(2500);
     await page.screenshot({ path: out + `velvet-outside-${tag}.png` });
@@ -127,7 +128,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await at(-11, 22, Math.PI); await act();
     ok('leftClub', await wait(() => !window.__app.surface.info.inside, 6000));
     await G(([x, z]) => { window.__app.surface.debugPlace(x + 8, z + 52, Math.atan2(-8, 62)); }, [cd.x, cd.z]); await sleep(2500);
-    ok('beam', await G(() => { let b = null; window.__app.surface?.scene?.traverse?.(o => { if (o.name === 'velvetBeam') b = o; }); if (!b) (window.__app.scene || window.__app.surface?.world?.scene)?.traverse?.(o => { if (o.name === 'velvetBeam') b = o; }); return b ? b.visible : 'not found'; }), undefined);
+    ok('beam', await wait(() => !!window.SSX?.ownedbeams?.state?.()?.beams?.some(b => b.name === 'owned-beam:velvet'), 5000));
+    await G(([x, z]) => window.SSX.hudx?.setWaypoint?.({ x, z, label: 'The Velvet Airlock' }, true), [cd.x, cd.z]);
+    ok('wpGreen', await wait(() => { const o = window.SSX?.wpbeam?.object?.(); return o && o.children.find(c => c.name === 'wp-beam-col')?.material.uniforms.uCol.value.getHex() === 0x0b6b2a; }, 5000));
     await page.screenshot({ path: out + `velvet-beam-${tag}.png` });
     ok('noErrors', errors.length ? errors.slice(0, 3).join(' | ') : 'none', errors.length === 0);
   } catch (e) { bad.push('EXC ' + e.message); }
