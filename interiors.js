@@ -14,6 +14,7 @@ import { addSlotBank } from './slotfloor.js'; // v7.5.36 slot bank + Olympus Meg
 import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
 import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
 import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
+import { addVelvetWing } from './velvetwing.js'; // Velvet expansion: the east wing (Dome Lounge, high-roller table, Ines's office) where the small dome used to be
 import { addBarCounter } from './bar.js'; // v7.6 space-liquor counter (sell your bottles / drinks) at the north end of the club bar
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
@@ -120,11 +121,12 @@ function roomKit(def) {
   // floor, ceiling, walls (south wall has the door gap)
   sh(0, -0.05, 0, w, 0.1, d, floorM); sh(0, h + 0.05, 0, w, 0.1, d, ceilM);
   sh(0, h / 2, -d / 2 - 0.15, w + 0.6, h, 0.3, wallM); sh(-w / 2 - 0.15, h / 2, 0, 0.3, h, d, wallM); sh(w / 2 + 0.15, h / 2, 0, 0.3, h, d, wallM);
-  const gap = 1.7, side = (w - gap) / 2;
-  sh(-(gap / 2 + side / 2), h / 2, d / 2 + 0.15, side, h, 0.3, wallM); sh(gap / 2 + side / 2, h / 2, d / 2 + 0.15, side, h, 0.3, wallM); sh(0, (h + 2.6) / 2, d / 2 + 0.15, gap, h - 2.6, 0.3, wallM);
+  // the door: middle of the south wall unless def.doorX (room-local x) puts it elsewhere (the club grew east, its door stayed put)
+  const gap = 1.7, dx = def.doorX ?? ox, dl = dx - ox, sideL = w / 2 + dl - gap / 2, sideR = w / 2 - dl - gap / 2;
+  sh(-w / 2 + sideL / 2, h / 2, d / 2 + 0.15, sideL, h, 0.3, wallM); sh(w / 2 - sideR / 2, h / 2, d / 2 + 0.15, sideR, h, 0.3, wallM); sh(dl, (h + 2.6) / 2, d / 2 + 0.15, gap, h - 2.6, 0.3, wallM);
   // the door you came in by (closed airlock panel, glowing frame) + neon trim at floor and ceiling level
-  sh(0, 1.3, d / 2 + 0.2, gap, 2.6, 0.1, mat(0x30343c, { metalness: 0.5, roughness: 0.4 }));
-  sh(-gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(0, 2.62, d / 2 + 0.05, gap + 0.08, 0.08, 0.08, trimM);
+  sh(dl, 1.3, d / 2 + 0.2, gap, 2.6, 0.1, mat(0x30343c, { metalness: 0.5, roughness: 0.4 }));
+  sh(dl - gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(dl + gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(dl, 2.62, d / 2 + 0.05, gap + 0.08, 0.08, 0.08, trimM);
   sh(0, 0.06, -d / 2 + 0.02, w, 0.05, 0.04, trimM); sh(-w / 2 + 0.02, 0.06, 0, 0.04, 0.05, d, trimM); sh(w / 2 - 0.02, 0.06, 0, 0.04, 0.05, d, trimM);
   sh(0, h - 0.08, -d / 2 + 0.02, w, 0.05, 0.04, trimM);
   const api = {
@@ -136,7 +138,7 @@ function roomKit(def) {
     mat, mk, G, disposables
   };
   api.ox = ox; api.oz = oz;
-  api.spot({ id: 'leave', x: ox, z: oz + d / 2 - 0.9, r: 1.6, label: '🚪 Leave', act: 'leave' });
+  api.spot({ id: 'leave', x: dx, z: oz + d / 2 - 0.9, r: 1.6, label: '🚪 Leave', act: 'leave' });
   return api;
 }
 
@@ -368,7 +370,8 @@ export const INTERIORS = {
     }
   },
   club: {
-    name: 'The Velvet Airlock', w: 44, d: 32, cx: -11, cz: 8, h: 6.5, // v7.5.33 4x floor (was 22 x 16): grew west (card room) + south (lobby); the old room is the north-east quarter, untouched
+    name: 'The Velvet Airlock', w: 58, d: 32, cx: -4, cz: 8, doorX: -11, h: 6.5, // v7.5.33 4x floor (was 22 x 16): grew west (card room) + south (lobby); the old room is the north-east quarter, untouched.
+    // Velvet expansion: +14 m east (x 11..25) = the Dome Lounge + Ines's office (velvetwing.js); the door stays at (-11, 24)
     wall: 0x241430, floor: 0x120c16, ceil: 0x0c0810, trim: 0xff3cc8, light: { color: 0xff50d0, int: 60, pulse: true }, music: 'club', cover: 20,
     build(api, o) {
       const { box, mat } = api, w = 22, d = 16, velvet = mat(0x5a0a2a, { roughness: 0.9 }), chrome = mat(0xc0c4cc, { metalness: 0.9, roughness: 0.2 }), black = mat(0x0c0a10, { roughness: 0.5 });
@@ -480,6 +483,7 @@ export const INTERIORS = {
         try { addSlotBank(api); } catch (e) { console.warn('slot bank', e); } // v7.5.36 8 slots + the Olympus Mega on the west wall, z 8.4..19.2
         try { addClubFloor(api, { sit: sitPose, idle, human: buildHuman }); } catch (e) { console.warn('club floor', e); } // v7.5.35 3 waitresses on patrol + 6 baked spectators
       }
+      try { addVelvetWing?.(api, { sit: sitPose, idle, guard, o }); } catch (e) { console.warn('velvet wing', e); } // Velvet expansion: east wing x 11..25 (the old east wall is now a partition, below)
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();
@@ -560,7 +564,7 @@ export function buildRoom(kind, opts = {}) {
   let t = 0, wt = 0;
   const targets = []; for (const w of api.wares) { w.m.traverse(c => { if (c.isMesh) targets.push(c); }); targets.push(w.tag); }
   return {
-    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, cx: def.cx || 0, cz: def.cz || 0, openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
+    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, cx: def.cx || 0, cz: def.cz || 0, dx: def.doorX ?? (def.cx || 0), openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
     wares: api.wares, targets, refresh() { wareTick(api, opts); },
     tick(dt) { t += dt; for (const f of api.ticks) f(t, dt); if ((wt += dt) > 0.4) { wt = 0; wareTick(api, opts); } },
     camBlocked(x, y, z) { for (const c of api.cols) if (c.on && y < c.h && Math.abs(x - c.x) < c.hw && Math.abs(z - c.z) < c.hd) return true; return false; }, // room-local, y above the floor

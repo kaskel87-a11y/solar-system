@@ -13,10 +13,10 @@ import * as CP from './copcore.js'; // v7.5.28 cops calm down (car theft = no he
 export const COLONIES = {
   Mars: {
     name: 'Ares Junction', a: 0, d: 200, tint: 0xff6a3a,
-    domes: [[0, 0, 14, 'ARES JUNCTION', 0xff7a2a], [-22, -16, 8], [24, 6, 9, 'HAB 3', 0x6ad0ff]],
+    domes: [[0, 0, 14, 'ARES JUNCTION', 0xff7a2a], [24, 6, 9, 'HAB 3', 0x6ad0ff]], // Velvet expansion the small unnamed dome at (-22, -16) is gone (Collin: "remove the smaller dome"); the Velvet grew instead
     // [x, z, w, d, h, sign, colour, interior kind?, inside title?]; the door is the middle of the +z face
     blocks: [[31, -17, 9, 5, 6, 'CANTINA', 0xff2a5a, 'cantina', 'CANTINA'], [-6, 23, 7, 4, 4, 'SUPPLY', 0x3cff8a, 'supply', 'ARES SUPPLY'], [-44, -14, 6, 4, 5, 'DEPOT', 0xffd040, 'depot', 'MERIDIAN DEPOT'],
-      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -39.5, 24, 14, 8, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'] /* v7.5.33 4x (was 12 x 7 at z -36): same front face + door, grew back + sideways */, [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
+      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -42.5, 36, 20, 8, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'] /* v7.5.33 4x (was 12 x 7 at z -36); Velvet expansion 36 x 20 (was 24 x 14): same front face + door at (-30, -32.5), grew 6 m each side and 6 m back */, [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
     pad: [-38, 10, 9], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]],
     shop: [-6, 26.2], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
     // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the VIP room
@@ -1083,11 +1083,13 @@ export function createWorld(ctx) {
   function enterBuilding(door) {
     door = typeof door === 'number' ? doors[door] : (door || nearDoor()); if (!door || inside) return { ok: false, msg: '' };
     const game = ctx.game(), def = INTERIORS[door.kind];
-    if (door.kind === 'club' && wanted > 0) return { ok: false, msg: 'Brick: Not tonight. You’ve got security crawling up your ass. Lose them first.' };
+    const ownClub = door.kind === 'club' && (() => { try { return !!globalThis.SSX?.velvetArc?.owned?.(); } catch (e) { return false; } })(); // Velvet expansion you own the Velvet (mars/velvetarc.js)
+    if (ownClub && wanted > 0 && wanted < 3) { try { globalThis.__app?.toast?.('Brick: Boss. In, quick. They don’t raid your house.', 2600); } catch (e) { /* no HUD */ } }
+    else if (door.kind === 'club' && wanted > 0) return { ok: false, msg: 'Brick: Not tonight. You’ve got security crawling up your ass. Lose them first.' };
     if (door.kind === 'mansion') { const live = cams.filter(c => !(c.cased > time) && Math.hypot(c.x - door.x, c.z - door.z) < 30); if (live.length && !ctx.game().flag('guest:' + door.name)) alarm(2, door, `broke into ${door.name}`); } // case the cameras first or it's loud
     if (wanted >= 3 && door.kind !== 'security') return { ok: false, msg: `${door.name}: shutters down. Nobody opens a door for a ${wanted}★ fugitive.` };
     let paid = 0;
-    if (def.cover && !coverPaid) {
+    if (def.cover && !coverPaid && !ownClub) {
       if (!game.spend(def.cover)) return { ok: false, msg: `Brick: Cover’s ${def.cover}. You’ve got lint. Beat it.` };
       coverPaid = true; paid = def.cover;
     }
@@ -1097,7 +1099,7 @@ export function createWorld(ctx) {
     inside = { door, room, ax: cx, ay: room.ay, az: cz };
     if (lights[0]) { const L = room.def.light; lights[0].position.set(cx + room.cx, room.ay + room.h - 0.5, cz + room.cz); lights[0].color.setHex(L.color); lights[0].distance = Math.max(60, Math.hypot(room.w, room.d) * 1.2); lights[0].decay = 1.2; lights[0].intensity = L.int; }
     onEvent('door', {});
-    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx + room.cx, y: room.ay, z: cz + room.cz + room.d / 2 - 1.3, yaw: 0 } };
+    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx + (room.dx ?? room.cx), y: room.ay, z: cz + room.cz + room.d / 2 - 1.3, yaw: 0 } };
   }
   function exitBuilding() {
     if (!inside) return null; const { door, room } = inside; room.group.visible = false; inside = null;
