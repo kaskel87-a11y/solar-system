@@ -235,7 +235,7 @@ export function createStreet(ctx) {
   function update(dt) {
     if (subT > 0 && (subT -= dt) <= 0 && subEl) subEl.style.display = 'none';
     for (const k in cool) cool[k] -= dt;
-    const i = app.surface?.info, off = !enabled || paused || !i || i.driving || i.inside || !ctx.onMars() || ctx.mult() <= 0;
+    const i = app.surface?.info, off = !enabled || paused || !i || i.driving || i.inside || !!(W()?.duel?.pit || window.__activities?.pit) || !ctx.onMars() || ctx.mult() <= 0;
     if (off) { if (actors.length) clear(); stillT = 0; return; }
     curY = i.y ?? 0; const zone = zoneHere(i), rt = rate(zone);
     // standing still (pickpockets love it)

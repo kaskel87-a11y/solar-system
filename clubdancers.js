@@ -13,7 +13,8 @@
 // i.e. 2 draw calls; each dancer gets an index buffer holding only her outfit's garments (the vertex data is shared),
 // the private dancer's cardigan is a drawRange toggle; small part textures share one
 // 512 atlas (dancer_aux.webp) across all three; phones use 512 maps, the high tier swaps in *_hd.webp. Everything
-// is disposed when the player leaves the club and reloaded (from cache) on the next visit.
+// is disposed when the player leaves the club and reloaded (from cache) on the next visit. v7.5.17: the GLBs and one
+// material per shader program stay cached, so later visits compile and upload nothing.
 // v7.5.4 (Danny v2): the dancer shader re-lights the club: the room's pink point light and the Mars sun/hemisphere are
 // turned down and desaturated on the dancers (they made the skin pink and flat), a neutral key light (a shader-only
 // light, no extra THREE.Light, so no recompiles) and a magenta rim from behind are added. Pole routines aim the arms at
@@ -62,11 +63,19 @@ function load(name) {
 function drop(gltf) {
   gltf.scene.traverse(o => { if (o.isMesh) { o.geometry.dispose(); for (const k of ['map', 'normalMap']) o.material[k]?.dispose(); o.material.dispose(); } });
 }
-function unload(name, f) {
-  if (--f.refs > 0) return;
-  if (files.get(name) === f) files.delete(name);
-  if (f.gltf) { drop(f.gltf); f.gltf = null; auxPut(); } else f.dead = true;
-}
+// v7.5.17: the GLBs (geometry + textures, already on the GPU) stay cached for the session once loaded, so a club visit
+// doesn't re-parse, re-upload or recompile anything; ~1.5 MB of models. unload() only drops the ref count.
+function unload(name, f) { if (f.refs > 0) f.refs--; }
+// v7.5.17 program keepers: three.js frees a shader program when the last material using it is disposed, so the first
+// dancer material of each program variant is never disposed; the next visit's materials then reuse the linked program.
+const keepers = new Map();
+const keepKey = (m) => `${m.customProgramCacheKey?.() || ''}|${m.name}|${m.alphaTest > 0 ? 'a' : ''}|${m.type}`;
+function keepOrDispose(m) { const k = keepKey(m); if (!keepers.has(k)) { keepers.set(k, m); return; } if (keepers.get(k) !== m) m.dispose(); }
+// is obj (and every parent) visible, i.e. would it draw this frame?
+const shown = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+// compile a model that was built inside a hidden (prebuilt) club before the player walks in (stormguard prewarm queue)
+const prewarm = (o) => { try { window.SSX?.stormGuard?.prewarm?.(o, { draw: true }); } catch (e) { /* no stormguard: compiles on first view */ } };
+export const programKeepers = () => [...keepers.keys()];
 
 // outfits: garment ids are baked per vertex (tools/dancers.mjs GID); a dancer's index buffer keeps only her outfit
 const GID = { 'SSX bikini top': 1, 'SSX bikini bottom': 2, 'SSX string top': 3, 'SSX string bottom': 4, 'SSX coverup': 5, 'SSX crop top': 6, 'SSX shorts': 7, 'SSX cardigan': 8, ring: 9, 'SSX straps': 10 };
@@ -244,16 +253,25 @@ if (ssxA < 0.5) totalEmissiveRadiance += vColor.rgb * vGm.z;
   return m;
 }
 // soft contact shadow (high tier): one shared radial-gradient texture
-let blobTex = null;
+let blobTex = null, blobGM = null;
 function blob() {
   if (!blobTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     gr.addColorStop(0, 'rgba(0,0,0,0.75)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); blobTex = new THREE.CanvasTexture(c); }
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
+  blobGM ??= [new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })]; // shared, never disposed (v7.5.17)
+  const mesh = new THREE.Mesh(blobGM[0], blobGM[1].clone()); // own opacity; the shared original keeps the program
   mesh.rotation.x = -Math.PI / 2; mesh.renderOrder = 1; mesh.userData.ssxDancer = true; return mesh;
 }
-// leaving the club releases every live dancer (textures, geometry, skeletons); the next visit reloads from cache
+// v7.5.17: leaving the club no longer releases the dancers (rebuilding them on entry uploaded ~40 buffers and bone
+// textures in the reveal frame, 117 ms on a phone). They stay built in the hidden room; only a stage dancer whose look
+// changes for the next visit (Danny's alternate every third visit) is rebuilt, in idle time while you're outside.
 const live = new Set(); let hooked = false, stageVisits = 0;
-function hook() { if (hooked || !window.SSX?.on) return; hooked = true; window.SSX.on('game:indoor', e => { if (!e?.on) for (const st of [...live]) st.release(); }); }
+const stageLook = () => (stageVisits % 3 === 2) ? 'string' : 'aqua';
+const idle = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
+function hook() {
+  if (hooked || !window.SSX?.on) return; hooked = true;
+  window.SSX.on('game:indoor', e => { if (e?.on) return; stageVisits++;
+    for (const st of [...live]) if (st.stage && st.look !== stageLook()) { st.release(); idle(() => { if (st.released && !st.disposed && !window.__app?.surface?.info?.inside) st.start(); }); } });
+}
 
 const _v = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _pq = new THREE.Quaternion();
 const DOWN = new THREE.Vector3(0, -1, 0), UP = new THREE.Vector3(0, 1, 0), V1 = new THREE.Vector3();
@@ -300,7 +318,7 @@ function buildModel(gltf, auxTex, D, look, lu) {
     lu.u.uKeyV.value.copy(lu.keyW).transformDirection(cam.matrixWorldInverse); lu.u.uRimV.value.copy(lu.rimW).transformDirection(cam.matrixWorldInverse);
     B.Head.getWorldPosition(crown.value); crown.value.y += 0.17; crown.value.applyMatrix4(cam.matrixWorldInverse); }; // hair strand origin
   m.traverse(o => {
-    if (!o.isMesh) return; o.userData.ssxDancer = true; o.frustumCulled = false; o.castShadow = false; o.onBeforeRender = onBR;
+    if (!o.isMesh) return; o.userData.ssxDancer = true; o.frustumCulled = !HIGH; if (!HIGH) o.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.7); // v7.5.12 phones: skip a dancer that's off screen (generous sphere: limbs, lifts) o.castShadow = false; o.onBeforeRender = onBR;
     o.material = dancerMaterial(o.material, auxTex, { alt: look === 'aqua' ? gltf.scene.userData.ssx?.eyelet : null, sheen: D.sheen, lu, crown }); mats.push(o.material); if (o.isSkinnedMesh) skel = o.skeleton;
     // own index buffer with just this outfit's triangles; vertex attributes stay shared with the cached GLB
     const g0 = o.geometry, gm = g0.attributes.aGm, src = g0.index.array, keep = [], cd = [];
@@ -314,7 +332,7 @@ function buildModel(gltf, auxTex, D, look, lu) {
   for (const a of gltf.animations) acts[a.name] = mixer.clipAction(a);
   const clip = re => { const a = gltf.animations.find(c => re.test(c.name)); return a ? acts[a.name] : null; };
   const rest = need.map(n => [B[n], B[n].quaternion.clone()]);
-  const dispose = () => { mixer.stopAllAction(); mixer.uncacheRoot(m); mats.forEach(x => x.dispose()); geos.forEach(x => x.dispose()); skel?.dispose(); };
+  const dispose = () => { mixer.stopAllAction(); mixer.uncacheRoot(m); mats.forEach(keepOrDispose); geos.forEach(x => x.dispose()); skel?.dispose(); };
   return { m, B, mats, skel, geos, mixer, acts, clip, rest, card, noCard, dispose };
 }
 
@@ -325,7 +343,7 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   let look = outfit;
   st.start = () => {
     // Danny's stage outfit: the aqua crochet bikini, with the white string bikini + cover-up as the alternate every third visit
-    if (outfit === 'stage') look = (stageVisits++ % 3 === 2) ? 'string' : 'aqua';
+    if (outfit === 'stage') look = stageLook(); st.stage = outfit === 'stage';
     st.look = look; st.released = false; hook(); const f = st.file = load(D.file);
     f.p.then(({ gltf, aux: auxTex }) => {
       if (st.released || st.file !== f) return;
@@ -336,23 +354,28 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
       let shadow = null; if (HIGH && p.group.parent) { shadow = blob(); p.group.parent.add(shadow); st.y0 = p.group.position.y; }
       blocky(false); // hide the blocky meshes, keep their groups (they still drive position and pose)
       p.group.add(md.m); Object.assign(st, md, { aIdle: idle, aDance: dance, shadow, ready: true }); live.add(st);
+      if (!shown(p.group)) prewarm(md.m); // built in the hidden club (prewarmed on approach): compile now, not on entry
     }).catch(e => { if (!st.released) console.warn('club dancer model unavailable, keeping the classic look', e?.message || e); });
   };
   st.release = () => {
     if (st.released) return; st.released = true; live.delete(st);
     if (st.ready) { st.p.group.remove(st.m); st.dispose(); blocky(true);
-      if (st.shadow) { st.shadow.removeFromParent(); st.shadow.geometry.dispose(); st.shadow.material.dispose(); } }
+      if (st.shadow) { st.shadow.removeFromParent(); st.shadow.material.dispose(); } }
     Object.assign(st, { m: null, B: null, mixer: null, mats: null, geos: null, skel: null, card: null, shadow: null, aIdle: null, aDance: null, ready: false });
-    if (!live.size && blobTex) { blobTex.dispose(); blobTex = null; }
     if (st.file) { unload(D.file, st.file); st.file = null; }
   };
   st.setLook = (l) => setLook(st.lu, l);
-  api.disposables.push({ dispose: st.release });
+  api.disposables.push({ dispose: () => { st.disposed = true; st.release(); } });
   st.start();
   // runs after the dancer's own anim tick (ticks run in order)
   api.ticks.push((t, dt = 0.016) => {
     if (st.released) { st.start(); return; } // back in the club after a release
     if (!st.ready) return;
+    if (!HIGH) { // v7.5.12 phone LOD: pose at 30 Hz, freeze when the camera is 16 m+ away or she's off screen (the blocky rig keeps moving the group)
+      st.acc = (st.acc || 0) + dt; st.skip = !st.skip; if (st.skip) return;
+      if (!lodVisible(p.group)) { st.acc = 0; return; }
+      dt = Math.min(st.acc, 0.1); st.acc = 0;
+    }
     const { B, mixer } = st, between = !!(cardigan && cardigan());
     for (const [b, q] of st.rest) b.quaternion.copy(q); // bones without clip tracks start from rest each frame
     if (st.aDance) { const w = between ? 0 : 1; st.aDance.weight += (w - st.aDance.weight) * Math.min(1, dt * 3); if (st.aIdle) st.aIdle.weight = 1 - st.aDance.weight; } // private dancer idles between songs
@@ -377,6 +400,15 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   return st;
 }
 const _b2 = new THREE.Vector3();
+// v7.5.12 phone LOD helper: near (< 14 m) and inside the camera frustum (padded)
+const _lodP = new THREE.Vector3(), _lodC = new THREE.Vector3(), _lodF = new THREE.Frustum(), _lodM = new THREE.Matrix4(), _lodS = new THREE.Sphere(); let _lodT = -1, _lodCam = null;
+export const LOD_FAR = 16;
+function lodVisible(g) {
+  const cam = window.__app?.surface?.camera; if (!cam) return true;
+  const now = performance.now(); if (now - _lodT > 30 || _lodCam !== cam) { _lodT = now; _lodCam = cam; cam.getWorldPosition(_lodC); _lodM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _lodF.setFromProjectionMatrix(_lodM); }
+  g.getWorldPosition(_lodP); if (_lodP.distanceTo(_lodC) > LOD_FAR) return false;
+  _lodS.center.copy(_lodP); _lodS.center.y += 0.9; _lodS.radius = 2; return _lodF.intersectsSphere(_lodS);
+}
 
 const sstep = x => x * x * (3 - 2 * x);
 const CORE = ['Hips', 'Spine1', 'LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg'];

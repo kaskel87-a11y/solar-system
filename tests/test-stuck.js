@@ -53,6 +53,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await shot('doorshift-markers'); try { await page.locator('#miniMap').screenshot({ path: `${out}${tag}-doorshift-minimap.png` }); console.log('shot', `${out}${tag}-doorshift-minimap.png`); } catch (e) {}
 
     // ---------- 2. Stuck? on the card ----------
+    if (await G(() => document.body.classList.contains('hxSlim'))) { // v7.5.12 (Ben): phones hide Stuck? until ~20 s idle; it's also in ☰
+      ok('phone: Stuck? hidden until idle', null, await G(() => getComputedStyle(document.getElementById('hxStuck')).display === 'none'));
+      ok('phone: Stuck? in ☰', null, await G(() => !!document.getElementById('hxStuckMenu')));
+      await G(() => window.SSX.hudSlim.showStuck(600000));
+    }
     const b = await G(() => { const e = document.getElementById('hxStuck'); if (!e) return null; const cs = getComputedStyle(e), r = e.getBoundingClientRect(); return { on: e.classList.contains('vis'), parent: e.parentNode?.id, bg: cs.backgroundColor, fg: cs.color, w: r.width, h: r.height, text: e.textContent, inView: r.right <= innerWidth && r.bottom <= innerHeight && r.left >= 0 && r.top >= 0 }; });
     ok('Stuck? on the mission card', b, b && b.on && b.parent === 'hxCard' && b.inView);
     ok('black button, white text', b, b && /rgb\(0, 0, 0\)/.test(b.bg) && /rgb\(255, 255, 255\)/.test(b.fg) && b.text === 'Stuck?');
@@ -67,8 +72,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('no skip / quit before 3 min', p1, !p1.skip && !p1.quit);
     const pinged = await G(() => window.SSX.missionHelp.markers());
     await shot('stuck-hint'); try { await page.locator('#miniMap').screenshot({ path: `${out}${tag}-stuck-minimap.png` }); } catch (e) {}
-    await page.keyboard.press('Digit6'); await frames(3); ok('key 6 closes it', !(await popOpen()));
-    await page.keyboard.press('Digit6'); await frames(3); ok('key 6 opens it', await popOpen());
+    await page.keyboard.press('Slash'); await frames(3); ok('key / closes it', !(await popOpen()));
+    await page.keyboard.press('Slash'); await frames(3); ok('key / opens it', await popOpen());
     await page.keyboard.press('KeyH'); await frames(2); // H is still ship travel (untouched); just make sure nothing of ours breaks
     await G(() => window.SSX.missionHelp.close());
     if (await G(() => !!window.__app.state.onSurface && window.__app.surface.info?.name !== 'Mars')) ok('H did not move us off Mars', false);

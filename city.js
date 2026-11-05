@@ -14,21 +14,28 @@ const LOTS = {
   gated: [{ id: 'helios-garage', at: [34, 46], r: 8, use: 'garage' }]
 };
 const MANSIONS = { 'VOSS HOUSE': 'voss', 'SABLE ANNEX': 'sable', 'QUINN VILLA': 'quinn', 'KLINE RETREAT': 'kline' };
+// v7.5.20 The Pit (side-activities act-pit-fight, Flats-local [-40,-9]) gets open ground: the pack's plain west dome
+// [-36,-18,7] (no sign, no door, and it buried BAY SIX DENTAL's entrance) is dropped, and its hauler parks clear of the ring
+export const PIT_LOCAL = [-40, -9];
+export const DROPPED_DOMES = { rough: [[-36, -18]] };
+export const MOVED_VEHICLES = { rough: { '-46,-16': [-50, 10] } }; // v7.5.21 further out so THE PIT sign gantry stands clear
+const keepDome = (key, d) => !(DROPPED_DOMES[key] || []).some(([x, z]) => d[0] === x && d[1] === z);
+const moveSlot = (key, x, z) => (MOVED_VEHICLES[key] || {})[x + ',' + z] || [x, z];
 const clearOfVehicles = (f, vs) => { let [x, z] = f; for (const v of vs || []) if (Math.hypot(v[1] - x, v[2] - z) < 6) { const L = Math.hypot(x, z) || 1; x -= x / L * 8; z -= z / L * 8; } return [Math.round(x * 10) / 10, Math.round(z * 10) / 10]; };
 export const SAFE_DIFFICULTY = { quinn: 2, kline: 3, sable: 3, voss: 4 };
 const titleCase = s => s.replace(/\b([A-Z])([A-Z\u2019']+)/g, (m, a, b) => a + b.toLowerCase());
 export const safeIdOf = sign => 'safe:' + titleCase(sign);
 
 function districtDef(key) {
-  const P = DISTRICT_DATA[key], sp = P.spawns || {}, pat = P.patrols || {};
+  const P = DISTRICT_DATA[key], sp0 = P.spawns || {}, sp = sp0.vehicle_slots ? { ...sp0, vehicle_slots: sp0.vehicle_slots.map(([x, z]) => moveSlot(key, x, z)) } : sp0, pat = P.patrols || {};
   const footKey = Object.keys(pat).find(k => /foot/.test(k) && pat[k].route), foot = footKey ? pat[footKey] : null;
   const D = {
     name: P.name, kind: P.kind || key, key, alias: key, tint: P.tint, origin: ORIGIN[key], r1: 58, r2: 86, lampR: 52, lamps: P.lamps,
-    domes: P.domes.map(d => MANSIONS[d[3]] ? [d[0], d[1], d[2], d[3], d[4], 'mansion', d[3]] : d),
+    domes: P.domes.filter(d => keepDome(key, d)).map(d => MANSIONS[d[3]] ? [d[0], d[1], d[2], d[3], d[4], 'mansion', d[3]] : d),
     blocks: P.blocks.map(b => b[5] === 'RED SHIFT' ? [...b.slice(0, 7), 'cantina', 'RED SHIFT'] : b),
     pad: key === 'downtown' ? [-48, -6, 7] : P.pad, // the pack's downtown pad overlaps the precinct
     crates: P.crates, shop: P.shop, contacts: P.contacts, guards: P.guards, colonists: P.colonists, phoneColonists: Math.min(P.colonists, 3),
-    vehicles: P.vehicles.map(v => key === 'downtown' && v[0] === 'shuttle' ? ['shuttle', -48, -6, 0.9] : v),
+    vehicles: P.vehicles.map(v => key === 'downtown' && v[0] === 'shuttle' ? ['shuttle', -48, -6, 0.9] : [v[0], ...moveSlot(key, v[1], v[2]), ...v.slice(3)]),
     inside: { ...P.inside, ...(key === 'downtown' ? { 'RED SHIFT': { barkeep: 'Red Shift barkeep' } } : {}),
       ...Object.fromEntries(Object.entries(MANSIONS).map(([sign, k]) => [sign, { away: true, difficulty: SAFE_DIFFICULTY[k] || 2, title: sign }])) }, // owners are out; that's the point
     spawns: sp, patrols: pat, lots: LOTS[key] || [],

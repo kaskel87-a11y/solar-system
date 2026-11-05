@@ -10,7 +10,11 @@ import * as THREE from 'three';
 import { dress, DANNY_NAME } from './clubdancers.js';
 import { addBooth } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth (private show)
 import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
-import { addSlotMachines } from './slots.js'; // v7.6 slot machines in the club's south-west corner
+import { addSlotBank } from './slotfloor.js'; // v7.5.36 slot bank + Olympus Mega on the Velvet gaming floor (was addSlotMachines in the old south-west corner)
+import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
+import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
+import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
+import { addBarCounter } from './bar.js'; // v7.6 space-liquor counter (sell your bottles / drinks) at the north end of the club bar
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -109,19 +113,20 @@ function guard(h, t) { resetPose(h); h.arms[0].rotation.x = 0.6; h.arms[1].rotat
 function roomKit(def) {
   geos();
   const g = new THREE.Group(), cols = [], spots = [], ticks = [], disposables = [];
-  const { w, d, h } = def;
+  const { w, d, h } = def, ox = def.cx || 0, oz = def.cz || 0; // v7.5.33: a room can sit off-centre (cx, cz: its centre in room-local metres; the club grew west + south)
   const wallM = mat(def.wall ?? 0x2a2630), floorM = mat(def.floor ?? 0x18161a, { roughness: 0.9 }), ceilM = mat(def.ceil ?? 0x121014, { roughness: 1 }), trimM = mat(def.trim ?? 0xff3a7a, { basic: true });
   const box = (x, y, z, sx, sy, sz, m) => { const o = mk(G.box, m, x, y, z, sx, sy, sz); g.add(o); return o; };
+  const sh = (x, y, z, sx, sy, sz, m) => box(x + ox, y, z + oz, sx, sy, sz, m); // shell parts, around the room centre
   // floor, ceiling, walls (south wall has the door gap)
-  box(0, -0.05, 0, w, 0.1, d, floorM); box(0, h + 0.05, 0, w, 0.1, d, ceilM);
-  box(0, h / 2, -d / 2 - 0.15, w + 0.6, h, 0.3, wallM); box(-w / 2 - 0.15, h / 2, 0, 0.3, h, d, wallM); box(w / 2 + 0.15, h / 2, 0, 0.3, h, d, wallM);
+  sh(0, -0.05, 0, w, 0.1, d, floorM); sh(0, h + 0.05, 0, w, 0.1, d, ceilM);
+  sh(0, h / 2, -d / 2 - 0.15, w + 0.6, h, 0.3, wallM); sh(-w / 2 - 0.15, h / 2, 0, 0.3, h, d, wallM); sh(w / 2 + 0.15, h / 2, 0, 0.3, h, d, wallM);
   const gap = 1.7, side = (w - gap) / 2;
-  box(-(gap / 2 + side / 2), h / 2, d / 2 + 0.15, side, h, 0.3, wallM); box(gap / 2 + side / 2, h / 2, d / 2 + 0.15, side, h, 0.3, wallM); box(0, (h + 2.6) / 2, d / 2 + 0.15, gap, h - 2.6, 0.3, wallM);
+  sh(-(gap / 2 + side / 2), h / 2, d / 2 + 0.15, side, h, 0.3, wallM); sh(gap / 2 + side / 2, h / 2, d / 2 + 0.15, side, h, 0.3, wallM); sh(0, (h + 2.6) / 2, d / 2 + 0.15, gap, h - 2.6, 0.3, wallM);
   // the door you came in by (closed airlock panel, glowing frame) + neon trim at floor and ceiling level
-  box(0, 1.3, d / 2 + 0.2, gap, 2.6, 0.1, mat(0x30343c, { metalness: 0.5, roughness: 0.4 }));
-  box(-gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); box(gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); box(0, 2.62, d / 2 + 0.05, gap + 0.08, 0.08, 0.08, trimM);
-  box(0, 0.06, -d / 2 + 0.02, w, 0.05, 0.04, trimM); box(-w / 2 + 0.02, 0.06, 0, 0.04, 0.05, d, trimM); box(w / 2 - 0.02, 0.06, 0, 0.04, 0.05, d, trimM);
-  box(0, h - 0.08, -d / 2 + 0.02, w, 0.05, 0.04, trimM);
+  sh(0, 1.3, d / 2 + 0.2, gap, 2.6, 0.1, mat(0x30343c, { metalness: 0.5, roughness: 0.4 }));
+  sh(-gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(gap / 2, 1.3, d / 2 + 0.05, 0.08, 2.6, 0.08, trimM); sh(0, 2.62, d / 2 + 0.05, gap + 0.08, 0.08, 0.08, trimM);
+  sh(0, 0.06, -d / 2 + 0.02, w, 0.05, 0.04, trimM); sh(-w / 2 + 0.02, 0.06, 0, 0.04, 0.05, d, trimM); sh(w / 2 - 0.02, 0.06, 0, 0.04, 0.05, d, trimM);
+  sh(0, h - 0.08, -d / 2 + 0.02, w, 0.05, 0.04, trimM);
   const api = {
     g, cols, spots, ticks, w, d, h, box, wares: [],
     col(x, z, hw, hd, tag) { const c = { x, z, hw, hd, tag, on: true, h: tag === 'wall' ? 99 : tag === 'tall' ? 3.2 : 1.15 }; cols.push(c); return c; }, // h: camera occlusion height (v7.4)
@@ -130,7 +135,8 @@ function roomKit(def) {
     person(opts, x, z, yaw, anim, k = 0) { const p = buildHuman(opts); p.group.position.set(x, 0, z); p.group.rotation.y = yaw; g.add(p.group); ticks.push((t, dt) => anim(p, t, k, yaw, dt)); return p; },
     mat, mk, G, disposables
   };
-  api.spot({ id: 'leave', x: 0, z: d / 2 - 0.9, r: 1.6, label: '🚪 Leave', act: 'leave' });
+  api.ox = ox; api.oz = oz;
+  api.spot({ id: 'leave', x: ox, z: oz + d / 2 - 0.9, r: 1.6, label: '🚪 Leave', act: 'leave' });
   return api;
 }
 
@@ -274,6 +280,7 @@ export const INTERIORS = {
       for (let k = 0; k < 3; k++) box(-w / 2 + 0.7, 0.3 + k * 0.6, 2.6 + (k % 2) * 0.2, 0.9, 0.55, 0.7, mat(0x3d4a2a)); api.col(-w / 2 + 0.7, 2.7, 0.55, 0.5);
       const tt = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 192; const x = c.getContext('2d'); x.fillStyle = '#e8e0c8'; x.fillRect(0, 0, 128, 192); x.fillStyle = '#222'; x.beginPath(); x.arc(64, 44, 26, 0, 7); x.fill(); x.fillRect(24, 74, 80, 118); x.strokeStyle = '#e8e0c8'; x.lineWidth = 3; for (const r of [14, 30, 46]) { x.beginPath(); x.arc(64, 120, r, 0, 7); x.stroke(); } x.fillStyle = '#c22'; for (let i = 0; i < 7; i++) { x.beginPath(); x.arc(50 + (i * 37) % 30, 100 + (i * 53) % 50, 3, 0, 7); x.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
       api.disposables.push(tt); const tg = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: tt })); api.disposables.push(tg.material); tg.position.set(w / 2 - 0.05, 2.0, -3.0); tg.rotation.y = -Math.PI / 2; tg.scale.set(0.9, 1.35, 1); api.g.add(tg);
+      window.SSX_SHOPTIER?.rack(api, o, 'guns', { x: -w / 2 + 0.5, z: -2.0, face: 'e', len: 3.6 }); // v7.5.45: buy out the shop, new stock rolls in here
       api.spot({ id: 'counter', x: 3.4, z: -1.0, r: 1.0, label: '🧾 ' + (o.dealer || 'Dealer') + ': full list', act: 'shop', venue: 'guns', who: o.dealer || 'Dealer' });
       if (o.talk) api.spot({ id: 'talk', x: 3.4, z: 0.7, r: 0.9, label: '💬 ' + o.talk, act: 'talk', who: o.talk });
     }
@@ -331,6 +338,7 @@ export const INTERIORS = {
       for (let k = 0; k < 3; k++) box(w / 2 - 1.2 - k * 0.2, 0.45 + k * 0.85, -d / 2 + 1.6, 1.2, 0.85, 1.2, k % 2 ? crate : crate2); api.col(w / 2 - 1.3, -d / 2 + 1.6, 0.75, 0.75);
       const cs = box(w / 2 - 2.6, 0.22, -d / 2 + 1.9, 0.7, 0.4, 0.45, mat(0x2a2a30, { metalness: 0.6 })); const gl = box(w / 2 - 2.6, 0.43, -d / 2 + 1.9, 0.6, 0.03, 0.35, mat(0x3cff8a, { basic: true }));
       api.ticks.push(t => { const on = !(o.taken?.('depot-stash')); cs.visible = gl.visible = on; gl.material.color.setHSL(0.38, 1, 0.35 + Math.sin(t * 4) * 0.15); });
+      window.SSX_SHOPTIER?.rack(api, o, 'depot', { x: -w / 2 + 0.5, z: -3.2, face: 'e', len: 3.6 }); // v7.5.45 restock tiers
       api.spot({ id: 'counter', x: -w / 2 + 2.2, z: 3, r: 1.4, label: '🧾 Parts counter: full list', act: 'shop', venue: 'depot', who: o.qm || 'Dez' });
       api.spot({ id: 'stash', x: w / 2 - 2.6, z: -d / 2 + 2.9, r: 1.0, label: '📦 Search the crates', act: 'stash', stash: 'depot-stash', perm: 'maxammo', cond: () => !o.taken?.('depot-stash') });
     }
@@ -360,9 +368,10 @@ export const INTERIORS = {
     }
   },
   club: {
-    name: 'The Velvet Airlock', w: 22, d: 16, h: 6.5, wall: 0x241430, floor: 0x120c16, ceil: 0x0c0810, trim: 0xff3cc8, light: { color: 0xff50d0, int: 60, pulse: true }, music: 'club', cover: 20,
+    name: 'The Velvet Airlock', w: 44, d: 32, cx: -11, cz: 8, h: 6.5, // v7.5.33 4x floor (was 22 x 16): grew west (card room) + south (lobby); the old room is the north-east quarter, untouched
+    wall: 0x241430, floor: 0x120c16, ceil: 0x0c0810, trim: 0xff3cc8, light: { color: 0xff50d0, int: 60, pulse: true }, music: 'club', cover: 20,
     build(api, o) {
-      const { box, mat, d, w } = api, velvet = mat(0x5a0a2a, { roughness: 0.9 }), chrome = mat(0xc0c4cc, { metalness: 0.9, roughness: 0.2 }), black = mat(0x0c0a10, { roughness: 0.5 });
+      const { box, mat } = api, w = 22, d = 16, velvet = mat(0x5a0a2a, { roughness: 0.9 }), chrome = mat(0xc0c4cc, { metalness: 0.9, roughness: 0.2 }), black = mat(0x0c0a10, { roughness: 0.5 });
       // stage (north), light pillars at its corners, an LED wall behind it
       box(0, 0.35, -6.2, 10, 0.7, 3.4, black); box(0, 0.72, -4.48, 10, 0.06, 0.08, mat(0xff3cc8, { basic: true })); api.col(0, -6.2, 5.0, 1.7, 'stage');
       for (const s of [-1, 1]) for (const z of [-7.6, -4.7]) box(s * 4.8, 3.2, z, 0.16, 5, 0.16, mat(0x7af0ff, { basic: true }));
@@ -454,7 +463,24 @@ export const INTERIORS = {
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
-      try { addSlotMachines?.(api, { x: -7.7, z: d / 2 - 0.4 }); } catch (e) { console.warn('slots', e); } // v7.6 slots (slots.js): south-west corner, past the bar's end, far from the poles / Danny / VIP / upstairs
+      // v7.5.36 the slots moved to the gaming floor (addSlotBank, below)
+      // v7.5.33 the bigger club: a wall behind the bar (west wing = card room), the old south wall kept as two pieces either
+      // side of a 6 m arch (slots keep their backdrop) and the south lobby down to the new door at (-11, 24)
+      {
+        const wallM = mat(0x241430), H = api.h, pink = mat(0xff3cc8, { basic: true });
+        box(-11.15, H / 2, -1.5, 0.3, H, 13, wallM); api.col(-11.15, -1.5, 0.2, 6.5, 'wall'); // west partition z -8..5
+        box(-7, H / 2, 8.15, 8, H, 0.3, wallM); api.col(-7, 8.15, 4, 0.2, 'wall'); box(7, H / 2, 8.15, 8, H, 0.3, wallM); api.col(7, 8.15, 4, 0.2, 'wall');
+        box(0, H - 0.3, 8.15, 6, 0.6, 0.3, wallM); box(0, H - 0.62, 8.0, 6, 0.06, 0.06, pink);
+        box(-11, 0.012, 16, 3.2, 0.02, 15.5, velvet); // lobby runner from the door
+        api.sign('\u2190 CARD ROOM \u00b7 TEXAS HOLD\u2019EM', 0x7dff9a, -7, 3.6, 8.32, 0, 5, { h: 96 }); // faces the lobby
+        api.sign('STAGE \u00b7 BAR \u00b7 VIP \u2191', 0xff3cc8, 7, 3.6, 8.32, 0, 4.4, { h: 96 });
+        for (const [x, z] of [[-32, 21], [9.5, 21], [9.5, 13]]) { box(x, 0.45, z, 1.0, 0.9, 3.2, velvet); api.col(x, z, 0.55, 1.65); } // lounge sofas
+        addPokerRoom(api, { x: -22, z: 0 }, { sit: sitPose, idle });
+        try { addClubGames(api, { sit: sitPose, idle }); } catch (e) { console.warn('club games', e); } // v7.5.34 lobby: Blackjack (-24, 16) + Roulette (2, 16)
+        try { addSlotBank(api); } catch (e) { console.warn('slot bank', e); } // v7.5.36 8 slots + the Olympus Mega on the west wall, z 8.4..19.2
+        try { addClubFloor(api, { sit: sitPose, idle, human: buildHuman }); } catch (e) { console.warn('club floor', e); } // v7.5.35 3 waitresses on patrol + 6 baked spectators
+      }
+      try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();
       // light show
@@ -534,14 +560,14 @@ export function buildRoom(kind, opts = {}) {
   let t = 0, wt = 0;
   const targets = []; for (const w of api.wares) { w.m.traverse(c => { if (c.isMesh) targets.push(c); }); targets.push(w.tag); }
   return {
-    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
+    kind, def, group: api.g, cols: api.cols, spots: api.spots, w: def.w, d: def.d, h: def.h, cx: def.cx || 0, cz: def.cz || 0, openRope: () => api.openRope?.(), rain: n => api.rain?.(n), privateDance: s => api.privateDance?.(s),
     wares: api.wares, targets, refresh() { wareTick(api, opts); },
     tick(dt) { t += dt; for (const f of api.ticks) f(t, dt); if ((wt += dt) > 0.4) { wt = 0; wareTick(api, opts); } },
     camBlocked(x, y, z) { for (const c of api.cols) if (c.on && y < c.h && Math.abs(x - c.x) < c.hw && Math.abs(z - c.z) < c.hd) return true; return false; }, // room-local, y above the floor
     collide(x, z, r) {
       let hit = false;
-      const ex = def.w / 2 - r, ez = def.d / 2 - r;
-      if (x < -ex) { x = -ex; hit = true; } if (x > ex) { x = ex; hit = true; } if (z < -ez) { z = -ez; hit = true; } if (z > ez) { z = ez; hit = true; }
+      const ex = def.w / 2 - r, ez = def.d / 2 - r, ox = def.cx || 0, oz = def.cz || 0;
+      if (x < ox - ex) { x = ox - ex; hit = true; } if (x > ox + ex) { x = ox + ex; hit = true; } if (z < oz - ez) { z = oz - ez; hit = true; } if (z > oz + ez) { z = oz + ez; hit = true; }
       for (const c of api.cols) {
         if (!c.on) continue; const dx = x - c.x, dz = z - c.z, hx = c.hw + r, hz = c.hd + r;
         if (Math.abs(dx) < hx && Math.abs(dz) < hz) { hit = true; if (hx - Math.abs(dx) < hz - Math.abs(dz)) x = c.x + Math.sign(dx || 1) * hx; else z = c.z + Math.sign(dz || 1) * hz; }

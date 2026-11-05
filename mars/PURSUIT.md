@@ -8,10 +8,19 @@ Hooked with one `<script type="module">` line in `index.html` (after `mars/jobs.
 `SSX.registerSurfaceTick`. It only runs on Mars. Not to be confused with the root `pursuit.js` (street chases such as
 gangs and getaways), which is a separate module.
 
+## v7.5.28: cops calm down (`copcore.js`)
+- **Taking a car is not a police matter.** Parked, traffic (carjack), the magnet-crane lift, Lou's crane, the Raccoon Rover
+  and skipping Lou's Hook & Crook fee give **0★**; the owner shouts / runs. Exceptions: a ColSec officer or guard within
+  **12 m with line of sight** gives 1★ (only if you were clean), and boosting a marked ColSec cruiser is 2★.
+- Minor crimes on top of existing heat (hit-and-run, speeding, tagging, discharging, ...) need 2 in a row per extra star.
+  Serious crimes (shooting / killing, heists, dealing in view, armored transports) escalate exactly as before.
+- 1★: one slower drone, no pursuit rovers, highway cruisers only join from 2★, a longer grab before a bust (3.5 s on
+  foot / 5 s in a car). Out of sight at 1-2★ cools off even in town; evade needs `4 + 2·★` s (was `5 + 2.5·★`).
+
 ## Tiers
 | ★ | core (`world.js`, unchanged) | pursuit adds |
 |---|---|---|
-| 1 | drones | 1 patrol rover |
+| 1 | 1 slow drone (v7.5.28: a nuisance, not a chase) | nothing |
 | 2 | + buggies, officers | 2 rovers (1 on mobile) |
 | 3 | | drone **spotlights**: a cone and pool under each core drone/gunship; the pool spots you |
 | 4 | + heavies | **roadblocks**: 2 buggies plus barriers at the nearest Beltway checkpoint and the lane ahead |
@@ -23,7 +32,7 @@ away are dropped. All units are cheap buggy meshes, with NaN guards on every ste
 
 ## Line of sight, search and losing heat
 - Every 0.25 s each unit checks `world.lineOfSight`. While anyone sees you, the heat holds.
-- When sight breaks, a **search** starts at your last-seen point. It lasts `8 + 5·★` s, covers a radius of `25 + 10·★` m,
+- When sight breaks, a **search** starts at your last-seen point. It lasts `6 + 4·★` s (v7.5.28, was `8 + 5·★`), covers a radius of `25 + 10·★` m,
   and shows as a yellow ring on the minimap (`pursuit:search`) and as `🔎 SEARCH Ns` in the HUD. Being re-spotted cancels it.
   When it expires, stars go to 0.
 - **Hideouts** (white minimap dots): a Flats storm culvert, a Flats gutted silo, two Beltway underpasses, the lab

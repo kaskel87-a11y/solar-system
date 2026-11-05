@@ -19,6 +19,7 @@ import { raiseAlarm, heat, securityNear, toWorld, isIndoors, payout, addMenuItem
 import { boost } from './economy.js'; // v7.5.9: the 'Safe's open' line shows the boosted take (what the heist / its mission pays)
 import { createGuards } from './guards.js';
 import { losClear, boxHit, pushOut, losCache } from './heistlos.js';
+import { grantStars, heistStars } from './starmixcore.js';
 
 const listeners = {};
 function emit(name, detail) {
@@ -162,7 +163,10 @@ export function heistTick(dt, ctx) {
     if (dist(w.site) < w.site.r * 2) { raiseAlarm(ctx.world, Math.min(5, H.wanted + 1), `${d.title}: private security response`); emit('alarm:response', { id: d.id, x: w.site.x, z: w.site.z, wanted: ctx.world.wanted }); }
   }
   let act = null, goal = null;
-  const onFoot = !car;
+  // v7.5.40: on foot AND at street level. Outdoors, standing 2.5 m+ above a ring (a jetpack on the villa roof right over
+  // the safe) isn't being at the door / safe / power box (player.y is eye height, 1.7 m over your feet).
+  const lifted = !isIndoors(ctx.world) && Number.isFinite(P.y) && typeof ctx.height === 'function' && P.y - 1.7 - ctx.height(P.x, P.z) > 2.5;
+  const onFoot = !car && !lifted;
   if (w.power && onFoot && dist(w.power) < 2.2 && !run.powerCut && STAGE_IDX(run.stage) <= STAGE_IDX('crack')) act = { label: '⚡ Cut power', fn: async () => { run.powerCut = true; for (const c of cams.list()) if (c.heistId === d.id) cams.disable(c.id, d.power?.s ?? 45); emit('camera:disabled', { id: d.id, all: true, s: d.power?.s ?? 45 }); toast('⚡ Cameras dark for a bit. Move.', 2500); } };
   else if (onFoot && cv.near && cv.nearD < 2.4 && cv.near.heistId === d.id && STAGE_IDX(run.stage) <= STAGE_IDX('crack')) { const c = cv.near; act = { label: '✂️ Cut camera', fn: async () => { cams.disable(c.id); emit('camera:disabled', { id: c.id, heistId: d.id, s: c.disabledFor }); toast('✂️ Camera loop spliced.', 2000); } }; }
   if (run.stage === 'case') {
@@ -201,10 +205,11 @@ function resolve(world, d) {
 }
 function finish(success, fail) {
   if (!run) return; const d = run.def;
-  if (success) { run.advance('done'); if (d.payout) payout(ctxL?.game, d.loot.credits); } else { run.failWith(fail); if (safeOpen()) cancelSafe(); }
-  const res = { id: d.id, success, loot: success ? run.loot : null, fail: success ? null : fail, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm };
+  let stars = 0; // v7.5.46 (Collin): every clean score pays stars too, scaled with the score (starmixcore.heistStars)
+  if (success) { run.advance('done'); if (d.payout) payout(ctxL?.game, d.loot.credits); stars = grantStars(ctxL?.game, heistStars(d.loot?.credits)); } else { run.failWith(fail); if (safeOpen()) cancelSafe(); }
+  const res = { id: d.id, success, loot: success ? run.loot : null, fail: success ? null : fail, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, stars };
   emit(success ? 'done' : 'fail', res); if (success) emit('clean', { id: d.id });
-  toast(success ? `🕵️ ${d.title}: clean getaway.` : `🕵️ ${d.title} blown: ${fail}.`, 3500);
+  toast(success ? `🕵️ ${d.title}: clean getaway.${stars ? ` +${stars} ⭐` : ''}` : `🕵️ ${d.title} blown: ${fail}.`, 3500);
   cams.removeWhere(c => c.heistId === d.id); guards.stop(); dropMarks(); setAction(null);
   const r = runDone; run = null; runDone = null; renderChip(0, null); r?.(res);
 }
@@ -232,6 +237,7 @@ export const heist = {
     emit('alarm', { level, why, before, wanted: world ? world.wanted : 0, op: act.op, heistId: run?.def.id || null }); return act;
   },
   registerHeist(def) { const d = normHeist(def); HEISTS.set(d.id, d); ensureMenu(); return d.id; },
+  unregisterHeist(id) { if (run && run.def.id === id) return false; const had = HEISTS.delete(id); ensureMenu(); return had; }, // v7.5.33 (a bribed one-run Helios pass ends)
   heists: () => [...HEISTS.values()].map(d => ({ id: d.id, title: d.title, world: d.world, tier: d.safe.tier, cameras: d.cameras.length })),
   fromMansion: heistFromMansion,
   // applyTip(heistId, tip): informant intel. Unknown types / heists are ignored (returns null). Emits 'tip' with the

@@ -19,23 +19,24 @@ export function noiseBuf(a) {
   let br = 0; for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; br = (br + 0.02 * w) / 1.02; d[i] = w * 0.55 + br * 2.4; }
   NOISE.set(a, b); return b;
 }
+const _free = (...n) => () => { for (const x of n) { try { x.disconnect(); } catch (e) { /* */ } } }; // v7.5.15: one-shot voices disconnect when done (iOS WebKit keeps connected nodes alive)
 export function tone(a, dest, type, f, t, dur, vol, f1, attack = 0.01) {
   const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05); return o;
+  o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05); o.addEventListener('ended', _free(o, g)); return o;
 }
 export function burst(a, dest, t, dur, vol, freq = 2000, q = 0.8, type = 'bandpass', f1) {
   const s = a.createBufferSource(); s.buffer = noiseBuf(a); const f = a.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
   if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
   const g = a.createGain(); g.gain.setValueAtTime(Math.max(0.0002, vol), t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05); return s;
+  s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05); s.addEventListener('ended', _free(s, f, g)); return s;
 }
 // Swell: a noise band that fades in and out (traffic pass-bys, crowd swells, wind gusts)
 export function swell(a, dest, t, dur, vol, f0, f1, q = 0.9, type = 'bandpass') {
   const s = a.createBufferSource(); s.buffer = noiseBuf(a); s.loop = true; const f = a.createBiquadFilter(); f.type = type; f.Q.value = q;
   f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.5); f.frequency.exponentialRampToValueAtTime(f0 * 0.7, t + dur);
   const g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + dur * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  s.connect(f).connect(g).connect(dest); s.start(t, Math.random()); s.stop(t + dur + 0.05); return s;
+  s.connect(f).connect(g).connect(dest); s.start(t, Math.random()); s.stop(t + dur + 0.05); s.addEventListener('ended', _free(s, f, g)); return s;
 }
 // TTS-free "voice": a sawtooth through a moving formant, one short syllable at a time. It reads as speech under a caption.
 // opts: { pitch (Hz), syll (count), rate (syll/s), vol, angry, lp }
@@ -49,7 +50,7 @@ export function babble(a, dest, t, { pitch = 140, syll = 6, rate = 7, vol = 0.05
     o.frequency.setValueAtTime(p, st); o.frequency.linearRampToValueAtTime(p * (0.9 + Math.random() * 0.2), st + d);
     bp.type = 'bandpass'; bp.Q.value = 3; bp.frequency.setValueAtTime(350 + Math.random() * 600, st); bp.frequency.linearRampToValueAtTime(900 + Math.random() * 1300, st + d);
     g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(vol * (angry ? 1.4 : 1), st + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, st + d);
-    o.connect(bp).connect(g).connect(f); o.start(st); o.stop(st + d + 0.03);
+    o.connect(bp).connect(g).connect(f); o.start(st); o.stop(st + d + 0.03); o.addEventListener('ended', i === syll - 1 ? _free(o, bp, g, f) : _free(o, bp, g));
   }
   return syll * step;
 }

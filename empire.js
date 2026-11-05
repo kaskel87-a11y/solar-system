@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import * as EC from './empirecore.js';
 import { marsHour } from './dangercore.js';
+import { grantStars, frontStars } from './starmixcore.js'; // v7.5.46 fronts pay stars
 
 const W = () => (typeof window !== 'undefined' ? window : null), SSX = () => W()?.SSX, APP = () => W()?.__app;
 const surf = () => APP()?.surface, game = () => surf()?.game, wld = () => surf()?.world;
@@ -209,7 +210,7 @@ function buy(id, o = {}) {
 function collect(id, o = {}) {
   const p = EC.propById(id), ow = D.owned[id]; if (!p || !ow) return { ok: false, why: 'Not yours.' }; if (!EC.isFront(p)) return { ok: false, why: 'Safehouses don\u2019t earn.' };
   if (!o.force && !near(id)) return { ok: false, why: `Collect at ${p.name}.` }; const n = EC.collect(D, id); if (!n) return { ok: false, why: 'Till is empty.' };
-  H.give(n); save(); toast(`💵 +${n} cr from ${p.name}`, 2400); emit('collect', { prop: id, amount: n }); renderPanel(); return { ok: true, amount: n };
+  H.give(n); const stars = grantStars(game(), frontStars(n)); save(); toast(`💵 +${n} cr${stars ? ` · +${stars} ⭐` : ''} from ${p.name}`, 2400); emit('collect', { prop: id, amount: n, stars }); renderPanel(); return { ok: true, amount: n, stars }; // v7.5.46: fronts pay stars too (1 per 10 cr)
 }
 function upgrade(id) { const p = EC.propById(id), o = D.owned[id]; if (!o) return { ok: false, why: 'Not yours.' }; if (o.security) return { ok: false, why: 'Already done.' }; const c = EC.securityCost(p); if (!H.spend(c)) return { ok: false, why: `Need ${c} cr.` }; o.security = true; save(); emit('security', { prop: id, cost: c }); toast(`🔒 ${p.name}: shutters, cameras and a guy on the door. Crews think twice.`, 2800); renderPanel(); return { ok: true, cost: c }; }
 function repair(id) { const p = EC.propById(id), o = D.owned[id]; if (!o || !(o.closedH > 0)) return { ok: false, why: 'Nothing to fix.' }; const c = EC.repairCost(p); if (!H.spend(c)) return { ok: false, why: `Need ${c} cr.` }; o.closedH = 0; save(); refreshLooks(); emit('repair', { prop: id, cost: c }); toast(`🔨 ${p.name} is open again.`, 2200); renderPanel(); return { ok: true, cost: c }; }
@@ -305,17 +306,17 @@ function renderPanel(force) {
   const U = S.ui; if (!U || (!force && !panelOpen())) return; const ck = clock(), cr = H.credits(), id = S.panelId;
   const note = S.note ? `<div class="note">${esc(S.note)}</div>` : '';
   if (id && EC.propById(id)) { U.wrap.innerHTML = note + propHtml(EC.propById(id), cr, ck); return; }
-  const owned = Object.keys(D.owned).length, pend = Math.floor(Object.values(D.owned).reduce((s, o) => s + o.pending, 0)), B = H.base(); let lots = 0; try { lots = B ? (B.owned() || []).length : 0; } catch (e) { lots = 0; }
-  const rows = EC.PROPS.map(p => { const o = D.owned[p.id], K = EC.KINDS[p.kind], dd = distTo(p.id), st = !o ? `${p.price} cr` : o.closedH > 0 ? `🔨 shut ${Math.ceil(o.closedH)} h` : EC.isFront(p) ? `💵 ${Math.floor(o.pending)} / ${EC.capOf(p.kind)}` : `💰 ${o.stash.credits} cr${D.home === p.id ? ' · 🛏️ home' : ''}`;
+  const owned = Object.keys(D.owned).length, pend = Math.floor(Object.values(D.owned).reduce((s, o) => s + EC.till(o), 0)), B = H.base(); let lots = 0; try { lots = B ? (B.owned() || []).length : 0; } catch (e) { lots = 0; }
+  const rows = EC.PROPS.map(p => { const o = D.owned[p.id], K = EC.KINDS[p.kind], dd = distTo(p.id), st = !o ? `${p.price} cr` : o.closedH > 0 ? `🔨 shut ${Math.ceil(o.closedH)} h` : EC.isFront(p) ? `💵 ${Math.floor(EC.till(o))} / ${EC.capOf(p.kind)}` : `💰 ${o.stash.credits} cr${D.home === p.id ? ' · 🛏️ home' : ''}`;
     return `<div class="row"><div>${K.icon} <b>${esc(p.name)}</b>${o ? ' ✅' : ''}<br><small>${esc(p.dname)} · ${K.label}${dd ? ` · ${dd.d} m ${dd.dir}` : ''} · ${st}</small></div><div class="btns"><button data-a="mark" data-id="${p.id}">📍</button><button data-a="view" data-id="${p.id}">${o ? 'Manage' : 'Look'}</button></div></div>`; }).join('');
   U.wrap.innerHTML = `${note}<h2>🏢 Empire</h2><div class="sum"><b>🕒 ${ck.text}${ck.night ? ' 🌙' : ''}</b><b>${owned}/${EC.PROPS.length} owned</b><b>+${EC.perHour(D, ck.hour)} cr/h now</b><b>💵 ${pend} waiting</b>${lots ? `<b>🏠 ${lots} base lot${lots > 1 ? 's' : ''}</b>` : ''}</div>${threatBox()}${S.wake && D.home && D.owned[D.home] ? `<div class="row"><div><small>Back on your feet. You can go straight home.</small></div><div class="btns"><button class="go" data-a="wake">🏠 Back to ${esc(EC.propById(D.home).name)}</button></div></div>` : ''}
 <small>Buy at the door. Fronts earn every game hour, faster at their busy time, and the till only holds so much: collect at the counter. Crews you've crossed come for them.</small>${rows}
-<div class="row"><div><small>You have ${cr} cr · earned ${Math.round(D.earned)} cr so far</small></div><div class="btns">${B && typeof B.overview === 'function' ? '<button data-a="base">🏠 Base lots</button>' : ''}<button data-a="close">Close</button></div></div>`;
+<div class="row"><div><small>You have ${cr} cr · earned ${Math.round(D.earned)} cr so far</small></div><div class="btns">${window.SSX?.crew ? '<button data-a="crew">👥 Crew</button>' : ''}${B && typeof B.overview === 'function' ? '<button data-a="base">🏠 Base lots</button>' : ''}<button data-a="close">Close</button></div></div>`;
 }
 function propHtml(p, cr, ck) {
   const o = D.owned[p.id], K = EC.KINDS[p.kind], at = near(p.id), dd = distTo(p.id), c = ctxFor(p), g = EC.gangFor(p, c.turf), risk = o ? EC.threatChance(p, o, c) : EC.threatChance(p, EC.ownedState(), c);
   const riskTxt = risk <= 0 ? 'none right now' : risk < 0.03 ? 'low' : risk < 0.07 ? 'medium' : 'high'; let body = '', btns = '';
-  if (EC.isFront(p)) { const now = Math.round(EC.rateAt(p.kind, ck.hour)), cap = EC.capOf(p.kind), pend = o ? Math.floor(o.pending) : 0;
+  if (EC.isFront(p)) { const now = Math.round(EC.rateAt(p.kind, ck.hour)), cap = EC.capOf(p.kind), pend = o ? Math.floor(EC.till(o)) : 0;
     body = `<div class="row"><div>Earns <b>${now} cr/h</b> right now (${ck.band}), about ${Math.round(EC.avgRate(p.kind))} cr/h over a day. Till holds ${cap}.${o ? `<div class="bar"><i style="width:${Math.round(100 * pend / cap)}%"></i></div><small>${pend} cr waiting${o.closedH > 0 ? ` · shut for ${Math.ceil(o.closedH)} game h` : ''}</small>` : ''}</div></div>`;
     if (o) { btns += `<button class="go" data-a="collect" data-id="${p.id}" ${!at || pend < 1 || o.closedH > 0 ? 'disabled' : ''}>💵 Collect ${pend}</button>`; if (o.closedH > 0) btns += `<button data-a="repair" data-id="${p.id}" ${cr < EC.repairCost(p) ? 'disabled' : ''}>🔨 Fix ${EC.repairCost(p)}</button>`; } }
   else if (o) { body = `<div class="row"><div>💰 Stash: <b>${o.stash.credits} cr</b> · ${o.stash.medkits} 🩹 <small>(a bust or med-evac can't touch it)</small><br><small>${D.home === p.id ? '🛏️ You wake up here after a bust or med-evac.' : 'Rest here to make it home.'}</small></div></div>`;
@@ -333,6 +334,7 @@ function panelAct(ds) {
   if (a === 'close') return closePanel(); if (a === 'back') { S.panelId = null; return renderPanel(); } if (a === 'view') { S.panelId = id; return renderPanel(); }
   if (a === 'mark') { const E = S.P[id]; if (E) { S.target = id; updateMarks(true); S.note = `📍 ${way(id)} It's the yellow ring on the radar.`; renderPanel(); } return; }
   if (a === 'wake') { closePanel(); wakeAtHome(); return; } if (a === 'roverHome') { r = garage(id, S.tc, true); if (r && !r.ok && r.why) toast('❌ ' + r.why, 2200); renderPanel(); return; }
+  if (a === 'crew') { closePanel(); try { window.SSX?.crew?.open?.(); } catch (e) { /* */ } return; } // v7.5.42 crew.js
   if (a === 'base') { closePanel(); try { H.base()?.overview?.(); } catch (e) { /* */ } return; }
   if (a === 'pay') r = pay(); else if (a === 'refuse') r = refuse(); else if (a === 'buy') r = buy(id); else if (a === 'collect') r = collect(id); else if (a === 'sec') r = upgrade(id); else if (a === 'repair') r = repair(id);
   else if (a === 'rest') r = rest(id); else if (a === 'dep') r = stashMove(id, { credits: +ds.n }); else if (a === 'med') r = stashMove(id, { medkits: +ds.n });
@@ -377,14 +379,14 @@ function empireTick(dt, tc) {
 
 // ---------- public API: window.SSX.empire ----------
 function propView(p) { const o = D.owned[p.id], E = S.P[p.id]; return { id: p.id, kind: p.kind, name: p.name, district: p.district, districtName: p.dname, price: p.price, aj: [...p.aj], owned: !!o,
-  pending: o ? Math.floor(o.pending) : 0, cap: EC.capOf(p.kind), perHour: Math.round(EC.rateAt(p.kind, clock().hour)), closedH: o ? +o.closedH.toFixed(2) : 0, security: !!o?.security, protect: o?.protect ? { ...o.protect } : null,
+  pending: o ? Math.floor(EC.till(o)) : 0, crew: o ? Math.floor(+o.crew || 0) : 0, cap: EC.capOf(p.kind), perHour: Math.round(EC.rateAt(p.kind, clock().hour)), closedH: o ? +o.closedH.toFixed(2) : 0, security: !!o?.security, protect: o?.protect ? { ...o.protect } : null,
   stash: o && p.kind === 'safehouse' ? { ...o.stash } : null, door: E ? { x: +E.pl.door.x.toFixed(1), z: +E.pl.door.z.toFixed(1) } : null, garage: E?.pl.garage ? { x: +E.pl.garage.x.toFixed(1), z: +E.pl.garage.z.toFixed(1) } : null, pos: E ? { x: E.pl.x, z: E.pl.z } : null }; }
 export const empire = {
   get ready() { return S.ready && S.built; }, version: 1, key: EC.SAVE_KEY,
   props: () => EC.PROPS.map(propView), prop: id => { const p = EC.propById(id); return p ? propView(p) : null; }, owned: () => Object.keys(D.owned),
-  buy, collect, upgrade, repair, rest, deposit: (id, o = {}) => stashMove(id, { credits: Math.abs(o.credits | 0), medkits: Math.abs(o.medkits | 0) }), withdraw: (id, o = {}) => stashMove(id, { credits: -Math.abs(o.credits | 0), medkits: -Math.abs(o.medkits | 0) }),
+  buy, collect, upgrade, launder: (n, prefer) => { const id = EC.launder(D, n, prefer); if (id) { save(); emit('launder', { prop: id, amount: Math.floor(n) }); } return id ? { id, name: EC.propById(id).name } : null; }, fronts: () => Object.keys(D.owned).filter(id => EC.isFront(EC.propById(id))).map(id => ({ id, name: EC.propById(id).name, kind: EC.propById(id).kind, rate: Math.round(EC.avgRate(EC.propById(id).kind)) })), repair, rest, deposit: (id, o = {}) => stashMove(id, { credits: Math.abs(o.credits | 0), medkits: Math.abs(o.medkits | 0) }), withdraw: (id, o = {}) => stashMove(id, { credits: -Math.abs(o.credits | 0), medkits: -Math.abs(o.medkits | 0) }),
   garage: (id, o = {}) => garage(id, S.tc, !!o.park), chopRide: () => chopRide(), wake: () => wakeAtHome(), home: () => D.home,
-  pending: () => Math.floor(Object.values(D.owned).reduce((s, o) => s + o.pending, 0)), perHour: () => EC.perHour(D, clock().hour), clock,
+  pending: () => Math.floor(Object.values(D.owned).reduce((s, o) => s + EC.till(o), 0)), perHour: () => EC.perHour(D, clock().hour), clock,
   threat: () => D.threat ? { ...D.threat, left: Math.max(0, Math.round(D.threat.limit - D.threat.t)), engine: S.defense?.engine || null } : null, pay, refuse, defend,
   open: id => openPanel(id || null), close: closePanel, get isOpen() { return panelOpen(); }, action: () => S.act?.key || null, action2: () => null /* one context button only; second actions live in the sheet */,
   stats: () => ({ ...D.stats, earned: Math.round(D.earned) }), log: () => D.log.slice(), frameMs: () => +S.frameMs.toFixed(3), setEnabled(on) { S.on = !!on; return S.on; }, get enabled() { return S.on; },

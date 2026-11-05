@@ -31,6 +31,7 @@ const tag = (DEV ? DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : 'desktop') +
     await shot('colony-take');
     await G(() => document.getElementById('driveBtn').click());
     ok('stolen', await wait(() => window.__app.surface.info.driving && window.__app.surface.info.stolen, 8000));
+    R.stealWanted = await G(() => window.__app.surface.world.wanted); ok('stealCarNoStars (v7.5.28: colony cameras + bystanders, no cop close)', R.stealWanted, R.stealWanted === 0);
     R.vehicle = await G(() => window.__app.surface.info.vehicle);
     ok('radioOn', await G(() => window.__app.sfx().includes('radioOn')), await G(() => window.__app.sfx().includes('radioOn')));
     R.stationToast = await G(() => document.getElementById('toast').textContent);

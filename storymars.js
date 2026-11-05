@@ -250,6 +250,8 @@ function engineGive(app, o) { // only for offers we registered ourselves (Marsma
 const B = { mine: new Set(), attached: new Map(), last: 0 };
 function barterCheck(app) {
   const C = window.SSX?.contraband; if (!C) return;
+  // v7.5.23 (p2): let contraband.js finish loading mars/barter.json first (its rows win); registering our copy before that raced it and spammed warnings
+  if ('barterSource' in C && C.barterSource !== 'barter.json') { B.wait0 ??= performance.now(); if (performance.now() - B.wait0 < 8000) return; }
   const getO = id => C.getOffer?.(id) ?? C.offers?.[id] ?? (C.offers instanceof Map ? C.offers.get(id) : undefined);
   for (const o of BARTER) {
     const story = o.id in BARTER_STORY, cur = getO(o.id);

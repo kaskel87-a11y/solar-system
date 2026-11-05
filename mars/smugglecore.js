@@ -5,8 +5,8 @@
 // along its orbit but does not spin), so the route stays put while Mars goes round the Sun.
 
 export const SAVE_KEY = 'ssx.smuggle.v1';
-export const RUN_KEY = 'Digit8';    // pick up a run at the pad / take the cash payout (free on main and every open PR: danger 1-4, gravity 2, raccoon 5, base 1-6, street 7)
-export const FAVOR_KEY = 'Digit9';  // take the favor payout instead
+export const RUN_KEY = null;       // v7.5.16: no number key; the RUN / CASH dock button gets a context key from hud/keys.js
+export const FAVOR_KEY = null;     // same for the FAVOR dock button
 export const BRIBE_KEY = 'KeyB';    // in space only (contraband's KeyB stash is surface only)
 export const DUMP_KEY = 'KeyX';     // in space only (KeyX medkit is surface only)
 export const PAD_AJ = [-38, 10];    // Ares Junction landing pad (world.js COLONIES.Mars.pad), AJ-relative

@@ -466,6 +466,8 @@ const css = `
 #cqPanel button{display:block;width:100%;min-height:48px;margin:8px 0 0;padding:8px 12px;border-radius:12px;border:2px solid #fff;background:#111;color:#fff;font:800 15px/1.2 system-ui,sans-serif;text-align:left;touch-action:manipulation}
 #cqPanel button.pri{background:#fff;color:#000}#cqPanel button:disabled{opacity:.45}#cqPanel button small{display:block;font-weight:600;font-size:12px;opacity:.85}
 #cqPanel .msg{min-height:18px;margin-top:8px;color:#ffd400;font-weight:800}
+#cqPanel .wrap{max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box}
+@media (max-height:500px){#cqPanel .wrap{width:min(720px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));padding:8px 10px 8px;font-size:13px}#cqPanel h2{font-size:17px}#cqPanel p{margin:3px 0}#cqPanel .cqB{display:grid;grid-template-columns:1fr 1fr;column-gap:8px}#cqPanel button{min-height:44px;margin-top:6px;padding:5px 10px;font-size:14px}#cqPanel button small{font-size:11px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}} /* v7.5.23 (m3): landscape phones get the booking choices in two columns so Break out / Decide later stay on screen */
 #cqHud{position:fixed;z-index:14;left:50%;transform:translateX(-50%);top:calc(116px + env(safe-area-inset-top));display:none;align-items:center;gap:8px;max-width:calc(100vw - 20px);background:#000;color:#fff;border:2px solid #fff;border-radius:14px;padding:4px 4px 4px 12px;font:800 14px/1.2 system-ui,sans-serif}
 #cqHud.on{display:flex}#cqHud.alarm{border-color:#ff2a2a;background:#2a0000}#cqHud button{min-height:44px;min-width:64px;border-radius:10px;border:2px solid #fff;background:#fff;color:#000;font:900 14px system-ui,sans-serif;touch-action:manipulation}
 `;
@@ -505,11 +507,11 @@ function render() {
     const c = custody;
     h = `<h2>🔒 Deimos Lockup · booking</h2><p class="sub">${c.stars ? '★'.repeat(c.stars) + ' · ' : ''}Strikes ${S.strikes}/5 · 💰 ${cr} cr${c.lawyer ? ' · ⚖️ ' + esc(LAWYER.name) : ''}</p>`
       + `<p>Seized: ${c.weapons?.n | 0} weapon${(c.weapons?.n | 0) === 1 ? '' : 's'} (evidence locker), ${c.contraband?.n | 0} units of product.${S.impound ? ' Your rover was towed to the ColSec Impound.' : ''}</p>`
-      + btn('serve', `⏳ Serve ${q.time + c.extra} hours`, 'Free. The clock moves on. Weapons wait in the evidence locker.')
+      + '<div class="cqB">' + btn('serve', `⏳ Serve ${q.time + c.extra} hours`, 'Free. The clock moves on. Weapons wait in the evidence locker.')
       + btn('bail', `💳 Post bail · ${q.bail} cr`, 'Out now. Weapons wait in the evidence locker.', false, cr < q.bail)
       + btn('bribe', `💵 Bribe Sergeant Kade · ${q.bribe} cr`, c.refused ? 'He said no.' : `About ${Math.round(q.bribeOdds * 100)}% he takes it (ColSec rep, strikes). Everything comes back. A no costs a strike.`, false, c.refused || cr < q.bribe)
       + btn('lawyer', c.lawyer ? `⚖️ ${LAWYER.name} is on it` : `⚖️ Call ${LAWYER.name} · ${q.lawyer} cr`, c.lawyer ? 'Bail −40%, time halved, locker and impound fees cut.' : 'Cuts bail 40%, halves the time, trims the locker and impound fees.', false, c.lawyer || cr < q.lawyer)
-      + btn('jailbreak', '🏃 Break out', 'Sneak past two guards to the service gate, or get spotted and fight. You leave wanted.');
+      + btn('jailbreak', '🏃 Break out', 'Sneak past two guards to the service gate, or get spotted and fight. You leave wanted.') + btn('close', 'Decide later', '') + '</div>';
   } else {
     h = `<h2>⚖️ Legal</h2><p class="sub">${esc(LAWYER.name)} · ${esc(LAWYER.firm)} · Strikes ${S.strikes}/5 · 💰 ${cr} cr · Mars ${fmtH(clock())}</p>`;
     if (jail) h += `<p>🏃 Jailbreak in progress. ${jail.spotted ? 'Alarm is up.' : 'Stay out of the torch beams.'}</p>`;
@@ -519,7 +521,7 @@ function render() {
     h += btn('impound', S.impound ? `🚧 Pay the impound · ${q.impound} cr` : '🚧 Impound: nothing of yours', S.impound ? 'Your rover is at the ColSec Impound, Olympus Row. Or break it out (that\u2019s a crime).' : '', false, !S.impound || cr < q.impound);
     h += btn('mark', '📍 Mark Lockup + Impound', 'Blue and yellow rings on the minimap.');
   }
-  if (pMode !== 'receipt') h += btn('close', pMode === 'booking' ? 'Decide later' : 'Close', '');
+  if (pMode !== 'receipt' && !(pMode === 'booking' && custody)) h += btn('close', 'Close', '');
   pBody.innerHTML = h;
   pBody.querySelectorAll('button[data-a]').forEach(b => tap(b, () => { if (!b.disabled) act(b.dataset.a); }));
 }

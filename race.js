@@ -11,6 +11,7 @@ import * as RC from './racecore.js';
 import { jobPay, boost } from './economy.js'; // money boost: SSX.economy.payoutMult (boost() for the purses we list)
 import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
+import { getAudioCtx } from './audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 let C = null;                       // latest surface context from the hook
@@ -187,16 +188,27 @@ function defsHere() { return allDefs().filter(d => d.world === planet); }
 // gates never sit inside a dome or building: world.collide(x, z, r) is the same test the cars use
 function blockedFn() { const w = C?.world; return w?.collide ? (x, z, r) => !!w.collide(x, z, r) : null; }
 function resolve(def) { return RC.resolveTrack(def, C?.world?.colony, blockedFn()); }
+// v7.5.16 (Collin: "lags every 2-3 seconds, even on a laptop"): the minimap's POI list (hudx pois, refreshed every 1 s) called
+// tracks(), which re-resolved every track against the live world: clearGates/pickSpot probe up to 1,920 spots x world.collide per
+// blocked gate, ~40-230 ms of main thread, once a second. Views (minimap, race list) now reuse one resolve per track per world;
+// a race start still resolves fresh against the live world.
+const viewCache = new Map();
+function viewKey(def) { const w = C?.world, c = w?.colony; return `${planet}|${c?.x}|${c?.z}|${def.custom ? 1 : 0}|${def.anchor || ''}|${JSON.stringify(def.gates)}`; }
+function resolveView(def) {
+  const k = viewKey(def), e = viewCache.get(def.id);
+  if (e && e.k === k && e.w === C?.world) return e.t;
+  const t = resolve(def); viewCache.set(def.id, { k, w: C?.world, t }); return t;
+}
 
 function setupPlanet() {
-  disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
+  viewCache.clear(); disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
   idleG = new THREE.Group(); root.add(idleG); raceG = null; planet = C.name;
   rebuildIdle();
 }
 function rebuildIdle() {
   if (!idleG) return; for (const c of [...idleG.children]) disposeGroup(c);
   for (const d of defsHere()) {
-    const t = resolve(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
+    const t = resolveView(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
     const lab = labelSprite('\ud83c\udfc1 ' + d.name.toUpperCase(), d.custom ? '#7dd3fc' : '#ffd25a', d.pit ? 18 : 13); lab.position.set(0, o.userData.top + 3.2, 0); o.add(lab);
     o.userData.def = d; idleG.add(o);
   }
@@ -446,7 +458,16 @@ function ensureUI() {
   const res = document.createElement('div'); res.id = 'raceResult'; chip.after(res);
   const count = document.createElement('div'); count.id = 'raceCount'; document.getElementById('surfHud')?.appendChild(count);
   const ctx = document.createElement('button'); ctx.id = 'raceCtxBtn'; ctx.className = 'glass'; ctx.style.display = 'none'; ctx.textContent = '\ud83c\udfc1 Race';
-  btns?.prepend(ctx); tapButton(ctx, () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } });
+  btns?.prepend(ctx); const goNear = () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } }; tapButton(ctx, goNear);
+  // v7.5.16 (Collin): Enter starts the race at a start pad, and Rematch / Next on the result card. Never while typing
+  // (Save Code, track name, chat) or when another handler already took Enter (radio offer, controls panel).
+  window.addEventListener('keydown', e => {
+    if ((e.code !== 'Enter' && e.code !== 'NumpadEnter') || e.repeat || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = document.activeElement; if (t && t !== document.body && t.tagName !== 'CANVAS') return; // typing, or Enter already presses a focused menu button
+    if (panel.classList.contains('on') || builder?.open) return;
+    if (ui.res.classList.contains('on')) { const b = ui.res.querySelector('#raceNext') || ui.res.querySelector('#raceAgain'); if (b) { e.preventDefault(); b.click(); /* detail 0 -> tapButton's keyboard path, once */ } return; }
+    if (ui.ctx.style.display !== 'none' && ui.near) { e.preventDefault(); goNear(); }
+  });
   const mRace = addMenuItem(app(), { id: 'rmRaces', label: '\ud83c\udfc1 Street races', onTap: () => { if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); } });
   const mBuild = addMenuItem(app(), { id: 'rmBuilder', label: '\ud83d\udee0 Track builder', onTap: () => openBuilder() });
   const panel = document.createElement('div'); panel.id = 'racePanel'; document.body.appendChild(panel);
@@ -487,7 +508,7 @@ function showResult(res) {
   const head = !res.done ? '\ud83c\udff3 DNF' : res.won ? '\ud83c\udfc6 YOU WIN' : '\ud83e\udd48 SECOND';
   const money = res.done ? `${res.buyIn ? `Buy-in \u2212${res.buyIn} \u00b7 ` : ''}Purse +${res.credits} cr \u00b7 +${res.xp} XP${res.firstWin ? ' \u00b7 first win bonus' : ''}${res.note ? `<br><small>${esc(res.note)}</small>` : ''}` : (res.buyIn ? `Buy-in \u2212${res.buyIn} cr lost` : '');
   ui.res.innerHTML = `<h4>${head} \u00b7 ${esc(res.name)}</h4>${res.done ? `Time ${RC.fmtTime(res.time)} \u00b7 best lap ${RC.fmtTime(res.best ?? NaN)}${res.newBest ? ' \u2b50 NEW' : ''}<br>` : ''}${res.rivalTime ? `Rival ${RC.fmtTime(res.rivalTime)}<br>` : ''}${money}<br><i>${esc(res.line || '')}</i>
-    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch</button><button id="raceResClose">\u2716</button></div>`;
+    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch${document.body.classList.contains('touch') ? '' : ' (Enter)'}</button><button id="raceResClose">\u2716</button></div>`;
   ui.res.classList.add('on');
   tapButton(ui.res.querySelector('#raceAgain'), () => { showResult(null); const r = startRace(res.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); });
   tapButton(ui.res.querySelector('#raceResClose'), () => showResult(null));
@@ -499,7 +520,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 // ---------- race list panel ----------
 function openPanel() {
   if (!ensureUI() || !planet) return; const P = C?.game?.progress, defs = defsHere();
-  const items = defs.map(d => { const t = resolve(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
+  const items = defs.map(d => { const t = resolveView(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
     const kind = t.loop ? `${t.laps}-lap loop` : 'sprint', far = C ? Math.round(Math.hypot(t.gates[0].x - C.player.x, t.gates[0].z - C.player.z)) : 0;
     const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${boost(RC.payout(t, { won: true, custom: true }).credits)} cr`) : `purse ${boost(d.purse || 120)} cr${wins ? '' : ` + ${boost(100)} first win`}`; // v7.5.9: listed = paid
     return `<div class="item${d.custom ? ' custom' : ''}"><b>${d.custom ? '\ud83d\udee0' : d.fromQuest ? '\ud83d\udcfb' : '\ud83c\udfc1'} ${esc(d.name)}</b> \u00b7 ${kind} \u00b7 ${t.gates.length} gates \u00b7 ${Math.round(t.length)} m
@@ -541,7 +562,7 @@ function openBuilder(def = null, copy = false) {
 
 // ---------- tiny synth (WebAudio): countdown beeps, gate chimes, boost/jump ----------
 let ac = null;
-function unlockAudio() { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume().catch(() => {}); } catch (e) { ac = null; } }
+function unlockAudio() { try { if (!ac) ac = getAudioCtx(); if (ac && ac.state !== 'running') ac.resume().catch(() => {}); } catch (e) { ac = null; } }
 function sfx(kind) {
   if (!ac || ac.state !== 'running') return;
   const tone = (f, d, type = 'square', v = 0.06, f2) => { const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
@@ -565,7 +586,7 @@ export function raceTick(dt, ctx) {
   let near = null, bd = 18; const px = ctx.car ? ctx.car.x : ctx.player.x, pz = ctx.car ? ctx.car.z : ctx.player.z;
   for (const o of idleG.children) { const d = Math.hypot(o.position.x - px, o.position.z - pz); if (d < bd) { bd = d; near = o.userData.def; } }
   ui.near = near; const show = !!near && !ctx.game.isDown();
-  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = `\ud83c\udfc1 Race`;
+  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = document.body.classList.contains('touch') ? '\ud83c\udfc1 Race' : '\ud83c\udfc1 Race (Enter)';
 }
 // minimap: our next gate shows where the quest gate would
 const patched = new WeakSet();
@@ -584,10 +605,11 @@ setInterval(() => {
 
 // ---------- test/debug hooks ----------
 window.__race = {
+  showResult: res => showResult(res), // v7.5.15 test hook (card-fit screenshots)
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
   gates: () => R ? R.t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })) : null, // the RUNNING race's gates (tracks() re-resolves against the live world)
-  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
+  tracks: () => defsHere().map(d => { const t = resolveView(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
   start: (id, o) => startRace(id, o), quit: () => quitRace(null), openPanel, closePanel, openBuilder: (id, copy) => openBuilder(id ? allDefs().find(d => d.id === id) : null, copy),
   get builder() { return builder; }, reload() { data = RC.loadRace(LS); rebuildIdle(); },
   skipCountdown() { if (R && R.phase === 'grid') R.count = 0.001; },

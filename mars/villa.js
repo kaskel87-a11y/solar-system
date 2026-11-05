@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { FLOOR_H, CAP, HALF, DOOR_W, WALL_T, DOORS, SPOTS, GUARDS, GUARD, wallBoxes, doorBox, roofTop, resolve, lineClear, insideHouse, roomAt, doorOpen, guardPos, guardSees, yawTo } from './villacore.js';
 import { VILLA, VILLA_AT } from './heisttipcore.js';
 
-const BUILD_R = 260, DROP_R = 320, GUARD_R = 150;
+const BUILD_R = 260, DROP_R = 320, GUARD_R = 150, EYE = 1.7; // EYE: player.y is eye height (surface.js)
 let V = null, blind = false, freeze = false, // freeze: tests pin guards for a photo
     wrappedWorld = null;
 
@@ -23,7 +23,7 @@ function addBox(b) {
 }
 function removeBox(b) {
   if (V.mode === 'colliders') { try { globalThis.SSX?.colliders?.remove?.(b.id); } catch (e) {} return; }
-  if (V.mode === 'solids' && b.ref) { try { V.world.removeSolid?.(b.ref); } catch (e) {} b.ref = null; }
+  if (V.mode === 'solids' && b.ref) { try { if (typeof b.ref === 'function') b.ref(); else V.world.removeSolid?.(b.ref); } catch (e) {} b.ref = null; } // world.addSolid returns a remover
 }
 const solidNow = () => V ? V.walls.concat(V.doors.filter(d => d.shut).map(d => d.box)) : [];
 function wrap(world) {
@@ -94,11 +94,16 @@ function build(ctx) {
   V.safe = block(g, SPOTS.safe[0], y0, SPOTS.safe[1] - 1.3, 1.1, 1.3, 0.8, m.safe);                         // vault safe
   block(g, SPOTS.power[0], y0, SPOTS.power[1] + 1.1, 0.7, 1.3, 0.3, m.power);                              // power box on the back wall
   V.boxes = () => solidNow();
+  // v7.5.40 the roof holds you up: since v7.5.39 a jetpack clears the walls, and with no roof underfoot you dropped straight
+  // through the slab into the locked house (vault included, past the front door, the hall guard and the vault door).
+  // A support-only deck (world.js skips decks in collide/LOS) the size of the visible slab: you land and stand on it.
+  try { V.deck = W.addSolid?.({ x: o[0], z: o[1], box: [HALF.x + 0.4, HALF.z + 0.4], h: CAP, y0: y0 + FLOOR_H, top: roofTop(y0), deck: true, nocam: true, zone: 'villa-roof' }) || null; } catch (e) { V.deck = null; }
   if (V.mode === 'wrap') wrap(W);
   return true;
 }
 function teardown(ctx) {
   if (!V) return;
+  try { if (typeof V.deck === 'function') V.deck(); else if (V.deck) V.world.removeSolid?.(V.deck); } catch (e) {} V.deck = null;
   for (const b of V.walls) removeBox(b); for (const d of V.doors) if (d.shut) removeBox(d.box);
   if (V.mode === 'colliders') { try { globalThis.SSX?.colliders?.removeGroup?.('villa'); } catch (e) {} }
   for (const gd of V.guards) { gd.g.parent?.remove(gd.g); gd.g.traverse(o => { if (o.isMesh && o.geometry !== BOX) o.geometry.dispose(); }); }
@@ -169,7 +174,10 @@ export function villaTick(dt, ctx) {
   else if (V.guards.length && d > GUARD_R + 20) dropGuards(ctx);
   tickGuards(dt, ctx, lp, stage);
   // cutaway: inside, drop the roof and ghost the walls so the chase camera can see you
-  const inside = !ctx.car && insideHouse(lp.x, lp.z);
+  // v7.5.40 ceiling: a jetpack lit indoors stops under the roof instead of popping out on top of it (under = feet below it)
+  const pl = ctx.player, feet = Number.isFinite(pl?.y) ? pl.y - EYE : V.y0, under = feet < V.y0 + FLOOR_H - 0.3;
+  if (!ctx.car && under && insideHouse(lp.x, lp.z) && pl.y > V.y0 + FLOOR_H - 0.12) { pl.y = V.y0 + FLOOR_H - 0.12; if (pl.vy > 0) pl.vy = 0; }
+  const inside = !ctx.car && under && insideHouse(lp.x, lp.z); // on the roof the roof stays drawn
   if (inside !== V.inside) { V.inside = inside; V.roof.visible = !inside; M.wall.opacity = inside ? 0.32 : 1; M.wall.depthWrite = !inside; }
 }
 // walls (and shut doors) block a camera's sight line

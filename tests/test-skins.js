@@ -7,7 +7,7 @@ const base = process.env.BASE || 'http://localhost:8941/', BR = process.env.BR |
 const out = (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = `skins-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').split(',');
+const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome,grinreaper').split(',');
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
@@ -39,8 +39,8 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
   try {
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear()); await page.reload(); await boot();
-    ok('api', await G(() => { const k = window.SSX?.skins; return !!k && k === window.__skins.api && k.list().length >= 10 && k.list().length <= 12; }));
-    const s0 = await S(); ok('freshState', s0, s0.owned.length === 1 && s0.owned[0] === 'rusty' && s0.eq === 'stock');
+    ok('api', await G(() => { const k = window.SSX?.skins; return !!k && k === window.__skins.api && k.list().length >= 10 && k.list().length <= 13; }));
+    const s0 = await S(); ok('freshState', s0, s0.owned.join() === 'rusty,grinreaper' && s0.eq === 'stock');
     ok('catalogue', await G(() => window.SSX.skins.list().map(k => `${k.name} ${k.price}`)));
     ok('playerRig', await G(() => !!window.__skins.player()));
     ok('stallBuilt', await G(() => { const g = window.__skins.stall(); return !!g && !!g.parent && window.__skins.mannequins.length === 2; }));
@@ -66,7 +66,7 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     await P('pointerdown', row('overalls'), 72); await G(() => { const l = document.querySelector('#skPanel .list'); l.scrollTop = 60; l.dispatchEvent(new Event('scroll')); }); await sleep(80); await P('pointerup', row('overalls'), 72); await sleep(200);
     await P('pointerdown', row('biker'), 73); await P('pointerup', row('biker'), 74); await sleep(200); // different pointerId: not a tap
     const sw = await G(() => ({ ...window.__skins.taps, owned: window.SSX.skins.owned }));
-    ok('swipeNoBuy', sw, sw.buys === 0 && sw.swipes >= 2 && (await cr()) === 3000 && sw.owned.length === 1);
+    ok('swipeNoBuy', sw, sw.buys === 0 && sw.swipes >= 2 && (await cr()) === 3000 && sw.owned.length === 2);
     await G(() => { document.querySelector('#skPanel .list').scrollTop = 0; }); await sleep(400);
     // real taps buy: credits deducted, auto-worn, parts on the rig
     await tap(row('punk')); await sleep(300);
@@ -87,7 +87,7 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     await G(() => { window.__skEv = []; window.SSX.skins.on(e => window.__skEv.push([e.type, document.getElementById('skPanel').className, document.querySelector('#skPanel .t').textContent.slice(0, 12)])); });
     await tap('#rmWardrobe'); await sleep(300); R.wEv = await G(() => ({ ev: window.__skEv, menu: document.getElementById('roverMenu').classList.contains('show'), top: document.getElementById('roverMenu').scrollTop, cls: document.getElementById('skPanel').className }));
     ok('wardrobeOpens', await wait(() => document.getElementById('skPanel').classList.contains('open') && /Wardrobe/.test(document.querySelector('#skPanel .t').textContent), 4000));
-    ok('wardrobeRows', await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id)), (await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id).join())) === 'stock,rusty,punk,hustler');
+    ok('wardrobeRows', await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id)), (await G(() => [...document.querySelectorAll('#skPanel .row')].map(r => r.dataset.id).join())) === 'stock,rusty,grinreaper,punk,hustler');
     await sleep(200); await shot('wardrobe');
     await tap(row('rusty')); await sleep(300);
     const w1 = await S(); ok('wardrobeWear', w1, w1.eq === 'rusty' && w1.applied === 'rusty');
@@ -97,7 +97,7 @@ const WEAR = (process.env.WEAR || 'punk,cowboy,kingpin,clown,hazmat,chrome').spl
     await tap('#skPanel button[data-a="x"]');
     // reload: owned + worn persist, the skin is back on
     await page.reload(); await boot(); await wait(() => window.SSX?.skins?.state?.().applied === 'punk', 20000);
-    const r1 = await S(); ok('persists', r1, r1.eq === 'punk' && r1.applied === 'punk' && r1.parts > 5 && ['rusty', 'punk', 'hustler'].every(i => r1.owned.includes(i)) && r1.owned.length === 3);
+    const r1 = await S(); ok('persists', r1, r1.eq === 'punk' && r1.applied === 'punk' && r1.parts > 5 && ['rusty', 'punk', 'hustler'].every(i => r1.owned.includes(i)) && r1.owned.length === 4);
     // dress-up for the screenshots: close camera on the front of the character
     await G(() => { window.__skins.api.__anywhere = true; window.__app.surface.game.progress.credits = 99999; });
     for (const id of WEAR) {
