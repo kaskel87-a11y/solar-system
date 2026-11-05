@@ -195,7 +195,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       if (r.sc < minSc || bottom > r.top - 0.15) continue; const dx = ox - r.x, dz = oz - r.z, d = Math.hypot(dx, dz), m = r.sr + rad; if (d >= m) continue;
       const k = d > 1e-4 ? m / d : 0; ox = d > 1e-4 ? r.x + dx * k : r.x + m; oz = d > 1e-4 ? r.z + dz * k : oz; hit = true; } }
     return hit ? { x: ox, z: oz, rock: true } : null; };
-  const rockClear = (x, z) => { try { return !!world.districtAt?.(x, z); } catch (e) { return false; } }; // world isn't built yet on the very first chunks
+  const rockClear = (x, z) => { try { return !!world.districtAt?.(x, z) || !!globalThis.SSX_GROUND?.clear?.(x, z, name); } catch (e) { return false; } }; // world isn't built yet on the very first chunks; SSX_GROUND: mars/icecap.js keeps boulders off the snow
   const rocksNear = (x, z, pad = 0) => { let n = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = rockBlk.get(`${Math.floor(x / CHUNK) + i},${Math.floor(z / CHUNK) + j}`); if (L) for (const r of L) if (Math.hypot(x - r.x, z - r.z) < r.r + pad) n++; } return n; };
   const poiObjects = [];
   let state = null;
@@ -256,6 +256,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         const dx = x - f.x, dz = z - f.z, u = dx * f.ux + dz * f.uz + f.len / 2, v = Math.abs(dx * -f.uz + dz * f.ux);
         if (u > 0 && u < f.len && v < f.w / 2) h += f.h * (u / f.len) * Math.min(1, (f.w / 2 - v) * 3); continue; }
       const d = Math.hypot(x - f.x, z - f.z); if (d < f.r2) h = THREE.MathUtils.lerp(f.y, h, smooth(f.r1, f.r2, d)); }
+    const gx = globalThis.SSX_GROUND; if (gx) h = gx.height(x, z, h, name); // mars/icecap.js (Pumpkin): the Planum Australe snow mountain, Mars only
     return h;
   }
 

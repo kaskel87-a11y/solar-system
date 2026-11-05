@@ -321,9 +321,10 @@ function installTapGuard() {
   if (window.__hxTapGuard) return; window.__hxTapGuard = true;
   let down = null, blockClick = 0, blockSc = null, lastPtr = '', lastPtrT = -1e9; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
   const now = () => performance.now(), recent = sc => sc.some(([el]) => now() - (lastS.get(el) ?? -1e9) < SCROLL_QUIET);
-  addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1) lastS.set(t, now()); }, true);
+  let swipeT = -1e9; // v7.5.53 (m3): only finger-driven scrolls (a drag or its momentum) count; a scrollIntoView / auto-scroll no longer eats the next real tap
+  addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1 && (down || now() - swipeT < 1200)) lastS.set(t, now()); }, true);
   addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); const safe = !!e.target?.closest?.('[data-tapsafe]'); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, safe, quiet: !safe && recent(sc) } : null; }, true);
-  addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) down.moved = true; }, true);
+  addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) { down.moved = true; swipeT = now(); } }, true);
   addEventListener('pointerup', e => {
     if (!down || e.pointerId !== down.id || e.__hx) return; const d = down; down = null;
     const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || (!d.safe && (recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1)));
@@ -331,16 +332,28 @@ function installTapGuard() {
     e.stopImmediatePropagation(); e.preventDefault(); blockClick = now() + 700; blockSc = d.sc.map(([el]) => el);
     try { const c = new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true, clientX: e.clientX, clientY: e.clientY }); c.__hx = true; e.target.dispatchEvent(c); } catch (er) { /* old WebKit */ }
   }, true);
-  addEventListener('pointercancel', e => { if (down && e.pointerId === down.id && !e.__hx) down = null; }, true);
+  addEventListener('pointercancel', e => { if (down && e.pointerId === down.id && !e.__hx) { down = null; swipeT = now(); } }, true); // a native touch-scroll cancels the pointer: its momentum still counts
   // v7.5.9: the late click of a guarded swipe is swallowed only inside that same sheet; a tap on ☰ (or anything else) right after a flick still lands
   // v7.5.10: a mouse / trackpad click is never a swipe. Trackpad momentum keeps firing scroll events after the wheel stops, and
   // the Save Code sheet scrolls its Yes box into view, so a desktop click on 'Yes, replace' was swallowed and the import never ran.
   const mouseClick = e => e.pointerType === 'mouse' || (lastPtr === 'mouse' && now() - lastPtrT < 1500);
   addEventListener('click', e => { if (mouseClick(e)) return; if ((now() < blockClick && blockSc?.some(el => el.contains(e.target))) || (e.isTrusted && e.detail !== 0 && recent(scrollers(e.target)))) { blockClick = 0; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
+// v7.5.56 (m2): #stackR never reaches down over the #surfBtns column (🏁 Red Tape Run etc. in landscape): cap it above the column's top
+function fitStack() {
+  const sr = document.getElementById('stackR'), col = document.getElementById('surfBtns'); if (!sr || !col) return;
+  const kids = [...col.children].filter(e => e.offsetWidth > 4 && getComputedStyle(e).display !== 'none'); 
+  if (!kids.length) { if (sr.style.maxHeight) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } return; }
+  let top = Infinity, l = Infinity, r = -Infinity; for (const e of kids) { const b = e.getBoundingClientRect(); top = Math.min(top, b.top); l = Math.min(l, b.left); r = Math.max(r, b.right); }
+  const c = sr.getBoundingClientRect(); if (c.right <= l || c.left >= r) { if (sr.style.maxHeight) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } return; }
+  const avail = Math.floor(top - c.top - 6), cur = parseFloat(sr.style.maxHeight) || 0;
+  if (sr.style.maxHeight && avail > cur + 1) { sr.style.maxHeight = ''; sr.style.overflowY = ''; } // room again: back to the stylesheet cap, re-checked next tick
+  else if (c.bottom > top - 6 && avail > 0) { sr.style.maxHeight = avail + 'px'; sr.style.overflowY = 'auto'; }
+}
 function tick(force) {
   const now = performance.now(); if (!force && now - lastT < 140) return; lastT = now;
   if (!app()?.state) return;
+  try { fitStack(); } catch (e) { /* layout helper is optional */ }
   const md = app().state.onSurface ? mapData() : null;
   try { updCard(md); } catch (e) { /* card is optional */ }
   if (md) updWay(md); else way?.classList.remove('on');
