@@ -205,7 +205,7 @@ function surfaceFrame(scene, camera) {
   const cap = Math.min(S.origPR, tier.pixelRatio, cls() === 'phone' && tier.name === 'med' ? 1.5 : 9);
   if (S.drsCap !== cap) { S.drsCap = cap; S.drs.setCap(cap, Math.max(0.75, Math.min(1, cap * 0.6))); S.prCur = cap; }
   if (!S.drsOff && rawMs < 1000 && !document.hidden) { const r = S.drs.step(rawMs, now, S.prCur); if (r != null) S.prCur = r; }
-  const pr = S.drsOff ? cap : S.prCur; if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); S.prSet = pr; }
+  const pr = S.drsOff ? cap : S.prCur; if (renderer.getPixelRatio() !== pr) { const rt = renderer.getRenderTarget(); renderer.setPixelRatio(pr); S.prSet = pr; if (rt) renderer.setRenderTarget(rt); } // a wrapper may have bound its own target (grime 'full'): setSize reset the viewport, re-bind
   vignette(true);
   if (!S.T && !S.Tloading && !DBG.nodetail) loadTextures();
   if (S.scanT <= now) { S.scanT = now + 2000; try { scan(ctx); } catch (e) { warnOnce('scan', e); } }
@@ -234,7 +234,7 @@ function surfaceFrame(scene, camera) {
   S.frames++;
   try {
     const info = renderer.info; info.autoReset = false; info.reset();
-    if (tier.post && !DBG.nopost) {
+    if (tier.post && !DBG.nopost && !renderer.getRenderTarget()) { // an outer wrapper rendering us into its own target (grime 'full') does its own post: our composer would draw to the screen and leave its target black
       renderer.getDrawingBufferSize(dbs);
       if (!S.passes || S.passes.tier !== tier.name) { buildComposer(dbs.x, dbs.y); S.passes.tier = tier.name; }
       else if (S.passes.w !== dbs.x || S.passes.h !== dbs.y) { S.passes.composer.setSize(dbs.x, dbs.y); S.passes.w = dbs.x; S.passes.h = dbs.y; } // dynamic resolution: resize, don't rebuild
@@ -257,8 +257,11 @@ function wrappedRender(scene, camera) {
   if (inRender) return origRender(scene, camera);
   const surf = window.__app?.surface;
   if (!surf || scene !== surf.scene || camera !== surf.camera || !S.ctx || S.ctx.scene !== scene || tier.name === 'classic') {
-    if (S.prSet != null && S.origPR != null && scene !== surf?.scene) { renderer.setPixelRatio(S.origPR); S.prSet = null; } // back in space: core pixel ratio
-    if (scene !== surf?.scene || tier.name === 'classic') vignette(false);
+    // back in space: core pixel ratio. Only off the surface: a post pass drawn over the surface frame (mars/grime.js 'lite'/'full' quad scene) is
+    // not "space", and a setPixelRatio there resizes (= clears) the canvas between the frame and the overlay -> black screen (phones default to grime 'lite')
+    const inSpace = !surf || !window.__app?.state?.onSurface;
+    if (S.prSet != null && S.origPR != null && inSpace) { renderer.setPixelRatio(S.origPR); S.prSet = null; }
+    if (inSpace || tier.name === 'classic') vignette(false);
     return origRender(scene, camera);
   }
   inRender = true;
