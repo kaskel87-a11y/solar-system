@@ -20,6 +20,7 @@ export const CATALOG = [
   thread('frostbib'),
   thread('pipeduds'),
   thread('nightrun'),
+  thread('yeti'),
   { id: 'dustrunner', kind: 'board', name: 'Dust Runner', price: 220, icon: '🏂', blurb: 'Orange base. Pops a little higher off the lip.', deck: 0xc45a28, stripe: 0xf2e6c8, ride: { ollie: 0.06 } },
   { id: 'piperat', kind: 'board', name: 'Pipe Rat', price: 480, icon: '🏂', blurb: 'Black deck, cyan rail. Spins a touch quicker.', deck: 0x141416, stripe: 0x3cf0ff, ride: { spin: 0.08 } },
   { id: 'nighthall', kind: 'board', name: 'Night Haul', price: 760, icon: '🏂', blurb: 'Purple night board. A little more top end.', deck: 0x2a1848, stripe: 0xff4ad4, ride: { vmax: 1.5 } },

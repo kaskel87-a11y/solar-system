@@ -207,6 +207,24 @@ export const SKINS = [
       ['armL', 'cone', [0.03, 0.09, 4], [-0.09, -0.25, 0], [0, 0, 1.4], 'spike'], ['armR', 'cone', [0.03, 0.09, 4], [0.09, -0.25, 0], [0, 0, -1.4], 'spike'],
       ['armL', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow'], ['armR', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow']
     ] }),
+  // v7.5.69 Planum Swag: yeti suit. venue 'planum' so Threadbare does not sell it.
+  S('yeti', 'Yeti Suit', 2400, 'Cream fur, a yeti face, big paws. Sold at Planum, not downtown.', {
+    icon: '🦍', face: true, venue: 'planum',
+    pal: { skin: 0xf6f1e6, torso: 0xf3efe6, arms: 0xf3efe6, legs: 0xe7e0d2, pack: null, chest: null, helmet: null, visor: null, boots: 0x2a241c, fur: 0xf7f3ea, shade: 0xd9d2c2, nose: 0x2a2118, fang: 0xf4f0e4, claw: 0x1a1612 },
+    parts: [
+      ['head', 'sph', [0.2, 10, 8], [0, 0.03, 0.01], 0, 'fur', [1.05, 1.08, 1.02]],
+      ['head', 'box', [0.24, 0.055, 0.07], [0, 0.07, -0.15], [0.2, 0, 0], 'shade'],
+      ['head', 'sph', [0.034, 8, 6], [-0.06, 0.02, -0.175], 0, 'black'], ['head', 'sph', [0.034, 8, 6], [0.06, 0.02, -0.175], 0, 'black'],
+      ['head', 'sph', [0.042, 8, 6], [0, -0.045, -0.185], 0, 'nose'],
+      ['head', 'cone', [0.018, 0.055, 4], [-0.032, -0.1, -0.165], [Math.PI, 0, 0.25], 'fang'], ['head', 'cone', [0.018, 0.055, 4], [0.032, -0.1, -0.165], [Math.PI, 0, -0.25], 'fang'],
+      ['head', 'cone', [0.055, 0.09, 5], [-0.16, 0.1, 0.02], [0, 0, 1.05], 'fur'], ['head', 'cone', [0.055, 0.09, 5], [0.16, 0.1, 0.02], [0, 0, -1.05], 'fur'],
+      ['torso', 'sph', [0.08, 6, 4], [-0.1, 0.12, -0.16], 0, 'fur'], ['torso', 'sph', [0.09, 6, 4], [0.08, 0.0, -0.16], 0, 'fur'], ['torso', 'sph', [0.07, 6, 4], [0, -0.14, -0.15], 0, 'shade'],
+      ['armL', 'sph', [0.11, 8, 6], [0, -0.66, -0.02], 0, 'fur'], ['armR', 'sph', [0.11, 8, 6], [0, -0.66, -0.02], 0, 'fur'],
+      ['armL', 'cone', [0.018, 0.06, 4], [-0.04, -0.74, -0.07], [1.15, 0, 0.35], 'claw'], ['armR', 'cone', [0.018, 0.06, 4], [0.04, -0.74, -0.07], [1.15, 0, -0.35], 'claw'],
+      ['armL', 'cone', [0.016, 0.055, 4], [0.03, -0.74, -0.08], [1.15, 0, -0.1], 'claw'], ['armR', 'cone', [0.016, 0.055, 4], [-0.03, -0.74, -0.08], [1.15, 0, 0.1], 'claw'],
+      ['legL', 'box', [0.22, 0.1, 0.32], [0, -0.82, -0.08], 0, 'fur'], ['legR', 'box', [0.22, 0.1, 0.32], [0, -0.82, -0.08], 0, 'fur'],
+      ['legL', 'cone', [0.022, 0.06, 4], [-0.05, -0.86, -0.2], [Math.PI / 2, 0, 0.2], 'claw'], ['legR', 'cone', [0.022, 0.06, 4], [0.05, -0.86, -0.2], [Math.PI / 2, 0, -0.2], 'claw']
+    ] }),
   S('clown', 'Clown-Mask Heist Suit', 2800, 'Black suit, white clown mask, red nose, a duffel bag that is never empty. Smile for the cameras.', {
     icon: '🤡', face: true,
     pal: { skin: 0xd0a080, torso: 0x141414, arms: 0x141414, legs: 0x141414, pack: null, chest: 0xf0f0f0, boots: 0x0a0a0a, mask: { c: 0xf2eee2, r: 0.5 }, nose: { c: 0xe01010, e: 0x400000, r: 0.4 }, wig: 0xff5a1a, bag: 0x2a2a2a, tie: 0xb01010, glove: 0xf0f0f0 },

@@ -5,7 +5,7 @@ const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('
 const fin = Number.isFinite;
 
 // catalogue: 10-12 skins, first is free, the rest 300-5,000 cr, unique ids, cheapest first
-ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 16, C.SKINS.length);
+ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 17, C.SKINS.length);
 ok('freeFirst', C.SKINS[0].price === 0 && C.FREE === C.SKINS[0].id);
 ok('prices', C.SKINS.slice(1).every(k => (k.gift && k.price === 0) || (k.price >= 300 && k.price <= 5000)), C.SKINS.map(k => k.price).join()); // v7.5.31: free gifts (Grin Reaper)
 ok('topIs5000', Math.max(...C.SKINS.map(k => k.price)) === 5000 && C.SKINS.slice(1).some(k => k.price === 300));
@@ -57,8 +57,15 @@ ok('equipStock', C.equip(a, C.STOCK).ok);
 ok('equipNotOwned', !C.equip(a, 'chrome').ok && C.equip(a, 'chrome').state === a);
 // rows
 const rs = C.rows(a, 1000), rw = C.rows(C.equip(a, 'cowboy').state, 1000, 'wardrobe');
-ok('rowsShop', rs.length === C.SKINS.filter(k => !k.venue).length && rs.find(r => r.id === 'punk').afford && !rs.find(r => r.id === 'chrome').afford && rs.find(r => r.id === 'cowboy').owned && !rs.some(r => r.id === 'frostbib'));
-ok('planumThreads', C.rows(C.fresh(), 5000, 'planum').map(r => r.id).join() === 'frostbib,pipeduds,nightrun' && C.BY_ID.frostbib.venue === 'planum' && C.BY_ID.frostbib.price === 400);
+ok('rowsShop', rs.length === C.SKINS.filter(k => !k.venue).length && rs.find(r => r.id === 'punk').afford && !rs.find(r => r.id === 'chrome').afford && rs.find(r => r.id === 'cowboy').owned && !rs.some(r => r.id === 'frostbib' || r.id === 'yeti'));
+ok('planumThreads', C.rows(C.fresh(), 5000, 'planum').map(r => r.id).join() === 'frostbib,pipeduds,nightrun,yeti' && C.BY_ID.frostbib.venue === 'planum' && C.BY_ID.yeti.venue === 'planum' && C.BY_ID.yeti.price === 2400 && C.BY_ID.yeti.face === true);
+{
+  const y = C.BY_ID.yeti, shop = C.rows(C.fresh(), 5000), locked = C.locked(C.fresh(), 5000, true);
+  ok('yetiNotAtThreadbare', !shop.some(r => r.id === 'yeti') && !locked.some(r => r.id === 'yeti') && C.rows(C.fresh(), 5000, 'planum').some(r => r.id === 'yeti' && r.price === 2400));
+  const bought = C.addOwned(C.fresh(), 'yeti');
+  ok('yetiBuyWear', C.canBuy(C.fresh(), 'yeti', 2400).ok && C.canBuy(C.fresh(), 'yeti', 2399).why === 'broke' && bought.owned.includes('yeti') && C.equip(bought, 'yeti').state.eq === 'yeti');
+  ok('yetiReadsAsYeti', y.pal.torso !== null && y.pal.legs !== null && y.parts.some(p => p[0] === 'head' && p[5] === 'fur') && y.parts.filter(p => p[0] === 'armL' || p[0] === 'armR').length >= 4 && y.parts.some(p => p[0].startsWith('leg')));
+}
 ok('rowsWardrobe', rw.map(r => r.id).join() === [C.STOCK, ...OWN0, 'cowboy'].join() && rw.find(r => r.id === 'cowboy').worn && !rw[0].worn);
 // real taps
 const d = { id: 3, x: 100, y: 100 };
