@@ -631,7 +631,9 @@ setInterval(() => { if (!last || performance.now() - last < 700 || app()?.state?
 // ---------- test/debug hooks ----------
 window.__dealer = {
   get garage() { return garage(); }, get stock() { return dealerStock(); }, get spots() { return here() ? spots() : null; }, get sheet() { return sheet?.kind || null; },
-  get brakeAssist() { return brakeAssist; }, get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
+  get brakeAssist() { return brakeAssist; }, get lotCenter() { if (!here()) return null; const S = spots(), c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw); return { x: S.dealer.x + LOT.cx * c + LOT.cz * s, z: S.dealer.z - LOT.cx * s + LOT.cz * c, on: p => onLot(p) }; },
+  get ctxWhy() { return C ? { sheet: sheet?.kind || null, here: here(), down: !!C.game.isDown(), race: window.__race?.state || null, inside: !!app()?.surface?.info?.inside, stolen: !!stolenCar(), onLot: onLot(meOf()), age: Math.round(performance.now() - last) } : null; },
+  get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
   get partner() { return { ...partnerOf() }; },
