@@ -1,5 +1,6 @@
 // v7.5 add-on: Red Line Motors (rover dealership), your lock-up garages and night car meets on Mars.
 // - Dealership: buy new rides with credits (garagecore.js MODELS + any registerVehicle kind with a `price`).
+// - Showroom: selecting a car isolates it on the lot with Pit-style spot beams / floor pool / camera focus.
 // - Partner buy-in: cash and/or stars → lot income, bigger garage, buy discount, early stock wave, better fence cut.
 // - Fence: drive a stolen world car onto the lot and sell it for cr + ⭐ (heat cuts payout; 4+ ★ can bust).
 // - Garage: store up to MAX_RIDES rides; paint, body kits, wheels, underglow and engine/handling/brakes/boost upgrades
@@ -18,6 +19,7 @@ import { createMeet } from './carmeet.js';
 import { createMyRides } from './myrides.js';
 import * as TC from './mars/shoptierscore.js';
 import { grantStars } from './starmixcore.js';
+import { STROBE, strobeColor, strobeOn } from './mars/pitshowcore.js'; // same light-show palette as the Pit
 
 // ---------- registration: our models are ordinary vehicle kinds with a price (so they also show up for other mods) ----------
 for (const [kind, m] of Object.entries(GC.MODELS)) registerVehicle(kind, { ...m }, () => buildRide(kind));
@@ -222,6 +224,8 @@ function rebuildPodiums() {
   if (!lot) return; const stock = dealerStock().slice(0, isMobile ? 8 : 12), key = stock.map(s => s.kind).join(',');
   if (lot.waveSigns) { const full = TC.shared().dealer.wave >= TC.DEALER_WAVES.length; lot.waveSigns[0].visible = !full; lot.waveSigns[1].visible = full; }
   if (key === lot.stockKey) return; lot.stockKey = key;
+  // detach showroom FX first so disposeRoot doesn't kill the shared beam/pool materials
+  if (showFX?.G?.parent) showFX.G.parent.remove(showFX.G);
   for (const p of lot.podiums) { lot.podG.remove(p.g); disposeRoot(p.g); } lot.podiums = [];
   const a = assets(), per = Math.max(1, Math.ceil(stock.length / 2)), gap = Math.min(7.2, LOT.span / per);
   stock.forEach((s, i) => {
@@ -233,6 +237,7 @@ function rebuildPodiums() {
     const tag = signMesh(`${WAVE_KINDS.has(s.kind) ? '🆕 ' : ''}${s.name} · ${s.price} cr`, WAVE_KINDS.has(s.kind) ? 0xffb020 : s.rep > 0 ? 0xffd25a : 0x3cff8a, 5, 0.6); tag.position.set(0, 0.4, 2.2); tag.rotation.x = -0.9; tag.scale.setScalar(Math.min(1, gap / 5.6)); pg.add(tag);
     lot.podiums.push({ g: pg, v, kind: s.kind });
   });
+  applyDealerFocus();
 }
 
 // ---------- your ride: becomes the rover object surface.js already drives ----------
@@ -295,6 +300,9 @@ const CSS = `
 #dlrSheet .bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#38e1ff,#ff2a7a)}#dlrSheet .bar b{position:absolute;top:0;bottom:0;background:#ffd25a;opacity:.85}
 #dlrSheet .blurb{opacity:.8;font-size:.78rem;margin:4px 0}#dlrSheet .warn{color:#ffb020}#dlrSheet .tabs{display:flex;gap:4px;overflow-x:auto;margin:6px 0}#dlrSheet .tabs button{min-height:40px;padding:0 10px}
 body.dlr-open #surfBtns, body.dlr-open #stackR{visibility:hidden}
+/* phone preview: leave more of the screen for the showroom car */
+#dlrSheet[data-kind=dealer]{max-height:46vh}
+@media (orientation:landscape){#dlrSheet[data-kind=dealer]{max-height:none}}
 body.ssx-drag #raceAgain{display:none}
 `;
 function ensureUI() {
@@ -363,7 +371,7 @@ function openSheet(kind, render, cam) {
   rerender(); return el;
 }
 function rerender() { if (!sheet) return; const top = sheet.el.scrollTop, cl = sheet.el.querySelector('.dchips')?.scrollLeft || 0; sheet.el.innerHTML = sheet.render(); sheet.el.scrollTop = top; const ch = sheet.el.querySelector('.dchips'); if (ch) ch.scrollLeft = cl; }
-export function closeSheet(quiet) { if (!sheet) return; sheet.el.remove(); sheet = null; sheetCam = null; document.body.classList.remove('dlr-open'); if (!quiet) meet?.onSheetClosed?.(); clearBay(); }
+export function closeSheet(quiet) { if (!sheet) return; sheet.el.remove(); sheet = null; sheetCam = null; document.body.classList.remove('dlr-open', 'dlr-dealer'); if (!quiet) meet?.onSheetClosed?.(); clearBay(); applyDealerFocus(); }
 const handlers = {};
 function onSheetTap(b) {
   const d = b.dataset; if (d.close) return closeSheet();
@@ -388,31 +396,35 @@ let dSel = null;
 function openDealer() {
   if (!here()) return toast('🚗 Red Line Motors is on Mars, by Ares Junction.');
   noteBought(garage().rides.map(r => r.kind)); rebuildPodiums(); const st = dealerStock(); if (!dSel || !st.some(s => s.kind === dSel)) dSel = st[0]?.kind;
+  camA = 0;
   openSheet('dealer', renderDealer, () => { const p = lot.podiums.find(p => p.kind === dSel) || lot.podiums[0]; return p ? p.g : null; });
+  applyDealerFocus();
 }
 function renderDealer() {
   const st = dealerStock(), s = st.find(x => x.kind === dSel) || st[0], G = garage(), P = partnerOf(); if (!s) return head('🚗 ' + esc(CFG.name), 'Nothing on the lot today.');
   const maxR = GC.maxRidesOf(G), price = GC.partnerSellPrice(s, G.rep, P.on), full = G.rides.length >= maxR, owned = G.rides.filter(r => r.kind === s.kind).length;
   const spec = specOf(GC.newRide('x', s.kind));
   const why = G.rep < s.rep ? `Needs ${s.rep} rep. Make a name at the car meets first.` : full ? `Garage full (${maxR}). Sell a ride first.` : credits() < price ? `You’re ${price - credits()} cr short.` : '';
+  // partner sits below the car chips so the showroom preview (and Pit-style lights) stay visible on a phone
   const partnerBlock = P.on
     ? `<div class="blurb">🤝 <b>Partner</b> · lot cut ~${Math.round(GC.PARTNER.rate)} cr/h · garage ${maxR} · ${GC.PARTNER.buyDiscount * 100 | 0}% off buys · better fence${Math.floor(P.pending) > 0 ? ` · <b>💵 ${Math.floor(P.pending)} waiting</b>` : ''}</div>
-      <div class="row">${Math.floor(P.pending) > 0 ? `<button class="go" data-pcollect="1">💵 Collect · ${Math.floor(P.pending)} cr</button>` : ''}<button data-togarage="1">🔧 Garage</button></div>`
+      <div class="row">${Math.floor(P.pending) > 0 ? `<button class="go" data-pcollect="1">💵 Collect · ${Math.floor(P.pending)} cr</button>` : ''}</div>`
     : `<div class="blurb">🤝 Buy in as a partner: bigger garage (+${GC.PARTNER.maxRidesBonus}), ${GC.PARTNER.buyDiscount * 100 | 0}% off stock, early WAR RIGS, lot income (~${Math.round(GC.PARTNER.rate)} cr/h), and a better cut when you fence stolen rides.</div>
       <div class="row">${GC.partnerOffers().map(o => {
         const crOk = !o.cr || credits() >= o.cr, stOk = !o.stars || starsBal() >= o.stars, ok = crOk && stOk;
         return `<button data-partner="${o.id}" ${ok ? '' : 'disabled'}>🤝 ${esc(o.label)}</button>`;
       }).join('')}</div>`;
-  return head(`🚗 ${esc(CFG.name)}`, wallet()) + partnerBlock +
+  return head(`🚗 ${esc(CFG.name)}`, wallet()) +
     `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
     <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${P.on && price < s.price ? ' · partner' : ''}${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
     <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>
     <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
+    ${partnerBlock}
     <div class="blurb">${esc(waveLine())}</div>
     <div class="sub">💸 Steal a world car and drive it onto this lot to fence it for cash. Heat cuts the payout.</div>`;
 }
-handlers.dsel = k => { dSel = k; rerender(); };
+handlers.dsel = k => { dSel = k; camA = 0; applyDealerFocus(); rerender(); };
 handlers.buy = k => { const r = buy(k); toast(r.msg, 3200); if (r.ok) closeSheet(); else rerender(); };
 handlers.partner = id => { const r = buyPartner(id); toast(r.msg, 3600); rerender(); };
 handlers.pcollect = () => { const r = collectPartner(); toast(r.msg, 2800); rerender(); };
@@ -606,13 +618,14 @@ export function dealerTick(dt, ctx) {
   syncRover(dt); MR.tick(dt); tickPartnerIncome();
   if (!here()) { const mr = sheet ? null : MR.ctxAction(); setCtx(mr?.label || null, mr?.act); return; }
   if (nav && dist(meOf(), nav) < 14) nav = null;
-  // turntables + showroom camera
-  const me = meOf(), S = spots();
-  if (lot && dist(me, S.dealer) < 90) for (const p of lot.podiums) if (p.v) p.v.group.rotation.y += dt * 0.35;
+  // turntables + showroom camera (selected podium spins a bit faster under the lights)
+  const me = meOf(), S = spots(), focusing = sheet?.kind === 'dealer' && !!dSel;
+  if (lot && dist(me, S.dealer) < 90) for (const p of lot.podiums) if (p.v && p.g.visible) p.v.group.rotation.y += dt * (focusing && p.kind === dSel ? 0.55 : 0.35);
   if (bay) bay.group.rotation.y += dt * 0.25;
   meet?.tick(dt, me);
   clearRocks(dt);
   if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
+  tickShowFX(dt);
   const nowMs = performance.now(); if (nowMs - ui.t > 200) { ui.t = nowMs; updateCtx(); } // real-time throttle (slow phones still update promptly)
 }
 // the terrain scatters instanced boulders everywhere; tuck the ones sitting on our lots / the strip out of sight (visual only)
@@ -628,14 +641,85 @@ function clearRocks(dt) {
   }
 }
 const tv = new THREE.Vector3(); let camA = 0;
+// ---------- dealer showroom (Collin: isolate + Pit-style light show) ----------
+// Unlit cones + floor pool — same technique as mars/pitshow.js (no real THREE.Lights; they recompile materials).
+let showFX = null;
+const _sv = new THREE.Vector3(), _sv2 = new THREE.Vector3(), _sq = new THREE.Quaternion(), _sm = new THREE.Matrix4(), _ss = new THREE.Vector3(), _sc = new THREE.Color(), _sd = new THREE.Vector3(0, -1, 0);
+function showPoolTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.45, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
+}
+function ensureShowFX() {
+  if (showFX) return showFX;
+  const add = o => ({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, ...o });
+  const G = new THREE.Group(); G.name = 'dealer-showroom'; G.visible = false;
+  const mats = {
+    beam: new THREE.MeshBasicMaterial(add({ color: 0xffffff, opacity: 0.22, side: THREE.DoubleSide })),
+    pool: new THREE.MeshBasicMaterial(add({ map: showPoolTex(), color: 0x22d3ee, opacity: 0.75 })),
+    ring: new THREE.MeshBasicMaterial(add({ color: 0x38e1ff, opacity: 0.85, side: THREE.DoubleSide })),
+    pillar: new THREE.MeshBasicMaterial(add({ color: 0xffe2a8, opacity: 0.32, side: THREE.DoubleSide })),
+  };
+  const N = isMobile ? 4 : 5;
+  const bg = new THREE.CylinderGeometry(0.08, 1.05, 1, 12, 1, true); bg.translate(0, -0.5, 0);
+  const org = [];
+  for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2 + 0.35; org.push([Math.cos(a) * 5.4, 7.4, Math.sin(a) * 5.4]); }
+  const beams = new THREE.InstancedMesh(bg, mats.beam, N); beams.userData.org = org; beams.frustumCulled = false; beams.name = 'dealer-show-beams';
+  for (let i = 0; i < N; i++) { beams.setColorAt(i, _sc.setHex(STROBE[i % STROBE.length])); beams.setMatrixAt(i, _sm.identity()); }
+  G.add(beams);
+  const poolG = new THREE.PlaneGeometry(9.5, 9.5); poolG.rotateX(-Math.PI / 2); poolG.translate(0, 0.14, 0);
+  const pool = new THREE.Mesh(poolG, mats.pool); pool.renderOrder = 3; pool.name = 'dealer-show-pool'; G.add(pool);
+  const ringG = new THREE.RingGeometry(2.55, 3.1, 40); ringG.rotateX(-Math.PI / 2); ringG.translate(0, 0.17, 0);
+  const ring = new THREE.Mesh(ringG, mats.ring); ring.name = 'dealer-show-ring'; G.add(ring);
+  const pilG = new THREE.CylinderGeometry(0.32, 0.55, 6.2, 14, 1, true); pilG.translate(0, 3.1, 0);
+  const pillar = new THREE.Mesh(pilG, mats.pillar); pillar.name = 'dealer-show-pillar'; G.add(pillar);
+  showFX = { G, mats, beams, pool, ring, pillar, N };
+  return showFX;
+}
+function applyDealerFocus() {
+  if (!lot) return;
+  const on = sheet?.kind === 'dealer' && !!dSel;
+  for (const p of lot.podiums) p.g.visible = !on || p.kind === dSel;
+  const fx = ensureShowFX();
+  fx.G.parent?.remove(fx.G);
+  if (!on) { fx.G.visible = false; document.body.classList.remove('dlr-dealer'); return; }
+  document.body.classList.add('dlr-dealer');
+  const p = lot.podiums.find(x => x.kind === dSel);
+  if (!p) { fx.G.visible = false; return; }
+  p.g.add(fx.G); fx.G.position.set(0, 0, 0); fx.G.visible = true;
+}
+function tickShowFX(dt) {
+  if (!showFX?.G.visible) return;
+  const t = performance.now() / 1000, { beams, mats, N, ring } = showFX, org = beams.userData.org, bpm = 96;
+  for (let i = 0; i < N; i++) {
+    const [ox, oy, oz] = org[i];
+    // sweep across the car (tighter than the Pit mat sweep — one podium)
+    const tx = Math.sin(t * (0.55 + i * 0.11) + i * 1.4) * 1.15, tz = Math.cos(t * (0.7 + i * 0.09) + i * 1.9) * 1.15;
+    _sv.set(tx - ox, 0.35 - oy, tz - oz); const L = Math.max(0.5, _sv.length()); _sv.normalize();
+    _sq.setFromUnitVectors(_sd, _sv);
+    const lit = strobeOn(t, i, bpm);
+    _sm.compose(_sv2.set(ox, oy, oz), _sq, _ss.set(lit ? 1.15 : 0.0001, L, lit ? 1.15 : 0.0001));
+    beams.setMatrixAt(i, _sm);
+    beams.setColorAt(i, _sc.setHex(strobeColor(t, i, bpm)));
+  }
+  beams.instanceMatrix.needsUpdate = true; if (beams.instanceColor) beams.instanceColor.needsUpdate = true;
+  mats.pool.color.setHex(strobeColor(t, 2, bpm)); mats.pool.opacity = strobeOn(t, 1, bpm) ? 0.78 : 0.3;
+  mats.ring.color.setHex(strobeColor(t, 0, bpm)); mats.ring.opacity = 0.5 + Math.sin(t * 4.2) * 0.25;
+  mats.pillar.opacity = 0.2 + (strobeOn(t, 3, bpm) ? 0.22 : 0.05);
+  ring.rotation.z += dt * 0.45;
+}
 function showroomCam(obj, dt) {
-  // slow sweep across the front of the car (+z side of the lot, away from the signs / lock-up walls)
-  obj.getWorldPosition(tv); camA += dt * 0.35; const cam = C.camera, land = innerWidth > innerHeight, R = land ? 10 : 11.5, a = CFG.yaw + 0.75 * Math.sin(camA);
-  const y = Math.max(tv.y + 4.2, H(tv.x + Math.sin(a) * R, tv.z + Math.cos(a) * R) + 2);
+  // dealer focus: tighter orbit so the selected car fills the free window above / beside the sheet
+  obj.getWorldPosition(tv); camA += dt * 0.35; const cam = C.camera, land = innerWidth > innerHeight, dealer = sheet?.kind === 'dealer';
+  const R = dealer ? (land ? 6.4 : 5.6) : (land ? 10 : 11.5), a = CFG.yaw + (dealer ? 0.4 : 0.75) * Math.sin(camA);
+  const yOff = dealer ? 2.5 : 4.2;
+  const y = Math.max(tv.y + yOff, H(tv.x + Math.sin(a) * R, tv.z + Math.cos(a) * R) + 2);
   cam.position.set(tv.x + Math.sin(a) * R, y, tv.z + Math.cos(a) * R);
   // frame the car in the part of the screen the sheet leaves free (top in portrait, left in landscape)
-  cam.lookAt(tv.x, tv.y + (land ? 1 : -2.2), tv.z);
-  if (land) cam.rotateY(-0.22);
+  const lookY = dealer ? (land ? 1.15 : 0.55) : (land ? 1 : -2.2);
+  cam.lookAt(tv.x, tv.y + lookY, tv.z);
+  if (land) cam.rotateY(dealer ? -0.12 : -0.22);
 }
 (window.SSX_TICKS ||= []).push(dealerTick);
 // leaving the surface: hide our HUD
@@ -653,6 +737,6 @@ window.__dealer = {
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
   get partner() { return { ...partnerOf() }; },
-  get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, noteBought, rebuildPodiums,
+  get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, get showroom() { return { on: !!showFX?.G.visible, kind: dSel || null, sheet: sheet?.kind || null }; }, noteBought, rebuildPodiums, applyDealerFocus,
   tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };

@@ -4,6 +4,10 @@ Files: `garagecore.js` (pure logic: models, prices, upgrade math, rep, clock, sa
 `rides.js` (car meshes + paint / body kit / wheels / underglow), `dealership.js` (lot, sheets, your ride, save),
 `carmeet.js` (night meet, show off, drag races on race.js). Tests: `tests/test-garage-unit.mjs`, `tests/test-dealer.js`, `tests/run-dealer.sh`.
 
+## Showroom preview (select a car)
+
+Tapping a stock chip isolates that one podium: other lot cars hide, a Pit-style light show (coloured spot beams, floor pool, ring, soft pillar — unlit additive meshes, same strobe palette as `mars/pitshowcore.js`) plays on the selected ride, and the showroom camera tightens so the car fills the free window above the sheet on a phone. Closing the sheet restores the full lot.
+
 ## Listing a vehicle at Red Line Motors
 
 Any `SSX.registerVehicle(kind, spec, builder)` entry with a numeric **`price`** is listed automatically. Nothing else is needed:
