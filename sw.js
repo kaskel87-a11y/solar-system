@@ -31,7 +31,7 @@ const PRECACHE = [
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   `mars/rep.js${q}`,
   `mars/bribes.js${q}`,
-  ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`),
+  ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`), // v7.5.72 habitat + landing pad live in these same files
   `mars/lab.js${q}`,
   ...['time', 'timecore'].map(n => `mars/${n}.js${q}`),
   `mars/fightclub.js${q}`,

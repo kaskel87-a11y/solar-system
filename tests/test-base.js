@@ -12,7 +12,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   let opts = desk ? { viewport: { width: 1440, height: 900 } } : { ...pw.devices[DEV] };
   if (VP) { const [w, h] = VP.split('x').map(Number); opts = { ...opts, viewport: { width: w, height: h }, screen: { width: w, height: h } }; }
   delete opts.defaultBrowserType;
-  const ctx = await browser.newContext(opts); const page = await ctx.newPage(); page.setDefaultTimeout(120000); // the shared box is heavily loaded
+  const ctx = await browser.newContext(opts); await ctx.addInitScript(() => { window.__ssxNoKeepAlive = true; }); const page = await ctx.newPage(); page.setDefaultTimeout(120000); // the shared box is heavily loaded; headless WebKit can't play the iOS audio keep-alive
   const errors = []; page.on('pageerror', e => errors.push('PE ' + e.message));
   const vp = page.viewportSize(), tag = `base-${vp.width}x${vp.height}-${BR}`;
   const G = (f, a) => page.evaluate(f, a), R = { tag }, bad = [];
@@ -65,7 +65,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('menuItem', await G(() => { const b = document.getElementById('baseMenu'); return !!b && getComputedStyle(b).display !== 'none'; }));
     await page.locator('#baseMenu').scrollIntoViewIfNeeded(); await press('#baseMenu');
     ok('overview', await wait(() => document.getElementById('basePanel')?.classList.contains('on'), 5000));
-    ok('overviewRows', await G(() => document.querySelectorAll('#basePanel .row').length), (await G(() => document.querySelectorAll('#basePanel .row').length)) === 4);
+    const rows = await G(() => document.querySelectorAll('#basePanel .row').length);
+    ok('overviewRows', rows, rows === (await G(() => window.SSX.base.plots().length + 1))); // one row per lot (built-in + add-on) plus Close
     await ourTap('#basePanel button[data-act="close"]'); ok('overviewClosed', await wait(() => !document.getElementById('basePanel').classList.contains('on'), 4000));
     // ---- buy the lot with the context button
     const c = await G(id => window.SSX.base.plots().find(p => p.id === id).world, PID);
@@ -91,7 +92,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (e !== b && !b.contains(e)) bad.push(id + ':covered'); }
       const h = document.getElementById('baseHint').getBoundingClientRect(); if (hit(h, mm)) bad.push('hint:minimap');
       return { n: btns.length, bad, rows: new Set(btns.map(b => Math.round(b.getBoundingClientRect().top))).size }; });
-    ok('toolbarFits', JSON.stringify(tb), tb.n === 8 && tb.bad.length === 0);
+    ok('toolbarFits', JSON.stringify(tb), tb.n === 10 && tb.bad.length === 0); // v7.5.72: + habitat, + landing pad
     await shot('toolbar');
     const clear2 = await G(() => { const W = innerWidth, H = innerHeight, c = { l: W * 0.3, r: W * 0.7, t: H * 0.3, b: H * 0.7 };
       return ['baseBtn', 'baseBar'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width && !(r.right < c.l || r.left > c.r || r.bottom < c.t || r.top > c.b) ? id : null; }).filter(Boolean); });

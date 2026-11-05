@@ -25,8 +25,19 @@ export const PIECES = {
   gate:   { id: 'gate',   name: 'Gate',   icon: '🚪', cost: 150,  hp: 120, fp: [1, 1], max: 8,  colliders: [[-0.9, 0, 0.12, 0.25], [0.9, 0, 0.12, 0.25]], blurb: 'Opens for you, nobody else.' },
   garage: { id: 'garage', name: 'Garage', icon: '🚗', cost: 800,  hp: 300, fp: [2, 3], max: 1,  colliders: [[0, -2.85, 2.0, 0.2], [-1.85, 0, 0.2, 3.0], [1.85, 0, 0.2, 3.0]], blurb: 'Your rover comes home here when you land.' },
   stash:  { id: 'stash',  name: 'Stash',  icon: '💰', cost: 300,  hp: 150, fp: [1, 1], max: 1,  colliders: [[0, 0, 0.65, 0.5]], blurb: 'Credits and medkits in here don\u2019t get fined when you\u2019re busted.' },
-  turret: { id: 'turret', name: 'Turret', icon: '🔫', cost: 1000, hp: 200, fp: [1, 1], max: 4,  colliders: [[0, 0, 0.45, 0.45]], blurb: 'Auto-fires at security and raiders inside 32 m.', range: 32, rate: 0.9, dmg: 1 }
+  turret: { id: 'turret', name: 'Turret', icon: '🔫', cost: 1000, hp: 200, fp: [1, 1], max: 4,  colliders: [[0, 0, 0.45, 0.45]], blurb: 'Auto-fires at security and raiders inside 32 m.', range: 32, rate: 0.9, dmg: 1 },
+  // v7.5.72: the two pieces the original "place habitats and landing pads" line never got. The hab is a bunk you rest in
+  // (walls on three sides, door open toward +z). The pad is a lit slab you can walk and drive on (no colliders).
+  hab: { id: 'hab', name: 'Habitat', icon: '🛏️', cost: 1400, hp: 400, fp: [2, 2], max: 1, colliders: [[0, -1.86, 1.95, 0.2], [-1.86, 0.15, 0.2, 1.7], [1.86, 0.15, 0.2, 1.7]], blurb: 'Pressurized bunk. Rest at the door and the med-bay patches you up.' },
+  pad: { id: 'pad', name: 'Landing pad', icon: '🛬', cost: 700, hp: 250, fp: [3, 3], max: 1, colliders: [], blurb: 'Lit pad. Call your rover down onto it. Fuel gets topped up.' }
 };
+// habitat rest: real-time cooldown, saved on the plot as habRest (ms). A full-health rest does not start it.
+export const REST_MS = 3 * 60 * 1000;
+export function restReady(at, now) {
+  const t = +at || 0, n = +now || 0;
+  if (!(t > 0) || n - t >= REST_MS) return { ok: true, left: 0 };
+  return { ok: false, left: REST_MS - (n - t) };
+}
 export const PIECE_IDS = Object.keys(PIECES);        // kept in sync (in place) by registerPiece
 export const BUILTIN_PLOTS = PLOTS.map(p => p.id), BUILTIN_PIECES = PIECE_IDS.slice();
 
@@ -108,6 +119,7 @@ export function migrate(raw) {
     const o = raw.plots?.[p.id]; if (!o || typeof o !== 'object') continue; const t = s.plots[p.id];
     t.owned = !!o.owned; t.boughtAt = +o.boughtAt || 0;
     t.stash = { credits: Math.max(0, Math.floor(+o.stash?.credits || 0)), medkits: Math.max(0, Math.floor(+o.stash?.medkits || 0)) };
+    if (Number.isFinite(+o.habRest) && +o.habRest > 0) t.habRest = Math.floor(+o.habRest); // v7.5.72 habitat rest cooldown
     let maxId = 0; const later = [];
     for (const q of [...(Array.isArray(o.pieces) ? o.pieces : []), ...(Array.isArray(o.later) ? o.later : [])]) {
       if (q && typeof q.type === 'string' && !PIECES[q.type] && later.length < PIECE_CAP) { later.push({ ...q }); maxId = Math.max(maxId, +q.id || 0); continue; }

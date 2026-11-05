@@ -62,37 +62,39 @@ House rules for all of it:
 - [x] **v7.5.1**: Ben's heist mechanics (PR #8): a one-thumb safe-cracking dial now drives every bank and mansion safe, with security cameras and view cones, alarms that raise your wanted level, informant tips and a heist escape event. Private security answers alarms, informant tips mark cameras and guards on the minimap, and there are new add-on helpers (player position, line of sight, safe spots, minimap marks, `registerSurfaceTick`).
 - [x] **v7.5.1**: Marsmania's contraband economy and barter (PR #9), Jeff's guarded barter hooks, and fixes from the v7.4 playtest (duel camera, rocks and crates blocking the camera, the Security pay-off spot, the world name in the top bar, 44 px race buttons, gentler builder pinch).
 - [x] **v7.5.2**: Chief of Staff's street danger (PR #3), Marsmania's taxi / paramedic / vigilante jobs (PR #12), Ben's Raccoon Mobile and Silas & Tam portal missions (PR #11), and a single import map that owns the module version (no more duplicate module copies).
-- Still to come in v7.5.x point releases: Ben's raccoon scientist, Pumpkin's dealership and garages, Chief of Staff's street danger, Marsmania's contraband economy, Steve's ambient random events.
-- Deferred: rook-05 (set on Ceres; Ceres stays out of scope for now).
+- Deferred: rook-05 (set on Ceres; Ceres stays out of scope for now). The Mars First Junction Trust job (rook chain in storymars2) is a surface heist, not the space-bank item below.
+
+### Shipped in v7.5.x after Oct 25 (reconciled Nov 5, 2026)
+These were still listed as "to come" or left unchecked. The code and `git log` show them on main:
+- [x] **Street danger** (Chief of Staff, PR #3): muggings, ambient fights, street chases. In by v7.5.2 (Oct 25). Ambient vignettes ride along in `ambient.js`.
+- [x] **Contraband economy** (Marsmania, PR #9): buy/sell, heat, busts. In by v7.5.1. Later: Hydro Den black market (v7.5.25), grow racks (v7.5.30), Sister Nettle buys (v7.5.32), outlaw grow op at Red Static Gulch (v7.5.54), farm one-tap loop (v7.5.63).
+- [x] **Raccoon scientist duo** (Ben, PR #11 and PR #37): Silas & Tam, portal missions sci-01..10, Raccoon Mobile. Oct 25, 2026.
+- [x] **Rover dealership and garages** (Pumpkin, PR #7, Oct 25): Red Line Motors, lock-ups, paint / wheels / kits / armor / weapons. Later: bigger lot (v7.5.45), partner buy-in and fencing stolen rides (v7.5.52), showroom dome (v7.5.64).
+- [x] **Night car meets** (same PR #7): show off a build, quarter-mile drags, circuit races. See the themed-garage line below for what is still open.
+- [x] **Rags-to-Riches mode** (Steve, PR #13, Oct 25): ☰ → New Game: Rags to Riches. Broke start, properties, raids. `modes/rags.js`.
+- [x] **Director / free-roam** (Steve, PR #17, Oct 25): ☰ → Director. Dust storm, time of day, freeze / time scale, and no cops (wanted stays 0). `modes/director.js`.
+- [x] **Mars dust storms** as weather, not only the Director toggle (Steve, PR #50, v7.5.5).
+- [x] **Owned-business beams** (v7.5.51), **Red Line showroom dome** (v7.5.64), **Velvet Airlock expansion + Ines arc** (v7.5.57), **Planum Australe ice cap** snowboarding and snow bowling (v7.5.55), **farm + outlaw grow op and the sandworm** (v7.5.54), **Slick's stall / Yeti suit** (v7.5.68–v7.5.70), **red sky beam over Red Static Gulch** (v7.5.71).
 
 ## v8: realistic visuals
 - [ ] Integrate the look-dev materials, lighting and post-processing, with quality tiers (low / med / high). Medium is the iPhone default at 60 fps.
 
 ## Future: Collin's ideas (Oct 25)
-Not scheduled yet.
-1. [ ] **Mars city districts** joined by a highway with traffic and on/off ramps:
-   - **The rough side:** gangs, corner dealers and a cheap chop shop.
-   - **Downtown:** towers, the bank (the heist target), clubs and cops.
-   - **A rich gated community:** mansion burglary missions. Case the place, break in, crack safes and avoid private security.
-2. [ ] **Raccoon-themed rover:** masked paint, a striped-tail antenna and a trash-can bumper. Sold at the dealership as the "raccoon mobile".
-3. [ ] **Original mad-scientist duo**, written in the spirit of irreverent cartoon pairs but fully original. No names, likenesses, catchphrases or designs from any existing show.
-   - A burned-out, drunk genius scientist with a junkyard lab and a portal gun.
-   - His anxious teenage sidekick.
-   - Each gets its own design and names.
-   - They give weird interdimensional missions that portal you to bizarre mini-worlds.
+These three shipped with the Mars city work. Left here so the next run does not rebuild them.
+1. [x] **Mars city districts** joined by a highway with traffic and on/off ramps. **v7.5 (Oct 25, 2026):** Olympus Row, Red Tape Flats, Helios Heights, and the Ares Beltway. Same work as the v7.5 section above.
+2. [x] **Raccoon-themed rover.** **Oct 25, 2026 (PR #11, in v7.5.5):** the Raccoon Mobile, sold through the dealership.
+3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
 - [x] Rocks/boulders as obstacles for the rover and player (playtest p1). **v7.5.41 (Nov 1, 2026):** big boulders out in the wastes stop you on foot and stop your rides (glancing hits slide round, head-on at speed is a crash); jet or fly over the top and they don't count; auto-unstick won't hop you through a rock; colony districts and the Beltway are swept clear of boulders. `tests/test-boulders.js`.
-- [ ] **Base and structure building:** place habitats, walls, turrets, landing pads and storage.
-- [ ] **Space bank heist** in stages: plan (scout and intel), crew (hire specialists), vault (drill/hack under pressure), getaway (pursuit to the ship).
-- [ ] **Contraband business** in fictional "space drugs" (e.g. glow-dust):
-  - buy low and sell high across colonies;
-  - cartel rivals and busts;
-  - profits fund upgrades.
-- [ ] **Rover dealership and garage:** new rover models, plus customization (paint, wheels, lights, armor, weapons).
-- [ ] **Rags-to-Riches mode:** a fresh save starting at $0, with side jobs such as cargo runs and taxi delivery.
-- [ ] **Themed garages and car meets** to show off builds.
-- [ ] **Director / free-roam mode:**
+- [x] **Base and structure building:** place habitats, walls, turrets, landing pads and storage. **v7.5.4 (Oct 25, 2026):** buy a lot, walls, gates, garage, stash, turrets (`base.js`). **v7.5.72 (Nov 5, 2026):** habitat (walk to the door, tap 🛌 Rest; full heal on a 3-minute cooldown) and landing pad (stand on it, tap 🛬 Call rover; the ride sets down and refuels). Find it: ☰ → 🏠 Mars base, or the FOR SALE post on Junction Ridge / the Flats scrap lot / Helios Ridge. Still later, not this item: a walk-in hab interior, and calling the starship itself down onto the pad (death still dumps you at the hospital or the lockup).
+- [ ] **Space bank heist** in stages: plan (scout and intel), crew (hire specialists), vault (drill/hack under pressure), getaway (pursuit to the ship). The Mars First Junction Trust job is a different, already-shipped surface heist. This one is still the orbital job.
+- [x] **Contraband business** in fictional "space drugs" (e.g. glow-dust). **v7.5.1 (Oct 25, 2026)** plus the Hydro Den, grow racks, Nettle, and the gulch grow op (through v7.5.63). Buy low, sell high, heat and busts, profits into upgrades.
+- [x] **Rover dealership and garage:** new rover models, plus customization (paint, wheels, lights, armor, weapons). **Oct 25, 2026 (PR #7)**, lot growth v7.5.45, partner buy-in v7.5.52, showroom dome v7.5.64.
+- [x] **Rags-to-Riches mode:** a fresh save starting broke, with side jobs. **Oct 25, 2026 (PR #13).** ☰ → 🧱 New Game: Rags to Riches. Starts at 25 cr, not a literal $0, with a crash pad in Red Tape Flats.
+- [x] **Car meets** to show off builds. **Oct 25, 2026 (PR #7):** night lot south of Ares Junction, 📸 Show off, drag races, circuit races.
+- [ ] **Themed garages:** the lock-ups are built, but a garage still has one look. A restyle (neon, scrap, high-roller) is still open.
+- [x] **Director / free-roam mode.** **Oct 25, 2026 (PR #17).** ☰ → 🎬 Director.
   - weather, including dust storms;
   - time-of-day control;
-  - zero wanted level.
+  - zero wanted level (🚫 No cops).

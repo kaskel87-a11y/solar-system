@@ -1,8 +1,9 @@
 // Mars base building (v7.5): buy a lot on Mars, place walls, gates, a garage, a stash and turrets on a 2 m grid, and it
-// all saves to localStorage (ssx.base.v1) and comes back on reload. Pure rules live in basecore.js; core access goes through
+// all saves to localStorage (ssx.base.v1) and comes back on reload. v7.5.72 adds the habitat (rest at the door) and the
+// landing pad (call your rover down onto it). Pure rules live in basecore.js; core access goes through
 // basehooks.js. Registers its per-frame tick with SSX.registerSurfaceTick (README add-on API) and
 // publishes window.SSX.base once the app exists. No permanent HUD: ☰ 🏠 Mars base, plus one context button in #surfBtns
-// near your lot (Buy / Build / Stash / Rover home; Place / Remove in build mode) and a top toolbar only while building.
+// near your lot (Buy / Build / Stash / Rest / Call rover / Rover home; Place / Remove in build mode) and a top toolbar only while building.
 //
 //   SSX.base.plots() / owned() / state(id) / buy(id) / place(id, type, i, j, r) / remove(id, pieceId)
 //   SSX.base.deposit(id, { credits, medkits }) / withdraw(id, { credits, medkits }) / build(on, id)
@@ -46,7 +47,7 @@ function assets() {
   const box = (w, h, d, x = 0, y = 0, z = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return sh(g); };
   const cyl = (r, h, x = 0, y = 0, z = 0, seg = 10) => { const g = new THREE.CylinderGeometry(r, r, h, seg); g.translate(x, y, z); return sh(g); };
   const std = (color, o = {}) => sh(new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1, ...o }));
-  A.concrete = std(0x9a8f84); A.steel = std(0x6d737c, { metalness: 0.5, roughness: 0.45 }); A.dark = std(0x2b2f36, { metalness: 0.4, roughness: 0.5 });
+  A.concrete = std(0x9a8f84); A.habWall = std(0xd8c6a4, { roughness: 0.7 }); A.steel = std(0x6d737c, { metalness: 0.5, roughness: 0.45 }); A.dark = std(0x2b2f36, { metalness: 0.4, roughness: 0.5 });
   A.amber = std(0x1a1206, { emissive: 0xffa020, emissiveIntensity: 1.4 }); A.green = std(0x061a0c, { emissive: 0x3cff8a, emissiveIntensity: 1.6 });
   A.red = std(0x1a0606, { emissive: 0xff3030, emissiveIntensity: 1.6 }); A.hazard = std(0xd8a020, { metalness: 0.3, roughness: 0.6 });
   // parts per piece type: [geometry, material, role]. Every part extends ~1.4 m below its origin so it sits on lumpy ground.
@@ -56,6 +57,25 @@ function assets() {
     garage: [[box(4, 0.2, 6, 0, 0.0, 0), A.dark], [box(4, 4.4, 0.3, 0, 0.8, -2.85), A.concrete], [box(0.3, 4.4, 6, -1.85, 0.8, 0), A.concrete], [box(0.3, 4.4, 6, 1.85, 0.8, 0), A.concrete],
       [box(4.4, 0.25, 6.3, 0, 3.1, 0), A.steel], [box(3.4, 0.12, 0.08, 0, 2.85, 3.0), A.amber]],
     stash: [[box(1.3, 2.0, 1.0, 0, 0.0, 0), A.dark], [box(1.32, 0.08, 1.02, 0, 0.75, 0), A.steel], [box(0.3, 0.14, 0.04, 0, 0.55, 0.51), A.green]],
+    // habitat: 4 m bunk, door open toward +z. Walls reach ~1.4 m under the origin so they sit on lumpy ground, same as the garage.
+    hab: [[box(3.85, 0.28, 3.85, 0, -0.15, 0), A.dark],
+      [box(4.05, 4.3, 0.32, 0, 0.75, -1.84), A.habWall], [box(0.32, 4.3, 3.5, -1.84, 0.75, 0.05), A.habWall], [box(0.32, 4.3, 3.5, 1.84, 0.75, 0.05), A.habWall],
+      [box(4.3, 0.24, 4.3, 0, 2.95, 0), A.steel],
+      [box(0.28, 3.7, 0.28, -0.95, 0.7, 1.88), A.steel], [box(0.28, 3.7, 0.28, 0.95, 0.7, 1.88), A.steel],
+      [box(2.2, 0.2, 0.22, 0, 2.55, 1.92), A.amber],
+      [box(0.55, 0.16, 0.08, 1.45, 1.55, 2.02), A.red], [box(0.16, 0.55, 0.08, 1.45, 1.55, 2.04), A.red], // med cross by the door
+      [box(1.2, 0.7, 0.08, 0, 1.6, -1.64), A.green],
+      [box(1.6, 0.48, 0.8, -0.2, 0.35, -0.7), A.dark], [box(1.25, 0.12, 0.6, -0.1, 0.62, -0.65), A.red]],
+    // landing pad: lit slab you can walk on, chevron toward +z, corner lamps and a mast so it reads past the hab door
+    pad: [[box(5.85, 0.3, 5.85, 0, 0.02, 0), A.dark],
+      [box(6.05, 0.1, 0.22, 0, 0.2, -2.8), A.hazard], [box(6.05, 0.1, 0.22, 0, 0.2, 2.8), A.hazard],
+      [box(0.22, 0.1, 5.6, -2.8, 0.2, 0), A.hazard], [box(0.22, 0.1, 5.6, 2.8, 0.2, 0), A.hazard],
+      [box(2.6, 0.1, 0.7, 0, 0.22, 0.2), A.amber], [box(1.7, 0.1, 0.5, 0, 0.22, 1.15), A.amber], [box(0.95, 0.1, 0.36, 0, 0.22, 1.85), A.amber],
+      [box(0.22, 1.7, 0.22, -2.55, 0.85, -2.55), A.steel], [box(0.45, 0.45, 0.45, -2.55, 1.75, -2.55), A.green],
+      [box(0.22, 1.7, 0.22, 2.55, 0.85, -2.55), A.steel], [box(0.45, 0.45, 0.45, 2.55, 1.75, -2.55), A.green],
+      [box(0.22, 1.7, 0.22, -2.55, 0.85, 2.55), A.steel], [box(0.45, 0.45, 0.45, -2.55, 1.75, 2.55), A.green],
+      [box(0.22, 1.7, 0.22, 2.55, 0.85, 2.55), A.steel], [box(0.45, 0.45, 0.45, 2.55, 1.75, 2.55), A.red],
+      [box(0.2, 3.8, 0.2, 0, 1.7, -2.35), A.steel], [box(0.6, 0.35, 0.6, 0, 3.6, -2.35), A.amber]],
     turret: [[cyl(0.42, 2.6, 0, 0.0, 0), A.steel], [cyl(0.55, 0.2, 0, 1.3, 0, 12), A.dark],
       [box(0.8, 0.5, 0.9, 0, 1.65, 0), A.dark, 'head'], [cyl(0.09, 1.3, 0, 1.68, 0.95, 8).rotateX(Math.PI / 2), A.steel, 'head'], [box(0.5, 0.06, 0.04, 0, 1.75, -0.46), A.red, 'head']]
   };
@@ -132,6 +152,13 @@ function rebuildPieces() {
       im.userData.type = type; inst.add(im);
     });
   }
+  // one label each: a hab and a pad have to read from the chase camera, not only from the build ghost
+  for (const p of BC.PLOTS) if (centres[p.id] && plotState(p.id).owned) for (const q of plotState(p.id).pieces) {
+    const text = q.type === 'hab' ? 'HAB' : q.type === 'pad' ? 'PAD' : ''; if (!text) continue;
+    const c = BC.pieceCentre(q), w = toWorldXZ(p.id, c.x, c.z), y = baseY(p.id, q);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(text, q.type === 'hab' ? '#ff5a5a' : '#ffd040'), transparent: true, depthWrite: false }));
+    sp.position.set(w.x, y + (q.type === 'hab' ? 3.7 : 4.3), w.z); sp.scale.set(2.8, 0.62, 1); inst.add(sp);
+  }
   api.debug.instances = inst.children.reduce((a, o) => a + o.count, 0);
 }
 function setHeadYaw(h, yaw) {
@@ -177,7 +204,7 @@ function ensureTracers() {
 }
 
 // ---------- UI ----------
-const CSS = `#baseBtn { display: none; height: 44px !important; font-size: 0.72rem !important; touch-action: manipulation !important; background: rgba(20,110,60,0.72) !important; border-color: rgba(60,255,138,0.6) !important; }
+const CSS = `#baseBtn { display: none; height: 44px !important; min-width: 44px; font-size: 0.72rem !important; touch-action: manipulation !important; background: #000 !important; color: #fff !important; border: 1px solid #fff !important; }
 body:not(.touch) #baseBtn { font-size: 0.8rem !important; }
 #baseBar { position: fixed; z-index: 14; top: calc(60px + env(safe-area-inset-top, 0px)); left: calc(108px + env(safe-area-inset-left, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); display: none; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: none; }
 body.basebuild #baseBar { display: flex; } body.basebuild #stackR { display: none; }
@@ -242,12 +269,12 @@ function overview() {
   const P = C?.player, cr = H.credits(C?.game);
   const rows = BC.PLOTS.map(p => {
     const s = plotState(p.id), c = centres[p.id], d = c && P ? Math.hypot(c.x - P.x, c.z - P.z) : null, near = d != null && d < BC.HALF + NEAR + 2, sum = BC.summary(s);
-    const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
+    const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''}${sum.hab ? ' · 🛏️' : ''}${sum.pad ? ' · 🛬' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
     const where = d == null ? 'Mars' : near ? 'here' : `${Math.round(d)} m ${compass(c.x - P.x, c.z - P.z)}`;
     const btn = s.owned ? (near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
     return `<div class="row"><div><b>${s.owned ? '🏠' : '🏷️'} ${p.name}</b> <small>· ${p.district} · ${where}</small><br><small>${info}</small></div>${btn}</div>`;
   }).join('');
-  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, gates, a garage for your rover, a stash the cops can't fine and turrets that shoot back when you're wanted. You have ${cr} cr.</small>${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
+  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can rest in, and a landing pad that calls your rover. You have ${cr} cr.</small>${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
     ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } });
 }
 function stashUi(id) {
@@ -332,9 +359,11 @@ export function baseTick(dt, ctx) {
     if (near && !plotState(near).owned && BC.plotById(near).owner) act = null; // add-on lot sold by its own add-on
     else if (near && !plotState(near).owned) { const p = BC.plotById(near); act = { label: `🏷️ Buy lot ${p.price}`, fn: async () => { const r = api.buy(near); H.toast(r.msg, 2600); } }; }
     else if (near) {
-      const s = plotState(near), l = toLocal(near, P.x, P.z), close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (t === 'garage' ? 4 : 2.2); })());
-      const st = close('stash'), gr = close('garage');
+      const s = plotState(near), l = toLocal(near, P.x, P.z), REACH = { garage: 4, hab: 3.6, pad: 3.3 }, close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (REACH[t] || 2.2); })());
+      const st = close('stash'), gr = close('garage'), hb = close('hab'), pd = close('pad');
       if (st) act = { label: '💰 Stash', fn: async () => stashUi(near) };
+      else if (hb) act = { label: '🛌 Rest', fn: async () => restIn(near) };
+      else if (pd) act = { label: '🛬 Call rover', fn: async () => callRover(near, pd) };
       else if (gr) { // the garage stores / respawns your ride; paint & parts live in Pumpkin's SSX.garage (feature-detected at call time)
         const parked = ctx.rover && roverInBay(near, gr, ctx.rover), cz = customizer();
         if (cz && (parked || !ctx.rover)) act = { label: '🔧 Customize', fn: async () => { const f = customizer(); if (!f) return H.toast('🔧 No tuner in this build.', 1800); f(); emit('garage:customize', { plotId: near }); } };
@@ -351,6 +380,29 @@ function roverInBay(id, g, rv) { const l = toLocal(id, rv.x, rv.z), c = BC.piece
 function roverHome(id, g) {
   const c = BC.pieceCentre(g), w = toWorldXZ(id, c.x, c.z), [bx, bz] = BC.rotXZ(0, 1, g.r); // nose to the open front
   H.parkVehicle(C.rover, w.x, w.z, Math.atan2(-bx, -bz) + Math.PI, C.height(w.x, w.z) + 0.6); emit('garage', { plotId: id, x: w.x, z: w.z }); H.toast('🚙 Rover\u2019s in the garage. Fuel topped up.', 2200);
+}
+// v7.5.72 habitat: one tap at the door. Full health does not start the cooldown (basecore.restReady). Death still belongs
+// to the hospital / booking flow; this is a field med-bay, not a new respawn.
+function restIn(id) {
+  const s = plotState(id); if (!s?.pieces.some(q => q.type === 'hab')) return H.toast('🛏️ Build a habitat first.', 1800);
+  const ready = BC.restReady(s.habRest, Date.now());
+  if (!ready.ok) return H.toast(`🛌 Bunk's still warm. ${Math.ceil(ready.left / 1000)}s.`, 2000);
+  const g = C?.game, info = g?.info, fine = info && info.hp >= info.hpMax && info.shield >= info.shieldMax;
+  if (fine) return H.toast('🛌 You\u2019re fine. The bunk still smells like the last tenant.', 2200);
+  if (typeof g?.restore !== 'function') return H.toast('🛌 No med-bay in this build.', 1800);
+  g.restore(); s.habRest = Date.now(); persist(); emit('rest', { plotId: id, at: s.habRest });
+  H.toast('🛌 Patched up. The hab\u2019s med-bay is filthy, but it works.', 2600);
+}
+// v7.5.72 landing pad: park the rover on the slab, nose toward the approach (+z at r = 0), fuel topped up.
+function callRover(id, pad) {
+  const rv = C?.rover; if (!rv) return H.toast('🛬 No rover on this rock.', 2000);
+  try { if (window.SSX?.consequences?.roverImpounded?.()) return H.toast('🛬 Rover\u2019s impounded at ColSec. The pad stays empty.', 2600); } catch (e) { /* no consequences module */ }
+  const c = BC.pieceCentre(pad), [ox, oz] = BC.rotXZ(0, -0.6, pad.r), w = toWorldXZ(id, c.x + ox, c.z + oz), [fx, fz] = BC.rotXZ(0, 1, pad.r);
+  const yaw = Math.atan2(-fx, -fz);
+  H.parkVehicle(rv, w.x, w.z, yaw, C.height(w.x, w.z) + (rv.spec?.hover || 0));
+  rv.air = false; rv.pitch = 0; rv.roll = 0; rv.steer = 0;
+  if (rv.group) { rv.group.position.set(rv.x, rv.y, rv.z); rv.group.rotation.set(rv.pitch || 0, rv.yaw, rv.roll || 0); }
+  emit('pad', { plotId: id, x: w.x, z: w.z }); H.toast('🛬 Rover\u2019s on the pad. Fuel topped up.', 2200);
 }
 const tv0 = new THREE.Vector3(), tv1 = new THREE.Vector3();
 function updateTurrets(dt, ctx) {
