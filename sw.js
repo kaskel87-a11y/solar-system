@@ -21,6 +21,7 @@ const PRECACHE = [
   `hud/wpbeam.js${q}`, // v7.5.8 waypoint light beam
   ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
   `mars/icecap.js${q}`, `mars/icecapcore.js${q}`, // ❄️ Planum Australe ice cap: snowboarding + snow bowling
+  `mars/swag.js${q}`, `mars/swagcore.js${q}`, // 🛍️ Slick's swag stall at Planum: threads, boards, balls, chems, ban / fine
   `mars/hostage.js${q}`, `mars/hostagecore.js${q}`, // 🪢 hostage: haul a rival lieutenant to the ice cap
   ...['help/stuck', 'help/stuckcore', 'help/foes'].map(n => `${n}.js${q}`), // Stuck? on the mission card + red ◆ over mission foes
   ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact

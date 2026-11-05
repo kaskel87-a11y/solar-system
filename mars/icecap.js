@@ -12,6 +12,9 @@
 //     or ← → aim, ↑ ↓ power, Shift+← → spin, Space / Enter roll. 3 frames. Pins 10 cr, head-pin hit +300, strike +500, three
 //     first-ball strikes = "Perfect Cold" +2,000 cr +200★. A hit sends him into a cartoon ragdoll tumble; after the game
 //     he limps off cursing and is back for more later (repeat target).
+//  🛍️ v7.5.68 Slick's swag stall, off the arrival pad: snow threads, boards you keep, bowling balls,
+//     cartoon liquor and crater dust. Owning a board skips the rental. Insult Slick and you are banned
+//     for 90 s, or you pay the fine. Benny still rents a board if you have not bought one.
 // Hooks: one <script> line in index.html (+ import map), one sw.js precache line, one guarded SSX_GROUND hook in surface.js
 // (snow height + no boulders on the snow), fast-travel stop in mars/fasttravel.js. Everything else is feature-detected.
 // Pure logic: ./icecapcore.js.
@@ -52,7 +55,7 @@ const S = { mode: 'foot', rented: false, run: null, board: null, rival: null, ri
 let G = null, parts = null;
 
 function onMars(tc) { const st = app()?.state; return !!st?.onSurface && !st.transitioning && tc?.name === 'Mars'; }
-function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: Planum X park + snow bowling' }; }
+function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: Planum X, Slick\u2019s swag stall, snow bowling' }; }
 
 // ---------- 3D ----------
 const shared = new Set();
@@ -188,10 +191,11 @@ function build(tc) {
   // the rival (rebuilt per lieutenant), zip ties, cartoon stars, speech bubble
   P.stars = starsRing(); g.add(P.stars);
   // the board (shared by the rider)
-  P.board = new THREE.Group(); const bb = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 1.55), M(0x0b0b0b, { roughness: 0.4 })); bb.position.y = 0.03; P.board.add(bb);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.055, 0.25), white); stripe.position.y = 0.032; P.board.add(stripe); for (const s of [-1, 1]) { const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 12, 1, false, 0, Math.PI), bb.material); tip.position.set(0, 0.03, s * 0.77); tip.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2; P.board.add(tip); }
+  P.board = new THREE.Group(); const deckMat = M(0x0b0b0b, { roughness: 0.4 }), stripeMat = M(0xf4f6f8); P.deckMat = deckMat; P.stripeMat = stripeMat;
+  const bb = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 1.55), deckMat); bb.position.y = 0.03; P.board.add(bb);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.055, 0.25), stripeMat); stripe.position.y = 0.032; P.board.add(stripe); for (const s of [-1, 1]) { const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 12, 1, false, 0, Math.PI), deckMat); tip.position.set(0, 0.03, s * 0.77); tip.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2; P.board.add(tip); }
   P.board.visible = false; tc.scene.add(P.board); P.boardInScene = tc.scene;
-  P.rackBoard = P.board.clone(); P.rackBoard.visible = true; P.rackBoard.position.set(C.SPOTS.benny.x + 1.2, H(C.SPOTS.benny.x + 1.2, C.SPOTS.benny.z) + 0.75, C.SPOTS.benny.z - 1); P.rackBoard.rotation.set(0.25, 0, 0); g.add(P.rackBoard);
+  P.rackBoard = P.board.clone(); P.rackBoard.traverse(o => { if (o.isMesh && o.material) o.material = o.material.clone(); }); P.rackBoard.visible = true; P.rackBoard.position.set(C.SPOTS.benny.x + 1.2, H(C.SPOTS.benny.x + 1.2, C.SPOTS.benny.z) + 0.75, C.SPOTS.benny.z - 1); P.rackBoard.rotation.set(0.25, 0, 0); g.add(P.rackBoard);
   tc.scene.add(g); G = g; parts = P; layPins(true); rivalModel();
   return g;
 }
@@ -246,15 +250,17 @@ function limpOff() { const r = S.rival; if (!r) return; S.rivalState = 'limp'; S
 
 // ---------- money / board ----------
 function res(ok, msg) { return { ok, msg }; }
-function rent() { if (S.rented) return res(false, 'You already have a board.'); if (!spend(C.RENT)) return res(false, `💸 The board is ${C.RENT} cr. You have ${fmt(credits())}.`); S.rented = true; toast(`🏂 Board rented (−${C.RENT} cr). Benny: \u201c${C.LINES.bennyRent.split('. ').slice(1).join('. ')}\u201d`, 3600); emit('rent'); return res(true, 'rented'); }
+function hasOwnBoard() { return !!tryv(() => window.SSX?.swag?.hasBoard?.(), false); }
+function canRide() { return S.rented || hasOwnBoard(); }
+function rent() { if (S.rented || hasOwnBoard()) return res(false, hasOwnBoard() ? 'You own a board. No rental.' : 'You already have a board.'); if (!spend(C.RENT)) return res(false, `💸 The board is ${C.RENT} cr. You have ${fmt(credits())}.`); S.rented = true; toast(`🏂 Board rented (−${C.RENT} cr). Benny: \u201c${C.LINES.bennyRent.split('. ').slice(1).join('. ')}\u201d`, 3600); emit('rent'); return res(true, 'rented'); }
 function lift() {
-  if (!S.rented) return res(false, 'Rent a board from Benny first.'); const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.');
+  if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s swag stall.'); const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.');
   fadeBlink(); const p = tc.player, s = C.SPOTS.start; p.x = s.x; p.z = s.z; p.y = tc.height(s.x, s.z) + EYE; p.vy = 0; p.yaw = Math.PI; p.faceYaw = Math.PI;
   tryv(() => surf()?.debugMove?.(s.x, s.z, Math.PI));
   boardOn(true); S.run = { t: 0, count: 2.2, stars: 0, cr: 0, tricks: 0, air: 0, pts: 0, done: false }; S.combo = { mult: 1, left: 0 }; S.parkTold = false; save.runs++; persist(); toast('🚡 Top of the run. Straight down races. Left is Planum X: pipe, jumps, rails. 3 · 2 · 1 …', 3200); emit('lift'); return res(true, 'lift');
 }
 function boardOn(timed = false) {
-  const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.'); if (!S.rented) return res(false, 'Rent a board from Benny first.'); if (tc.car) return res(false, 'Get out of the ride first.');
+  const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.'); if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s swag stall.'); if (tc.car) return res(false, 'Get out of the ride first.');
   const p = tc.player; S.board = C.freshBoard(p.x, p.z, Number.isFinite(p.yaw) ? p.yaw : Math.PI); S.board.y = tc.height(p.x, p.z); if (!timed) { S.run = null; S.freePts = 0; } S.combo = { mult: 1, left: 0 }; S.mode = 'board'; S.camPos = null;
   if (!timed) toast(`🏂 Free ride. ${isTouch() ? 'Stick' : 'A / D'} carve, hold forward to haul. Jump ollies. In the air hold Jump: forward mute, back method, left stalefish, right melon. Land a rail to grind. Stars pay on a timed run (🚡 lift).`, 4600); emit('board', { on: true }); return res(true, 'on');
 }
@@ -280,8 +286,9 @@ function roll(t) {
   const B = S.bowl; if (!B || B.anim) return res(false, B ? 'Wait for the pins.' : 'Not bowling.');
   if (t) B.t = { aim: C.clamp(+t.aim || 0, -0.1, 0.1), power: C.clamp(t.power ?? B.t.power, 0.15, 1), spin: C.clamp(+t.spin || 0, -1, 1) };
   const pos = C.position(B.rolls); if (pos.done) return res(false, 'Game over.');
-  const drift = window.__icecapNoWobble ? 0 : C.wobble(B.t.power, Math.random()); B.lastDrift = drift; // v7.5.59: ice drift
-  const r = C.simulate({ ...B.t, aim: B.t.aim + drift }, B.standing); B.anim = { r, t: 0, end: r.frames[r.frames.length - 1].t + 1.0, pos, standing: B.standing.slice(), headUp: B.standing[0] };
+  const ballFx = tryv(() => window.SSX?.swag?.ball?.(), null) || {};
+  const drift = (window.__icecapNoWobble ? 0 : C.wobble(B.t.power, Math.random())) * (1 - Math.min(0.75, +ballFx.steady || 0)); B.lastDrift = drift; // v7.5.59: ice drift, eased by a bought ball
+  const r = C.simulate({ ...B.t, aim: B.t.aim + drift }, B.standing, { hook: +ballFx.hook || 0, pop: +ballFx.pop || 0 }); B.anim = { r, t: 0, end: r.frames[r.frames.length - 1].t + 1.0, pos, standing: B.standing.slice(), headUp: B.standing[0] };
   if (parts) { parts.aim.visible = false; }
   emit('roll', { ...B.t }); paintBowl(); return res(true, 'rolled');
 }
@@ -332,7 +339,7 @@ function tick(dt, tc) {
   else if (S.bowl) bowlTick(dt, tc);
   if (parts?.board && S.mode !== 'board') parts.board.visible = false;
   if (S.view && tc.camera) { tc.camera.position.set(S.view.p[0], S.view.p[1], S.view.p[2]); tc.camera.lookAt(S.view.l[0], S.view.l[1], S.view.l[2]); } // __icecap.view() (tests / screenshots only)
-  syncUi(tc);
+  syncGear(); syncUi(tc);
 }
 function input(tc) {
   const a = app() || {}, k = a.keys || {}, j = a.joy || { x: 0, y: 0 }, tb = a.touchBtns || {};
@@ -346,7 +353,8 @@ function rideTick(dt, tc) {
   if (run && run.done && b.z > C.Z_BOT) { inp.brake = 1; inp.chute = true; }
   const steps = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / steps, ground = (x, z) => tc.height(x, z);
   let tricked = false;
-  for (let i = 0; i < steps; i++) { const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0 }, h, ground); if (ev) { landed(ev); tricked = true; } }
+  const ride = tryv(() => window.SSX?.swag?.ride?.(), null);
+  for (let i = 0; i < steps; i++) { const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0, ride }, h, ground); if (ev) { landed(ev); tricked = true; } }
   if (!tricked) S.combo = C.nextCombo(S.combo, dt, false);
   if (!S.parkTold && C.parkOpen(b.x, b.z) > 0.72 && b.x > C.CX + 20) { S.parkTold = true; toast('PLANUM X. Jumps and rails on this lane, superpipe further left. Hold Jump + stick to grab. Land the rail to grind.', 4200); }
   if (run && !run.done && run.count <= 0) { run.t += dt; if (b.z >= C.Z_BOT) finishRun(); else if (run.t >= C.RUN_SECS) { run.done = true; toast('⏱ Time! 90 seconds up. Run over (keep riding for fun).', 3000); emit('runend', { ok: false }); } }
@@ -539,15 +547,29 @@ function ctx(tc) {
   const d = q => Math.hypot(p.x - q.x, p.z - q.z), rv = parts?.rival;
   if (S.rivalState === 'hut' && rv && Math.hypot(p.x - rv.group.position.x, p.z - rv.group.position.z) < 3.2) return { mode: 'grab', label: `👊 Grab ${S.rival.name}`, sub: `${S.rival.gangName} lieutenant` };
   if (d(C.SPOTS.foul) < 4) return { mode: 'bowl', label: '🎳 Bowl', sub: S.rivalState === 'tied' ? `head pin: ${S.rival.name}` : 'no head pin yet' };
-  if (d(C.SPOTS.benny) < 4.5) return S.rented ? { mode: 'lift', label: '🚡 Lift to the top', sub: 'timed run · 90 s' } : { mode: 'rent', label: `🏂 Rent board · ${C.RENT} cr`, sub: 'Frostbite Benny' };
-  if (S.rented && C.onSnow(p.x, p.z) && p.grounded !== false) return { mode: 'on', label: '🏂 Board on', sub: 'free ride' };
+  const sw = tryv(() => window.SSX?.swag?.prompt?.(), null);
+  if (sw && d(sw.at) < (sw.near || 4.2)) return { mode: 'swag', label: sw.label, sub: sw.sub };
+  if (d(C.SPOTS.benny) < 4.5) return canRide() ? { mode: 'lift', label: '🚡 Lift to the top', sub: hasOwnBoard() && !S.rented ? 'your board · 90 s' : 'timed run · 90 s' } : { mode: 'rent', label: `🏂 Rent board · ${C.RENT} cr`, sub: 'Frostbite Benny' };
+  if (canRide() && C.onSnow(p.x, p.z) && p.grounded !== false) return { mode: 'on', label: '🏂 Board on', sub: hasOwnBoard() && !S.rented ? 'your board' : 'free ride' };
   return null;
 }
 function act(mode) {
   let r = null;
   if (mode === 'off') r = boardOff(); else if (mode === 'grab') r = grab(); else if (mode === 'bowl') r = bowl(); else if (mode === 'lift') r = lift(); else if (mode === 'on') r = boardOn(false);
+  else if (mode === 'swag') { tryv(() => window.SSX?.swag?.open?.()); return; }
   else if (mode === 'rent') { choice(`Frostbite Benny: \u201c${C.LINES.bennyRent}\u201d You have ${fmt(credits())} cr.`, [{ id: 'rent', label: `🏂 Rent · ${C.RENT} cr` }, { id: 'no', label: 'Not now' }]).then(id => { if (id === 'rent') { const q = rent(); if (!q.ok) toast(q.msg, 2600); } }); return; }
   if (r && !r.ok) toast(r.msg, 2400);
+}
+let gearKey = '';
+function syncGear() {
+  if (!parts) return;
+  const look = tryv(() => window.SSX?.swag?.boardLook?.(), null);
+  const ball = tryv(() => window.SSX?.swag?.ballLook?.(), null);
+  const key = `${look?.deck || 0}|${look?.stripe || 0}|${ball?.color || 0}`;
+  if (key === gearKey) return; gearKey = key;
+  if (parts.deckMat) parts.deckMat.color.setHex(look?.deck ?? 0x0b0b0b);
+  if (parts.stripeMat) parts.stripeMat.color.setHex(look?.stripe ?? 0xf4f6f8);
+  if (parts.ball?.material?.color) parts.ball.material.color.setHex(ball?.color ?? 0xa9c9de);
 }
 function syncUi(tc) {
   if (!actBtn) return; const c = ctx(tc), k = c ? `${c.mode}|${c.label}|${c.sub || ''}` : '';
@@ -567,7 +589,7 @@ function hookMenu() {
   try { reg({ id: 'rmIcecap', label: '❄️ Planum Australe', onTap: menuTap }); menuHooked = true; } catch (e) { /* */ }
 }
 function menuTap() {
-  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Frostbite Benny rents boards (${C.RENT} cr) and runs an illegal bowling lane on the ice. Left of the race line is Planum X: superpipe, jumps, rails.`];
+  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Slick's swag stall is by the landing. Frostbite Benny rents boards (${C.RENT} cr) if you don't own one, and runs an illegal bowling lane on the ice. Left of the race line is Planum X: superpipe, jumps, rails.`];
   if (save.bestRun) bits.push(`Best run ${C.fmtTime(save.bestRun)}.`); if (save.bestPts) bits.push(`Best Planum X ${fmt(save.bestPts)} pts.`); if (save.games) bits.push(`Best game ${save.best}.`);
   const opts = []; if (ft?.travel) opts.push({ id: 'ft', label: `🚀 Fast travel · ${ft.fee ?? 25} cr` }); opts.push({ id: 'wp', label: '📍 Set waypoint' }, { id: 'no', label: 'Close' });
   choice(`❄️ ${bits.join(' ')}`, opts).then(id => { if (id === 'ft') tryv(() => ft.travel('icecap')); else if (id === 'wp') { const ok = tryv(() => window.SSX?.hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Planum Australe' })); toast(ok === null ? '📍 Head south from the colony.' : '📍 Waypoint set: Planum Australe.', 2400); } });

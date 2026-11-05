@@ -1,6 +1,6 @@
 // Mars player skins (Pumpkin). Threadbare, a grimy second-hand clothes stall in downtown Ares Junction: walk up and a black
-// "👕 Threadbare" button opens the shop. Thirteen outfits from 0 to 5,000 cr (the Rusty Spacesuit and the Halloween Grin Reaper are free), bought with in-game
-// cr; ☰ → 👕 Wardrobe swaps between the ones you own (and back to the stock white suit) anywhere.
+// "👕 Threadbare" button opens the shop. Outfits from 0 to 5,000 cr (the Rusty Spacesuit and the Halloween Grin Reaper are free), bought with in-game
+// cr; ☰ → 👕 Wardrobe swaps between the ones you own (and back to the stock white suit) anywhere. Snow threads (venue planum) are sold at Slick's stall, not here.
 // A skin recolours the actual player rig (models.js buildAstronaut: torso, arms, legs, helmet, pack, chest, visor, boots)
 // and adds low-poly parts (hats, masks, chains, duster, mohawk, duffel...) to the rig's own limbs, so they swing with it.
 // Phone rule: every part of a skin is merged per slot + material once (cached, shared, never disposed), so a skin is ~8-14
@@ -286,6 +286,7 @@ function open(m = 'shop') {
 function close() { panel?.classList.remove('open'); emit('close'); }
 function buy(id) {
   const k = C.BY_ID[id]; if (!k) return { ok: false, why: 'unknown' };
+  if (k.venue === 'planum') { toast(`👕 ${k.name} is at Slick's swag stall on Planum Australe.`); return { ok: false, why: 'venue' }; }
   if (mode === 'shop' && !nearShop() && !api.__anywhere) { toast('👕 Buy it at Threadbare, downtown Ares Junction.'); return { ok: false, why: 'far' }; }
   const c = C.canBuy(st, id, credits());
   if (!c.ok) { if (c.why === 'broke') { taps.refused++; toast(`👕 ${k.name} is ${C.fmt(k.price)} cr. You have ${C.fmt(credits())} cr.`, 2800); } else if (c.why === 'owned') equip(id); render(); return c; }
@@ -295,8 +296,14 @@ function buy(id) {
   equip(id, true); toast(`👕 ${k.name} bought${c.price ? ` · −${C.fmt(c.price)} cr` : ''}. You're wearing it.`, 2800);
   return { ok: true, id, price: c.price };
 }
+function grant(id, wear = false) {
+  const k = C.BY_ID[id]; if (!k) return { ok: false, why: 'unknown' };
+  if (!C.owns(st, id)) { st = C.addOwned(st, id); taps.buys++; save(); emit('buy', { id, price: 0, via: 'grant' }); }
+  if (wear) return equip(id, true);
+  return { ok: true, id, worn: st.eq === id };
+}
 function equip(id, quiet) {
-  const r = C.equip(st, id); if (!r.ok) { toast('👕 Buy it at Threadbare first.'); return r; }
+  const r = C.equip(st, id); if (!r.ok) { toast(C.BY_ID[id]?.venue === 'planum' ? '👕 Buy it at Planum Swag first.' : '👕 Buy it at Threadbare first.'); return r; }
   st = r.state; save(); if (player) { applySkin(player, id); stats.applies++; v8Sync(player); }
   if (!quiet) toast(id === C.STOCK ? '👕 Back in the stock suit.' : `👕 Wearing ${C.BY_ID[id].name}.`, 2000);
   emit('equip', { id }); render(); return { ok: true, id };
@@ -382,4 +389,4 @@ const attach = () => { const w = window; if (!w.SSX) w.SSX = {}; if (w.SSX.skins
 attach(); (function boot(n = 0) { attach(); if (n < 150 && !(ticking && menuBtn?.isConnected && window.__app)) setTimeout(() => boot(n + 1), 100); })();
 setInterval(attach, 1500);
 export default api;
-Object.assign(api, { goShop, wardrobeBuy, locked: () => C.locked(st, credits(), nearShop()), prop: () => (syncProp(), { out: PROP.out, meshes: PROP.n, shown: !PROP.out && PROP.n > 0 }) });
+Object.assign(api, { goShop, wardrobeBuy, grant, locked: () => C.locked(st, credits(), nearShop()), prop: () => (syncProp(), { out: PROP.out, meshes: PROP.n, shown: !PROP.out && PROP.n > 0 }) });
