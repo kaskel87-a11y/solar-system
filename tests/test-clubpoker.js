@@ -43,7 +43,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(([x, z]) => window.__app.surface.debugPlace(x, z + 0.4, Math.PI), [cd.x, cd.z]); await sleep(300);
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000)); await sleep(600);
     const b = await G(() => { const b = window.__app.surface.world.inside, p = window.__app.surface.player || {}; return { w: b.x1 - b.x0, d: b.z1 - b.z0, x0: b.x0 - b.ax, x1: b.x1 - b.ax, z0: b.z0 - b.az, z1: b.z1 - b.az }; });
-    ok('interior44x32', `${b.w}x${b.d} x ${b.x0}..${b.x1} z ${b.z0}..${b.z1}`, b.w === 44 && b.d === 32 && b.x0 === -33 && b.z1 === 24);
+    ok('interior58x32', `${b.w}x${b.d} x ${b.x0}..${b.x1} z ${b.z0}..${b.z1}`, b.w === 58 && b.d === 32 && b.x0 === -33 && b.x1 === 25 && b.z1 === 24 /* Velvet expansion: east wing */);
     ok('spawnLabelLeave', await wait(() => /Leave/.test(document.getElementById('driveBtn').textContent), 3000));
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); });
     ok('showSpot', await at(6.55, -5.3, 'Private show 150'));

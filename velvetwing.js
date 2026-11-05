@@ -9,6 +9,7 @@
 // Every hook into the arc is feature-detected (window.SSX.velvetArc); without it the wing is scenery + a poker table.
 // Hotspots use `run(spot)` (index.html doSpot calls it) and getter labels, so the context button text follows the state.
 import * as THREE from 'three';
+import { patrol } from './clubfloor.js';
 
 export const WING = {
   x0: 11, x1: 25, z0: -8, z1: 24,
@@ -17,8 +18,13 @@ export const WING = {
   office: { x0: 18, x1: 25, z0: -8, z1: 1, door: 21.25 },
   desk: { x: 21.5, z: -3.6, r: 1.3 },
   safe: { x: 24.0, z: -6.6, r: 1.1 },
-  handover: { x: 15.0, z: 19.5, r: 2.0 } // the lounge floor, in front of everybody
+  handover: { x: 15.0, z: 19.5, r: 2.0 }, // the lounge floor, in front of everybody
+  // Mina, the Dome Room's cocktail waitress: her loop passes Grisby's slate (the "waitress path" in mission 2)
+  route: [[13.5, 8.4, 0], [21.2, 7.4, 2.5], [23.8, 8.6, 0], [23.8, 16.5, 0], [22, 19, 3], [14, 18.6, 0], [12.4, 15, 0]]
 };
+// pure: is Mina screening the slate from Grisby at time t (seconds)? (within 2.1 m of the slate)
+export const minaAt = t => patrol(WING.route, t);
+export const screened = t => { const p = minaAt(t); return Math.hypot(p.x - WING.ledger.x, p.z - WING.ledger.z) < 2.1; };
 const arc = () => { try { return window.SSX?.velvetArc || null; } catch (e) { return null; } };
 const call = (fn, ...a) => { try { const A = arc(); return A && typeof A[fn] === 'function' ? A[fn](...a) : null; } catch (e) { console.warn('velvetwing', fn, e); return null; } };
 
@@ -68,7 +74,7 @@ export function addVelvetWing(api, poses = {}) {
   const domeGeo = new THREE.SphereGeometry(R, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), domeM = new THREE.MeshBasicMaterial({ color: 0x9fffd0, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide });
   const domeW = new THREE.MeshBasicMaterial({ color: 0x2aff7a, wireframe: true, transparent: true, opacity: 0.22 }); api.disposables.push(domeGeo, domeM, domeW);
   const dome = new THREE.Mesh(domeGeo, domeM), domeLines = new THREE.Mesh(domeGeo, domeW); dome.position.set(T.x, H - R - 0.1, T.z); domeLines.position.copy(dome.position); api.g.add(dome, domeLines);
-  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; const px = T.x + Math.cos(a) * R, pz = T.z + Math.sin(a) * R; box(px, (H - R - 0.1) / 2, pz, 0.1, H - R - 0.1, 0.1, chrome); api.col(px, pz, 0.08, 0.08); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const px = T.x + Math.cos(a) * R, pz = T.z + Math.sin(a) * R; box(px, (H - R - 0.1) / 2, pz, 0.1, H - R - 0.1, 0.1, chrome); api.col(px, pz, 0.08, 0.08); }
   api.sign('THE DOME ROOM \u00b7 HIGH ROLLERS', 0x2aff7a, 19.5, 4.6, W.z1 - 0.1, Math.PI, 5.0, { h: 96 }); // south wall, faces into the lounge
   const oval = (m, y, rx, h, rz) => { const o = api.mk(G.cyl, m, T.x, y, T.z, rx, h, rz); api.g.add(o); return o; };
   oval(mat(0x2a140a, { roughness: 0.5 }), 0.35, 0.45, 0.7, 0.45); oval(mat(0x2a140a, { roughness: 0.5 }), 0.74, 2.0, 0.1, 1.45); oval(mat(0x0e3a5a, { roughness: 0.95 }), 0.8, 1.8, 0.04, 1.28);
@@ -95,17 +101,31 @@ export function addVelvetWing(api, poses = {}) {
   api.sign('CHAMPAGNE', 0xffd040, 19.5, 2.6, W.z1 - 0.12, Math.PI, 2.6, { h: 96 });
   api.person({ top: 0x2a0a18, bottom: 0x1a1a22, hair: 0xd0b070, hairStyle: 'bun', skin: 0xe8c0a0 }, 12.6, 19.8, Math.PI / 2, (h, t) => { poses.sit?.(h); h.arms[1].rotation.x = 1.1 + Math.sin(t * 0.6) * 0.2; });
   api.person({ top: 0x3a4a8a, bottom: 0x1a1a22, hair: 0x101010, hairStyle: 'short', skin: 0x6a4028 }, 23.7, 5.8, -Math.PI / 2, (h) => poses.sit?.(h));
-  // ---- hotspots (labels are getters: index.html reads s.label each HUD refresh) ----
+  // Mina: same stock interior person + tray as the floor waitresses (clubfloor.js); drinks go through the same 'waitress' act
+  if (typeof poses.human === 'function') { try {
+    const h = poses.human({ top: 0x0a3a24, bottom: 0x0c0c0e, hair: 0x6a2a1a, hairStyle: 'bun', skin: 0xe0b090 }); api.g.add(h.group);
+    const tray = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 14), mat(0xd8d8e0, { metalness: 0.7, roughness: 0.3 })); api.disposables.push(tray.geometry); tray.position.set(0.3, 0.47, -0.5); (h.torso || h.group).add(tray);
+    api.spot({ id: 'waitress-dome', x: W.route[0][0], z: W.route[0][1], r: 1.7, label: '\u{1F378} Cocktail waitress \u00b7 Mina \u00b7 drinks 15+ cr', act: 'waitress', who: 'Mina' }); const sp = api.spots[api.spots.length - 1];
+    api.ticks.push(t => { const s = minaAt(t), ph = t * 6.5, sw = s.moving ? Math.sin(ph) * 0.45 : 0; h.group.position.set(s.x, 0, s.z); h.group.rotation.y = s.yaw; sp.x = s.x; sp.z = s.z;
+      if (h.legs) { h.legs[0].rotation.x = sw; h.legs[1].rotation.x = -sw; } if (h.arms) { h.arms[0].rotation.x = -sw * 0.6; h.arms[1].rotation.x = 1.4; } });
+    try { window.__velvetWing = { mina: () => { const p = h.group.position; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2) }; } }; } catch (e) { /* */ }
+  } catch (e) { console.warn('velvetwing waitress', e); } }
+  // Marcus Thorne, only during the handover (mission 5): grey suit, silver hair, flanked by the table
+  const thorne = api.person({ top: 0x6a6e78, bottom: 0x2a2c32, hair: 0xc8c8cc, hairStyle: 'short', skin: 0xe4bca0, accent: 0x2aff7a, size: 1.02 }, W.handover.x + 1.2, W.handover.z - 1.6, Math.PI * 0.8, (h, t) => poses.idle?.(h, t, 5));
+  const thorneGrp = thorne?.group || thorne; if (thorneGrp) thorneGrp.visible = false;
+  // ---- hotspots (labels are live: api.spot copies its argument, so the getter goes on the stored spot) ----
+  const liveSpot = (def, label) => { api.spot(def); const sp = api.spots[api.spots.length - 1]; Object.defineProperty(sp, 'label', { get: label, enumerable: true, configurable: true }); return sp; };
   const hs = seat(0);
   api.spot({ id: 'poker-hr', x: hs.x, z: hs.z + 0.6, r: 1.4, label: '\u{1F0CF} High-roller Hold\u2019em \u00b7 Grisby\u2019s table', act: 'poker', who: 'Grisby' });
-  api.spot({ id: 'velvet-ledger', x: L.x + 0.1, z: L.z - 0.8, r: L.r, get label() { return call('ledgerLabel') || '\u{1F4D2} Grisby\u2019s ledger slate'; }, act: 'velvet', run: () => call('ledgerSpot'), cond: () => !!call('ledgerOn') });
-  api.spot({ id: 'velvet-handover', x: W.handover.x, z: W.handover.z, r: W.handover.r, get label() { return call('handoverLabel') || '\u{1F4D2} Hand Thorne the ledger'; }, act: 'velvet', run: () => call('handoverSpot'), cond: () => !!call('handoverOn') });
-  api.spot({ id: 'velvet-desk', x: D.x, z: D.z, r: D.r, get label() { return call('deskLabel') || '\u{1F4BC} The office books'; }, act: 'velvet', run: () => call('deskSpot'), cond: () => !!call('owned') });
-  api.spot({ id: 'velvet-safe', x: S.x - 0.5, z: S.z + 0.9, r: S.r, get label() { return call('safeLabel') || '\u{1F512} Office safe'; }, act: 'velvet', run: () => call('safeSpot'), cond: () => !!call('owned') });
+  liveSpot({ id: 'velvet-ledger', x: L.x + 0.1, z: L.z - 0.8, r: L.r, act: 'velvet', run: () => call('ledgerSpot'), cond: () => !!call('ledgerOn') }, () => call('ledgerLabel') || '\u{1F4D2} Grisby\u2019s ledger slate');
+  liveSpot({ id: 'velvet-handover', x: W.handover.x, z: W.handover.z, r: W.handover.r, act: 'velvet', run: () => call('handoverSpot'), cond: () => !!call('handoverOn') }, () => call('handoverLabel') || '\u{1F4D2} Hand Thorne the ledger');
+  liveSpot({ id: 'velvet-desk', x: D.x, z: D.z, r: D.r, act: 'velvet', run: () => call('deskSpot'), cond: () => !!call('owned') }, () => call('deskLabel') || '\u{1F4BC} The office books');
+  liveSpot({ id: 'velvet-safe', x: S.x - 0.5, z: S.z + 0.9, r: S.r, act: 'velvet', run: () => call('safeSpot'), cond: () => !!call('owned') }, () => call('safeLabel') || '\u{1F512} Office safe');
   // ---- state: the office opens when the club is yours, the slate goes dark once it's swiped ----
   let last = null;
   api.ticks.push(() => {
-    const own = !!call('owned'), gone = !!call('ledgerGone'), k = own + ':' + gone;
+    const own = !!call('owned'), gone = !!call('ledgerGone'), th = !!call('thorneHere'), k = own + ':' + gone + ':' + th;
+    if (thorneGrp) thorneGrp.visible = th;
     if (k === last) return; last = k;
     doorCol.on = !own; chain.visible = !own; officeSign.visible = !own; ownSign.visible = own; nameplate.visible = own; deed.visible = own;
     slate.visible = !gone;

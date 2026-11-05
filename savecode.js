@@ -36,7 +36,8 @@
     'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
     'ssx.velvetdeal.v1', // v7.5.26 Ines's side deal (job chain, comps, product shows)
     'ssx.heliospass.v1', //  v7.5.33 Helios Heights guest pass (bribe: one entry + one heist)
-    'ssx.crew.v1' // v7.5.42 crew (crewcore.js)
+    'ssx.crew.v1', // v7.5.42 crew (crewcore.js)
+    'ssx.velvetarc.v1' // Velvet expansion: Ines's arc + owning the Velvet Airlock (mars/velvetarccore.js)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];

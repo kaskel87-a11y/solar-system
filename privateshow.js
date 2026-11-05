@@ -12,6 +12,8 @@ const DF = DANNY_NAME.split(' ')[0]; // first name for captions; the full displa
 export const SHOW_PRICE = 150, LAP_PRICE = 250, TIP = 20, TIPS_FOR_NUMBER = 3, SHOW_SEC = 34, LAP_SEC = 26, TIP_SEC = 6;
 const NUMBER = '555-0142'; // 555-01xx: reserved for fiction
 const booths = new Set();
+// Velvet expansion: 25% off for the club's owner (mars/velvetarc.js); the offer labels stay the list price for everyone else
+const ownerPrice = p => { try { const m = window.SSX?.velvetArc?.showMult?.(); return m > 0 && m < 1 ? Math.round(p * m) : p; } catch (e) { return p; } };
 
 // ---------- the booth: a sealed little room right above the club ceiling, so nobody downstairs ever sees it ----------
 function canvasTex(w, h, draw) {
@@ -99,6 +101,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
 
   function offer(spot) {
     if (S) return; if (document.pointerLockElement) document.exitPointerLock();
+    { const own = ownerPrice(SHOW_PRICE) !== SHOW_PRICE, tag = own ? ' (owner)' : ''; $('pshowYes').textContent = 'Private show \u00b7 ' + ownerPrice(SHOW_PRICE) + ' cr' + tag; $('pshowLap').textContent = 'Lap dance \u00b7 ' + ownerPrice(LAP_PRICE) + ' cr' + tag; }
     prodRow(); offerEl.style.display = 'flex';
   }
   // v7.5.26: product payment (mars/velvetdealcore.js). Buttons are rebuilt per offer and bound with onTap (window.__onTap).
@@ -128,7 +131,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   }
   onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast(DF + ': Your loss, sugar.', 2000); });
   const buy = (mode) => {
-    offerEl.style.display = 'none'; const price = mode === 'lap' ? LAP_PRICE : SHOW_PRICE;
+    offerEl.style.display = 'none'; const price = ownerPrice(mode === 'lap' ? LAP_PRICE : SHOW_PRICE);
     if (!surface.game.spend(price)) { toast(DF + ': ' + (mode === 'lap' ? 'The chair dance is ' + LAP_PRICE : 'Upstairs is ' + SHOW_PRICE) + '. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
     fx.cash?.(); hud(); start(mode);
   };

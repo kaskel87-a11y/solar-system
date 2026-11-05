@@ -483,7 +483,7 @@ export const INTERIORS = {
         try { addSlotBank(api); } catch (e) { console.warn('slot bank', e); } // v7.5.36 8 slots + the Olympus Mega on the west wall, z 8.4..19.2
         try { addClubFloor(api, { sit: sitPose, idle, human: buildHuman }); } catch (e) { console.warn('club floor', e); } // v7.5.35 3 waitresses on patrol + 6 baked spectators
       }
-      try { addVelvetWing?.(api, { sit: sitPose, idle, guard, o }); } catch (e) { console.warn('velvet wing', e); } // Velvet expansion: east wing x 11..25 (the old east wall is now a partition, below)
+      try { addVelvetWing?.(api, { sit: sitPose, idle, guard, o, human: buildHuman }); } catch (e) { console.warn('velvet wing', e); } // Velvet expansion: east wing x 11..25 (the old east wall is now a partition, below)
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();

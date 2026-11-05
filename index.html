@@ -680,6 +680,8 @@
   "ssx/synth": "./synth.js?v=7.5.56",
   "./trackbuilder.js": "./trackbuilder.js?v=7.5.56",
   "ssx/trackbuilder": "./trackbuilder.js?v=7.5.56",
+  "./velvetwing.js": "./velvetwing.js?v=7.5.56",
+  "ssx/velvetwing": "./velvetwing.js?v=7.5.56",
   "./world.js": "./world.js?v=7.5.56",
   "ssx/world": "./world.js?v=7.5.56",
   "./activities/coords.js": "./activities/coords.js?v=7.5.56",
@@ -930,6 +932,10 @@
   "ssx/mars/timecore": "./mars/timecore.js?v=7.5.56",
   "./mars/turf.js": "./mars/turf.js?v=7.5.56",
   "ssx/mars/turf": "./mars/turf.js?v=7.5.56",
+  "./mars/velvetarc.js": "./mars/velvetarc.js?v=7.5.56",
+  "ssx/mars/velvetarc": "./mars/velvetarc.js?v=7.5.56",
+  "./mars/velvetarccore.js": "./mars/velvetarccore.js?v=7.5.56",
+  "ssx/mars/velvetarccore": "./mars/velvetarccore.js?v=7.5.56",
   "./mars/velvetdeal.js": "./mars/velvetdeal.js?v=7.5.56",
   "ssx/mars/velvetdeal": "./mars/velvetdeal.js?v=7.5.56",
   "./mars/velvetdealcore.js": "./mars/velvetdealcore.js?v=7.5.56",
@@ -1867,10 +1873,11 @@
         clubAct.t = setTimeout(() => document.body.classList.remove('cinebars'), 9000);
         toast(`💃 ${s.who || DANNY_NAME} dances one song for you. Costume on, hands on the armrests.`, 4200); // short: #toast clamps at 2 lines
       } else if (s.act === 'companion') {
-        if (!g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
-        au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
+        const upFree = !!window.SSX?.velvetArc?.upstairsFree?.(); // Velvet expansion: free for the owner
+        if (!upFree && !g.spend(150)) { toast('Sable: Upstairs is 150. I don’t do layaway.', 2600); au7.fx.dry(); return; }
+        if (!upFree) au7.fx.cash(); const f = document.getElementById('fadeBlack'); f.textContent = ''; f.classList.add('on');
         setTimeout(() => { f.textContent = pickL(['An hour later. Sable walks you back down and straightens your collar. “Same time next week, spacer.”', 'Later. Sable lights a cigarette at the top of the stairs. “You look like a new man. Go get shot at.”', 'Some time later. Sable holds the door. “Tell Ines you behaved.”']); }, 700);
-        setTimeout(() => { g.restore(); f.classList.remove('on'); updateSurfHud(true); toast('❤️ Health and shield full. −150 cr', 2600); }, 3600);
+        setTimeout(() => { g.restore(); f.classList.remove('on'); updateSurfHud(true); toast(upFree ? '❤️ Health and shield full. On the house, boss.' : '❤️ Health and shield full. −150 cr', 2600); }, 3600);
       }
       updateSurfHud(true);
     }
@@ -1881,6 +1888,7 @@
     phoneTexts({ toast, onTap, playing: () => onSurface }); // texts from Danny (phonetexts.js)
     function doSpot(s) {
       const g = surface.game;
+      if (s.act === 'velvet') { const raw = surface.world?.nearSpot?.(); if (raw && raw.id === s.id && typeof raw.run === 'function') { try { raw.run(raw); } catch (e) { console.warn('velvet spot', e); } } updateSurfHud(true); return; } // Velvet expansion: east-wing spots (velvetwing.js -> mars/velvetarc.js)
       if (s.act === 'leave') { surface.leaveBuilding(); }
       else if (s.act === 'shop') openShop(s.venue, s.who);
       else if (s.act === 'talk') { talkedAt = performance.now(); g.talk(s.who); }
@@ -2741,6 +2749,7 @@
   <script type="module" src="./mars/pitring.js?v=7.5.56"></script> <!-- v7.5.21 The Pit landmark: rope ring, stained mat, floodlit gantry, cheering crowd, THE PIT sign + 🥊 minimap icon (window.SSX.pitRing); layout in mars/pitringcore.js -->
   <script type="module" src="./mars/pitshow.js?v=7.5.56"></script> <!-- v7.5.29 The Pit show: strobes, announcer, crowd rush, rounds tally, star-burst + glow-up finale (window.SSX.pitShow); timings in mars/pitshowcore.js -->
   <script type="module" src="./mars/velvetdeal.js?v=7.5.56"></script> <!-- v7.5.26 Ines's side deal at the Velvet Airlock: she buys product off the floor + a 3-job errand chain (window.SSX.velvetDeal); Danny takes product in privateshow.js; rules in mars/velvetdealcore.js -->
+  <script type="module" src="./mars/velvetarc.js?v=7.5.56"></script> <!-- Velvet expansion: Ines's arc "House Always Wins" (5 jobs) and owning the Velvet Airlock (window.SSX.velvetArc) -->
   <script type="module" src="./mars/heliospass.js?v=7.5.56"></script> <!-- v7.5.33 Helios Heights guest pass (bribe Porter / ColSec: one entry + one heist) -->
   <script type="module" src="./mars/icecap.js?v=7.5.56"></script> <!-- Planum Australe ice cap (Pumpkin): snowboard run + Frostbite Benny’s snow bowling, rival as the head pin -->
 <script>
