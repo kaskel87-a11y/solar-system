@@ -79,7 +79,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('swipeStep', await G(() => window.__app.game.debug.step()?.type), (await G(() => window.__app.game.debug.step()?.type)) === 'swipe');
     const ls = await at(22.3, 8.2, 0); ok('ledgerSpot', ls?.id, ls?.id === 'velvet-ledger');
     await sleep(3500); R.swipeAfter3s = await G(() => window.SSX.velvetArc.runner.swipe);
-    await G(() => window.SSX.velvetArc.debug.swipeDone()); 
+    // v7.5.57: Grisby's look window resets the meter, so re-arm it until a clear tick lands (was timing-flaky on small screens)
+    for (let i = 0; i < 30 && (await G(() => window.__app.game.debug.step()?.type)) === 'swipe'; i++) { await G(() => window.SSX.velvetArc.debug.swipeDone()); await sleep(500); }
     ok('swipeDone', await wait(() => window.__app.game.debug.step()?.type === 'escape', 12000));
     ok('ledgerGone', await G(() => window.SSX.velvetArc.ledgerGone()));
     await G(() => window.__app.game.abandon?.()); await G(() => window.__app.game.debug.clear()); await sleep(400);
