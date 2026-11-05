@@ -367,7 +367,7 @@ function bowlTick(dt, tc) {
       const o = parts.pins[j]; o.position.x = laneX(u); o.position.z = laneZ(w);
       if (q1[2]) { const fl = A.r.fall[j] || [0, 1]; if (!o.userData.fall) o.userData.fall = { t: 0 }; const F = o.userData.fall; F.t = Math.min(1, F.t + dt * 3); o.rotation.order = 'YXZ'; o.rotation.y = Math.atan2(-fl[0], fl[1]); o.rotation.x = F.t * Math.PI / 2; } });
     const cz = C.clamp(bw - 7, -5, C.PIN0 - 9), atPins = bw > C.PIN0 - 4;
-    if (atPins) { want = v3.set(C.CX + 2.8, 2.6, laneZ(C.PIN0 - 6.5)); look = v3b.set(C.CX + 0.4, -2.2, laneZ(C.PIN0 - 1)); /* look low: the bowl panel covers the bottom half */ } // side angle on the pin deck: watch the head pin go
+    if (atPins) { want = v3.set(C.CX + 3.4, 3.4, laneZ(C.PIN0 - 9.5)); look = v3b.set(C.CX + 0.4, 0.2, laneZ(C.PIN0 - 1)); /* v7.5.61: overlay is transparent, centre the pin deck */ } // side angle on the pin deck: watch the head pin go
     else { want = v3.set(C.CX - bu * 0.4, 3.4, laneZ(cz)); look = v3b.set(C.CX - bu * 0.3, 0.7, laneZ(Math.min(bw + 6, C.PIN0 + 1))); }
     if (A.t >= A.end) resolveRoll();
   } else {
@@ -403,15 +403,19 @@ const css = `
 #icecapAct.on{display:block}#icecapAct small{display:block;font-weight:700;font-size:12px;opacity:.85}
 #icecapRun{position:fixed;z-index:14;top:calc(70px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;padding:6px 14px;border-radius:12px;border:3px solid #fff;background:#000;color:#fff;font:900 18px/1.2 ui-monospace,Menlo,monospace;pointer-events:none;white-space:nowrap}
 #icecapRun.on{display:block}
-#icecapBowl{position:fixed;z-index:40;left:0;right:0;bottom:0;display:none;background:#000;color:#fff;border-top:3px solid #fff;padding:8px 10px calc(10px + env(safe-area-inset-bottom));font:700 14px/1.3 system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
-#icecapBowl.on{display:block}
-#icecapBowl .card{display:flex;gap:4px;align-items:stretch;margin-bottom:6px}#icecapBowl .fr{flex:1;border:2px solid #fff;border-radius:8px;text-align:center;padding:2px 0;min-width:0}
-#icecapBowl .fr b{display:block;font:900 16px/1.2 ui-monospace,Menlo,monospace;letter-spacing:2px}#icecapBowl .fr span{font-size:12px;opacity:.8}#icecapBowl .fr.cur{background:#fff;color:#000}
-#icecapBowl .msg{min-height:19px;font-weight:800;margin:2px 0 6px}
-#icecapPad{position:relative;height:clamp(110px,22vh,190px);border:2px dashed #fff;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;font:800 15px/1.3 system-ui,sans-serif;touch-action:none;overflow:hidden}
+#icecapBowl{position:fixed;z-index:40;inset:0;display:none;flex-direction:column;background:transparent;color:#fff;pointer-events:none;padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));font:700 13px/1.25 system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;box-sizing:border-box}
+#icecapBowl.on{display:flex}
+#icecapBowl .top{pointer-events:auto;background:rgba(0,0,0,.92);border-radius:12px;padding:4px}
+#icecapBowl .card{display:flex;gap:4px;align-items:stretch}#icecapBowl .fr{flex:1;border:2px solid #fff;border-radius:8px;text-align:center;padding:1px 0;min-width:0;background:#000;font-size:11px}
+#icecapBowl .fr b{display:inline;font:900 14px/1.2 ui-monospace,Menlo,monospace;letter-spacing:1px;margin-left:4px}#icecapBowl .fr span{font-size:10px;opacity:.8;margin-left:3px}#icecapBowl .fr.cur{background:#fff;color:#000}
+#icecapBowl .msg{min-height:16px;font-weight:800;margin:3px 2px 0;text-shadow:0 1px 3px #000}
+#icecapPad{position:relative;flex:1;min-height:60px;pointer-events:auto;background:transparent;border:0;display:flex;align-items:flex-end;justify-content:center;text-align:center;touch-action:none;overflow:hidden}
 #icecapPad svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#icecapBowl .row{display:flex;gap:6px;margin-top:8px}#icecapBowl .row button{flex:1;min-height:46px;min-width:44px;border-radius:12px;border:2px solid #fff;background:#111;color:#fff;font:900 15px/1 system-ui,sans-serif;touch-action:manipulation;padding:0 4px}
-#icecapBowl .row button.go{background:#fff;color:#000}#icecapBowl .meter{font:800 12px/1.2 ui-monospace,Menlo,monospace;opacity:.9;margin-top:6px}
+#icecapPadTxt{background:rgba(0,0,0,.6);border-radius:10px;padding:3px 10px;margin-bottom:4px;font:800 12px/1.25 system-ui,sans-serif;pointer-events:none}#icecapPadTxt small{font-size:10px;opacity:.85}
+#icecapBowl .bot{pointer-events:auto}
+#icecapBowl .row{display:flex;gap:5px;margin-top:4px}#icecapBowl .row button{flex:1;min-height:44px;min-width:40px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:900 14px/1 system-ui,sans-serif;touch-action:manipulation;padding:0 3px}
+#icecapBowl .row button.go{background:#000;color:#fff;border-color:#fff;box-shadow:inset 0 0 0 2px #fff}#icecapBowl .meter{font:800 11px/1.2 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.6);border-radius:8px;padding:2px 8px;display:inline-block}
+body.icecapBowling :is(#joy,#fireBtn,#fireHint,#jumpBtn,#petBtn,#miniMap,#radio,#radioBtn,#surfBtns,#surfHelp,#hxMore,#hxMoreP,#icecapAct,#obLine){display:none!important}
 #icecapFade{position:fixed;inset:0;z-index:60;background:#000;opacity:0;pointer-events:none;transition:opacity .25s}
 `;
 let actBtn, runEl, bowlEl, padEl, fadeEl, actKey = '';
@@ -429,10 +433,10 @@ function ui() {
   runEl = document.createElement('div'); runEl.id = 'icecapRun'; runEl.setAttribute('role', 'status'); document.body.appendChild(runEl);
   fadeEl = document.createElement('div'); fadeEl.id = 'icecapFade'; document.body.appendChild(fadeEl);
   bowlEl = document.createElement('div'); bowlEl.id = 'icecapBowl'; bowlEl.setAttribute('role', 'dialog'); bowlEl.setAttribute('aria-label', 'Snow bowling');
-  bowlEl.innerHTML = `<div class="card" id="icecapCard"></div><div class="msg" id="icecapMsg" aria-live="polite"></div>
+  bowlEl.innerHTML = `<div class="top"><div class="card" id="icecapCard"></div><div class="msg" id="icecapMsg" aria-live="polite"></div></div>
 <div id="icecapPad"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline id="icecapTrail" fill="none" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke" points=""/></svg><div id="icecapPadTxt">Swipe up to roll<br><small>sideways = aim · length = power · curve = spin</small></div></div>
-<div class="meter" id="icecapMeter"></div>
-<div class="row"><button type="button" id="icecapAimL" aria-label="Aim left">◀</button><button type="button" id="icecapAimR" aria-label="Aim right">▶</button><button type="button" id="icecapSpin" aria-label="Spin">⟳ Spin</button><button type="button" id="icecapPow" aria-label="Power">⚡ Pow</button><button type="button" class="go" id="icecapRoll">🎳 Roll</button><button type="button" id="icecapQuit" aria-label="Quit bowling">✕</button></div>`;
+<div class="bot"><div class="meter" id="icecapMeter"></div>
+<div class="row"><button type="button" id="icecapAimL" aria-label="Aim left">◀</button><button type="button" id="icecapAimR" aria-label="Aim right">▶</button><button type="button" id="icecapSpin" aria-label="Spin">⟳ Spin</button><button type="button" id="icecapPow" aria-label="Power">⚡ Pow</button><button type="button" class="go" id="icecapRoll">🎳 Roll</button><button type="button" id="icecapQuit" aria-label="Quit bowling">✕</button></div></div>`;
   document.body.appendChild(bowlEl); padEl = bowlEl.querySelector('#icecapPad');
   const nud = (w, d) => () => { if (!S.bowl || S.bowl.anim) return; S.bowl.t = C.nudge(S.bowl.t, w, d); paintBowl(); };
   realTap(bowlEl.querySelector('#icecapAimL'), nud('aim', -1)); realTap(bowlEl.querySelector('#icecapAimR'), nud('aim', 1));
