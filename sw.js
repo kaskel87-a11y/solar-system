@@ -62,6 +62,7 @@ const PRECACHE = [
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/harvest.js${q}`, `mars/harvestcore.js${q}`, // hands-on harvest: sickle, silo, harvester (SSX.harvest)
+  `mars/sandworm.js${q}`, `mars/sandwormcore.js${q}`, // the sandworm fight at the farm (SSX.sandworm)
   `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)
   `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
