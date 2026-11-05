@@ -299,8 +299,11 @@ body.ssx-drag #raceAgain{display:none}
 `;
 function ensureUI() {
   if (ui && document.getElementById('dlrCtxBtn')) return ui;
-  const st = document.createElement('style'); st.id = 'dlrCss'; st.textContent = CSS; document.head.appendChild(st);
-  const btn = document.createElement('button'); btn.id = 'dlrCtxBtn'; btn.className = 'glass'; document.getElementById('surfBtns')?.prepend(btn);
+  // v7.5.60 (fence #1): the button can be unmounted (no #surfBtns yet at boot / HUD rebuilt). Re-mount the SAME button
+  // instead of rebuilding ui: rebuilding wiped ui.act/ui.fence for a tick, so E fell through to doInteract and exited.
+  if (ui) { mountBtn(ui.btn); return ui; }
+  const st = document.createElement('style'); st.id = 'dlrCss'; st.textContent = CSS + 'body:not(.touch) #dlrCtxBtn.fenceE::after{content:none!important}'; document.head.appendChild(st);
+  const btn = document.createElement('button'); btn.id = 'dlrCtxBtn'; btn.className = 'glass'; mountBtn(btn);
   pointerTap(btn, () => ui.act?.());
   const menu = addMenuItem(app(), { id: 'rmRides', label: '🚗 Rides & meets', onTap: () => openHub() });
   document.addEventListener('click', e => { if (performance.now() < ghostUntil && e.detail !== 0) { e.preventDefault(); e.stopPropagation(); ghostUntil = 0; } }, true);
@@ -321,11 +324,15 @@ function pointerTap(el, fn) {
   el.addEventListener('pointercancel', () => { id = null; });
   el.addEventListener('click', e => { if (performance.now() - t < 5000) return; fn(e); }); // a slow phone can deliver the compat click late
 }
+function mountBtn(btn) { if (btn.isConnected && btn.parentElement?.id === 'surfBtns') return; const col = document.getElementById('surfBtns'); if (col) col.prepend(btn); }
 function setCtx(label, act) {
   if (!ui) return; ui.act = act;
   ui.fence = !!label && label.startsWith('💸');
   if (!label) { if (ui.btn.style.display !== 'none') ui.btn.style.display = 'none'; return; }
-  if (ui.btn.textContent !== label) ui.btn.textContent = label; if (ui.btn.style.display !== 'block') ui.btn.style.display = 'block';
+  mountBtn(ui.btn); // v7.5.60: shown and on screen in the same tick
+  const shown = ui.fence && !document.body.classList.contains('touch') ? label.replace(/\s*\((Enter|E)\)$/, '') + ' (E)' : label; // v7.5.60 (#2): desktop: the key that fences is E
+  ui.btn.classList.toggle('fenceE', shown !== label);
+  if (ui.btn.textContent !== shown) ui.btn.textContent = shown; if (ui.btn.style.display !== 'block') ui.btn.style.display = 'block';
 }
 function stolenCar() { const car = C?.car, rv = C?.rover; return car && rv && car !== rv ? car : null; }
 function updateCtx() {
@@ -640,7 +647,8 @@ window.__dealer = {
   get brakeAssist() { return brakeAssist; }, get lotCenter() { if (!here()) return null; const S = spots(), c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw); return { x: S.dealer.x + LOT.cx * c + LOT.cz * s, z: S.dealer.z - LOT.cx * s + LOT.cz * c, on: p => onLot(p) }; },
   get ctxWhy() { return C ? { sheet: sheet?.kind || null, here: here(), down: !!C.game.isDown(), race: window.__race?.state || null, inside: !!app()?.surface?.info?.inside, stolen: !!stolenCar(), onLot: onLot(meOf()), age: Math.round(performance.now() - last) } : null; },
   // v7.5.59 (M1): index.html's KeyE asks here first; true = the Fence ride action ran, so doInteract() must not
-  keyE() { if (!ui?.fence || ui.btn.style.display !== 'block' || sheet || !ui.act) return false; ui.act(); return true; },
+  keyE() { if (!ui?.fence || ui.btn.style.display !== 'block' || sheet || !ui.act) return false; ui.act(); return true; }, // fence ctx flag, not DOM visibility
+  get fenceOn() { return !!(ui?.fence && ui.btn.style.display === 'block' && ui.act); },
   get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),

@@ -41,7 +41,7 @@ function assign() {
   for (const el of btns) { const k = ownKey(el); if (k) { used.add(k); map.push({ el, key: k, own: true }); } }
   let fi = 0;
   for (const el of btns) { if (map.some(m => m.el === el)) continue; while (fi < FREE.length && used.has(FREE[fi])) fi++; const k = FREE[fi++] || null; if (k) used.add(k); map.push({ el, key: k, own: false }); }
-  for (const m of map) { const want = m.own ? (OWN[m.el.id] && !OWNKEY_RE.test(label(m.el)) ? m.key : null) : m.key; if (want) { if (m.el.dataset.kb !== want) m.el.dataset.kb = want; } else if (m.el.dataset.kb && !m.own) delete m.el.dataset.kb; else if (m.el.dataset.kb && OWNKEY_RE.test(label(m.el))) delete m.el.dataset.kb; }
+  for (const m of map) { if (m.el.classList.contains('noKb')) { if (m.el.dataset.kb) delete m.el.dataset.kb; continue; } const want = m.own ? (OWN[m.el.id] && !OWNKEY_RE.test(label(m.el)) ? m.key : null) : m.key; if (want) { if (m.el.dataset.kb !== want) m.el.dataset.kb = want; } else if (m.el.dataset.kb && !m.own) delete m.el.dataset.kb; else if (m.el.dataset.kb && OWNKEY_RE.test(label(m.el))) delete m.el.dataset.kb; }
   ctxMap = map; return map;
 }
 // ---------- cards / sheets / panels ----------
