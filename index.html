@@ -821,6 +821,10 @@
   "ssx/mars/npcslots": "./mars/npcslots.js?v=7.5.49",
   "./mars/npcslotscore.js": "./mars/npcslotscore.js?v=7.5.49",
   "ssx/mars/npcslotscore": "./mars/npcslotscore.js?v=7.5.49",
+  "./mars/ownedbeams.js": "./mars/ownedbeams.js?v=7.5.49",
+  "ssx/mars/ownedbeams": "./mars/ownedbeams.js?v=7.5.49",
+  "./mars/ownedbeamscore.js": "./mars/ownedbeamscore.js?v=7.5.49",
+  "ssx/mars/ownedbeamscore": "./mars/ownedbeamscore.js?v=7.5.49",
   "./mars/pitring.js": "./mars/pitring.js?v=7.5.49",
   "ssx/mars/pitring": "./mars/pitring.js?v=7.5.49",
   "./mars/pitringcore.js": "./mars/pitringcore.js?v=7.5.49",
@@ -2655,6 +2659,7 @@
       get state() { return { flying, onSurface, transitioning, near: nearBody?.userData.name || null, autopilot: autopilot?.userData.name || null, landTarget: landTarget?.userData.name || null, info: surface.info }; } };
     initPlanets(window.__app); initStoryMars(window.__app); initHeist(window.__app);
     import('./hud/wpbeam.js').catch(e => console.warn('wpbeam', e)); // v7.5.8 blue light beam + ground ring over the active waypoint
+    import('./mars/ownedbeams.js').catch(e => console.warn('ownedbeams', e)); // dark green beams over your businesses + the trading post
     import('./perfgov.js').catch(e => console.warn('perfgov', e)); // v7.5.12 phone perf governor: far-fog cull, adaptive pixel ratio, frees space textures while landed
     import('./hud/keys.js').catch(e => console.warn('keys', e)); // v7.5.16 a key for every on-screen action (Enter / 1-9 / Esc), labels on desktop
     import('./hud/cardfit.js').catch(e => console.warn('cardfit', e)); // v7.5.15 popup/result/toast cards fit the screen, black ✕ + tap-to-close, clear of the action buttons
