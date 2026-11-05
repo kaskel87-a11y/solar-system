@@ -163,6 +163,10 @@ const GRABS = { indy: 'Indy grab', method: 'Method grab', mute: 'Mute grab', sta
 // ground(x, z) -> height. Returns null or { ok, tricks, stars, cr, airT } / { wipe:true }.
 export function boardStep(b, inp, dt, ground) {
   const K = BOARD;
+  const ride = inp.ride || null;
+  const vmax = K.VMAX + ((ride && +ride.vmax) || 0);
+  const ollie = K.OLLIE * (1 + ((ride && +ride.ollie) || 0));
+  const spinK = K.SPIN * (1 + ((ride && +ride.spin) || 0));
   const steer = clamp(inp.steer || 0, -1, 1);
   if (b.wip > 0) {
     b.wip -= dt; b.v *= Math.exp(-2.5 * dt);
@@ -179,10 +183,10 @@ export function boardStep(b, inp, dt, ground) {
     const drag = K.DRAG * (1 - 0.5 * tuck);
     let a = K.G * grade * 0.92 - drag * b.v * b.v - K.FRIC - 8 * brake - Math.abs(steer) * b.v * 0.055;
     // Tuck boosts on the fall line only. On the flat it must not be a rocket you can point off the ice.
-    if (tuck > 0 && grade > 0.025) a += K.BOOST * tuck * clamp(grade / 0.1, 0.4, 1) * clamp(1 - b.v / K.VMAX, 0, 1);
+    if (tuck > 0 && grade > 0.025) a += K.BOOST * tuck * clamp(grade / 0.1, 0.4, 1) * clamp(1 - b.v / vmax, 0, 1);
     if (b.v < K.SKATE_V) a += K.SKATE * tuck * (grade > 0.03 ? 1 : 0.4);
     if (inp.chute) a -= 24;
-    b.v = clamp(b.v + a * dt, 0, K.VMAX);
+    b.v = clamp(b.v + a * dt, 0, vmax);
     if (b.v < 0.45 && grade < 0.02) { const dh = wrap(Math.PI - b.head); b.head += clamp(dh, -1, 1) * dt * 0.9; }
     // In the pipe a hard steer pumps up the wall instead of yawing across the fall line (that stall kills the hit).
     const pumping = pipeZone(b.x, b.z) && Math.abs(steer) > 0.3 && b.v > 8;
@@ -193,7 +197,7 @@ export function boardStep(b, inp, dt, ground) {
     const nfx = -Math.sin(b.head), nfz = -Math.cos(b.head);
     const nx = b.x + nfx * b.v * dt, nz = b.z + nfz * b.v * dt, gN = ground(nx, nz);
     if (inp.jump) {
-      b.x = nx; b.z = nz; b.vy = K.OLLIE + b.v * 0.035; b.y = Math.max(b.y, gN) + b.vy * dt;
+      b.x = nx; b.z = nz; b.vy = ollie + b.v * 0.035; b.y = Math.max(b.y, gN) + b.vy * dt;
       b.air = true; b.airT = 0; b.grabT = 0; b.grabStyle = ''; b.spinAcc = 0; return null;
     }
     const yb = b.y + b.vy * dt - 0.5 * K.GA * dt * dt;
@@ -212,7 +216,7 @@ export function boardStep(b, inp, dt, ground) {
   }
   b.x += fx * b.v * dt; b.z += fz * b.v * dt; b.vy -= K.GA * dt; b.y += b.vy * dt; b.airT += dt; b.v *= 1 - 0.04 * dt;
   const ss = Math.abs(steer) < 0.22 ? 0 : steer;
-  const sp = ss * K.SPIN * dt; b.spin += sp; b.spinAcc += sp;
+  const sp = ss * spinK * dt; b.spin += sp; b.spinAcc += sp;
   if (inp.hold && b.airT > 0.12) {
     b.grabT += dt;
     const tu = clamp(inp.tuck || 0, 0, 1), br = clamp(inp.brake || 0, 0, 1);
@@ -342,13 +346,14 @@ export function rack() { // index 0 = head pin (the rival), then the 9 ice pins
 export function simulate(t, standing = null, opts = {}) {
   const P = rack().map((p, i) => ({ ...p, vu: 0, vw: 0, down: false, gone: !(standing ? standing[i] : true), m: i === 0 ? 2.6 : 1, r: i === 0 ? RIVAL_R : PIN_R, fall: null, hitV: null }));
   const aim = clamp(t.aim || 0, -0.12, 0.12), pw = clamp(t.power ?? 0.7, 0, 1), spin = clamp(t.spin || 0, -1, 1);
-  const v0 = 7 + 9 * pw, B = { u: clamp(t.u0 || 0, -LANE_HALF + BALL_R, LANE_HALF - BALL_R), w: 0, vu: Math.sin(aim) * v0, vw: Math.cos(aim) * v0, m: 4, r: BALL_R };
+  const hook = 1 + clamp(+(opts.hook) || 0, 0, 0.35), pop = 1 + clamp(+(opts.pop) || 0, 0, 0.08);
+  const v0 = (7 + 9 * pw) * pop, B = { u: clamp(t.u0 || 0, -LANE_HALF + BALL_R, LANE_HALF - BALL_R), w: 0, vu: Math.sin(aim) * v0, vw: Math.cos(aim) * v0, m: 4, r: BALL_R };
   const dt = 1 / 240, frames = [], every = opts.every || 8; let gutter = false, time = 0, headHit = false, quiet = 0;
   for (let step = 0; step < 240 * 7; step++) {
     time += dt;
     // ball: ice friction, hook grows down the lane
     if (!gutter && B.w < PIN0 + 4) {
-      B.vu += spin * 1.7 * clamp(B.w / PIN0, 0, 1.2) * dt;
+      B.vu += spin * 1.7 * hook * clamp(B.w / PIN0, 0, 1.2) * dt;
       const sp = Math.hypot(B.vu, B.vw); if (sp > 0) { const k = Math.max(0, sp - 0.22 * dt) / sp; B.vu *= k; B.vw *= k; }
     }
     B.u += B.vu * dt; B.w += B.vw * dt;

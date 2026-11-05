@@ -1,5 +1,6 @@
 // Unit tests for mars/icecapcore.js (Planum Australe ice cap: pure logic). Run: node tests/test-icecap-unit.mjs
 import * as C from '../mars/icecapcore.js';
+import * as W from '../mars/swagcore.js';
 let fails = 0, n = 0;
 const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('FAIL', name, info); } };
 
@@ -134,6 +135,52 @@ ok('wobbleBounds', Math.abs(C.wobble(1, 0)) <= C.WOBBLE + 1e-9 && Math.abs(C.wob
 { let k = 0, h = 0; const N = 400; for (let i = 0; i < N; i++) { const r = C.simulate({ aim: C.wobble(0.85, i / (N - 1)), power: 0.85 }); if (r.count === 10) k++; if (r.headHit) h++; }
   const rate = k / N, perfect = rate ** 3; ok('straightNotAlwaysStrike', rate > 0.45 && rate < 0.95, rate); ok('perfectRare', perfect < 0.75, perfect); ok('headPinStillHit', h === N, h); }
 ok('perfectCool', C.perfectPay(0, 1e12).full && !C.perfectPay(1e12, 1e12 + 60000).full && C.perfectPay(1e12, 1e12 + C.PERFECT_COOL_S * 1000).full && C.perfectPay(1e12, 1e12 + 1).cr === 0);
+
+// v7.5.68 Planum Swag: buy threads / boards / balls / chems, an owned board skips rent, insult bans, a fine clears it.
+ok('swagSpot', W.clearOfLane() && W.SPOT.z < C.FOUL && Math.hypot(W.SPOT.x - C.SPOTS.arrive.x, W.SPOT.z - C.SPOTS.arrive.z) < 24, W.SPOT);
+{
+  const s0 = W.fresh();
+  ok('rentUntilYouOwn', W.needsRent(s0, false) && !W.needsRent(s0, true) && !W.hasBoard(s0));
+  const broke = W.buy(s0, 'dustrunner', 10, 0);
+  ok('boardBroke', !broke.ok && broke.why === 'broke');
+  const bought = W.buy(s0, 'dustrunner', 220, 0);
+  ok('buyBoard', bought.ok && bought.price === 220 && bought.state.board === 'dustrunner' && W.hasBoard(bought.state) && !W.needsRent(bought.state, false));
+  ok('boardTwice', W.buy(bought.state, 'dustrunner', 9999, 0).why === 'owned');
+  const bib = W.buy(s0, 'frostbib', 400, 0);
+  ok('buyThread', bib.ok && bib.price === 400 && bib.state.threads.includes('frostbib') && bib.state.wear === 'frostbib');
+  const ball = W.buy(s0, 'guttergod', 260, 0);
+  ok('buyBall', ball.ok && ball.state.ball === 'guttergod' && W.bowlOf(ball.state).hook === 0.18 && W.ballLook(ball.state).color === 0x1a1a1c);
+  ok('houseBall', W.equip(ball.state, 'house', 0).state.ball === null && W.equippedBall(W.fresh()).id === 'house');
+  const dust = W.buy(s0, 'reddust', 40, 0);
+  ok('buyDrug', dust.ok && dust.state.bag.reddust === 1 && dust.item.kind === 'drug');
+  const used = W.useItem(dust.state, 'reddust', 1000);
+  ok('useDrug', used.ok && !used.state.bag.reddust && used.fx.kind === 'courage' && W.fxView(used.state, 1000).chip.startsWith('COURAGE'));
+  const lager = W.buy(s0, 'polarlager', 20, 0);
+  ok('buyLiquor', lager.ok && lager.item.kind === 'liquor' && W.useItem(lager.state, 'polarlager', 0).fx.kind === 'buzz');
+  ok('rideFlavor', W.rideOf(bought.state).ollie === 0.06 && !W.rideOf(s0));
+  const said = W.insult(s0, 'slick', 5000);
+  ok('insultBans', said.ok && said.who === 'Slick' && W.banned(said.state, 5000) && W.banLeft(said.state, 5000) === W.BAN_MS && !W.banned(said.state, 5000 + W.BAN_MS));
+  ok('banBlocksShop', W.buy(said.state, 'polarlager', 999, 5000).why === 'banned' && W.useItem(said.state, 'reddust', 5000).why === 'banned');
+  ok('fineBroke', W.payFine(said.state, 10, 6000).why === 'broke');
+  const cleared = W.payFine(said.state, W.FINE, 6000);
+  ok('fineClears', cleared.ok && cleared.price === W.FINE && !cleared.avoided && !W.banned(cleared.state, 6000) && W.buy(cleared.state, 'polarlager', 20, 6000).ok);
+  const avoided = W.payFine(s0, W.FINE, 0, true);
+  ok('fineAvoids', avoided.ok && avoided.avoided && avoided.state.banUntil === 0 && avoided.state.fines === 1);
+  ok('noFineWhenClear', W.payFine(s0, W.FINE, 0, false).why === 'clear');
+  ok('banExpires', W.fmtLeft(W.BAN_MS) === '1:30' && W.prompt(said.state, 5000).label.startsWith('🚫') && W.prompt(s0, 0).label.includes('Swag'));
+}
+{
+  let hb = C.freshBoard(C.CX, 800); hb.v = 49; hb.y = g(hb.x, hb.z);
+  C.boardStep(hb, {}, 1 / 60, g);
+  ok('stockSpeedCap', hb.v <= C.BOARD.VMAX + 1e-6, hb.v);
+  let fb = C.freshBoard(C.CX, 800); fb.v = 49; fb.y = g(fb.x, fb.z);
+  C.boardStep(fb, { ride: { vmax: 1.5 } }, 1 / 60, g);
+  ok('ownedBoardABitFaster', fb.v > C.BOARD.VMAX && fb.v <= C.BOARD.VMAX + 1.5 + 1e-6, fb.v);
+  const plain = C.simulate({ aim: 0, power: 0.55, spin: 0.35 }, Array(10).fill(false));
+  const hooked = C.simulate({ aim: 0, power: 0.55, spin: 0.35 }, Array(10).fill(false), { hook: 0.18 });
+  const uAt = (r, w) => (r.frames.find(f => f.b[1] >= w) || r.frames[r.frames.length - 1]).b[0];
+  ok('ballHooksMore', Math.abs(uAt(hooked, 10)) > Math.abs(uAt(plain, 10)), [uAt(plain, 10), uAt(hooked, 10)]);
+}
 
 console.log(fails ? `icecap unit: ${fails}/${n} FAILED` : `icecap unit: all ${n} passed`);
 process.exit(fails ? 1 : 0);

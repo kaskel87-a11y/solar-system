@@ -86,6 +86,17 @@ export const SKINS = [
       ['legL', 'box', [0.12, 0.1, 0.03], [0, -0.42, -0.11], 0, 'rip'], ['legR', 'box', [0.1, 0.06, 0.03], [0, -0.3, -0.11], 0, 'rip'],
       ['legL', 'cyl', [0.135, 0.135, 0.3, 8], [0, -0.74, 0], 0, 'black'], ['legR', 'cyl', [0.135, 0.135, 0.3, 8], [0, -0.74, 0], 0, 'black']
     ] }),
+  // v7.5.68 Planum Swag: snow threads. venue 'planum' keeps them off Threadbare's counter; the ice-cap stall sells them.
+  S('frostbib', 'Frost Bib', 400, 'Quilted ice bib, pom beanie, orange goggles. Sold at Planum, not downtown.', {
+    icon: '🧥', face: true, venue: 'planum',
+    pal: { skin: 0xd0a080, torso: 0xe8eef2, arms: 0xd5dde4, legs: 0x1a1c22, pack: null, chest: 0xc45a28, boots: 0x111111, bib: 0xf4f7fa, beanie: 0xc45a28, pom: 0xf2f2f2, lens: { c: 0xff7a2a, e: 0x6a2800, r: 0.2 }, strap: 0x111111 },
+    parts: [
+      ['head', 'sph', [0.19, 10, 8], [0, 0.06, 0], 0, 'beanie'], ['head', 'sph', [0.055, 8, 6], [0, 0.24, 0.01], 0, 'pom'],
+      ['head', 'box', [0.28, 0.045, 0.04], [0, 0.045, -0.16], 0, 'strap'],
+      ['head', 'cyl', [0.048, 0.048, 0.03, 8], [-0.06, 0.05, -0.185], [Math.PI / 2, 0, 0], 'lens'], ['head', 'cyl', [0.048, 0.048, 0.03, 8], [0.06, 0.05, -0.185], [Math.PI / 2, 0, 0], 'lens'],
+      ['torso', 'box', [0.46, 0.5, 0.06], [0, -0.02, -0.16], 0, 'bib'], ['torso', 'box', [0.06, 0.46, 0.02], [0, 0.02, -0.2], 0, 'strap'],
+      ['legL', 'box', [0.16, 0.16, 0.06], [0, -0.72, -0.06], 0, 'boots'], ['legR', 'box', [0.16, 0.16, 0.06], [0, -0.72, -0.06], 0, 'boots']
+    ] }),
   S('overalls', 'Farm Overalls', 450, 'Denim bib, plaid shirt, straw hat. Smells like the Dustbowl Homestead.', {
     icon: '👨‍🌾', face: true,
     pal: { skin: 0xc8946a, torso: 0xa8342a, arms: 0xa8342a, legs: 0x3a5a8a, pack: null, chest: 0x3a5a8a, boots: 0x5a3a20, denim: 0x3a5a8a, straw: 0xd9b45a, band: 0x5a2a18, dirt: 0x5a4030, plaid: 0x2a1a1a },
@@ -109,6 +120,15 @@ export const SKINS = [
       ['torso', 'box', [0.24, 0.24, 0.02], [0, 0.04, 0.19], 0, 'skull'], ['torso', 'box', [0.06, 0.05, 0.02], [-0.05, 0.08, 0.2], 0, 'black'], ['torso', 'box', [0.06, 0.05, 0.02], [0.05, 0.08, 0.2], 0, 'black'],
       ...[-0.1, 0, 0.1].map(y => ['torso', 'sph', [0.018, 5, 3], [0.07, y, -0.185], 0, 'silver']),
       ['torso', 'box', [0.58, 0.06, 0.38], [0, -0.3, 0], 0, 'strap'], ['torso', 'box', [0.08, 0.06, 0.02], [0, -0.3, -0.195], 0, 'silver']
+    ] }),
+  S('pipeduds', 'Pipe Rat Shell', 700, 'Black shell, cyan cuffs, lid on backwards. The pipe likes the look.', {
+    icon: '🐀', face: true, venue: 'planum',
+    pal: { skin: 0xb88060, torso: 0x141416, arms: 0x141416, legs: 0x101014, pack: null, chest: 0x101014, boots: 0x0c0c0e, shell: 0x101012, cuff: { c: 0x3cf0ff, e: 0x0a6a78, r: 0.4 }, lid: 0x1a1a1c, brim: 0x0a0a0c },
+    parts: [
+      ['head', 'sph', [0.178, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2], [0, 0.03, 0], 0, 'lid'], ['head', 'box', [0.2, 0.02, 0.12], [0, 0.02, 0.16], [-0.2, 0, 0], 'brim'],
+      ['torso', 'box', [0.5, 0.22, 0.08], [0, 0.12, -0.16], 0, 'shell'], ['torso', 'box', [0.5, 0.08, 0.04], [0, -0.16, -0.17], 0, 'cuff'],
+      ['armL', 'cyl', [0.1, 0.1, 0.1, 8], [0, -0.58, 0], 0, 'cuff'], ['armR', 'cyl', [0.1, 0.1, 0.1, 8], [0, -0.58, 0], 0, 'cuff'],
+      ['legL', 'box', [0.14, 0.08, 0.04], [0, -0.4, -0.1], 0, 'cuff'], ['legR', 'box', [0.14, 0.08, 0.04], [0, -0.4, -0.1], 0, 'cuff']
     ] }),
   S('hazmat', 'Hazmat Cook', 800, 'Yellow suit, gas mask, stained apron. What you cook in the Vat House stays in the Vat House.', {
     icon: '☣️', face: true,
@@ -165,6 +185,15 @@ export const SKINS = [
       ['head', 'box', [0.3, 0.12, 0.06], [0, -0.075, -0.14], [0.2, 0, 0], 'scarf'], ['head', 'cone', [0.1, 0.12, 3], [0, -0.17, -0.16], [Math.PI, 0, 0], 'scarf'],
       ['torso', 'box', [0.64, 0.06, 0.42], [0, -0.3, 0], 0, 'belt'], ['torso', 'box', [0.09, 0.07, 0.02], [0, -0.3, -0.215], 0, 'gold'],
       ['legL', 'tor', [0.035, 0.008, 4, 8], [0, -0.86, 0.14], [0, Math.PI / 2, 0], 'silver'], ['legR', 'tor', [0.035, 0.008, 4, 8], [0, -0.86, 0.14], [0, Math.PI / 2, 0], 'silver']
+    ] }),
+  S('nightrun', 'Night Haul Anorak', 1600, 'Dark anorak, a reflective stripe, hood up. For runs after the lamps die.', {
+    icon: '🌑', face: true, venue: 'planum',
+    pal: { skin: 0xc08a62, torso: 0x2a1848, arms: 0x2a1848, legs: 0x16141c, pack: null, chest: 0x140c22, boots: 0x0e0c10, shell: 0x24143c, stripe: { c: 0xff4ad4, e: 0x6a1048, r: 0.45 }, hood: 0x1a1028 },
+    parts: [
+      ['head', 'sph', [0.2, 10, 8], [0, 0.02, 0.02], 0, 'hood', [1, 1.02, 1.05]], ['head', 'box', [0.22, 0.06, 0.04], [0, 0.02, -0.16], 0, 'hood'],
+      ['torso', 'box', [0.5, 0.62, 0.08], [0, -0.02, -0.15], 0, 'shell'], ['torso', 'box', [0.46, 0.06, 0.02], [0, 0.08, -0.2], 0, 'stripe'],
+      ['armL', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'], ['armR', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'],
+      ['legL', 'box', [0.12, 0.5, 0.03], [-0.08, -0.4, -0.1], 0, 'stripe'], ['legR', 'box', [0.12, 0.5, 0.03], [0.08, -0.4, -0.1], 0, 'stripe']
     ] }),
   S('alien', 'Alien-Hide Jacket', 2200, 'Green scaled hide off something that should not exist. Still glows a little.', {
     icon: '👽', face: true,
@@ -258,16 +287,19 @@ export function canBuy(s, id, credits) {
 export function addOwned(s, id) { return norm({ ...s, owned: [...s.owned, id] }); }
 export function equip(s, id) { return owns(s, id) && (id === STOCK || BY_ID[id]) ? { ok: true, state: { ...s, eq: id } } : { ok: false, state: s, why: 'not owned' }; }
 
-// the shop rows: every skin with its state for this save + wallet
+const rowOf = (s, credits, k) => ({ id: k.id, name: k.name, icon: k.icon, price: k.price, blurb: k.blurb, owned: owns(s, k.id), worn: s.eq === k.id, afford: fin(credits) && credits >= k.price, venue: k.venue || '' });
+// the shop rows: Threadbare sells skins with no venue. Planum snow threads (venue 'planum') stay off that counter.
+// Wardrobe lists everything you already own, including snow threads.
 export function rows(s, credits, mode = 'shop') {
-  const list = SKINS.map(k => ({ id: k.id, name: k.name, icon: k.icon, price: k.price, blurb: k.blurb, owned: owns(s, k.id), worn: s.eq === k.id, afford: fin(credits) && credits >= k.price }));
+  const pool = mode === 'planum' ? SKINS.filter(k => k.venue === 'planum') : mode === 'wardrobe' ? SKINS : SKINS.filter(k => !k.venue);
+  const list = pool.map(k => rowOf(s, credits, k));
   const stock = { id: STOCK, name: 'Colony Issue (stock suit)', icon: '⚪', price: 0, blurb: 'The plain white suit you landed in.', owned: true, worn: s.eq === STOCK, afford: true };
   return mode === 'wardrobe' ? [stock, ...list.filter(r => r.owned)] : list;
 }
-// Wardrobe extras: the outfits you don't own yet (cheapest first), shown as compact locked rows under your own;
+// Wardrobe extras: the Threadbare outfits you don't own yet (cheapest first). Planum threads are not sold here.
 // canBuy only when you stand at the Threadbare counter (the wardrobe never sells from afar)
 export function locked(s, credits, near = false) {
-  return SKINS.filter(k => !owns(s, k.id)).map(k => ({ id: k.id, name: k.name, icon: k.icon, price: k.price, afford: fin(credits) && credits >= k.price, canBuy: !!near }));
+  return SKINS.filter(k => !k.venue && !owns(s, k.id)).map(k => ({ id: k.id, name: k.name, icon: k.icon, price: k.price, afford: fin(credits) && credits >= k.price, canBuy: !!near }));
 }
 
 // real tap: the same pointer, and it never moved TAP_PX or more during the gesture

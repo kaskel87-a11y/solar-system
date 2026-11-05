@@ -5,7 +5,7 @@ const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('
 const fin = Number.isFinite;
 
 // catalogue: 10-12 skins, first is free, the rest 300-5,000 cr, unique ids, cheapest first
-ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 13, C.SKINS.length);
+ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 16, C.SKINS.length);
 ok('freeFirst', C.SKINS[0].price === 0 && C.FREE === C.SKINS[0].id);
 ok('prices', C.SKINS.slice(1).every(k => (k.gift && k.price === 0) || (k.price >= 300 && k.price <= 5000)), C.SKINS.map(k => k.price).join()); // v7.5.31: free gifts (Grin Reaper)
 ok('topIs5000', Math.max(...C.SKINS.map(k => k.price)) === 5000 && C.SKINS.slice(1).some(k => k.price === 300));
@@ -57,7 +57,8 @@ ok('equipStock', C.equip(a, C.STOCK).ok);
 ok('equipNotOwned', !C.equip(a, 'chrome').ok && C.equip(a, 'chrome').state === a);
 // rows
 const rs = C.rows(a, 1000), rw = C.rows(C.equip(a, 'cowboy').state, 1000, 'wardrobe');
-ok('rowsShop', rs.length === C.SKINS.length && rs.find(r => r.id === 'punk').afford && !rs.find(r => r.id === 'chrome').afford && rs.find(r => r.id === 'cowboy').owned);
+ok('rowsShop', rs.length === C.SKINS.filter(k => !k.venue).length && rs.find(r => r.id === 'punk').afford && !rs.find(r => r.id === 'chrome').afford && rs.find(r => r.id === 'cowboy').owned && !rs.some(r => r.id === 'frostbib'));
+ok('planumThreads', C.rows(C.fresh(), 5000, 'planum').map(r => r.id).join() === 'frostbib,pipeduds,nightrun' && C.BY_ID.frostbib.venue === 'planum' && C.BY_ID.frostbib.price === 400);
 ok('rowsWardrobe', rw.map(r => r.id).join() === [C.STOCK, ...OWN0, 'cowboy'].join() && rw.find(r => r.id === 'cowboy').worn && !rw[0].worn);
 // real taps
 const d = { id: 3, x: 100, y: 100 };
