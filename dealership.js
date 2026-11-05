@@ -220,10 +220,19 @@ function buildLot() {
 }
 // the lot in dealer-local metres (yaw-rotated with the group): centre, size, the two podium rows
 const LOT = { cx: -12, cz: 2, w: 50, d: 22, rowA: -1, rowB: 7.5, span: 46 }; // kept on the colony's flattened ground (it drops off south of z +13, rises east of x +6)
-// pad 2 is the apron (dealer button, and the line you must cross before a fence arms). pad 8 keeps that fence
-// armed when a hover bike brakes on the edge: the showroom glass is wider than this rectangle, so the stop sits on it.
-const onLot = (p, pad = 2) => { const S = spots(), dx = p.x - S.dealer.x, dz = p.z - S.dealer.z, c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw), lx = dx * c - dz * s, lz = dx * s + dz * c;
-  return Math.abs(lx - LOT.cx) < LOT.w / 2 + pad && Math.abs(lz - LOT.cz) < LOT.d / 2 + pad; };
+function lotLocal(p) {
+  const S = spots(), dx = p.x - S.dealer.x, dz = p.z - S.dealer.z, c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw);
+  return { lx: dx * c - dz * s, lz: dx * s + dz * c };
+}
+// the concrete apron. Half-depth is only 13 m; the glass dome is 20 m, so a stop under the glass can miss this box.
+const onApron = (p, pad = 2) => { const { lx, lz } = lotLocal(p); return Math.abs(lx - LOT.cx) < LOT.w / 2 + pad && Math.abs(lz - LOT.cz) < LOT.d / 2 + pad; };
+// v7.5.66: once the dome is up, the lot is the glass floor (ellipse), not the smaller apron inside it.
+const onDomeFloor = (p, pad = 0) => {
+  if (!domeOn()) return false;
+  const { lx, lz } = lotLocal(p), a = (lx - LOT.cx) / (GC.DOME.rx + pad), b = (lz - LOT.cz) / (GC.DOME.rz + pad);
+  return a * a + b * b <= 1;
+};
+const onLot = (p, pad = 2) => onApron(p, pad) || onDomeFloor(p, Math.max(0, pad - 2));
 let fenceHot = false;
 function rebuildPodiums() {
   if (!lot) return; const stock = dealerStock().slice(0, isMobile ? 8 : 12), key = stock.map(s => s.kind).join(',');
@@ -351,7 +360,8 @@ function setCtx(label, act) {
 }
 function stolenCar() { const car = C?.car, rv = C?.rover; return car && rv && car !== rv ? car : null; }
 function fenceBlocked() { return !!(sheet || !here() || !C || C.game.isDown() || window.__race?.state || app()?.surface?.info?.inside); }
-// Armed once the stolen ride is on the apron; stays armed a few metres past that edge so a brake-slide doesn't drop it.
+// Arms on the apron, or on the glass floor once the dome is built. Stays armed a few metres past that edge
+// so a hover-bike brake slide doesn't drop it. Never having entered that footprint leaves it disarmed.
 function wantFence() {
   if (fenceBlocked()) return false;
   if (!stolenCar()) { fenceHot = false; return false; }
@@ -713,7 +723,9 @@ export function dealerTick(dt, ctx) {
   clearRocks(dt);
   if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
   tickShowFX(dt);
-  const nowMs = performance.now(); if (nowMs - ui.t > 200) { ui.t = nowMs; updateCtx(); } // real-time throttle (slow phones still update promptly)
+  const nowMs = performance.now();
+  // fence arms from position, so the button has to follow on the same frame it changes (a 200 ms poll was leaving Exit (E) up under the glass)
+  if ((!!ui.fence !== !!wantFence()) || nowMs - ui.t > 200) { ui.t = nowMs; updateCtx(); }
 }
 // the terrain scatters instanced boulders everywhere; tuck the ones sitting on our lots / the strip out of sight (visual only)
 let rockDone = new WeakSet(); const rm = new THREE.Matrix4(), rp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); let rockT = 0;
@@ -816,7 +828,7 @@ setInterval(() => { if (!last || performance.now() - last < 700 || app()?.state?
 window.__dealer = {
   get garage() { return garage(); }, get stock() { return dealerStock(); }, get spots() { return here() ? spots() : null; }, get sheet() { return sheet?.kind || null; },
   get brakeAssist() { return brakeAssist; }, get lotCenter() { if (!here()) return null; const S = spots(), c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw); return { x: S.dealer.x + LOT.cx * c + LOT.cz * s, z: S.dealer.z - LOT.cx * s + LOT.cz * c, on: p => onLot(p) }; },
-  get ctxWhy() { return C ? { sheet: sheet?.kind || null, here: here(), down: !!C.game.isDown(), race: window.__race?.state || null, inside: !!app()?.surface?.info?.inside, stolen: !!stolenCar(), onLot: onLot(meOf()), armed: fenceHot, age: Math.round(performance.now() - last) } : null; },
+  get ctxWhy() { return C ? { sheet: sheet?.kind || null, here: here(), down: !!C.game.isDown(), race: window.__race?.state || null, inside: !!app()?.surface?.info?.inside, stolen: !!stolenCar(), onLot: onLot(meOf()), apron: onApron(meOf()), armed: fenceHot, age: Math.round(performance.now() - last) } : null; },
   // v7.5.59 (M1): index.html's KeyE asks here first; true = the Fence ride action ran, so doInteract() must not
   keyE() { // v7.5.65: stolen + on-lot latch (held past the apron edge). Not the button's display — that blips off under the dome.
     if (!wantFence()) return false; if (!ui?.fence || !ui.act) setCtx('💸 Fence ride', doFence); if (!ui?.act) return false; ui.act(); return true; },
