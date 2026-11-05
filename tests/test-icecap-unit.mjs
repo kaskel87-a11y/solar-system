@@ -20,7 +20,8 @@ const g = (x, z) => C.groundY(x, z, 0);
 let b = C.freshBoard(C.CX, C.Z_TOP + 4); b.y = g(b.x, b.z); let air = 0, maxV = 0, lands = [];
 for (let i = 0; i < 60 * 40 && b.z < C.Z_BOT; i++) { const ev = C.boardStep(b, { steer: (C.CX - b.x) * 0.08 - Math.sin(b.head) * 0.0, tuck: 1 }, 1 / 60, g); if (b.air) air++; maxV = Math.max(maxV, b.v); if (ev) lands.push(ev); }
 ok('boardReachesFinish', b.z >= C.Z_BOT, b.z);
-ok('boardSpeed', maxV > 15 && maxV <= C.BOARD.VMAX, maxV);
+ok('boardSpeed', maxV > 28 && maxV <= C.BOARD.VMAX, maxV);
+ok('raceLineStaysCentral', Math.abs(b.x - C.CX) < 8, b.x);
 ok('boardKickerAir', air > 60 && lands.some(e => e.ok && e.airT > 0.8), `${air} ${JSON.stringify(lands.map(e => e.airT?.toFixed?.(2)))}`);
 ok('airPays', lands.filter(e => e.ok && e.airT >= 0.5).every(e => e.cr === Math.round(e.airT * C.AIR_CR_PER_S)));
 // a 360 off the next kicker: spin hard in the air until the board comes round once
@@ -31,6 +32,10 @@ b = C.freshBoard(C.CX, 500); b.air = true; b.y = 2; b.vy = 0; b.spin = Math.PI /
 for (let i = 0; i < 300 && !ev; i++) ev = C.boardStep(b, {}, 1 / 60, () => 0);
 ok('sidewaysWipes', ev && ev.wipe && b.wip > 0);
 ok('trickNames', C.trickNames(Math.PI * 2.1, 0.5).join() === 'Backside 360,Indy grab' && C.trickNames(-Math.PI, 0).join() === 'Frontside 180' && C.trickNames(0.3, 0.1).length === 0);
+ok('grabStyles', C.trickNames(0, 0.5, 'mute').join() === 'Mute grab' && C.trickNames(0, 0.4, 'stale').join() === 'Stalefish' && C.trickNames(0, 1.1, 'indy').join() === 'Method grab');
+ok('cork540', C.trickNames(Math.PI * 3, 0.5, 'method').join() === 'Backside 540,Method grab,Cork');
+ok('trickPoints', C.trickPoints(['Backside 360', 'Mute grab'], 1.2) > C.trickPoints(['Indy grab'], 0.2) && C.trickPoints(['50-50'], 0.5) >= 320);
+ok('combo', C.nextCombo({ mult: 1, left: 0 }, 0, true).mult === 1 && C.nextCombo({ mult: 1, left: 2 }, 0, true).mult === 2 && C.nextCombo({ mult: 4, left: 0.2 }, 0.5, false).mult === 1 && C.nextCombo({ mult: 6, left: 1 }, 0, true).mult === 6);
 b = C.freshBoard(C.CX, C.FOUL - 10, Math.PI); b.v = 10; for (let i = 0; i < 120; i++) C.boardStep(b, { brake: 1 }, 1 / 60, g);
 ok('brakeStops', b.v === 0, b.v);
 
@@ -81,6 +86,48 @@ ok('nudge', C.nudge({ aim: 0.1, power: 1, spin: 0 }, 'aim', 1).aim === 0.1 && C.
 ok('realTap', C.isRealTap({ id: 1, x: 0, y: 0 }, { id: 1, x: 6, y: 6 }) && !C.isRealTap({ id: 1, x: 0, y: 0 }, { id: 2, x: 0, y: 0 }) && !C.isRealTap({ id: 1, x: 0, y: 0 }, { id: 1, x: 0, y: 0 }, 12) && !C.isRealTap({ id: 1, x: 0, y: 0 }, { id: 1, x: 9, y: 9 }));
 ok('rivalRoster', C.nextRival({}, 0)?.id === 'rusty' && C.nextRival({ rusty: { back: 100 } }, 50)?.id === 'jawbone' && C.nextRival({ rusty: { back: 9 }, jawbone: { back: 9 }, deacon: { back: 9 } }, 5) === null);
 ok('lines', C.LINES.benny.startsWith('Ten pins, one lane') && C.LINES.rival.length === 2 && C.RENT === 50 && C.RUN_SECS === 90);
+
+// v7.5.67 Planum X: faster board, superpipe, slopestyle booters, rails/boxes. Race line + bowling stay put.
+ok('raceLineClearOfPark', C.parkOpen(C.CX, 760) === 0 && C.parkOpen(C.CX + 12, 760) === 0 && C.FEATURES.every(f => Math.abs(f.x - C.CX) > 14) && C.PARK_KICKS.every(k => Math.abs(k.x - C.CX) - k.half > 14));
+{
+  const z = 760, floor = C.groundY(C.PIPE.x, z, 0), fall = C.groundY(C.CX, z, 0);
+  const lip = C.groundY(C.PIPE.x + C.PIPE.flat + C.PIPE.R * 0.99, z, 0);
+  ok('pipeFloorFollowsFall', Math.abs(floor - fall) < 1.2, { floor, fall });
+  ok('pipeCoping', lip - floor > 5, lip - floor);
+  ok('pipeEntranceLow', C.pipeWall(C.PIPE.x + C.PIPE.flat + C.PIPE.R * 0.9, C.PIPE.z0 - 20) === 0);
+}
+const pk = C.PARK_KICKS[2];
+ok('parkKickerLip', C.groundY(pk.x, pk.z - 0.2, 0) - C.groundY(pk.x, pk.z + 0.2, 0) > 3, C.groundY(pk.x, pk.z - 0.2, 0) - C.groundY(pk.x, pk.z + 0.2, 0));
+{
+  const k0 = C.PARK_KICKS[0];
+  let pb = C.freshBoard(k0.x, k0.z - 55, Math.PI); pb.y = g(pb.x, pb.z); pb.v = 8; let pair = 0, pmax = 0, pdrift = 0;
+  for (let i = 0; i < 60 * 12 && pb.z < k0.z + 40; i++) { const ev = C.boardStep(pb, { tuck: 1, steer: (k0.x - pb.x) * 0.15 }, 1 / 60, g); if (pb.air) pair++; pmax = Math.max(pmax, pb.v); pdrift = Math.max(pdrift, Math.abs(pb.x - k0.x)); if (ev && ev.wipe) break; }
+  ok('parkBoosterAir', pair > 20 && pb.z > k0.z && pdrift < 8, { pair, z: pb.z, pmax, pdrift });
+}
+{
+  const rail = C.FEATURES.find(f => f.id === 'rail-down');
+  let rb = C.freshBoard(rail.x, rail.z0 + 1.2, Math.PI); rb.v = 18; rb.air = true; rb.airT = 0.4; rb.vy = -2; rb.y = g(rb.x, rb.z) + rail.h + 0.15;
+  let gev = null, saw = false;
+  for (let i = 0; i < 400 && !gev; i++) { if (rb.grind) saw = true; gev = C.boardStep(rb, { steer: 0.05 }, 1 / 60, g); if (gev && !gev.ok) break; }
+  ok('railGrind', saw && gev && gev.ok && gev.grind && gev.tricks[0] === '50-50' && gev.stars === C.TRICK_STARS, JSON.stringify(gev));
+}
+{
+  const box = C.FEATURES.find(f => f.kind === 'box');
+  let bb = C.freshBoard(box.x, box.z0 - 3, Math.PI); bb.v = 16; bb.y = g(bb.x, bb.z);
+  let bev = null, saw = false;
+  for (let i = 0; i < 300 && !bev; i++) { if (bb.grind) saw = true; bev = C.boardStep(bb, { tuck: 1 }, 1 / 60, g); }
+  ok('boxGrind', saw && bev && bev.ok && /press|slide/i.test(bev.tricks[0] || ''), JSON.stringify(bev));
+}
+{
+  let pb = C.freshBoard(C.PIPE.x, C.PIPE.z0 + 24, Math.PI); pb.v = 22; pb.y = g(pb.x, pb.z); let airF = 0, wall = 0;
+  for (let i = 0; i < 60 * 8 && pb.z < C.PIPE.z1 - 8; i++) {
+    const pi = C.pipeZone(pb.x, pb.z); if (pi) wall = Math.max(wall, pi.wall);
+    const ev = C.boardStep(pb, { steer: pb.air ? 0 : -1, tuck: pb.air ? 0 : 1 }, 1 / 60, g);
+    if (pb.air) airF++;
+    if (ev && ev.wipe) break;
+  }
+  ok('pipeAir', airF > 25 && wall > 0.75 && pb.z > C.PIPE.z0 + 80, { airF, wall, x: +pb.x.toFixed(1), z: +pb.z.toFixed(1) });
+}
 
 // v7.5.59 balance: ice drift + Perfect Cold cool-down
 ok('wobbleBounds', Math.abs(C.wobble(1, 0)) <= C.WOBBLE + 1e-9 && Math.abs(C.wobble(1, 1)) <= C.WOBBLE + 1e-9 && C.wobble(0.85, 0.5) === 0);

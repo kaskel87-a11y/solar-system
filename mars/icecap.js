@@ -2,8 +2,11 @@
 // mountain rises out of the dust: a 400 m downhill run with four kickers, a chairlift, and at the bottom Frostbite Benny's
 // illegal bowling lane on the ice. "Ten pins, one lane, and one fella who owes me. Pick your target."
 //  🏂 Rent a board from Benny (50 cr), ride the lift, 90 s timed run: carve (stick / A D), tuck (up / W), brake (down / S),
-//     Jump = ollie, hold Jump in the air = grab, steer in the air = spin. Tricks pay 5★ each, air time pays cr. Land
-//     straight (or switch) or you wipe out. ⏏ Off board any time. The run ends at the lane.
+//     Jump = ollie, hold Jump in the air = grab, steer in the air = spin. v7.5.67: the board is quicker and tops out faster.
+//     To the rider's left of the race line is Planum X: slopestyle booters, rails, boxes, and a superpipe. Hold Jump to grab
+//     (stick forward mute, back method, left stalefish, right melon), land on a rail or box to grind, string tricks for a
+//     combo. The score chip shows Planum X points. Tricks pay 5★ each on a timed run, air time pays cr. Land straight
+//     (or switch) or you wipe out. ⏏ Off board any time. The run ends at the lane.
 //  👊 A Turf gang lieutenant hangs about Benny's hut. Grab him (cartoon KO, no gore), Benny zip-ties him upright as the head
 //     pin with 9 ice pins round him. 🎳 Bowl a frozen boulder: swipe up the pad (sideways = aim, length = power, curve = spin),
 //     or ← → aim, ↑ ↓ power, Shift+← → spin, Space / Enter roll. 3 frames. Pins 10 cr, head-pin hit +300, strike +500, three
@@ -34,7 +37,7 @@ const GROUND = { height: (x, z, h, nm) => nm === 'Mars' ? C.groundY(x, z, h) : h
 globalThis.SSX_GROUND = GROUND;
 
 // ---------- save ----------
-let save = { runs: 0, bestRun: 0, games: 0, best: 0, perfect: 0, rivals: {} };
+let save = { runs: 0, bestRun: 0, bestPts: 0, games: 0, best: 0, perfect: 0, rivals: {} };
 try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') save = { ...save, ...j, rivals: { ...(j.rivals || {}) } }; } catch (e) { /* fresh */ }
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* */ } };
 
@@ -44,12 +47,12 @@ function spend(n) { const g = game(); if (!g) return false; if (credits() < n) r
 function give(cr, stars = 0) { const g = game(); if (!g?.progress) return; if (cr > 0) g.progress.credits += Math.round(cr); if (stars > 0) g.progress.xp = (g.progress.xp || 0) + Math.round(stars); tryv(() => g.save()); emit('pay', { cr, stars }); }
 
 // ---------- state ----------
-const S = { mode: 'foot', rented: false, run: null, board: null, rival: null, rivalState: 'none', bowl: null, near: null, lastTc: null, fade: 0, simT: 0 };
+const S = { mode: 'foot', rented: false, run: null, board: null, rival: null, rivalState: 'none', bowl: null, near: null, lastTc: null, fade: 0, simT: 0, combo: { mult: 1, left: 0 }, freePts: 0, call: null, parkTold: false };
 // rivalState: none | hut (waiting at the hut) | ko (knocked out, stars) | tied (head pin) | down (knocked over) | limp (walking off)
 let G = null, parts = null;
 
 function onMars(tc) { const st = app()?.state; return !!st?.onSurface && !st.transitioning && tc?.name === 'Mars'; }
-function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: snowboarding + snow bowling' }; }
+function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: Planum X park + snow bowling' }; }
 
 // ---------- 3D ----------
 const shared = new Set();
@@ -64,23 +67,69 @@ const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0
 function box(g, w, h, d, m, x, y, z) { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; }
 
 function buildSnow(height) {
-  const xs = [], zs = [], push = (a, v) => a.push(v);
-  for (let x = C.BOUNDS.x0; x < C.CX - 24; x += 4) push(xs, x); for (let x = C.CX - 24; x < C.CX + 24; x += 1.5) push(xs, x); for (let x = C.CX + 24; x <= C.BOUNDS.x1; x += 4) push(xs, x);
-  for (let z = C.BOUNDS.z0; z < C.Z_TOP - 40; z += 4) push(zs, z); for (let z = C.Z_TOP - 40; z < 1060; z += 2.5) push(zs, z); for (let z = 1060; z <= C.BOUNDS.z1; z += 4) push(zs, z);
-  for (const k of C.KICKS) zs.push(k - 0.06, k + 0.06, k - C.KICK_LEN * 0.5); zs.sort((a, b) => a - b);
-  const nx = xs.length, nz = zs.length, pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3), idx = [];
+  const xs = [], zs = [];
+  const span = (arr, a, b, step) => { for (let v = a; v <= b + 1e-4; v += step) arr.push(Math.round(v * 1000) / 1000); };
+  const uniq = arr => { arr.sort((a, b) => a - b); const o = []; for (const v of arr) if (!o.length || v - o[o.length - 1] > 0.05) o.push(v); return o; };
+  span(xs, C.BOUNDS.x0, C.CX - 24, 4); span(xs, C.CX - 24, C.CX + 18, 1.5);
+  span(xs, C.CX + 18, C.PIPE.x + C.PIPE.flat + C.PIPE.R + 5, 1.2); span(xs, C.PIPE.x + C.PIPE.flat + C.PIPE.R + 5, C.BOUNDS.x1, 4);
+  span(zs, C.BOUNDS.z0, C.Z_TOP - 40, 4); span(zs, C.Z_TOP - 40, 1060, 2.5); span(zs, 1060, C.BOUNDS.z1, 4);
+  for (const k of C.KICKS) zs.push(k - 0.06, k + 0.06, Math.round((k - C.KICK_LEN * 0.5) * 1000) / 1000);
+  for (const k of C.PARK_KICKS) zs.push(k.z - 0.06, k.z + 0.06, Math.round((k.z - k.len * 0.5) * 1000) / 1000);
+  const X = uniq(xs), Z = uniq(zs), nx = X.length, nz = Z.length, pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3), idx = [];
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const x = xs[i], z = zs[j], m = C.mask(x, z), n = Math.sin(x * 0.37 + z * 0.11) * Math.sin(z * 0.23 - x * 0.07);
+    const x = X[i], z = Z[j], m = C.mask(x, z), n = Math.sin(x * 0.37 + z * 0.11) * Math.sin(z * 0.23 - x * 0.07);
     const cover = C.smooth(0.18, 0.42, m + n * 0.08), y = height(x, z) + (cover > 0 ? -0.9 + 1.06 * cover : -2);
     const k = (j * nx + i) * 3; pos[k] = x; pos[k + 1] = y; pos[k + 2] = z;
-    const piste = C.onPiste(x, z) ? 1 : 0, cord = piste && Math.abs(x - C.CX) < 18 ? 0.03 * Math.sin(x * 3.1) : 0;
-    col[k] = 0.9 - 0.06 * piste + cord; col[k + 1] = 0.94 - 0.03 * piste + cord; col[k + 2] = 1.0;
+    const groom = C.groom(x, z), piste = C.onPiste(x, z) ? 1 : 0, cord = piste && Math.abs(x - C.CX) < 18 ? 0.03 * Math.sin(x * 3.1) : 0;
+    if (groom === 'wall') { col[k] = 0.62; col[k + 1] = 0.78; col[k + 2] = 0.96; }
+    else if (groom === 'pipe') { col[k] = 0.9; col[k + 1] = 0.96; col[k + 2] = 1; }
+    else if (groom === 'park') { col[k] = 0.96; col[k + 1] = 0.97; col[k + 2] = 1; }
+    else { col[k] = 0.9 - 0.06 * piste + cord; col[k + 1] = 0.94 - 0.03 * piste + cord; col[k + 2] = 1.0; }
   }
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
   const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, emissive: 0x6d7f96, emissiveIntensity: 0.18, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
   mesh.name = 'icecapSnow'; return mesh;
+}
+// repeated posts as one draw call (coping markers, rail legs). pts are [x, y, z].
+function posts(g, mat, pts, w, h, d) {
+  if (!pts.length) return null;
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(w, h, d), mat, pts.length);
+  const o = new THREE.Object3D();
+  pts.forEach((p, i) => { o.position.set(p[0], p[1], p[2]); o.rotation.set(0, 0, 0); o.updateMatrix(); mesh.setMatrixAt(i, o.matrix); });
+  mesh.instanceMatrix.needsUpdate = true; g.add(mesh); return mesh;
+}
+// v7.5.67 Planum X: signs, a slopestyle gate, rails, boxes, pipe coping. Terrain (pipe + booters) is in the snow mesh.
+function buildPark(g, H, black, white, red) {
+  const banner = (x, z, text, sub, w = 7.2, h = 1.7) => { const y = H(x, z); const s = sign(text, sub, w, h); s.position.set(x, y + 3.3, z); s.rotation.y = Math.PI; g.add(s); for (const side of [-1, 1]) box(g, 0.18, 3.5, 0.18, black, x + side * (w * 0.48), y + 1.6, z); return s; };
+  banner(C.CX + 16, C.Z_TOP + 8, '\u2190 PLANUM X', 'slopestyle \u00b7 superpipe', 8.2, 1.8);
+  banner(C.CX + 30, 652, 'SLOPESTYLE', 'jumps \u00b7 rails \u00b7 boxes', 8, 1.6);
+  banner(C.PIPE.x, C.PIPE.z0 + 4, 'SUPERPIPE', 'carve the wall \u00b7 fly the lip', 8.4, 1.6);
+  const steel = M(0x161616, { metalness: 0.72, roughness: 0.32 });
+  const legs = [], coping = [];
+  for (const f of C.FEATURES) {
+    const zc = (f.z0 + f.z1) / 2, len = f.z1 - f.z0, y0 = H(f.x, f.z0), y1 = H(f.x, f.z1), yc = (y0 + y1) / 2 + f.h;
+    const pitch = Math.atan2(y0 - y1, len);
+    if (f.kind === 'rail') {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, len), steel); beam.position.set(f.x, yc, zc); beam.rotation.x = pitch; g.add(beam);
+      for (let z = f.z0 + 2; z < f.z1 - 1; z += 4) legs.push([f.x, H(f.x, z) + f.h * 0.45, z]);
+    } else {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(f.half * 2, f.h, len), black); body.position.set(f.x, H(f.x, zc) + f.h * 0.5, zc); body.rotation.x = pitch; g.add(body);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(f.half * 2 + 0.06, 0.06, len + 0.04), white); top.position.set(f.x, H(f.x, zc) + f.h + 0.02, zc); top.rotation.x = pitch; g.add(top);
+    }
+  }
+  posts(g, steel, legs, 0.08, 0.7, 0.08);
+  const half = C.PIPE.flat + C.PIPE.R;
+  for (let z = C.PIPE.z0 + 10; z < C.PIPE.z1 - 4; z += 14) for (const s of [-1, 1]) {
+    const x = C.PIPE.x + s * half, y = H(x, z); coping.push([x, y + 0.45, z]);
+  }
+  posts(g, red, coping, 0.12, 0.9, 0.12);
+  for (let i = 0; i < 7; i++) {
+    const t = i / 6, x = C.CX + 12 + t * 20, z = C.Z_TOP + 22 + t * 70, y = H(x, z);
+    box(g, 0.08, 1.5, 0.08, black, x, y + 0.75, z);
+    const fl = box(g, 0.02, 0.42, 0.62, i % 2 ? red : white, x, y + 1.25, z + 0.3); fl.userData.flag = 1;
+  }
 }
 function pinGeo() { const pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16, y = t * 1.5, r = 0.11 + 0.17 * Math.sin(Math.min(1, t * 1.6) * Math.PI * 0.9) * (t < 0.62 ? 1 : 0.55) + (t > 0.62 ? 0.06 * Math.sin((t - 0.62) / 0.38 * Math.PI) : 0); pts.push(new THREE.Vector2(Math.max(0.02, t > 0.97 ? 0.03 : r), y)); } return new THREE.LatheGeometry(pts, 14); }
 function bubble(text) {
@@ -117,6 +166,8 @@ function build(tc) {
   gate(C.Z_TOP, 'START \u00b7 90 SECONDS'); gate(C.Z_BOT, 'FINISH');
   for (let z = C.Z_TOP + 15; z < C.Z_BOT; z += 25) for (const s of [-1, 1]) { const x = C.CX + s * 19, y = H(x, z); box(g, 0.08, 1.6, 0.08, black, x, y + 0.8, z); const f = box(g, 0.02, 0.5, 0.7, s < 0 ? black : red, x, y + 1.35, z + 0.35); f.userData.flag = 1; }
   for (const k of C.KICKS) for (const s of [-1, 1]) { const x = C.CX + s * (C.KICK_HALF + 0.6), y = H(x, k); box(g, 0.12, 1.2, 0.12, red, x, y + 0.6, k); }
+  for (const k of C.PARK_KICKS) for (const s of [-1, 1]) { const x = k.x + s * (k.half + 0.4), y = H(x, k.z); box(g, 0.1, 1.3, 0.1, red, x, y + 0.55, k.z); }
+  buildPark(g, H, black, white, red);
   // chairlift: pylons, cable, a few chairs
   const lx = C.SPOTS.lift.x, cable = [];
   for (let z = 940; z >= C.Z_TOP - 10; z -= 50) { const y = H(lx, z); box(g, 0.5, 9, 0.5, black, lx, y + 4.5, z); box(g, 3, 0.3, 0.3, black, lx, y + 9, z); cable.push(new THREE.Vector3(lx - 1.3, y + 8.8, z), new THREE.Vector3(lx + 1.3, y + 8.8, z)); }
@@ -200,12 +251,12 @@ function lift() {
   if (!S.rented) return res(false, 'Rent a board from Benny first.'); const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.');
   fadeBlink(); const p = tc.player, s = C.SPOTS.start; p.x = s.x; p.z = s.z; p.y = tc.height(s.x, s.z) + EYE; p.vy = 0; p.yaw = Math.PI; p.faceYaw = Math.PI;
   tryv(() => surf()?.debugMove?.(s.x, s.z, Math.PI));
-  boardOn(true); S.run = { t: 0, count: 2.2, stars: 0, cr: 0, tricks: 0, air: 0, done: false }; save.runs++; persist(); toast('🚡 Top of the run. 3 · 2 · 1 …', 2000); emit('lift'); return res(true, 'lift');
+  boardOn(true); S.run = { t: 0, count: 2.2, stars: 0, cr: 0, tricks: 0, air: 0, pts: 0, done: false }; S.combo = { mult: 1, left: 0 }; S.parkTold = false; save.runs++; persist(); toast('🚡 Top of the run. Straight down races. Left is Planum X: pipe, jumps, rails. 3 · 2 · 1 …', 3200); emit('lift'); return res(true, 'lift');
 }
 function boardOn(timed = false) {
   const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.'); if (!S.rented) return res(false, 'Rent a board from Benny first.'); if (tc.car) return res(false, 'Get out of the ride first.');
-  const p = tc.player; S.board = C.freshBoard(p.x, p.z, Number.isFinite(p.yaw) ? p.yaw : Math.PI); S.board.y = tc.height(p.x, p.z); if (!timed) S.run = null; S.mode = 'board'; S.camPos = null;
-  if (!timed) toast(`🏂 Free ride. ${isTouch() ? 'Stick' : 'A / D'} to carve, Jump to ollie. Tricks only pay on a timed run (🚡 lift).`, 3000); emit('board', { on: true }); return res(true, 'on');
+  const p = tc.player; S.board = C.freshBoard(p.x, p.z, Number.isFinite(p.yaw) ? p.yaw : Math.PI); S.board.y = tc.height(p.x, p.z); if (!timed) { S.run = null; S.freePts = 0; } S.combo = { mult: 1, left: 0 }; S.mode = 'board'; S.camPos = null;
+  if (!timed) toast(`🏂 Free ride. ${isTouch() ? 'Stick' : 'A / D'} carve, hold forward to haul. Jump ollies. In the air hold Jump: forward mute, back method, left stalefish, right melon. Land a rail to grind. Stars pay on a timed run (🚡 lift).`, 4600); emit('board', { on: true }); return res(true, 'on');
 }
 function boardOff(why) {
   if (S.mode !== 'board') return res(false, 'Not on a board.'); const tc = S.lastTc, b = S.board; S.mode = 'foot';
@@ -291,24 +342,29 @@ function input(tc) {
 }
 function rideTick(dt, tc) {
   const b = S.board, p = tc.player, run = S.run, inp = input(tc);
-  if (run && run.count > 0) { run.count -= dt; inp.steer = 0; inp.jump = false; inp.tuck = 0; inp.brake = 1; if (run.count <= 0) { toast('🏁 GO!', 900); b.v = Math.max(b.v, C.BOARD.PUSH0); } }
-  if (run && run.done && b.z > C.Z_BOT) { inp.brake = Math.max(inp.brake, 1.8); }
+  if (run && run.count > 0) { run.count -= dt; inp.steer = 0; inp.jump = false; inp.tuck = 0; inp.brake = 1; if (run.count <= 0) { toast('🏁 GO! Tuck to haul. Left lane is the park.', 1400); b.v = Math.max(b.v, C.BOARD.PUSH0); } }
+  if (run && run.done && b.z > C.Z_BOT) { inp.brake = 1; inp.chute = true; }
   const steps = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / steps, ground = (x, z) => tc.height(x, z);
-  for (let i = 0; i < steps; i++) { const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0 }, h, ground); if (ev) landed(ev); }
+  let tricked = false;
+  for (let i = 0; i < steps; i++) { const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0 }, h, ground); if (ev) { landed(ev); tricked = true; } }
+  if (!tricked) S.combo = C.nextCombo(S.combo, dt, false);
+  if (!S.parkTold && C.parkOpen(b.x, b.z) > 0.72 && b.x > C.CX + 20) { S.parkTold = true; toast('PLANUM X. Jumps and rails on this lane, superpipe further left. Hold Jump + stick to grab. Land the rail to grind.', 4200); }
   if (run && !run.done && run.count <= 0) { run.t += dt; if (b.z >= C.Z_BOT) finishRun(); else if (run.t >= C.RUN_SECS) { run.done = true; toast('⏱ Time! 90 seconds up. Run over (keep riding for fun).', 3000); emit('runend', { ok: false }); } }
   if (b.air) { if (run && !run.done) run.air += dt; }
+  if (S.call) { S.call.t -= dt; if (S.call.t <= 0) S.call = null; }
   if (run?.done && b.z > C.Z_BOT && b.v < 0.6 && !b.air) { boardOff(' '); toast('🎳 The run ends at Benny\u2019s lane. Step up and bowl.', 2600); return; }
   if (!C.nearZone(b.x, b.z, 30)) { boardOff('⏏ Off the snow. Board off.'); return; }
   // player + camera follow the board
   const ox = p.x, oz = p.z; p.x = b.x; p.z = b.z; p.y = b.y + EYE; p.vy = 0; p.grounded = !b.air; p.yaw = b.head; p.faceYaw = b.head + Math.PI / 2 + b.spin; p.moving = 0;
   const a = tc.astro;
   if (a?.group) { a.group.visible = true; a.group.position.set(b.x, b.y + 0.08, b.z); a.group.rotation.order = 'YXZ'; a.group.rotation.y = b.head + Math.PI / 2 + b.spin; a.group.rotation.x = b.wip > 0 ? -1.2 * Math.min(1, b.wip) : 0; a.group.rotation.z = b.air ? 0 : -b.lean * 0.22;
-    const P = a.parts || {}; /* sideways stance, knees bent */ const crouch = b.air ? (inp.hold ? 1.1 : 0.6) : 0.35 + 0.25 * inp.tuck;
-    if (P.legL) { P.legL.rotation.set(0.35 * crouch, 0, 0.3); P.legR.rotation.set(0.35 * crouch, 0, -0.3); } if (P.armL) { P.armL.rotation.set(b.air && inp.hold ? 1.6 : -0.3, 0, -1.1); P.armR.rotation.set(b.air && inp.hold ? 1.6 : -0.3, 0, 1.1); } }
+    const P = a.parts || {}; /* sideways stance, knees bent */ const grinding = !!b.grind, crouch = b.air ? (inp.hold ? 1.1 : 0.6) : grinding ? 0.85 : 0.35 + 0.25 * inp.tuck;
+    if (P.legL) { P.legL.rotation.set(0.35 * crouch, 0, 0.3); P.legR.rotation.set(0.35 * crouch, 0, -0.3); }
+    if (P.armL) { const out = grinding ? 1.35 : 1.1; P.armL.rotation.set(b.air && inp.hold ? 1.6 : grinding ? 0.2 : -0.3, 0, -out); P.armR.rotation.set(b.air && inp.hold ? 1.6 : grinding ? 0.2 : -0.3, 0, out); } }
   const bd = parts.board; if (bd.parent !== tc.scene) tc.scene.add(bd); bd.visible = true; bd.position.set(b.x, b.y + 0.02, b.z); bd.rotation.order = 'YXZ'; bd.rotation.y = b.head + b.spin;
   const gA = tc.height(b.x - Math.sin(b.head) * 0.7, b.z - Math.cos(b.head) * 0.7), gB = tc.height(b.x + Math.sin(b.head) * 0.7, b.z + Math.cos(b.head) * 0.7); bd.rotation.x = b.air ? -0.15 : Math.atan2(gA - gB, 1.4);
   // chase camera behind the heading
-  const cam = tc.camera, back = 7 + Math.min(4, b.v * 0.12), want = v3.set(b.x + Math.sin(b.head) * back, b.y + 3.2, b.z + Math.cos(b.head) * back);
+  const cam = tc.camera, back = 8 + Math.min(7, b.v * 0.16), want = v3.set(b.x + Math.sin(b.head) * back, b.y + 3.4, b.z + Math.cos(b.head) * back);
   const gy = tc.height(want.x, want.z) + 1.2; if (want.y < gy) want.y = gy;
   if (!S.camPos) S.camPos = want.clone(); else S.camPos.lerp(want, 1 - Math.exp(-dt * 6));
   cam.position.copy(S.camPos); cam.lookAt(v3b.set(b.x - Math.sin(b.head) * 6, b.y + 1.0, b.z - Math.cos(b.head) * 6));
@@ -316,14 +372,20 @@ function rideTick(dt, tc) {
 }
 function landed(ev) {
   const run = S.run, paid = run && !run.done && run.count <= 0;
-  if (ev.wipe) { toast('💥 Wipeout! Land it straight.', 1500); emit('wipe'); return; }
+  if (ev.wipe) { S.combo = { mult: 1, left: 0 }; S.call = null; toast(ev.grind ? '💥 Slipped the rail.' : '💥 Wipeout! Land it straight.', 1500); emit('wipe'); return; }
   if (!ev.tricks.length && ev.airT < 0.5) return;
-  const parts_ = [ev.tricks.join(' + ') || 'Big air', `${ev.airT.toFixed(1)} s`];
+  S.combo = C.nextCombo(S.combo, 0, true);
+  const base = C.trickPoints(ev.tricks, ev.airT), pts = base * S.combo.mult;
+  if (run && run.count <= 0) { run.pts = (run.pts || 0) + pts; }
+  else if (!run) S.freePts = (S.freePts || 0) + pts;
+  S.call = { text: `${S.combo.mult > 1 ? 'x' + S.combo.mult + '  ' : ''}${(ev.tricks.join(' + ') || 'BIG AIR').toUpperCase()}   ${pts}`, t: 1.45 };
+  const parts_ = [ev.tricks.join(' + ') || 'Big air', `${ev.airT.toFixed(1)} s`, `${pts} pts${S.combo.mult > 1 ? ' x' + S.combo.mult : ''}`];
   if (paid) { run.stars += ev.stars; run.cr += ev.cr; run.tricks += ev.tricks.length; give(ev.cr, ev.stars); if (ev.stars) parts_.push(`+${ev.stars}★`); if (ev.cr) parts_.push(`+${ev.cr} cr`); }
-  toast(`🏂 ${parts_.join(' · ')}${ev.sw ? ' (switch)' : ''}`, 1800); emit('trick', { ...ev, paid: !!paid });
+  toast(`🏂 ${parts_.join(' · ')}${ev.sw ? ' (switch)' : ''}`, 1800); emit('trick', { ...ev, paid: !!paid, pts, mult: S.combo.mult });
 }
-function finishRun() { const run = S.run; run.done = true; const best = !save.bestRun || run.t < save.bestRun; if (best) save.bestRun = run.t; persist();
-  toast(`🏁 Finish ${C.fmtTime(run.t)}${best ? ' (best!)' : ''} · ${run.tricks} trick${run.tricks === 1 ? '' : 's'} +${run.stars}★ · air +${run.cr} cr`, 4200); emit('runend', { ok: true, t: run.t, stars: run.stars, cr: run.cr }); }
+function finishRun() { const run = S.run; run.done = true; const best = !save.bestRun || run.t < save.bestRun; if (best) save.bestRun = run.t;
+  const pts = run.pts || 0, bestPts = pts > (save.bestPts || 0); if (bestPts) save.bestPts = pts; persist();
+  toast(`🏁 Finish ${C.fmtTime(run.t)}${best ? ' (best!)' : ''} · Planum X ${fmt(pts)} pts${bestPts && pts ? ' (best!)' : ''} · ${run.tricks} trick${run.tricks === 1 ? '' : 's'} +${run.stars}★ · air +${run.cr} cr`, 4600); emit('runend', { ok: true, t: run.t, stars: run.stars, cr: run.cr, pts }); }
 
 function animNpcs(dt, tc) {
   if (!parts) return; const t = S.simT, bn = parts.benny; resetPose(bn); bn.head.rotation.y = Math.sin(t * 0.5) * 0.5; bn.arms[1].rotation.x = 0.4 + Math.sin(t * 1.3) * 0.1; bn.torso.rotation.z = Math.sin(t * 1.1) * 0.03;
@@ -401,8 +463,9 @@ function keysBowl() { const B = S.bowl; if (!B || B.anim || B.over) { keyQ.lengt
 const css = `
 #icecapAct{position:fixed;z-index:15;left:calc(14px + env(safe-area-inset-left));bottom:calc(250px + env(safe-area-inset-bottom));display:none;min-height:52px;min-width:120px;max-width:calc(100vw - 150px);padding:6px 16px;border-radius:14px;border:3px solid #fff;background:#000;color:#fff;font:900 17px/1.15 system-ui,sans-serif;touch-action:manipulation;box-shadow:0 2px 10px #000;text-align:left}
 #icecapAct.on{display:block}#icecapAct small{display:block;font-weight:700;font-size:12px;opacity:.85}
-#icecapRun{position:fixed;z-index:14;top:calc(70px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;padding:6px 14px;border-radius:12px;border:3px solid #fff;background:#000;color:#fff;font:900 18px/1.2 ui-monospace,Menlo,monospace;pointer-events:none;white-space:nowrap}
-#icecapRun.on{display:block}
+#icecapRun{position:fixed;z-index:14;top:calc(70px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:none;max-width:calc(100vw - 20px);padding:6px 14px;border-radius:12px;border:3px solid #fff;background:#000;color:#fff;font:900 16px/1.2 ui-monospace,Menlo,monospace;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#icecapCall{position:fixed;z-index:14;top:30%;left:50%;transform:translateX(-50%);display:none;max-width:calc(100vw - 24px);padding:8px 14px;border-radius:12px;border:3px solid #fff;background:#000;color:#fff;font:900 18px/1.15 system-ui,sans-serif;pointer-events:none;text-align:center}
+#icecapRun.on{display:block}#icecapCall.on{display:block}
 #icecapBowl{position:fixed;z-index:40;inset:0;display:none;flex-direction:column;background:transparent;color:#fff;pointer-events:none;padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));font:700 13px/1.25 system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;box-sizing:border-box}
 #icecapBowl.on{display:flex}
 #icecapBowl .top{pointer-events:auto;background:rgba(0,0,0,.92);border-radius:12px;padding:4px}
@@ -418,7 +481,7 @@ const css = `
 body.icecapBowling :is(#joy,#fireBtn,#fireHint,#jumpBtn,#petBtn,#miniMap,#radio,#radioBtn,#surfBtns,#surfHelp,#hxMore,#hxMoreP,#icecapAct,#obLine){display:none!important}
 #icecapFade{position:fixed;inset:0;z-index:60;background:#000;opacity:0;pointer-events:none;transition:opacity .25s}
 `;
-let actBtn, runEl, bowlEl, padEl, fadeEl, actKey = '';
+let actBtn, runEl, callEl, bowlEl, padEl, fadeEl, actKey = '';
 function realTap(el, fn) { // same pointerId, < 10 px moved; mouse / keyboard click still works
   let down = null, maxMove = 0, lastUp = 0;
   el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; down = { id: e.pointerId, x: e.clientX, y: e.clientY }; maxMove = 0; });
@@ -431,6 +494,7 @@ function ui() {
   if (actBtn) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   actBtn = document.createElement('button'); actBtn.id = 'icecapAct'; actBtn.type = 'button'; document.body.appendChild(actBtn); realTap(actBtn, () => act(actBtn.dataset.mode));
   runEl = document.createElement('div'); runEl.id = 'icecapRun'; runEl.setAttribute('role', 'status'); document.body.appendChild(runEl);
+  callEl = document.createElement('div'); callEl.id = 'icecapCall'; callEl.setAttribute('role', 'status'); document.body.appendChild(callEl);
   fadeEl = document.createElement('div'); fadeEl.id = 'icecapFade'; document.body.appendChild(fadeEl);
   bowlEl = document.createElement('div'); bowlEl.id = 'icecapBowl'; bowlEl.setAttribute('role', 'dialog'); bowlEl.setAttribute('aria-label', 'Snow bowling');
   bowlEl.innerHTML = `<div class="top"><div class="card" id="icecapCard"></div><div class="msg" id="icecapMsg" aria-live="polite"></div></div>
@@ -488,9 +552,12 @@ function act(mode) {
 function syncUi(tc) {
   if (!actBtn) return; const c = ctx(tc), k = c ? `${c.mode}|${c.label}|${c.sub || ''}` : '';
   if (k !== actKey) { actKey = k; actBtn.classList.toggle('on', !!c); if (c) { actBtn.dataset.mode = c.mode; actBtn.innerHTML = `${c.label}${c.sub ? `<small>${c.sub}</small>` : ''}`; } }
-  const run = S.mode === 'board' ? S.run : null;
-  if (run) { runEl.classList.add('on'); runEl.textContent = run.count > 0 ? `🏂 ${Math.ceil(run.count)}…` : `⏱ ${C.fmtTime(run.done ? run.t : Math.min(run.t, C.RUN_SECS))} · ${run.stars}★ · ${run.cr} cr`; }
+  const onBoard = S.mode === 'board', run = onBoard ? S.run : null, pts = run ? (run.pts || 0) : S.freePts || 0;
+  const mult = onBoard && S.combo.left > 0 && S.combo.mult > 1 ? ` x${S.combo.mult}` : '';
+  const kph = onBoard && S.board ? ` · ${Math.round((S.board.v || 0) * 3.6)} km/h` : '';
+  if (onBoard) { runEl.classList.add('on'); runEl.textContent = run && run.count > 0 ? `🏂 ${Math.ceil(run.count)}…` : run ? `⏱ ${C.fmtTime(run.done ? run.t : Math.min(run.t, C.RUN_SECS))}${kph} · ${fmt(pts)} pts${mult}` : `${Math.round((S.board?.v || 0) * 3.6)} km/h · ${fmt(pts)} pts${mult}`; }
   else runEl.classList.remove('on');
+  if (callEl) { const show = onBoard && S.call && S.call.t > 0; callEl.classList.toggle('on', !!show); if (show) callEl.textContent = S.call.text; }
 }
 
 // ---------- ☰ menu: where is it / go there ----------
@@ -500,14 +567,14 @@ function hookMenu() {
   try { reg({ id: 'rmIcecap', label: '❄️ Planum Australe', onTap: menuTap }); menuHooked = true; } catch (e) { /* */ }
 }
 function menuTap() {
-  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Frostbite Benny rents boards (${C.RENT} cr) and runs an illegal bowling lane on the ice.`];
-  if (save.bestRun) bits.push(`Best run ${C.fmtTime(save.bestRun)}.`); if (save.games) bits.push(`Best game ${save.best}.`);
+  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Frostbite Benny rents boards (${C.RENT} cr) and runs an illegal bowling lane on the ice. Left of the race line is Planum X: superpipe, jumps, rails.`];
+  if (save.bestRun) bits.push(`Best run ${C.fmtTime(save.bestRun)}.`); if (save.bestPts) bits.push(`Best Planum X ${fmt(save.bestPts)} pts.`); if (save.games) bits.push(`Best game ${save.best}.`);
   const opts = []; if (ft?.travel) opts.push({ id: 'ft', label: `🚀 Fast travel · ${ft.fee ?? 25} cr` }); opts.push({ id: 'wp', label: '📍 Set waypoint' }, { id: 'no', label: 'Close' });
   choice(`❄️ ${bits.join(' ')}`, opts).then(id => { if (id === 'ft') tryv(() => ft.travel('icecap')); else if (id === 'wp') { const ok = tryv(() => window.SSX?.hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Planum Australe' })); toast(ok === null ? '📍 Head south from the colony.' : '📍 Waypoint set: Planum Australe.', 2400); } });
 }
 
 // ---------- API ----------
-function state() { return { mode: S.mode, rented: S.rented, rival: S.rival ? { ...S.rival } : null, rivalState: S.rivalState, run: S.run ? { ...S.run } : null, board: S.board ? { x: S.board.x, z: S.board.z, y: S.board.y, v: S.board.v, air: S.board.air, head: S.board.head, spin: S.board.spin, wip: S.board.wip } : null,
+function state() { return { mode: S.mode, rented: S.rented, rival: S.rival ? { ...S.rival } : null, rivalState: S.rivalState, run: S.run ? { ...S.run } : null, combo: { mult: S.combo.mult, left: S.combo.left }, freePts: S.freePts || 0, board: S.board ? { x: S.board.x, z: S.board.z, y: S.board.y, v: S.board.v, air: S.board.air, head: S.board.head, spin: S.board.spin, wip: S.board.wip, grind: S.board.grind || null } : null,
   bowl: S.bowl ? { rolls: S.bowl.rolls.slice(), heads: S.bowl.heads, paid: S.bowl.paid, t: { ...S.bowl.t }, rolling: !!S.bowl.anim, over: S.bowl.over || null, rival: S.bowl.rival, last: S.bowl.last || null, standing: S.bowl.standing.slice() } : null,
   ctx: ctx(S.lastTc), save: JSON.parse(JSON.stringify(save)) }; }
 const api = { place, state, rent, lift, boardOn: () => boardOn(false), boardOff: () => boardOff(), grab, bowl, roll, quit, bringRival, zone: { cx: C.CX, top: C.Z_TOP, bottom: C.Z_BOT, foul: C.FOUL }, inZone: (x, z) => C.onSnow(x, z),

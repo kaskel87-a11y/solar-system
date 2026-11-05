@@ -27,6 +27,7 @@ const tag = `icecap-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await page.goto(base + '?look=classic&models=1&t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     await G(() => localStorage.clear()); await page.reload(); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     ok('api', await G(() => !!window.SSX?.icecap && typeof window.SSX.icecap.place === 'function' && !!globalThis.SSX_GROUND));
+    ok('xgamesPark', await G(() => { const c = window.__icecap.core; return !!(c && c.BOARD.VMAX >= 42 && c.PIPE && c.PIPE.R >= 5 && c.FEATURES.length >= 4 && c.PARK_KICKS.length >= 3 && c.FEATURES.every(f => Math.abs(f.x - c.CX) > 14)); }));
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000); await sleep(1000);
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
