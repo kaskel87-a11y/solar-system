@@ -136,6 +136,10 @@ function sell(buyer, crop, qty) {
     const r = res(true, `💰 ${q.qty} ${K.CROPS[crop].name}: ${who} ${q.cash.toLocaleString('en-US')} cr.${heatLine(h)}`, { ...q, heat: h }); toast(r.msg, 3200); return r;
   });
 }
+// v7.5.62: whole-op actions: cut every ripe rack, sell the whole stash to Skiv, plant every empty rack with one crop
+function harvestAll() { const idx = S.racks.map((r, i) => (r.crop && r.growth >= 1 ? i : -1)).filter(i => i >= 0); if (!idx.length) return res(false, 'Nothing is ripe.'); let n = 0, last = null; for (const i of idx) { const r = harvest(i); if (r?.ok) { n += r.n | 0; last = r; } else if (!last) return r; } const m = `🧺 Cut ${idx.length} rack${idx.length === 1 ? '' : 's'}: ${n} units in the stash.${last?.heat ? heatLine(last.heat) : ''}`; toast(m, 3200); return res(true, m, { n }); }
+function sellAll(buyer = 'skiv') { let cash = 0, any = null; for (const k of K.CROP_IDS) { if (!(S.stash[k] | 0)) continue; const r = sell(buyer, k); if (r?.ok) cash += r.cash | 0; else if (!any) any = r; } if (!cash) return any || res(false, 'Nothing to sell.'); const m = `💰 Sold the whole stash: ${cash.toLocaleString('en-US')} cr.`; toast(m, 3200); return res(true, m, { cash }); }
+function plantAll(crop) { const idx = S.racks.map((r, i) => (!r.crop ? i : -1)).filter(i => i >= 0); if (!idx.length) return res(false, 'No empty racks.'); let n = 0, fail = null; for (const i of idx) { const r = plant(i, crop); if (r?.ok) n++; else { fail = r; break; } } if (!n) return fail || res(false, 'Couldn\u2019t plant.'); const m = `${K.CROPS[crop].icon} ${K.CROPS[crop].name} in ${n} rack${n === 1 ? '' : 's'}.${fail ? ' ' + fail.msg : ''}`; toast(m, 3200); return res(true, m, { n }); }
 const heatLine = h => (!h ? '' : h.raid ? ' 🚨 Someone talked. ColSec drones are inbound!' : h.hot ? ' 🚨 Someone saw that. Heat +1.' : '');
 // BUSTED: ColSec takes a quarter of the stash you carry. The consequences module owns any fine; we add none.
 let lastBusted = null, lastSeize = '';
@@ -270,6 +274,10 @@ function render() {
       const where = here ? '' : 'Go to the gulch to buy it.';
       x += btn('buy', `🏴 Buy the gulch · ${K.PRICES.op.toLocaleString('en-US')} cr`, where || 'Charged once.', { c: 'cr', pri: true, dis: !!b || !!where || cr < K.PRICES.op });
       x += btn('buy', `⭐ Buy the gulch · ${K.starPrice(K.PRICES.op).toLocaleString('en-US')} ⭐`, where || (stars < K.starPrice(K.PRICES.op) ? `You have ${stars} ⭐.` : 'Charged once.'), { c: 'stars', dis: !!b || !!where || stars < K.starPrice(K.PRICES.op) || !STARS()?.spend });
+    } else if (plantFor === 'all') {
+      const e = S.racks.filter(r => !r.crop).length; x += `<p>🪴 Plant all ${e} empty racks with:</p>`;
+      for (const k of K.CROP_IDS) { const c = K.CROPS[k]; x += btn('plantAll', `${c.icon} ${esc(c.name)} · ${(c.seed * e).toLocaleString('en-US')} cr`, `${c.seed} cr a rack · ${c.hours} h · ${c.yield} a rack`, { c: k, pri: true, dis: !!b || !here || cr < c.seed }); }
+      x += btn('back', '← Back', '');
     } else if (plantFor != null && S.racks[plantFor]) {
       x += `<p>🪴 Plant rack ${plantFor + 1} with:</p>`;
       for (const k of K.CROP_IDS) { const c = K.CROPS[k]; x += btn('plant', `${c.icon} ${esc(c.name)} · ${c.seed} cr`, `${c.hours} h · ${c.yield} a rack · Skiv pays ~${K.unitPrice(d, k)} cr each`, { i: plantFor, c: k, dis: !!b || !here || cr < c.seed }); }
@@ -282,6 +290,10 @@ function render() {
         else if (r.growth >= 1) x += btn('harvest', `${c.icon} Rack ${i + 1}: ${esc(c.name)} is ripe · Harvest`, `${K.yieldOf(r)} units. Cutting it can draw heat.`, { i, pri: true, dis: !!b || !here });
         else x += btn('noop', `${c.icon} Rack ${i + 1}: ${esc(c.name)} · ${Math.floor(r.growth * 100)}%`, `Ripe in ${Math.ceil((1 - r.growth) * c.hours)} h.`, { i, dis: true });
       });
+      { const ripe = S.racks.filter(r => r.crop && r.growth >= 1).length, empty = S.racks.filter(r => !r.crop).length, st = K.stashCount(S);
+        if (ripe) x += btn('harvestAll', `🧺 Harvest all ripe · ${ripe} rack${ripe === 1 ? '' : 's'}`, 'Cuts every ripe rack into the stash. Each cut can draw heat.', { pri: true, dis: !!b || !here });
+        if (st) x += btn('sellAll', `💰 Sell harvest to Skiv · ${st} units`, 'The whole stash at Skiv’s price.', { pri: true, dis: !!b || !here });
+        if (empty) x += btn('pickAll', `🪴 Plant all empty · ${empty} rack${empty === 1 ? '' : 's'}`, 'Pick one crop for every empty rack.', { pri: true, dis: !!b || !here }); }
       if (S.racks.length < K.LIMITS.racks) {
         x += btn('rack', `🪴 Add a grow rack · ${K.PRICES.rack} cr`, `${S.racks.length}/${K.LIMITS.racks} under the net.`, { c: 'cr', dis: !!b || !here || cr < K.PRICES.rack });
         if (STARS()?.spend) x += btn('rack', `⭐ Add a grow rack · ${K.starPrice(K.PRICES.rack)} ⭐`, '', { c: 'stars', dis: !!b || !here || stars < K.starPrice(K.PRICES.rack) });
@@ -297,7 +309,7 @@ function render() {
 function act(d) {
   const a = d.a, i = d.i != null ? +d.i : null; if (a === 'close') return close(); let r = null;
   if (a === 'buy') r = buy(d.c); else if (a === 'rack') r = rack(d.c); else if (a === 'pick') { plantFor = i; r = { ok: true, msg: '' }; } else if (a === 'back') { plantFor = null; r = { ok: true, msg: '' }; }
-  else if (a === 'plant') { r = plant(i, d.c); if (r.ok) plantFor = null; } else if (a === 'harvest') r = harvest(i); else if (a === 'sell') r = sell(d.b, d.c); else if (a === 'lights') r = killLights();
+  else if (a === 'plant') { r = plant(i, d.c); if (r.ok) plantFor = null; } else if (a === 'harvest') r = harvest(i); else if (a === 'sell') r = sell(d.b, d.c); else if (a === 'harvestAll') r = harvestAll(); else if (a === 'sellAll') r = sellAll(); else if (a === 'pickAll') { plantFor = 'all'; r = { ok: true, msg: '' }; } else if (a === 'plantAll') { r = plantAll(d.c); if (r.ok) plantFor = null; } else if (a === 'lights') r = killLights();
   if (panel.classList.contains('show')) { const m = pMsg.textContent; if (!r?.dup) openedAt = performance.now(); render(); pMsg.textContent = r?.dup ? m : (r?.msg || ''); }
 }
 const OPEN_GUARD_MS = 400; let openedAt = -1e9;

@@ -115,7 +115,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('flamerBackAfter', R.flameAfter, R.flameAfter.claims === false && R.flameAfter.firing === true);
     }
     // hire a hand for rack 2 (the old one-tap way): charged once, slow, then in the silo
-    const c0 = await cr(); await go('farm', 12); await tapSel('#farmAct'); await dbl('#farmPanel button[data-a="harvestAll"]'); await sleep(450);
+    const c0 = await cr(); await go('farm', 12); await tapSel('#farmAct'); await dbl('#farmPanel button[data-a="hireAll"]'); await sleep(450);
     h = await HS(); const c1 = await cr();
     ok('hire', { jobs: h.jobs, fee: c0 - c1 }, h.jobs.length === 2 && c0 - c1 === 12);
     await tapSel('#farmPanel button[data-a="close"]'); await sleep(400); ok('closeOneTap', !(await shown())); // one real tap closes the sheet

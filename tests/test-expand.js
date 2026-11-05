@@ -125,7 +125,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (!desk) { const p = await G(() => window.SSX.farm.places().find(q => q.id === 'farm')); await look(p.x + 4, p.z + 26, 0.15); await page.screenshot({ path: out + `expand-all-${tag}.png` }); }
     // hire a hand: every ripe rack, the new ones included
     const sb = Object.values((await St()).silo).reduce((a, b) => a + b, 0);
-    await G(() => window.SSX.farm.close?.()); await openSheet(); c0 = await cr(); await dbl('#farmPanel button[data-a="harvestAll"]'); await sleep(450);
+    await G(() => window.SSX.farm.close?.()); await openSheet(); c0 = await cr(); await dbl('#farmPanel button[data-a="hireAll"]'); await sleep(450);
     let h = await HS(); ok('hire18', { jobs: h.jobs.length, fee: c0 - await cr() }, h.jobs.length === 18);
     await tapSel('#farmPanel button[data-a="close"]'); await G(() => window.SSX.harvest.debug.rush()); fs = await St();
     const sa = Object.values(fs.silo).reduce((a, b) => a + b, 0);

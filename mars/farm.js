@@ -409,6 +409,25 @@ const patch = () => AG.run('patch', () => patch_());
 const cut = (i, o = {}) => AG.run('cut:' + rackTag(i | 0), () => cut_(i, o || {}));
 const expand = (id, cur = 'cr') => AG.run('expand:' + id, () => expand_(id, cur));
 const sell = (buyer, crop, qty = 1, o = {}) => AG.run(F.actKey('sell', { b: buyer, c: crop }), () => sell_(buyer, crop, qty, o || {}));
+// v7.5.62: one-tap loop at the homestead: harvest every ripe rack (free), sell the whole silo to the best cash buyer, plant every empty rack
+function cashBuyer(crop) { let best = null; for (const b of F.buyersToday(F.day(S))) { if (b.pays !== 'cash') continue; const o = b.offers.find(x => x.crop === crop); if (o && (!best || o.unit > best.unit)) best = { id: b.id, unit: o.unit }; } return best; }
+function sellAll_() {
+  const n = need('farm') && need('post'); if (n) return res(false, n);
+  let cash = 0, qty = 0; const parts = [];
+  for (const [crop, have] of Object.entries({ ...S.silo })) { if (!(have > 0)) continue; const b = cashBuyer(crop); if (!b) continue; const q = F.quoteSale(S, b.id, crop, have); if (!q?.ok || !q.cash) continue; F.applySale(S, q); give(q.cash); cash += q.cash; qty += q.qty; parts.push(`${q.qty} ${F.CROPS[crop].name}`); emit('sale', { ...q, paid: `+${q.cash} cr`, via: 'sellAll' }); }
+  if (!qty) return res(false, 'Nothing in the silo a buyer will pay cash for.');
+  save(); return res(true, `💰 Sold ${parts.join(', ')} for ${cash} cr.`, { cash, qty });
+}
+function plantAll_(crop) {
+  const n = need('farm'); if (n) return res(false, n); const c = F.CROPS[crop]; if (!c) return res(false, 'Pick a crop.');
+  const idx = S.racks.map((r, k) => (!r.crop ? k : -1)).filter(k => k >= 0); if (!idx.length) return res(false, 'No empty racks.');
+  let done = 0, cost = 0, why = '';
+  for (const k of idx) { const v = F.canPlant(S, k, crop, credits()); if (!v.ok) { why = v.why; break; } if (!spend(v.cost)) { why = 'Short on credits.'; break; } F.plant(S, k, crop); done++; cost += v.cost; }
+  if (!done) return res(false, why || 'Couldn\u2019t plant.');
+  save(); rebuildFarm(); emit('plant', { racks: done, crop, price: cost, via: 'plantAll' });
+  return res(true, `${c.icon} ${c.name} planted on ${done} rack${done === 1 ? '' : 's'} · ${cost} cr.${why ? ` Stopped: ${why}` : ''}`, { racks: done, cost });
+}
+const sellAll = () => AG.run('sellAll', () => sellAll_()), plantAll = crop => AG.run('plantAll:' + crop, () => plantAll_(crop));
 function giveItem(id) {
   const it = F.ITEMS.find(x => x.id === id), P = game()?.progress;
   if (id === 'medkit' && P?.inv && P.inv.medkits < 3) { P.inv.medkits++; try { game().save(); } catch (e) { /* */ } return `✚ Medkit (${P.inv.medkits}/3)`; }
@@ -608,17 +627,27 @@ function render() {
     else if (!S.dome) h += btn('dome', `🫧 Build the greenhouse dome · ${F.PRICES.dome} cr`, 'Keeps dust off the racks. Storms do half the damage while it is sound.', { pri: true, dis: dis || cr < F.PRICES.dome });
     else {
       const cp = F.caps(S); h += `<p>💧 Water ${Math.round(S.water)}/${cp.water} · 🔋 Power ${Math.round(S.power)}/${cp.power} · 🫧 Dome${cp.domes > 1 ? 's ×' + cp.domes : ''} ${Math.round(S.domeHp)}%</p>`;
-      if (plantFor != null) {
+      if (plantFor === 'all') {
+        const empty = S.racks.filter(r => !r.crop).length; h += `<p><b>Plant all ${empty} empty racks with:</b></p>`;
+        for (const c of Object.values(F.CROPS)) h += btn('plantAll', `${c.icon} ${c.name} · ${c.seed * empty} cr`, `${c.seed} cr a rack · ${c.hours} h to ripen · ${c.yield} per rack`, { c: c.id, pri: true, dis: dis || cr < c.seed });
+        h += btn('back', '← Back', '');
+      } else if (plantFor != null) {
         h += `<p><b>Plant rack ${plantFor + 1}:</b></p>`; for (const c of Object.values(F.CROPS)) h += btn('plantc', `${c.icon} ${c.name} · ${c.seed} cr`, `${c.hours} h to ripen · ${c.yield} per rack${c.contraband ? ' · dries into Glow-dust for your stash' : ''}`, { i: plantFor, c: c.id, dis: dis || cr < c.seed });
         h += btn('back', '← Back', '');
       } else {
+        { const HX0 = (() => { try { return window.SSX?.harvest?.hireText?.() || ''; } catch (e) { return ''; } })();
+        { const ripe = S.racks.filter(r => r.crop && r.health > 0 && r.growth >= 1).length, empty = S.racks.filter(r => !r.crop).length, inSilo = F.siloCount(S);
+          if (ripe) h += btn('harvestAll', `🧺 Harvest all ripe · ${ripe} rack${ripe === 1 ? '' : 's'}`, 'Free and instant. Straight into the silo.', { pri: true, dis });
+          if (inSilo) h += btn('sellAll', `💰 Sell harvest · ${inSilo} in the silo`, 'Cash at today’s best price.', { pri: true, dis });
+          if (empty) h += btn('plantAllPick', `🪴 Plant all empty · ${empty} rack${empty === 1 ? '' : 's'}`, 'Pick one crop for every empty rack.', { pri: true, dis });
+          if (ripe && HX0) h += btn('hireAll', '👷 Hire a hand for everything ripe', `${HX0.split('.')[0]}.`, { dis }); }
+        }
         S.racks.forEach((r, k) => { const c = F.CROPS[r.crop];
           if (!c) h += btn('plant', `🪴 Rack ${k + 1}: empty`, 'Tap to plant.', { i: k, dis });
           else if (r.health <= 0) h += btn('harvest', `🥀 Rack ${k + 1}: ${c.name} died`, 'Clear it out.', { i: k, dis: true });
           else h += btn('harvest', `${c.icon} Rack ${k + 1}: ${c.name} · ${r.growth >= 1 ? 'ripe' : Math.floor(r.growth * 100) + '%'}`, `Health ${Math.round(r.health)}%${r.growth >= 1 ? ` · harvest ${F.yieldOf(r)}` : ''}`, { i: k, pri: r.growth >= 1, dis: dis || r.growth < 1 }); });
         const HX = window.SSX?.harvest, hireTxt = HX?.hireText ? (() => { try { return HX.hireText(); } catch (e) { return ''; } })() : '';
         if (hireTxt) h += `<p class="sub">${esc(hireTxt)}</p>`;
-        if (S.racks.some(r => r.crop && r.growth >= 1)) h += btn('harvestAll', hireTxt ? '👷 Hire a hand for everything ripe' : '🧺 Harvest everything ripe', '', { pri: true, dis });
         if (S.racks.length < cp.racks) h += btn('rack', `➕ Add a hydroponic rack · ${F.PRICES.rack} cr`, `${S.racks.length}/${cp.racks} racks`, { n: S.racks.length, dis: dis || cr < F.PRICES.rack });
         const w = F.refillCost(S, 'water'), p = F.refillCost(S, 'power');
         h += `<div class="row">${btn('water', `💧 Fill · ${w.cost} cr`, '', { dis: dis || !w.units || cr < w.cost })}${btn('power', `🔋 Charge · ${p.cost} cr`, '', { dis: dis || !p.units || cr < p.cost })}</div>`;
@@ -652,9 +681,11 @@ function act(d) {
   const a = d.a; let r = null;
   if (a === 'close') return close(); if (a === 'back') { plantFor = null; if (pMode === 'expand') pMode = 'farm'; return render(); } if (a === 'expand') { pMode = 'expand'; return render(); } if (a === 'postInfo') { pMode = 'post'; return render(); }
   if (a === 'plant') { plantFor = +d.i; return render(); }
+  if (a === 'plantAllPick') { plantFor = 'all'; return render(); }
   if (a === 'ext') return extAct(d);
   if (a === 'buy') r = buy(); else if (a === 'dome') r = buildDome(); else if (a === 'rack') r = addRack({ expect: d.n }); else if (a === 'plantc') { r = plant(+d.i, d.c); if (!r?.dup) plantFor = null; }
-  else if ((a === 'harvest' || a === 'harvestAll') && typeof window.SSX?.harvest?.hire === 'function') r = window.SSX.harvest.hire(a === 'harvestAll' ? 'all' : +d.i); // the slow one-tap way
+  else if (a === 'harvestAll') r = harvest('all'); else if (a === 'sellAll') r = sellAll(); else if (a === 'plantAll') { r = plantAll(d.c); if (r?.ok) plantFor = null; }
+  else if ((a === 'harvest' || a === 'hireAll') && typeof window.SSX?.harvest?.hire === 'function') r = window.SSX.harvest.hire(a === 'hireAll' ? 'all' : +d.i); // the slow one-tap way
   else if (a === 'harvest') r = harvest(+d.i); else if (a === 'harvestAll') r = harvest('all'); else if (a === 'water' || a === 'power') r = refill(a); else if (a === 'patch') r = patch();
   else if (a === 'sell') { const have = S.silo[d.c] | 0; r = sell(d.b, d.c, have, { expect: d.q }); } else if (a === 'favor') r = useFavor(d.c); else if (a === 'exp') r = expand(d.c, d.b); else if (a === 'guide') r = guideOn();
   if (panel.classList.contains('show')) { const m = pMsg.textContent; render(); pMsg.textContent = r?.dup ? m : (r?.msg || ''); }
