@@ -1,5 +1,5 @@
 // Stuck? on the mission card (Collin, Oct 2026): a black "Stuck?" button on the 📜 card (story missions, side jobs, Mars jobs)
-// and on the farm guide. Tap (or key 6: H is "fly to the ship") = ONE plain-word hint for the step you're on (what, which way,
+// and on the farm guide. Tap (or key /; Shift+/ = ? is the Controls list) = ONE plain-word hint for the step you're on (what, which way,
 // how far, the target's name) and a re-ping of the ◆ / red foe marks. If the step hasn't moved in 3 min, or its target is gone
 // or can't be reached, the pop-up also offers Skip this step / Quit job, no penalty. One pop-up at a time.
 // Ticked from activities/runner.js (activityTick runs every surface frame on every world). Logic + copy: help/stuckcore.js.
@@ -77,7 +77,7 @@ function ensureUI() {
   tapOn(btn, () => toggle());
   pop = document.createElement('div'); pop.id = 'stuckPop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Stuck? hint'); document.body.appendChild(pop);
   addEventListener('keydown', e => {
-    if (e.code !== KEY || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.code !== KEY || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return; // Shift+/ = ? opens Controls
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     if (window.SSX?.base?.building || document.body.classList.contains('danger-standoff') || document.getElementById('dzEvChoices')?.classList.contains('on')) return; // their number keys win
     if (!btn.classList.contains('vis')) return;

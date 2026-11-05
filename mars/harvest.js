@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { registerVehicle } from '../world.js';
 import * as H from './harvestcore.js';
 import { makeActGuard, CROPS, dirWord } from './farmcore.js';
+import { getAudioCtx, realDest } from '../audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => app()?.game || surf()?.game;
 const FARM = () => window.SSX?.farm;
@@ -148,7 +149,7 @@ function partTick(dt) {
 let AC = null, NOISE = null;
 function audio() {
   if (AC) return AC.state === 'suspended' ? (AC.resume().catch(() => {}), AC) : AC;
-  try { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); NOISE = AC.createBuffer(1, AC.sampleRate * 0.5 | 0, AC.sampleRate); const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { AC = null; }
+  try { AC = getAudioCtx(); if (!AC) return null; NOISE = AC.createBuffer(1, AC.sampleRate * 0.5 | 0, AC.sampleRate); const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { AC = null; }
   return AC;
 }
 const sfxLog = [];
@@ -180,7 +181,8 @@ function refreshWorld() {
   siloW = H.toWorld(centre, H.SILO_AT);
   if ((statusT -= 0.25) <= 0) { statusT = 1; try { owned = !!F.status().owned; } catch (e) { owned = false; } refreshWorld.owned = owned; } else owned = !!refreshWorld.owned;
   const me = playerPos(), c = tcLast?.car, p = c || me;
-  atFarm = !!p && owned && Math.hypot(p.x - centre.x, p.z - centre.z) < 24;
+  // the homestead lot, or (farm expansions) close to any rack on the extra lots north / north-east of it
+  atFarm = !!p && owned && (Math.hypot(p.x - centre.x, p.z - centre.z) < 24 || spots.some(r => Math.hypot(p.x - r.x, p.z - r.z) < 9));
   try { pit = !!F.debug?.inPit?.(); } catch (e) { pit = false; }
   if (H.prune(S, spots)) save();
 }

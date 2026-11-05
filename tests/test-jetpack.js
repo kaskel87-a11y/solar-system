@@ -94,7 +94,7 @@ const tag = `jetpack-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     if (await G(() => !!window.SSX.gravity)) {
       ok('gravOnFootOwned', await G(() => window.SSX.gravity.set('MARS').ok && window.SSX.gravity.mode === 'MARS'));
       const hM = await burn(1.0);
-      if (!touch) { await page.keyboard.press('Digit2'); await sleep(200); } else { const vis = await G(() => { const b = document.getElementById('dockGrav'); return !!b && b.getBoundingClientRect().width > 0 && getComputedStyle(b).display !== 'none'; }); if (vis) await tap('#dockGrav'); else await G(() => window.SSX.gravity.set('LOW-G')); }
+      if (!touch) { await page.keyboard.press('Shift+KeyZ'); await sleep(200); } else { const vis = await G(() => { const b = document.getElementById('dockGrav'); return !!b && b.getBoundingClientRect().width > 0 && getComputedStyle(b).display !== 'none'; }); if (vis) await tap('#dockGrav'); else await G(() => window.SSX.gravity.set('LOW-G')); }
       ok('toLowG', await wait(() => window.SSX.gravity.mode === 'LOW-G', 3000));
       const hL = await burn(1.0);
       ok('lowGHigher', `${hL} m vs MARS ${hM} m`, hL > hM * 1.3);

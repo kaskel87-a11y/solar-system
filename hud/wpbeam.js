@@ -64,7 +64,8 @@ function tick(dt, tc) {
   fade = Math.min(1, Math.max(0, (dist - NEAR_IN) / (NEAR_OUT - NEAR_IN)));
   const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
   let I = 0; try { I = window.SSX?.storm?.intensity?.() || 0; } catch (e) { /* no storm */ }
-  const u = beam.material.uniforms; u.uPulse.value = pulse; u.uOp.value = fade * (1.1 + 0.9 * I); // a storm turns the scene red-bright: push the blue harder
+  const u = beam.material.uniforms; { let c = null; try { c = window.SSX?.ownedbeams?.colorAt?.(tx, tz); } catch (e) { /* */ } u.uCol.value.set(c ?? COL); ring.material.color.set(c ?? COL); } // owned places: dark green (mars/ownedbeams.js)
+  u.uPulse.value = pulse; u.uOp.value = fade * (1.1 + 0.9 * I); // a storm turns the scene red-bright: push the blue harder
   beam.visible = fade > 0.01;
   const w = Math.max(1, Math.min(6, dist / 80)); beam.scale.set(w, 1, w); // stays a few pixels wide from across the city
   const rs = 1 + 0.18 * pulse; ring.scale.set(rs, 1, rs); ring.material.opacity = 0.55 + 0.4 * (1 - pulse) + 0.3 * I;

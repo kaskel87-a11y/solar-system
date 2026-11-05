@@ -96,4 +96,35 @@ ok('inferTier', GC.inferTier(800) === 1 && GC.inferTier(2000) === 2 && GC.inferT
   const st = GC.dealerStock({ raccoon_mobile: { name: 'Raccoon Mobile', icon: '🦝', price: 900, vmax: 21, boost: 33, acc: 13.5, bacc: 19, turn: 2.2, wy: 0.48, wr: 0.48, r: 2.1, airTurn: 1.3, offroad: 0.9, blurb: 'Scrappy, quick on its feet, smells faintly of bins.', dealer: { venue: 'depot', world: 'Mars', colony: 'Ares Junction' } } }); const r = st.find(x => x.kind === 'raccoon_mobile');
   ok('raccoon_mobile auto-listed from PR #11 shape', r && r.price === 900 && r.name === 'Raccoon Mobile' && r.icon === '🦝' && r.tier === 1 && r.rep === 0 && r.modded && /bins/.test(r.blurb));
   const sp = GC.applyUpgrades({ name: 'Raccoon Mobile', icon: '🦝', price: 900, vmax: 21, boost: 33, acc: 13.5, bacc: 19, turn: 2.2, wy: 0.48, wr: 0.48, r: 2.1, airTurn: 1.3, offroad: 0.9, blurb: 'Scrappy, quick on its feet, smells faintly of bins.', dealer: { venue: 'depot', world: 'Mars', colony: 'Ares Junction' } }, { engine: 1, handling: 0, brakes: 0, boost: 0 }, 'stock'); ok('raccoon spec upgrades keep offroad/airTurn', sp.vmax > 21 && sp.offroad === 0.9 && sp.airTurn === 1.3); }
+// ---------- partner buy-in + fence (Steve) ----------
+ok('partner offers three ways', GC.partnerOffers().length === 3 && GC.partnerOffers().every(o => o.cr >= 0 && o.stars >= 0 && (o.cr > 0 || o.stars > 0)));
+ok('fresh partner off', !GC.freshPartner().on && GC.freshPartner().pending === 0);
+{ const g = GC.migrateGarage({}); ok('migrate adds partner', g.partner && g.partner.on === false && g.fenced === 0);
+  const g2 = GC.migrateGarage({ partner: { on: 1, pending: '12.7', fenced: 3, earned: 99 } });
+  ok('migrate partner fields', g2.partner.on === true && g2.partner.pending === 12.7 && g2.partner.fenced === 3 && g2.partner.earned === 99);
+  ok('maxRides partner bonus', GC.maxRidesOf(g) === GC.MAX_RIDES && GC.maxRidesOf(g2) === GC.MAX_RIDES + GC.PARTNER.maxRidesBonus);
+}
+ok('partner sell discount', GC.partnerSellPrice({ price: 1000 }, 0, false) === 1000 && GC.partnerSellPrice({ price: 1000 }, 0, true) < 1000);
+ok('partner sell stacks with rep', GC.partnerSellPrice({ price: 1000 }, 150, true) < GC.partnerSellPrice({ price: 1000 }, 150, false));
+{ const p = GC.freshPartner(); p.on = true;
+  const a = GC.partnerAccrue(p, 10, 2); ok('partner accrue daytime', a > 0 && p.pending === a);
+  const before = p.pending; GC.partnerAccrue(p, 10, 100); ok('partner accrue caps', p.pending === GC.partnerCap() && p.pending >= before);
+  const n = GC.partnerCollect(p); ok('partner collect', n === Math.floor(GC.partnerCap()) && p.pending < 1 && p.earned === n);
+  ok('partner collect empty', GC.partnerCollect(p) === 0);
+}
+{ const clean = GC.fenceOffer('buggy', { wanted: 0, partner: false, rand: () => 0.99 });
+  ok('fence buggy clean', clean.ok && clean.cr >= 200 && clean.stars >= 1 && !clean.bust);
+  const hot = GC.fenceOffer('buggy', { wanted: 3, partner: false, rand: () => 0.99 });
+  ok('fence heat cuts payout', hot.ok && hot.cr < clean.cr);
+  const part = GC.fenceOffer('buggy', { wanted: 0, partner: true, rand: () => 0.99 });
+  ok('fence partner bonus', part.ok && part.cr > clean.cr);
+  const priced = GC.fenceOffer('dust_runner', { price: 850, wanted: 0, partner: false, rand: () => 0.99 });
+  ok('fence uses listing price', priced.ok && priced.cr >= Math.round(850 * GC.FENCE.priceFrac / 10) * 10 * 0.9);
+  const bust = GC.fenceOffer('hoverbike', { wanted: 5, partner: false, rand: () => 0.01 });
+  ok('fence high heat can bust', bust.bust === true && bust.cr === 0);
+  const noBust = GC.fenceOffer('hoverbike', { wanted: 5, partner: false, rand: () => 0.99 });
+  ok('fence high heat sometimes pays', noBust.ok && noBust.cr > 0);
+}
+ok('freshGarage has partner', GC.freshGarage().partner.on === false);
+
 console.log(`\n${n - fails}/${n} passed`); process.exit(fails ? 1 : 0);

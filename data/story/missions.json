@@ -2220,7 +2220,7 @@
      ],
      "choice": null,
      "existing": false,
-     "notes": "Cross-planet hook into planets/europa.md: the Drift union (Juno Reyes) buys the launchers.",
+     "notes": "Cross-planet hook into planets/europa.md: the Drift union (Nadia Reyes) buys the launchers.",
      "engine_needs": [
       "hub:Mars → Europa",
       "step:travel",
@@ -3202,7 +3202,7 @@
     }
    ]
   },
-  "Juno Reyes": {
+  "Nadia Reyes": {
    "world": "Europa",
    "hub": "Conamara Station",
    "at": [
@@ -3218,14 +3218,14 @@
      "id": "reyes-x-manifest",
      "chain": "reyes-addon",
      "order": 1,
-     "giver": "Juno Reyes",
+     "giver": "Nadia Reyes",
      "title": "Union Dues",
      "world": "Europa",
      "location": "Conamara Station: Halvorsen office",
      "type": "steal",
      "setup": [
-      "Juno Reyes: Halvorsen ships “ice” to Mars.",
-      "Juno Reyes: It’s not ice. Prove it."
+      "Nadia Reyes: Halvorsen ships “ice” to Mars.",
+      "Nadia Reyes: It’s not ice. Prove it."
      ],
      "objectives": [
       "Sneak into the Halvorsen office",
@@ -3270,9 +3270,9 @@
       "badge": "Union Card"
      },
      "dialogue": {
-      "intro": "Juno Reyes: Ice is water. Resin is war.",
-      "success": "Juno Reyes: Resin. Tons. Bound for Meridian on Mars.",
-      "fail": "Juno Reyes: Brask shredded it. Of course."
+      "intro": "Nadia Reyes: Ice is water. Resin is war.",
+      "success": "Nadia Reyes: Resin. Tons. Bound for Meridian on Mars.",
+      "fail": "Nadia Reyes: Brask shredded it. Of course."
      },
      "fail_conditions": [
       "Spotted before grabbing the manifest",
@@ -3284,7 +3284,7 @@
      ],
      "choice": null,
      "existing": false,
-     "notes": "Add-on to Juno Reyes’s chain in planets/europa.md (run after its “Company store”). Story beat: Meridian’s resin moves through Halvorsen.",
+     "notes": "Add-on to Nadia Reyes’s chain in planets/europa.md (run after its “Company store”). Story beat: Meridian’s resin moves through Halvorsen.",
      "engine_needs": [
       "extra:nowanted",
       "hub:Europa",

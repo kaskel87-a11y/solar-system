@@ -30,7 +30,7 @@ export default {
         { type: 'goto', a: 40, d: 320, r: 14, vehicle: 'stolen', limit: 100, wanted: 2, text: 'Get it to the drop in the sulfur fields' }],
       reward: { xp: 170, credits: 380, unlock: 'paint:sulfur' } },
     { id: 'io-breakout', world: 'Io', contact: 'Cinder', title: 'Breakout', fiction: true,
-      intro: 'Cinder: Juno\u2019s brother is in Block C. I cut the fence, you grab him, you drive like the whole goddamn Authority is behind you, because it will be. Then you lose them. Nobody\u2019s ever done it. First time for everything.',
+      intro: 'Cinder: Nadia\u2019s brother is in Block C. I cut the fence, you grab him, you drive like the whole goddamn Authority is behind you, because it will be. Then you lose them. Nobody\u2019s ever done it. First time for everything.',
       steps: [{ type: 'goto', at: [-24, -11], r: 4, item: 'capsule', text: 'Spring him from the cellblock' }, { type: 'take', text: 'Steal a getaway ride' },
         { type: 'goto', a: 150, d: 400, r: 16, vehicle: 'stolen', limit: 90, wanted: 4, text: 'Get to the lava-tube hideout' }, { type: 'clean', text: 'Lose the penal force' }],
       reward: { xp: 260, credits: 600, badge: 'Jailbreaker', unlock: 'bandana:convict' } },
@@ -40,5 +40,5 @@ export default {
       reward: { xp: 140, credits: 300, badge: 'Pardoned' } }
   ],
   radio: ['Loki Penal Radio. You\u2019re listening because you have no choice.', 'Lights out in the cellblock at twenty-one hundred. Lights out permanently for anyone near the fence.', 'The warden\u2019s quote of the day: lava doesn\u2019t negotiate. Neither do I.', 'Volcano update: yes.'],
-  permit: { quest: 'europa-transfer', from: 'Juno Reyes on Europa' }
+  permit: { quest: 'europa-transfer', from: 'Nadia Reyes on Europa' }
 };

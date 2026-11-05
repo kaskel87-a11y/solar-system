@@ -1,7 +1,7 @@
 // Stuck? help (pure; runtime in help/stuck.js). One plain-word hint for the step you're on, and when a step has sat still
 // for STALL_S or its target is gone / can't be reached, a no-penalty way out (skip the step or quit the job).
 export const STALL_S = 180;
-export const KEY = 'Digit6', KEY_LABEL = '6'; // H is "fly back to the ship" (index.html), every letter is taken: 6 is free outside base-build mode
+export const KEY = 'Slash', KEY_LABEL = '/'; // v7.5.16: / (Shift+/ = ? stays the Controls list); number keys are kept for numbered menu options only
 
 // steps whose target is a place you go to (the ◆ waypoint); defeat = red ◆ over each foe; none = nothing on the map by design
 export function markerKind(type) {

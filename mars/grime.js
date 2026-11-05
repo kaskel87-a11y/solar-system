@@ -45,6 +45,8 @@ export const GRIME_CONFIG = {
   },
   baseGrade: { sat: 0.84, con: 1.07, lift: [0.02, 0.022, 0.025], hi: [1.0, 0.94, 0.86], vig: 0.36, grain: 0.045, crush: 0.01 },
   // corrugated shacks added to Red Tape Flats as real (collidable) blocks: [x, z, w, d, h] hub-local
+  // open lots no junk, camps or hulks may land on: [x, z, r] hub-local (v7.5.20: The Pit ring, act-pit-fight at_local [-40,-9])
+  keepClear: { 'mars-rough': [[-40, -9, 9]] },
   shanties: [[-10, 44, 7, 4, 3.2], [50, 18, 4, 9, 3.6], [-20, -40, 10, 4, 3.4], [-30, 38, 8, 4, 3], [12, -42, 6, 5, 4]],
   // broken neon, made-up brands; dead = letters that never light, flicker = letters that buzz
   neon: {
@@ -192,6 +194,7 @@ function buildDistrict(id, siteGroup, info) {
   if (k <= 0) { scene.add(root); return rec; }
   const { blocks, domes } = id === 'mars-highway' ? { blocks: [], domes: [] } : readSite(siteGroup);
   const y0 = blocks[0]?.y0 ?? domes[0]?.y0 ?? surf().info?.y ?? 0, cx = info.x, cz = info.z, rr = Math.min(info.r || 58, 60);
+  for (const [kx, kz, kr] of cfg.keepClear?.[id] || []) domes.push({ X: cx + kx, Z: cz + kz, r: kr, y0, clear: true }); // freeOf() treats a kept-clear lot like a dome footprint
   const wallDecal = (f, cell, mat, u, v, sx, sy, col, layer, flip) => { // u along the face, v = height of the decal centre
     if (Math.abs(u) + sx / 2 > f.L / 2) sx = Math.max(0.3, (f.L / 2 - Math.abs(u)) * 2); if (sx < 0.3) return;
     if (v + sy / 2 > f.h) { sy = (f.h - v) * 2; if (sy < 0.2) return; }
@@ -429,17 +432,23 @@ function makePost() {
 
 // district weights -> grade + fog (smooth as you walk between districts)
 let fogOrig = null;
+// v7.5.12: no per-frame allocation (was a spread target + lift/hi arrays + closure + 2 THREE.Colors + fog spreads every frame)
+const GK = ['sat', 'con', 'vig', 'grain', 'crush'], _T = { lift: [0, 0, 0], hi: [0, 0, 0] }, _fog = { color: 0, near: 0, far: 0, w: 0 }, _tc = new THREE.Color(), _col = new THREE.Color();
+function _mix(G, w) { for (let n = 0; n < 5; n++) { const k = GK[n]; _T[k] = lerp(_T[k], G[k], w); } for (let i = 0; i < 3; i++) { _T.lift[i] = lerp(_T.lift[i], G.lift[i], w); _T.hi[i] = lerp(_T.hi[i], G.hi[i], w); } }
+function _setFog(F, w) { _fog.color = F.color; _fog.near = F.near; _fog.far = F.far; _fog.w = w; return _fog; }
+let _ds = null, _dsT = 0;
 function blendLook(dt) {
   const info = surf()?.info, sc = scene; if (!info || !sc) return;
-  const ds = app.surface.world.districts(); const target = { ...cfg.baseGrade, lift: [...cfg.baseGrade.lift], hi: [...cfg.baseGrade.hi] }; let fog = null, wsum = 0;
-  const mix = (G, w) => { for (const k of ['sat', 'con', 'vig', 'grain', 'crush']) target[k] = lerp(target[k], G[k], w); for (let i = 0; i < 3; i++) { target.lift[i] = lerp(target.lift[i], G.lift[i], w); target.hi[i] = lerp(target.hi[i], G.hi[i], w); } };
+  if (!_ds || (_dsT -= dt) <= 0) { _ds = app.surface.world.districts(); _dsT = 1; } // v7.5.12: districts() builds a fresh array; refresh once a second
+  const ds = _ds, B = cfg.baseGrade; for (let n = 0; n < 5; n++) _T[GK[n]] = B[GK[n]]; for (let i = 0; i < 3; i++) { _T.lift[i] = B.lift[i]; _T.hi[i] = B.hi[i]; }
+  const target = _T; let fog = null, wsum = 0;
   const k = Math.min(1, mult());
-  for (const d of ds) { const D = dcfg(d.id), dist = Math.hypot(info.x - d.x, info.z - d.z), w = Math.max(0, Math.min(1, 1 - (dist - (d.r || 58) - 20) / 60)) * k; if (w > 0) { mix(D.grade || cfg.baseGrade, w); if (D.fog && w > wsum) { fog = { ...D.fog, w }; wsum = w; } } }
-  const hd = app.surface.world.districtAt?.(info.x, info.z); if (hd?.id === 'mars-highway') { const D = dcfg('mars-highway'); mix(D.grade, 0.8 * k); if (D.fog && 0.8 > wsum) fog = { ...D.fog, w: 0.8 * k }; }
-  if (post) { const c = post.cur, a = Math.min(1, dt * 1.5); for (const kk of ['sat', 'con', 'vig', 'grain', 'crush']) c[kk] = lerp(c[kk], target[kk], a); for (let i = 0; i < 3; i++) { c.lift[i] = lerp(c.lift[i], target.lift[i], a); c.hi[i] = lerp(c.hi[i], target.hi[i], a); } }
+  for (const d of ds) { const D = dcfg(d.id), dist = Math.hypot(info.x - d.x, info.z - d.z), w = Math.max(0, Math.min(1, 1 - (dist - (d.r || 58) - 20) / 60)) * k; if (w > 0) { _mix(D.grade || B, w); if (D.fog && w > wsum) { fog = _setFog(D.fog, w); wsum = w; } } }
+  const hd = app.surface.world.districtAt?.(info.x, info.z); if (hd?.id === 'mars-highway') { const D = dcfg('mars-highway'); _mix(D.grade, 0.8 * k); if (D.fog && 0.8 > wsum) fog = _setFog(D.fog, 0.8 * k); }
+  if (post) { const c = post.cur, a = Math.min(1, dt * 1.5); for (let n = 0; n < 5; n++) { const kk = GK[n]; c[kk] = lerp(c[kk], target[kk], a); } for (let i = 0; i < 3; i++) { c.lift[i] = lerp(c.lift[i], target.lift[i], a); c.hi[i] = lerp(c.hi[i], target.hi[i], a); } }
   if (sc.fog && sc.fog.isFog) { if (!fogOrig || fogOrig.scene !== sc || fogOrig.fog !== sc.fog) fogOrig = { scene: sc, fog: sc.fog, color: sc.fog.color.clone(), near: sc.fog.near, far: sc.fog.far };
-    const w = fog && cfg.enabled ? fog.w : 0, a = Math.min(1, dt * 1.2), tc = new THREE.Color(fog ? fog.color : fogOrig.color);
-    const col = fogOrig.color.clone().lerp(tc, w); sc.fog.color.lerp(col, a); sc.fog.near = lerp(sc.fog.near, lerp(fogOrig.near, fog ? fog.near : fogOrig.near, w), a); sc.fog.far = lerp(sc.fog.far, lerp(fogOrig.far, fog ? fog.far : fogOrig.far, w), a);
+    const w = fog && cfg.enabled ? fog.w : 0, a = Math.min(1, dt * 1.2); if (fog) _tc.set(fog.color); else _tc.copy(fogOrig.color);
+    _col.copy(fogOrig.color).lerp(_tc, w); sc.fog.color.lerp(_col, a); sc.fog.near = lerp(sc.fog.near, lerp(fogOrig.near, fog ? fog.near : fogOrig.near, w), a); sc.fog.far = lerp(sc.fog.far, lerp(fogOrig.far, fog ? fog.far : fogOrig.far, w), a);
     window.__director?.pullFog?.(sc.fog); // keep a dust storm's fog pull-in (director)
     if (sc.background?.isColor) sc.background.copy(sc.fog.color); }
 }
@@ -541,7 +550,7 @@ const api = {
   enable() { cfg.enabled = true; if (post) post.mode = cfg.post; rebuildAll(); street?.enable(true); save(); return true; },
   disable() { cfg.enabled = false; rebuildAll(); if (post) post.mode = 'off'; restoreFog(); street?.disable(true); save(); return false; },
   get enabled() { return cfg.enabled; },
-  setPost(m) { cfg.post = ['full', 'lite', 'off'].includes(m) ? m : 'off'; if (post) post.mode = cfg.enabled ? cfg.post : 'off'; save(); return cfg.post; },
+  setPost(m, temp) { if (temp) { if (post) post.mode = cfg.enabled && m !== 'off' ? (m === 'cfg' ? cfg.post : m) : 'off'; return post?.mode; } cfg.post = ['full', 'lite', 'off'].includes(m) ? m : 'off'; if (post) post.mode = cfg.enabled ? cfg.post : 'off'; save(); return cfg.post; }, // v7.5.15 temp: perfgov's load governor, not saved ('cfg' = back to the saved mode)
   district(id, o) { if (o === null) delete overrides[id]; else if (o) overrides[id] = { ...(overrides[id] || {}), ...o }; const b = built.get(id); if (b) dispose(b); return dcfg(id); },
   rebuild: () => rebuildAll(),
   stats: () => ({ ...stats, built: [...built.keys()], post: post?.mode || 'off', postFrames: post?.frames || 0, level: cfg.level, enabled: cfg.enabled, phone: PHONE, audio: audioDone, street: street?.stats?.() || null }),

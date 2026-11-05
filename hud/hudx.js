@@ -143,7 +143,8 @@ export function drawMini(o) {
   for (const a of md.aliens || []) { const p = proj(a.x, a.z, false); if (p) { dot(p, a.boss ? '#ff2d6a' : '#ff4b4b', a.boss ? 4.2 : 2.8); out.aliens++; } }
   for (const q of md.crates || []) { const p = proj(q.x, q.z, false); if (p) { c.fillStyle = '#3cff6a'; c.fillRect(p[0] - 2.5 * dpr, p[1] - 2.5 * dpr, 5 * dpr, 5 * dpr); out.crates = (out.crates || 0) + 1; } }
   const blink = (now / 250 | 0) % 2; for (const q of md.world?.security || []) { const p = proj(q.x, q.z, true); dot(p, blink ? '#ef4444' : '#3b82f6', 2.8); out.security = (out.security || 0) + 1; }
-  for (const [, ms] of o.marks || []) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (p) { dot(p, m.color || '#f59e0b', m.r || 2.6); out.marks = (out.marks || 0) + 1; } }
+  for (const [, ms] of o.marks || []) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (p) { dot(p, m.color || '#f59e0b', m.r || 2.6); out.marks = (out.marks || 0) + 1;
+    if (m.icon) { c.font = `${Math.round(11 * dpr)}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(m.icon, p[0], p[1] - ((m.r || 2.6) + 6) * dpr); c.textBaseline = 'alphabetic'; out.icons = (out.icons || 0) + 1; } } } // v7.5.21 icon marks (🥊 The Pit)
   // your rides (clamped): the rover when on foot, the Starship always (small, they are how you get home)
   if (md.ship) { const p = proj(md.ship.x, md.ship.z, true); c.save(); c.translate(p[0], p[1]); c.beginPath(); c.moveTo(0, -4 * dpr); c.lineTo(3.5 * dpr, 3.5 * dpr); c.lineTo(-3.5 * dpr, 3.5 * dpr); c.closePath(); c.fillStyle = '#ff8a3c'; c.fill(); c.restore(); out.ship = true; }
   if (md.rover && !md.driving) { const p = proj(md.rover.x, md.rover.z, true); c.fillStyle = '#4fa8ff'; c.fillRect(p[0] - 3 * dpr, p[1] - 3 * dpr, 6 * dpr, 6 * dpr); out.rover = true; }
@@ -268,7 +269,7 @@ function updCtx() {
   const pick = list.length ? list[ctxPick % list.length] : null;
   for (const el of all) { el.classList.toggle('hxCtxOff', !!pick && el !== pick);
     if (!el.dataset.hxObs) { el.dataset.hxObs = '1'; new MutationObserver(() => updCtx()).observe(el, { attributes: true, attributeFilter: ['class'] }); } } // react the same frame a button shows
-  ctxNext.textContent = `⇅ ${list.length}`; ctxNext.classList.toggle('show', list.length > 1);
+  { const cn = `⇅ ${list.length}`; if (ctxNext.textContent !== cn) ctxNext.textContent = cn; } ctxNext.classList.toggle('show', list.length > 1);
   if (pick && list.length > 1) { const pr = pick.getBoundingClientRect(); // ⇅ sits beside (landscape) or on top of (portrait) the picked button
     ctxNext.style.right = land ? `${r + Math.round(pr.width || 120) + 8}px` : `${r}px`; ctxNext.style.bottom = land ? `${b}px` : `${b + Math.round(pr.height || 52) + 6}px`; }
 }
@@ -321,11 +322,11 @@ function installTapGuard() {
   let down = null, blockClick = 0, blockSc = null, lastPtr = '', lastPtrT = -1e9; const lastS = new WeakMap(); // per scroller: a log that auto-scrolls elsewhere never blocks this sheet
   const now = () => performance.now(), recent = sc => sc.some(([el]) => now() - (lastS.get(el) ?? -1e9) < SCROLL_QUIET);
   addEventListener('scroll', e => { const t = e.target; if (t && t.nodeType === 1) lastS.set(t, now()); }, true);
-  addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, quiet: recent(sc) } : null; }, true);
+  addEventListener('pointerdown', e => { if (!e.__hx) { lastPtr = e.pointerType; lastPtrT = now(); } if (e.pointerType === 'mouse' || e.__hx) { return; } const sc = scrollers(e.target); const safe = !!e.target?.closest?.('[data-tapsafe]'); down = sc.length ? { id: e.pointerId, x: e.clientX, y: e.clientY, sc, safe, quiet: !safe && recent(sc) } : null; }, true);
   addEventListener('pointermove', e => { if (down && e.pointerId === down.id && Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP) down.moved = true; }, true);
   addEventListener('pointerup', e => {
     if (!down || e.pointerId !== down.id || e.__hx) return; const d = down; down = null;
-    const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1);
+    const bad = d.quiet || d.moved || Math.hypot(e.clientX - d.x, e.clientY - d.y) > TAP_SLOP || (!d.safe && (recent(d.sc) || d.sc.some(([el, t, l]) => Math.abs(el.scrollTop - t) > 1 || Math.abs(el.scrollLeft - l) > 1)));
     if (!bad) return;
     e.stopImmediatePropagation(); e.preventDefault(); blockClick = now() + 700; blockSc = d.sc.map(([el]) => el);
     try { const c = new PointerEvent('pointercancel', { pointerId: e.pointerId, pointerType: e.pointerType, bubbles: true, clientX: e.clientX, clientY: e.clientY }); c.__hx = true; e.target.dispatchEvent(c); } catch (er) { /* old WebKit */ }

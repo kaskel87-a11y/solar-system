@@ -54,8 +54,8 @@ ok('floating pauses loot + pickpocket', /floating/.test(RC.blocked({ onMars: tru
 ok('race / job / inside block', /race/.test(RC.blocked({ onMars: true, race: true })) && /job/.test(RC.blocked({ onMars: true, job: true })) && /indoors/.test(RC.blocked({ onMars: true, inside: true })));
 ok('off Mars blocked', RC.blocked({}) === 'Mars only');
 // heat
-ok('stealing: at least +1 heat', RC.wantedOnEnter(false, 0, 0) === 1 && RC.wantedOnEnter(false, 2, 2) === 3);
-ok('stealing seen by witness: no double count', RC.wantedOnEnter(false, 0, 1) === 1);
+ok('stealing (v7.5.28): no extra heat', RC.wantedOnEnter(false, 0, 0) === 0 && RC.wantedOnEnter(false, 2, 2) === 2);
+ok('stealing in front of a cop: keeps the core star, no double count', RC.wantedOnEnter(false, 0, 1) === 1);
 ok('stealing caps at 5', RC.wantedOnEnter(false, 5, 5) === 5);
 ok('owned: undo core car-theft heat', RC.wantedOnEnter(true, 0, 1) === 0 && RC.wantedOnEnter(true, 2, 3) === 2);
 ok('bump clamps 0..5', RC.bump(4) === 5 && RC.bump(5) === 5 && RC.bump(0, -1) === 0);
@@ -69,5 +69,5 @@ ok('load tolerates junk', (() => { const s = RC.loadState('{oops'); return s.own
 ok('load keeps fields', (() => { const s = RC.loadState(JSON.stringify({ owned: true, how: 'stole', garage: 1, loot: 3, picks: 2, busts: 1, cr: 99 })); return s.owned && s.how === 'stole' && s.garage && s.loot === 3 && s.cr === 99; })());
 // key: free on main (danger 1-4, gravity 2, everything else letters)
 const src = ['index.html', 'surface.js', 'danger.js', 'dangerhooks.js', 'mars/jobs.js', 'mars/turf.js', 'race.js', 'trackbuilder.js', 'controlmode.js', 'heist.js', 'carmeet.js', 'dealership.js'].map(f => { try { return readFileSync(new URL('../' + f, import.meta.url), 'utf8'); } catch (e) { return ''; } }).join('\n');
-ok('Digit5 unused by core files', RC.PICK_KEY === 'Digit5' && !/['"]Digit5['"]/.test(src) && !/key === ['"]5['"]/.test(src));
+ok('no number key (v7.5.16: digits are menu-only)', RC.PICK_KEY === null && !/['"]Digit5['"]/.test(src) && !/key === ['"]5['"]/.test(src));
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASS'); process.exit(fails ? 1 : 0);

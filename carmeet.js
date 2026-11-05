@@ -9,7 +9,7 @@ import { startRace } from './race.js';
 import { meetTracks, meetCircuitDef } from './marstracks.js';
 import { circuitRep } from './marstrackcore.js';
 
-const NAMES = ['Nix Calder', 'Tamsin Vey', 'Big Oyelaran', 'Juno Park', 'Rustbucket Ray', 'Kira Sol', 'Dex Marlow', 'Fen Oduya', 'Bo Okafor', 'Sister Volt', 'Lalo Brandt', 'Marisol Quan'];
+const NAMES = ['Nix Calder', 'Tamsin Vey', 'Big Oyelaran', 'Dax Park', 'Rustbucket Ray', 'Kira Sol', 'Dex Marlow', 'Fen Oduya', 'Bo Okafor', 'Sister Volt', 'Lalo Brandt', 'Marisol Quan'];
 const LINES = ['"Nice paint. Shame about the driver."', '"You lost, tourist? Meet’s for real cars."', '"Quarter mile. Loser buys the drinks and the tow."', '"I’ve seen faster ore haulers."', '"Line up or shut up."', '"My grandma’s hab heater has more horsepower."'];
 const rng = seed => () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const KINDS = ['dust_runner', 'red_comet', 'ares_brute', 'olympus_gt', 'phobos_phantom', 'buggy'];

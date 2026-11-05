@@ -65,7 +65,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await tapSel('#duelYield'); ok('yielded', await wait(() => !window.__app.surface.info.duel && window.__app.surface.world.lastDuel?.why === 'yield-lose', 3000));
     ok('yieldLosesWager', await G(c => window.__app.game.progress.credits === c - 50, c1));
     // a colonist who won't fight
-    ok('refusal', await G(() => { const w = window.__app.surface.world; for (const n of ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Juno Reyes', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan']) { const r = w.challenge('fists', 0, n); if (r.refused) return r.msg; if (r.ok) w.yieldDuel(); } return false; }));
+    ok('refusal', await G(() => { const w = window.__app.surface.world; for (const n of ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Kit Arden', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan']) { const r = w.challenge('fists', 0, n); if (r.refused) return r.msg; if (r.ok) w.yieldDuel(); } return false; }));
     // outside a duel, hitting a colonist still draws stars
     await G(() => window.__app.surface.world.setWanted(0)); await sleep(2700);
     await G(() => window.__app.surface.world.debugDuelist(false)); await sleep(200);

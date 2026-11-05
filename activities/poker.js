@@ -2,7 +2,7 @@
 // No new core hooks. Uses game credits via spend/debug.credits. Optional SSX.bark.
 import { tap, panelTap } from '../racehooks.js';
 import {
-  freshDeck, evalBest, cmpScore, strength01, cardLabel, HAND_NAMES,
+  freshDeck, evalBest, cmpScore, strength01, cardLabel, cardFace, cardText, HAND_NAMES,
 } from './poker-eval.js';
 
 const BUYINS = [50, 150, 400];
@@ -29,9 +29,10 @@ const CSS = `
   border: 1px solid rgba(80,180,100,0.35); min-height: 64px; }
 #pokerPanel .board .pot { font-size: 0.9rem; margin-bottom: 4px; opacity: 0.9; }
 #pokerPanel .cards { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
-#pokerPanel .card { width: 42px; height: 58px; border-radius: 7px; background: #f7f3ea; color: #111; display: flex; align-items: center;
-  justify-content: center; font-weight: 900; font-size: 0.95rem; border: 1px solid #ccc; }
-#pokerPanel .card.red { color: #c0182a; } #pokerPanel .card.back { background: #1a3a6a; color: #9cf; border-color: #2a5080; font-size: 0.7rem; }
+#pokerPanel .card { width: 50px; height: 70px; border-radius: 8px; background: #fff; color: #111; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; font-weight: 900; font-size: 1.35rem; line-height: 1; border: 1px solid #bbb; font-family: system-ui, -apple-system, sans-serif; }
+#pokerPanel .card .st { font-size: 1.55rem; margin-top: 2px; font-family: 'Apple Symbols', 'Segoe UI Symbol', system-ui, sans-serif; font-variant-emoji: text; }
+#pokerPanel .card.red { color: #d0101e; } #pokerPanel .card.blk { color: #111; } /* v7.5.34 rank + suit symbol, bigger for iPhone */ #pokerPanel .card.back { background: #1a3a6a; color: #9cf; border-color: #2a5080; font-size: 0.7rem; }
 #pokerPanel .log { font-size: 0.72rem; opacity: 0.75; min-height: 1.4em; text-align: center; padding: 0 4px; }
 #pokerPanel .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 6px; }
 #pokerPanel .actions button { min-height: 56px; border-radius: 14px; font-weight: 900; font-size: 0.95rem; color: #fff;
@@ -47,7 +48,14 @@ const CSS = `
 #pokerPanel .buyin button.go { min-height: 52px; border-radius: 14px; font-weight: 900; font-size: 0.95rem; color: #fff;
   background: linear-gradient(135deg, rgba(60,200,255,0.95), rgba(80,120,255,0.95)); border: none; touch-action: none; }
 #pokerPanel .buyin .hint { opacity: 0.7; font-size: 0.8rem; }
+/* v7.5.33: every poker button black with white text (house rule), on every table */
+#pokerPanel button, #pokerPanel .ph button, #pokerPanel .row2 button, #pokerPanel .buyin button, #pokerPanel .actions .fold, #pokerPanel .actions .call, #pokerPanel .actions .raise, #pokerPanel .buyin button.go { background: #000; color: #fff; border: 1px solid #fff; }
+#pokerPanel button:disabled { opacity: 0.35; }
 `;
+// v7.5.33: a table can be re-themed (the Velvet Airlock's Hold'em room uses this; the default is Nyx's static table)
+const THEME0 = { title: "Static Hold'em", host: 'Nyx', bouncer: 'Brick', names: ['Brick', 'Nyx', 'Pixel', 'Marrow', 'Vale'], nAi: null, buyIns: BUYINS,
+  hint: "Nyx's VIP back room. Fiction chips, real credits. Guns stay holstered.", offer: "VIP table. Ante's up. Don't make Brick invent stairs.", hint2: 'Tip the dealer mid-hand for a peek (costs credits). Get caught and Brick invents stairs.' };
+let TH = THEME0;
 
 let panel = null, G = null, onClose = null, rng = Math.random;
 
@@ -85,8 +93,8 @@ function ensurePanel() {
 
 function cardHtml(c, hidden = false) {
   if (hidden || c == null) return `<span class="card back">?</span>`;
-  const lab = cardLabel(c), red = lab[1] === 'h' || lab[1] === 'd';
-  return `<span class="card${red ? ' red' : ''}">${lab[0]}<small>${lab[1]}</small></span>`;
+  const f = cardFace(c); // v7.5.34 'K' + '♦' (was 'K' + 'd')
+  return `<span class="card ${f.red ? 'red' : 'blk'}" data-card="${cardLabel(c)}"><span class="rk">${f.r}</span><span class="st">${f.s}\ufe0e</span></span>`;
 }
 
 function isMobile() {
@@ -94,7 +102,7 @@ function isMobile() {
 }
 
 function makePlayers(buyIn, nAi) {
-  const names = ['Brick', 'Nyx', 'Pixel', 'Marrow', 'Vale'];
+  const names = TH.names?.length ? TH.names : THEME0.names;
   const me = { id: 'you', name: 'You', chips: buyIn, hole: [], bet: 0, folded: false, allIn: false, human: true };
   const ais = [];
   for (let i = 0; i < nAi; i++) {
@@ -112,12 +120,12 @@ function active(players) { return players.filter(p => !p.folded && !p.allIn); }
 function openBuyIn(ctx) {
   const el = ensurePanel();
   const cr = credits();
-  el.innerHTML = `<div class="ph"><h2>🃏 Static Hold'em</h2><button class="close" data-x="1">✕</button></div>
+  el.innerHTML = `<div class="ph"><h2>🃏 ${TH.title}</h2><button class="close" data-x="1">✕</button></div>
     <div class="buyin">
-      <div class="hint">Nyx's VIP back room. Fiction chips, real credits. Guns stay holstered.<br>Your wallet: <b>${cr}</b> cr</div>
-      ${BUYINS.map(b => `<button class="go" data-buy="${b}" ${cr < b ? 'disabled' : ''}>Buy in ${b} cr</button>`).join('')}
+      <div class="hint">${TH.hint}<br>Your wallet: <b>${cr}</b> cr</div>
+      ${(TH.buyIns || BUYINS).map(b => `<button class="go" data-buy="${b}" ${cr < b ? 'disabled' : ''}>Buy in ${b} cr</button>`).join('')}
       <button class="ghost" data-x="1">Walk away</button>
-      <div class="hint">Tip the dealer mid-hand for a peek (costs credits). Get caught and Brick invents stairs.</div>
+      <div class="hint">${TH.hint2}</div>
     </div>`;
   el.classList.add('on');
   document.body.classList.add('poker-open');
@@ -129,17 +137,17 @@ function openBuyIn(ctx) {
     startTable(buy, ctx);
   };
   panelTap(el, on);
-  tryBark({ name: 'Nyx', kind: 'contact' }, 'poker_offer') || tryBark({ name: 'Nyx' }, "VIP table. Ante's up. Don't make Brick invent stairs.");
+  tryBark({ name: TH.host, kind: 'contact' }, 'poker_offer') || tryBark({ name: TH.host }, TH.offer);
 }
 
 function startTable(buyIn, ctx) {
-  const nAi = isMobile() ? 2 : 3;
+  const nAi = TH.nAi || (isMobile() ? 2 : 3);
   G = {
     buyIn, players: makePlayers(buyIn, nAi), deck: [], board: [], pot: 0, street: 'preflop',
     toAct: 0, dealer: 0, currentBet: 0, minRaise: BIG, hand: 0, maxHands: 4,
     log: '', cheated: false, tipUsed: false, ctx, closed: false,
   };
-  tryBark({ name: 'Nyx' }, 'poker_start');
+  tryBark({ name: TH.host }, 'poker_start');
   newHand();
 }
 
@@ -304,7 +312,7 @@ function win(winners, why) {
   for (const w of winners) { w.chips += share + (rem > 0 ? 1 : 0); if (rem > 0) rem--; }
   G.pot = 0;
   if (why) G.log = `${winners.map(w => w.name).join(' & ')} wins (${why}).`;
-  tryBark({ name: winners[0]?.name || 'Nyx' }, winners.some(w => w.human) ? 'poker_win' : 'poker_lose');
+  tryBark({ name: winners[0]?.name || TH.host }, winners.some(w => w.human) ? 'poker_win' : 'poker_lose');
   render(true);
   setTimeout(() => { if (G && !G.closed) newHand(); }, 1400);
 }
@@ -357,15 +365,15 @@ function tipDealer() {
   // Peek: show one opponent's hole briefly in log; chance of getting caught
   const foe = G.players.find(p => !p.human && !p.folded);
   if (foe) {
-    G.log = `Dealer coughs: ${foe.name} holds ${cardLabel(foe.hole[0])} ${cardLabel(foe.hole[1])}.`;
+    G.log = `Dealer coughs: ${foe.name} holds ${cardText(foe.hole[0])} ${cardText(foe.hole[1])}.`;
     G.cheated = true;
   }
   const caught = rng() < 0.28;
   if (caught) {
-    G.log += ' Brick saw that.';
-    tryBark({ name: 'Brick', kind: 'bouncer' }, 'poker_cheat_caught') || tryBark({ name: 'Brick' }, 'Cheat. Stairs time.');
+    G.log += ` ${TH.bouncer} saw that.`;
+    tryBark({ name: TH.bouncer, kind: 'bouncer' }, 'poker_cheat_caught') || tryBark({ name: TH.bouncer }, 'Cheat. Stairs time.');
     const world = app()?.surface?.world;
-    world?.setWanted?.(2, 'cheating at Static Hold\'em');
+    world?.setWanted?.(2, `cheating at ${TH.title}`);
     world?.crime?.(2, 'cheating at cards');
     // Spawn a couple of "bouncers" if aliens API exists (stand-in)
     app()?.surface?.game?.debug?.spawn?.('crawler', 6, 0.4, true);
@@ -375,7 +383,7 @@ function tipDealer() {
     setTimeout(() => cashOut(false, true), 700);
     return;
   }
-  tryBark({ name: 'Nyx' }, 'poker_tip');
+  tryBark({ name: TH.host }, 'poker_tip');
   render();
 }
 
@@ -387,10 +395,10 @@ function cashOut(voluntary = true, banned = false) {
   if (chips > 0) grant(chips);
   const delta = chips - G.buyIn;
   const msg = banned ? `Banned. Cashed ${chips} cr.`
-    : voluntary ? (delta >= 0 ? `Nyx: Stack's yours. +${delta} cr.` : `Nyx: Broke-ish. ${chips} cr back.`)
+    : voluntary ? (delta >= 0 ? `${TH.host}: Stack's yours. +${delta} cr.` : `${TH.host}: Broke-ish. ${chips} cr back.`)
     : `Cashed ${chips} cr.`;
   toast(msg);
-  tryBark({ name: 'Nyx' }, delta >= 0 ? 'poker_cashout_win' : 'poker_cashout_lose');
+  tryBark({ name: TH.host }, delta >= 0 ? 'poker_cashout_win' : 'poker_cashout_lose');
   const cb = onClose;
   closeTable(null, true);
   cb?.({ ok: true, credits: chips, delta, banned });
@@ -414,11 +422,11 @@ function render(showdown = false) {
       ? p.hole.map(c => cardHtml(c)).join('')
       : p.folded ? '' : cardHtml(null, true) + cardHtml(null, true);
     return `<div class="seat${p.human ? ' me' : ''}${p.folded ? ' fold' : ''}${i === G.toAct ? ' turn' : ''}">
-      <b>${p.name}${p.human ? ' (you)' : ''}</b>
+      <b>${p.name}${p.human && p.name !== 'You' ? ' (you)' : ''}</b>
       ${p.chips} cr${p.bet ? ` · bet ${p.bet}` : ''}${p.folded ? ' · folded' : ''}${p.allIn ? ' · all-in' : ''}
       <div class="cards">${hole}</div></div>`;
   }).join('');
-  el.innerHTML = `<div class="ph"><h2>🃏 Static Hold'em</h2>
+  el.innerHTML = `<div class="ph"><h2>🃏 ${TH.title}</h2>
     <span class="cash">Pot ${G.pot} · You ${me.chips}</span>
     <button class="close" data-cash="1">Cash out</button></div>
     <div class="table">
@@ -449,7 +457,7 @@ function render(showdown = false) {
 
 /** Open the Hold'em modal. opts.onClose({ok, credits, delta, banned}) */
 export function openPokerTable(opts = {}) {
-  onClose = opts.onClose || null;
+  onClose = opts.onClose || null; TH = { ...THEME0, ...(opts.theme || {}) }; // v7.5.33 opts.theme: { title, host, names, nAi, buyIns, hint, hint2 }
   if (typeof opts.rng === 'function') rng = opts.rng;
   openBuyIn(opts.ctx || null);
   return { ok: true };

@@ -10,6 +10,10 @@ export function card(r, s) { return (r << 2) | s; }
 export function rank(c) { return c >> 2; }
 export function suit(c) { return c & 3; }
 export function cardLabel(c) { return RANKS[rank(c)] + SUITS[suit(c)]; }
+// v7.5.34 cards shown with suit symbols (Collin: 'Kd 3d' -> 'K♦ 3♦'); suits cdhs = ♣♦♥♠, hearts/diamonds red
+export const SUIT_SYM = '\u2663\u2666\u2665\u2660';
+export function cardFace(c) { const r = RANKS[rank(c)], s = suit(c); return { r: r === 'T' ? '10' : r, s: SUIT_SYM[s], red: s === 1 || s === 2 }; }
+export function cardText(c) { const f = cardFace(c); return f.r + f.s; }
 
 export function freshDeck(rng = Math.random) {
   const d = [];

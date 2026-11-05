@@ -374,10 +374,11 @@ export function ragsTick(dt, ctx) {
   // Helios gate: residents and guests only
   gateCd -= dt;
   const hel = data.districts.helios;
-  if (S.tier < 2 && distAJ(hel.center) < hel.radius && gateCd <= 0) {
+  if (S.tier < 2 && distAJ(hel.center) < hel.radius && gateCd <= 0 && !window.SSX?.heliosPass?.allow?.()) { // v7.5.33 a bribed Helios pass (mars/heliospass.js) lets you through once
     gateCd = 2; const o = toW(data.helios_gate.outside);
     if (sf?.info?.driving) sf.interact?.(); sf?.debugMove?.(o.x, o.z, Math.PI);
     toast(data.helios_gate.line, 3600); bark('Porter', 'deny');
+    try { window.SSX?.heliosPass?.offer?.('Porter'); } catch {} // v7.5.33 ...or slip him something
   }
   // income ticks everywhere; you collect in person
   for (const def of data.properties) {

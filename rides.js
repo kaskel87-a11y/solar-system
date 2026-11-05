@@ -31,10 +31,24 @@ const SHAPES = {
   olympus_gt: { w: 2.35, hull: [[-3.1, 0.45], [-3.15, 0.8], [-1.0, 1.0], [1.8, 1.1], [3.0, 0.95], [3.05, 0.45]], cab: [[-0.7, 1.0], [0.3, 1.55], [1.4, 1.55], [2.3, 1.05]],
     wheels: [[-1.15, -2.05, 1], [1.15, -2.05, 1], [-1.15, 1.95], [1.15, 1.95]], wr: 0.52, seat: 0.95, turret: 1.75, len: 6.2, spoiler: true },
   phobos_phantom: { w: 2.2, hull: [[-2.7, 0.35], [-2.8, 0.7], [-0.8, 1.0], [1.6, 1.05], [2.6, 0.8], [2.65, 0.35]], cab: [[-0.9, 0.98], [0.1, 1.5], [1.1, 1.5], [1.8, 1.0]],
-    wheels: [], wr: 0, seat: 0.85, turret: 1.6, len: 5.4, hover: true }
+    wheels: [], wr: 0, seat: 0.85, turret: 1.6, len: 5.4, hover: true },
+  // v7.5.45 grungy additions (flags: cage, scoop, armor, stacks, spikes, rust; each a few shared-geometry boxes)
+  rust_rat: { w: 2.0, hull: [[-2.0, 0.55], [-2.1, 0.95], [-1.3, 1.05], [1.6, 1.05], [2.05, 1.0], [2.1, 0.55]], cab: [[-0.9, 1.05], [-0.5, 1.35], [0.9, 1.35], [1.2, 1.05]],
+    wheels: [[-1.05, -1.35, 1], [1.05, -1.35, 1], [-1.05, 1.35], [1.05, 1.35]], wr: 0.5, seat: 1.05, turret: 2.0, len: 4.2, cage: true, rust: true },
+  dune_hog: { w: 2.3, hull: [[-2.4, 0.85], [-2.5, 1.3], [-1.4, 1.5], [1.7, 1.5], [2.3, 1.4], [2.4, 0.85]], cab: [[-1.0, 1.5], [-0.5, 2.0], [0.9, 2.0], [1.3, 1.5]],
+    wheels: [[-1.25, -1.6, 1], [1.25, -1.6, 1], [-1.25, 1.6], [1.25, 1.6]], wr: 0.78, seat: 1.5, turret: 2.6, len: 4.9, cage: true, stacks: true, rust: true },
+  junk_hauler: { w: 2.8, hull: [[-3.3, 0.8], [-3.4, 1.55], [-2.3, 1.7], [3.25, 1.7], [3.3, 0.8]], cab: [[-2.2, 1.7], [-1.6, 2.7], [-0.2, 2.7], [0.0, 1.7]],
+    wheels: [[-1.4, -2.2, 1], [1.4, -2.2, 1], [-1.4, 0.6], [1.4, 0.6], [-1.4, 2.3], [1.4, 2.3]], wr: 0.75, seat: 1.7, turret: 2.85, len: 6.8, bed: true, armor: true, rust: true, stacks: true },
+  black_widow: { w: 2.35, hull: [[-2.9, 0.45], [-3.0, 0.85], [-1.1, 1.1], [1.5, 1.15], [2.85, 1.05], [2.9, 0.45]], cab: [[-0.6, 1.1], [0.2, 1.6], [1.2, 1.6], [2.0, 1.12]],
+    wheels: [[-1.15, -1.85, 1], [1.15, -1.85, 1], [-1.18, 1.8], [1.18, 1.8]], wr: 0.52, seat: 0.98, turret: 1.75, len: 5.9, scoop: true, spoiler: true, pipes: true },
+  regolith_reaper: { w: 2.9, hull: [[-3.3, 0.85], [-3.4, 1.6], [-2.3, 1.85], [3.1, 1.85], [3.2, 0.85]], cab: [[-2.1, 1.85], [-1.5, 2.65], [0.6, 2.65], [0.9, 1.85]],
+    wheels: [[-1.45, -2.2, 1], [1.45, -2.2, 1], [-1.45, 0.4], [1.45, 0.4], [-1.45, 2.3], [1.45, 2.3]], wr: 0.8, seat: 1.8, turret: 2.9, len: 6.8, bar: true, armor: true, spikes: true, cage: true, rust: true },
+  ghost_sled: { w: 2.3, hull: [[-3.0, 0.35], [-3.1, 0.65], [-1.0, 0.9], [1.8, 0.95], [2.9, 0.75], [2.95, 0.35]], cab: [[-0.6, 0.9], [0.3, 1.35], [1.2, 1.35], [1.9, 0.92]],
+    wheels: [], wr: 0, seat: 0.85, turret: 1.5, len: 6.0, hover: true, spikes: false, scoop: false, fins: true }
 };
 export const shapeOf = kind => SHAPES[kind] || null;
-const FACTORY = { dust_runner: 0xd86a2a, red_comet: 0xb0101a, ares_brute: 0x4a5a3a, olympus_gt: 0x1e2c48, phobos_phantom: 0x2a2a34 };
+const FACTORY = { dust_runner: 0xd86a2a, red_comet: 0xb0101a, ares_brute: 0x4a5a3a, olympus_gt: 0x1e2c48, phobos_phantom: 0x2a2a34,
+  rust_rat: 0x8a5a2e, dune_hog: 0xc8a050, junk_hauler: 0x5a6058, black_widow: 0x141416, regolith_reaper: 0x3a3226, ghost_sled: 0xb8bcc2 };
 export const factoryColor = kind => FACTORY[kind] ?? 0x9aa0a8;
 
 function wheel(wr, w = 0.5) {
@@ -55,6 +69,7 @@ export function buildRide(kind) {
   if (S.bed) { const bed = new THREE.Mesh(geo('box', () => new THREE.BoxGeometry(1, 1, 1)), dark); bed.scale.set(S.w - 0.3, 0.12, 2.3); bed.position.set(0, 1.7, 1.8); body.add(bed); }
   if (S.bar) { const bar = new THREE.Mesh(geo('box', () => new THREE.BoxGeometry(1, 1, 1)), M(0x2a2c30, { metalness: 0.7 })); bar.scale.set(S.w + 0.2, 0.5, 0.18); bar.position.set(0, 1.0, -3.25); body.add(bar); }
   if (S.spoiler) { const sp = new THREE.Mesh(geo('box', () => new THREE.BoxGeometry(1, 1, 1)), paint); sp.scale.set(S.w - 0.2, 0.05, 0.32); sp.position.set(0, S.hull[3][1] + 0.18, S.hull[4][0] - 0.1); body.add(sp); }
+  grime(S, body, paint, dark);
   const wheels = [];
   if (S.hover) { // mag pads instead of wheels
     const padM = new THREE.MeshBasicMaterial({ color: 0x5ad0ff, transparent: true, opacity: 0.85 }), pg = geo('pad', () => { const c = new THREE.CylinderGeometry(0.42, 0.5, 0.14, 12); return c; });
@@ -70,6 +85,25 @@ export function buildRide(kind) {
   const seat = new THREE.Object3D(); seat.position.set(0.45, S.seat, -0.3); body.add(seat);
   g.userData.ride = { kind, shape: S, paint };
   return { group: g, body, wheels, seat, paint };
+}
+
+// v7.5.45 grunge parts for the new rides: shared box/cyl geometry, a handful of meshes per flag
+function grime(S, body, paint, dark) {
+  const box = geo('box', () => new THREE.BoxGeometry(1, 1, 1)), cyl = geo('cyl8', () => new THREE.CylinderGeometry(1, 1, 1, 8));
+  const add = (g, m, sx, sy, sz, x, y, z, rx = 0) => { const o = new THREE.Mesh(g, m); o.scale.set(sx, sy, sz); o.position.set(x, y, z); o.rotation.x = rx; body.add(o); return o; };
+  const top = Math.max(...S.cab.map(p => p[1])), deck = S.hull[2][1], nose = S.hull[0][0], tail = S.hull[S.hull.length - 1][0], w = S.w;
+  const steel = S.cage || S.armor || S.spikes || S.pipes || S.stacks ? M(0x3a3c40, { metalness: 0.8, roughness: 0.45 }) : null;
+  if (S.cage) { const z0 = S.cab[0][0] - 0.1, z1 = S.cab[S.cab.length - 1][0] + 0.1, h = top - deck + 0.35;
+    for (const sx of [-1, 1]) { add(box, steel, 0.08, h, 0.08, sx * (w / 2 - 0.3), deck + h / 2, z0); add(box, steel, 0.08, h, 0.08, sx * (w / 2 - 0.3), deck + h / 2, z1); add(box, steel, 0.08, 0.08, z1 - z0, sx * (w / 2 - 0.3), deck + h, (z0 + z1) / 2); }
+    add(box, steel, w - 0.5, 0.08, 0.08, 0, deck + h, z0); add(box, M(0xfff2c0, { roughness: 1, emissive: 0xfff2c0, emissiveIntensity: 0.6 }), w * 0.5, 0.14, 0.1, 0, deck + h + 0.1, z0); }
+  if (S.rust) { const rm = M(0x6a3418, { roughness: 1, metalness: 0.1 });
+    add(box, rm, 0.04, 0.35, 0.9, w / 2 + 0.07, deck - 0.3, nose * 0.35); add(box, rm, 0.04, 0.28, 0.7, -w / 2 - 0.07, deck - 0.35, tail * 0.4); add(box, rm, w * 0.4, 0.04, 0.6, w * 0.15, deck + 0.07, nose * 0.6); }
+  if (S.armor) for (const sx of [-1, 1]) { add(box, steel, 0.1, 0.55, S.len * 0.55, sx * (w / 2 + 0.1), deck - 0.4, 0.2); add(box, dark, 0.11, 0.06, S.len * 0.5, sx * (w / 2 + 0.11), deck - 0.2, 0.2); }
+  if (S.spikes) { add(box, steel, w + 0.1, 0.5, 0.2, 0, 1.0, nose - 0.25); for (let i = -2; i <= 2; i++) add(cyl, steel, 0.06, 0.6, 0.06, i * w / 5.2, 1.0, nose - 0.55, Math.PI / 2); }
+  if (S.stacks) for (const sx of [-1, 1]) { add(cyl, steel, 0.09, 1.2, 0.09, sx * (w / 2 - 0.15), top + 0.1, S.cab[S.cab.length - 1][0] + 0.25); add(cyl, dark, 0.11, 0.1, 0.11, sx * (w / 2 - 0.15), top + 0.7, S.cab[S.cab.length - 1][0] + 0.25); }
+  if (S.pipes) for (const sx of [-1, 1]) add(cyl, steel, 0.08, S.len * 0.45, 0.08, sx * (w / 2 + 0.08), 0.5, 0.3, Math.PI / 2);
+  if (S.scoop) { add(box, dark, 0.7, 0.32, 0.9, 0, deck + 0.18, nose * 0.55); add(box, M(0x9a9ea6, { metalness: 0.9, roughness: 0.25 }), 0.5, 0.08, 0.5, 0, deck + 0.38, nose * 0.55); }
+  if (S.fins) for (const sx of [-1, 1]) add(box, paint, 0.06, 0.55, 0.9, sx * (w / 2 - 0.2), S.hull[3][1] + 0.25, tail - 0.5);
 }
 
 // ---------- customisation layer (works on any { group, body, wheels } vehicle) ----------

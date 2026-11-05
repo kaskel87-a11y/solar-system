@@ -30,7 +30,7 @@ const live = M.pickFoulLive(three, new Set(others));
 t('cap: a parked pick → a live one promoted', [...live].some(k => others.includes(k)) && live.has(base));
 t('cap: live pick → nothing promoted', M.pickFoulLive(three, new Set(three)).size === 1);
 t('cap: deterministic', [...M.pickFoulLive(three, new Set(others))].join() === [...M.pickFoulLive(three, new Set([...others].reverse()))].join());
-t('npcKey stable', M.npcKey('mars-rough', 2, 'Juno Reyes') === 'mars-rough:2:Juno Reyes');
+t('npcKey stable', M.npcKey('mars-rough', 2, 'Kit Arden') === 'mars-rough:2:Kit Arden');
 // triggers
 const C = M.CFG;
 t('cooldowns in range', C.greetNpc >= 20 && C.greetNpc <= 30 && C.insultNpc >= 20 && C.insultNpc <= 30 && C.greetGlobal >= 3 && C.insultGlobal >= 1.5 && C.greetDist === 8);
@@ -58,7 +58,7 @@ t('no greet right after an insult', !cd.can(1 + C.insultGlobal - 0.1, b, 'greet'
   t('pickLine no repeats in a row', new Set(seen).size === 6 && seen.every(l => M.GREET.includes(l)));
   t('pickLine insult types', ['bump', 'honk', 'drive'].every(k => M.INSULT[k].includes(M.pickLine(k, [], () => 0.5))) && M.pickLine('nope') === null); }
 // voice + mute
-const v1 = M.voiceFor('mars-rough:0:Juno Reyes'), v2 = M.voiceFor('mars-rough:0:Juno Reyes');
+const v1 = M.voiceFor('mars-rough:0:Kit Arden'), v2 = M.voiceFor('mars-rough:0:Kit Arden');
 t('voice stable + in range', v1.pitch === v2.pitch && v1.rate === v2.rate && v1.pitch >= 0.75 && v1.pitch <= 1.3 && v1.rate >= 0.95 && v1.rate <= 1.15);
 t('tts on with sound', M.ttsAllowed({ mute: false, master: 0.8 }));
 t('tts off when muted / silent / hidden / off / missing', !M.ttsAllowed({ mute: true }) && !M.ttsAllowed({ master: 0 }) && !M.ttsAllowed({ hidden: true }) && !M.ttsAllowed({ off: true }) && !M.ttsAllowed({ has: false }));

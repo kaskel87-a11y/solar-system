@@ -69,6 +69,8 @@ function weather(m, w) {
   if (m.roughness != null) m.roughness = Math.min(1, m.roughness + w * 0.15);
 }
 
+// v7.5.20: the Flats water tower stands beside The Pit's open lot, north of BAY SIX DENTAL (the plain west dome [-36,-18,7] was removed)
+export const PIT_TOWER = [-38, 4];
 // ---------- layout: hub-local placements from the district data (blocks, domes, fast-travel plaza) ----------
 function plan(D) {
   const L = [], put = (id, x, z, yaw = 0, o = {}) => L.push({ id, x, z, yaw, ...o }), fast = D.fastTravel || [0, 20];
@@ -82,12 +84,14 @@ function plan(D) {
     put('mars_food_stall', fast[0] + 7, fast[1] + 3, -Math.PI / 2, { r: 2 }); put('cafe_table_set', fast[0] + 4, fast[1] + 6, 0.4, { r: 1.2 }); put('cafe_table_set', fast[0] + 9.5, fast[1] + 6.5, -0.3, { r: 1.2 });
     put('mars_billboard_curved', 34, 26, -2.2, { sign: 0, r: 1.5 }); put('mars_billboard_curved', -38, -40, 0.75, { sign: 1, r: 1.5 });
   } else if (D.kind === 'rough') {
-    for (const [x, z, w, d, , , , kind] of blocks) {
+    // v7.5.20: landmarks first, so the shared tris budget trims a burn barrel rather than the water tower or the depot hulks
+    put('mars_water_tower', PIT_TOWER[0], PIT_TOWER[1], 0, { r: 3 }); /* The Pit fights under it (side-activities act-pit-fight at_local [-40,-9]) */
+    for (const [x, z, w, , , , , kind] of blocks) if (kind === 'depot') { put('mars_stripped_buggy', x - w / 2 - 4, z - 1, 0.5, { r: 2 }); put('mars_stripped_buggy', x + w / 2 + 4, z + 1.5, -2.4, { r: 2 }); }
+    for (const [x, z, w, d] of blocks) {
       put('burn_barrel', x - w / 2 - 1.6, z + d / 2 + 2.4, 0.3); put('burn_barrel', x + w / 2 + 1.8, z + d / 2 + 1.2, 1.1);
       put('mars_tire_wall', x, z - d / 2 - 2.2, 0, { r: 1.6 });
-      if (kind === 'depot') { put('mars_stripped_buggy', x - w / 2 - 4, z - 1, 0.5, { r: 2 }); put('mars_stripped_buggy', x + w / 2 + 4, z + 1.5, -2.4, { r: 2 }); }
     }
-    put('mars_water_tower', fast[0] - 16, fast[1] + 10, 0, { r: 3 }); put('mars_food_stall', fast[0] + 6, fast[1] - 4, Math.PI / 2, { r: 2 });
+    put('mars_food_stall', fast[0] + 6, fast[1] - 4, Math.PI / 2, { r: 2 });
     put('burn_barrel', fast[0] + 3, fast[1] + 3, 0); put('mars_billboard_curved', 30, -36, -0.7, { sign: 5, r: 1.5 });
   } else if (D.kind === 'gated') {
     for (const [x, z, r] of domes) for (let k = 0; k < 6; k++) {
