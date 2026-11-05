@@ -131,7 +131,7 @@ export function meetId(nowMs, offsetMin = 0) { const m = nowMs / 60000 + offsetM
 export const fmtHour = h => { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); };
 
 // ---------- save data (stored inside the game's own progress save, ssx.progress.v1 → progress.garage) ----------
-export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1 }; }
+export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1, partner: freshPartner(), fenced: 0 }; }
 export function newRide(id, kind) { return { id, kind, paint: 'factory', kit: 'stock', wheels: 'stock', glow: 'none', up: { engine: 0, handling: 0, brakes: 0, boost: 0 }, owned: { paint: ['factory'], kit: ['stock'], wheels: ['stock'], glow: ['none'] }, spent: 0 }; }
 // accepts anything (undefined from an old save, a partial or corrupt object) and returns a valid garage
 export function migrateGarage(g) {
@@ -159,6 +159,8 @@ export function migrateGarage(g) {
   if (!out.rides.some(r => r.id === out.active)) out.active = 'stock';
   out.rep = Math.max(0, +out.rep || 0); out.clock = +out.clock || 0; out.wins = +out.wins || 0; out.races = +out.races || 0;
   out.nextId = Math.max(+out.nextId || 1, ...out.rides.map(r => (+String(r.id).replace(/\D/g, '') || 0) + 1));
+  out.partner = migratePartner(out.partner);
+  out.fenced = Math.max(0, out.fenced | 0);
   return out;
 }
 export const MAX_RIDES = 6; // garage slots (stock rover included)
@@ -206,4 +208,93 @@ export function dealerStock(vehicles = {}, explicit = {}) {
       blurb: d.blurb || sp.blurb || sp.desc || '', modded: !MODELS[kind] });
   }
   return out.sort((a, b) => a.price - b.price);
+}
+
+// ---------- partner buy-in + fence stolen rides (Steve: dealership partner / steal→sell) ----------
+// Lives inside progress.garage.partner (same ssx.progress.v1 save; no new savecode key).
+// Partner: cash and/or stars buy-in → passive lot income, bigger garage, buy discount, early stock wave, better fence cut.
+// Fence: drive a stolen world car onto the Red Line lot and sell it for cr (+ a few ⭐). Heat cuts the payout; high heat can bust.
+export const PARTNER = {
+  priceCr: 5000,           // full cash
+  priceStars: 400,         // full stars (SSX.stars spendable)
+  mixCr: 3500,             // mixed option
+  mixStars: 150,
+  rate: 70,                // cr per game hour (empire-front style)
+  bands: { dawn: 0.7, day: 1.15, dusk: 1.2, night: 0.9 },
+  capHours: 10,
+  buyDiscount: 0.08,       // 8% off dealer sticker when partner
+  fenceBonus: 0.25,        // +25% fence payout
+  maxRidesBonus: 2         // garage slots beyond MAX_RIDES
+};
+// World stock vehicles on main have no dealer price; these are fence values for the blocky kinds.
+export const FENCE = {
+  kinds: { buggy: 280, hauler: 340, hoverbike: 420, shuttle: 380 },
+  fallback: 220,
+  priceFrac: 0.32,         // of a known listing / model price
+  heatCut: 0.12,           // −12% per wanted star
+  bustAt: 4,               // fencing at 4+ ★ can go wrong
+  bustChance: 0.35,
+  starReward: 5            // base ⭐ for a clean fence
+};
+export function freshPartner() { return { on: false, pending: 0, earned: 0, fenced: 0, lastHour: null }; }
+export function migratePartner(p) {
+  const d = freshPartner();
+  if (!p || typeof p !== 'object') return d;
+  return { on: !!p.on, pending: Math.max(0, +p.pending || 0), earned: Math.max(0, +p.earned || 0),
+    fenced: Math.max(0, p.fenced | 0), lastHour: Number.isFinite(+p.lastHour) ? +p.lastHour : null };
+}
+export const maxRidesOf = g => MAX_RIDES + (g?.partner?.on ? PARTNER.maxRidesBonus : 0);
+// partner buy options: full cash, full stars, or a mix. Caller checks funds.
+export function partnerOffers() {
+  return [
+    { id: 'cash', cr: PARTNER.priceCr, stars: 0, label: `${PARTNER.priceCr} cr` },
+    { id: 'stars', cr: 0, stars: PARTNER.priceStars, label: `${PARTNER.priceStars} ⭐` },
+    { id: 'mix', cr: PARTNER.mixCr, stars: PARTNER.mixStars, label: `${PARTNER.mixCr} cr + ${PARTNER.mixStars} ⭐` }
+  ];
+}
+export function partnerSellPrice(base, rep = 0, partner = false) {
+  const p = sellPrice(base, rep);
+  if (!partner) return p;
+  return Math.round(p * (1 - PARTNER.buyDiscount) / 10) * 10;
+}
+export function partnerRateAt(h) {
+  const band = h >= 21 || h < 5 ? 'night' : h >= 17 ? 'dusk' : h < 8 ? 'dawn' : 'day';
+  return PARTNER.rate * (PARTNER.bands[band] || 1);
+}
+export function partnerCap() { return Math.round(PARTNER.rate * PARTNER.capHours); }
+// accrue hours of lot income into partner.pending (capped). Mutates partner. Returns cr added.
+export function partnerAccrue(partner, hour, hours) {
+  if (!partner?.on || !(hours > 0)) return 0;
+  const cap = partnerCap();
+  let left = hours, t = hour, sum = 0;
+  while (left > 1e-9) {
+    const step = Math.min(left, 0.25);
+    sum += partnerRateAt(t + step / 2) * step;
+    t += step; left -= step;
+  }
+  const room = Math.max(0, cap - (+partner.pending || 0));
+  const add = Math.min(room, sum);
+  partner.pending = (+partner.pending || 0) + add;
+  return add;
+}
+export function partnerCollect(partner) {
+  if (!partner?.on) return 0;
+  const n = Math.floor(+partner.pending || 0);
+  partner.pending -= n; partner.earned = (+partner.earned || 0) + n;
+  return n;
+}
+// fence payout for a stolen world kind. price = optional listing/model price; wanted 0-5.
+// Returns { ok, cr, stars, bust, heatAdd, base } — bust means ColSec jumps you (no payout).
+export function fenceOffer(kind, { price = null, wanted = 0, partner = false, rand = Math.random } = {}) {
+  const w = Math.max(0, Math.min(5, wanted | 0));
+  if (w >= FENCE.bustAt && rand() < FENCE.bustChance) {
+    return { ok: false, bust: true, cr: 0, stars: 0, heatAdd: 1, kind, msg: 'bust' };
+  }
+  let base = FENCE.kinds[kind] ?? FENCE.fallback;
+  if (Number.isFinite(+price) && +price > 0) base = Math.max(base, Math.round(+price * FENCE.priceFrac / 10) * 10);
+  const heat = Math.min(0.6, w * FENCE.heatCut);
+  let cr = Math.round(base * (1 - heat) / 10) * 10;
+  if (partner) cr = Math.round(cr * (1 + PARTNER.fenceBonus) / 10) * 10;
+  const stars = Math.max(1, FENCE.starReward + (partner ? 2 : 0) - Math.min(3, w));
+  return { ok: true, bust: false, cr, stars, heatAdd: 0, kind, base, wanted: w };
 }
