@@ -10,7 +10,7 @@ const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
   `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
   `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, `storymars.js${q}`, `storymars2.js${q}`, `marsshops.js${q}`, ...['dealership', 'garagecore', 'carmeet', 'rides', 'myrides', 'ridepark', 'roofs'].map(n => `${n}.js${q}`), `mars/contraband.js${q}`, `mars/jobs.js${q}`, `mars/pursuit.js${q}`, `mars/turf.js${q}`, `mars/arsenal.js${q}`, `mars/gunsmith.js${q}`, `mars/beltway.js${q}`, ...['director', 'directorcore'].map(n => `modes/${n}.js${q}`), `mars/dress.js${q}`, ...['modes/hook', 'modes/raids', 'modes/rags', 'modes/ragscore', 'modes/ragsrover'].map(n => `${n}.js${q}`), `modes/rags-data.json${q}`, ...['danger', 'dangercore', 'dangerhooks', 'pursuit', 'ambient', 'ambientcore', 'streetdata'].map(n => `${n}.js${q}`), 'data/barter.json', 'data/random-events.json', 'mars/barter.json', ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks', 'controlmode', 'gatecore', 'guards', 'guardcore', 'heistlos'].map(n => `${n}.js${q}`),
-  ...['mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
+  ...['audioctx', 'mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
   ...['grime', 'grime-tex', 'grime-lines', 'grime-street'].map(n => `mars/${n}.js${q}`), // Mars grime pass
   ...['flats-interiors', 'flats-interiors-rooms', 'flats-interiors-tex', 'flats-interiors-lines'].map(n => `mars/${n}.js${q}`), // v7.5 Red Tape Flats interiors
   ...['radio-extra', 'songs', 'pit', 'dust', 'night'].map(n => `${n}.js${q}`), // Mars radio: PIT 66.6, DUST 98.3, MY MUSIC, night mix
@@ -19,6 +19,7 @@ const PRECACHE = [
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, `activities/coords.js${q}`, `activities/deadends.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
   ...['hud/hudx', 'hud/hudmap', 'hud/hints'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter
   `hud/wpbeam.js${q}`, // v7.5.8 waypoint light beam
+  ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
   ...['help/stuck', 'help/stuckcore', 'help/foes'].map(n => `${n}.js${q}`), // Stuck? on the mission card + red ◆ over mission foes
   ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact
   ...['scihooks', 'scicore', 'raccoon', 'scientists', 'portals', 'dimensions/index', 'dimensions/automat', 'dimensions/gravbog', 'dimensions/waitroom', 'dimensions/pantry', 'dimensions/lounge'].map(n => `${n}.js${q}`),
@@ -32,12 +33,26 @@ const PRECACHE = [
   `mars/fightclub.js${q}`,
   ...['marstracks', 'marstrackcore'].map(n => `${n}.js${q}`),
   `airroll.js${q}`, // phone barrel-roll button
+  `nozoom.js${q}`, // v7.5.44 iOS zoom lock
   `mars/gravity.js${q}`, `mars/gravitycore.js${q}`, // Pumpkin: gravity modes for Mars vehicles
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
   `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, // fast travel on Mars (Pumpkin)
   `mars/skins.js${q}`, `mars/skinscore.js${q}`, // Mars player skins (Pumpkin)
   `mars/jetpack.js${q}`, `mars/jetpackcore.js${q}`, // Mars jetpack (Pumpkin)
   `mars/flame.js${q}`, `mars/flamecore.js${q}`, // 🔥 flamethrower (Steve)
+  `mars/sniper.js${q}`, `mars/snipercore.js${q}`, // 🎯 sniper scope + contracts (v7.5.19)
+  `mars/crane.js${q}`, `mars/cranecore.js${q}`, // 🧲 magnet crane truck (v7.5.22)
+  `mars/honk.js${q}`, `mars/honkcore.js${q}`, // 📯 Grin Reaper bulb horn (v7.5.31)
+  `mars/hydroden.js${q}`, `mars/hydrodencore.js${q}`, // 🌿 the Hydro Den in the ARES JUNCTION dome (v7.5.25)
+  `mars/shoptiers.js${q}`, `mars/shoptierscore.js${q}`, // 🆕 shop restock tiers (v7.5.45)
+  `mars/pitring.js${q}`, `mars/pitringcore.js${q}`, // 🥊 The Pit landmark (v7.5.21)
+  `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
+  `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
+  `clubpoker.js${q}`, // 🃏 Velvet Airlock Hold'em room (v7.5.33)
+  `slotfloor.js${q}`, // 🎰 Velvet slot bank + Olympus Mega (v7.5.36)
+  `clubfloor.js${q}`, // 🍸 Velvet cocktail waitresses + gamblers (v7.5.35)
+  `clubgames.js${q}`, `clubgamescore.js${q}`, // 🂡🎡 Velvet Blackjack + Roulette (v7.5.34)
+  `mars/heliospass.js${q}`, `mars/heliospasscore.js${q}`, // 🏰 Helios Heights guest pass (v7.5.33)
   ...['onboard', 'onboardcore'].map(n => `${n}.js${q}`), // First Day on Mars tour + How to play codex (Ben)
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)
   `mars/raccoonrover.js${q}`, `mars/raccooncore.js${q}`, // Raccoon Rover (Pumpkin)
@@ -48,13 +63,18 @@ const PRECACHE = [
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/harvest.js${q}`, `mars/harvestcore.js${q}`, // hands-on harvest: sickle, silo, harvester (SSX.harvest)
+  `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)
   `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   `mars/missionheat.js${q}`, // v7.5.11 police ease off on missions (SSX.missionHeat)
+  `perfgov.js${q}`, `hud/hudslim.js${q}`, `copbounty.js${q}`, `hud/cardfit.js${q}`, `hud/keys.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
-  `clubdancers.js${q}`, `privateshow.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
+  ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
+  ...['ridestars', 'starmixcore'].map(n => `${n}.js${q}`), // v7.5.46 ride/heist/front stars
+  `clubdancers.js${q}`, `privateshow.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
   `savecode.js${q}`, // 💾 Save Code (SSX.savecode)
+  `copcore.js${q}`, // v7.5.28 cops calm down: car theft heat, minor-crime escalation, 1★ nuisance rules
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'textures/2k_stars_milky_way.jpg'
 ];

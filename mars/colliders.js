@@ -7,7 +7,8 @@
 // Extra fields: id (auto when missing), group (bulk remove), tag (anything). Resolution pushes the mover out along the
 // contact normal / shortest axis, so movement slides along walls. A uniform grid (8 m cells) keeps it cheap on phones:
 // resolve() only tests shapes in the 1-4 cells the mover overlaps.
-const CELL = 8;
+const CELL = 8, SMALL = 0.8;
+let vehicleMover = false; // set by world.collide around its resolve() call
 const grid = new Map(), byId = new Map();
 let seq = 0, stamp = 0;
 const stats = { resolves: 0, hits: 0, tests: 0 };
@@ -23,6 +24,9 @@ function norm(shape) {
   if (!(s.type === 'box' || s.type === 'cyl')) throw new Error('colliders.add: type must be "box" or "cyl"');
   for (const k of s.type === 'cyl' ? ['x', 'z', 'r'] : ['x', 'z', 'hx', 'hz']) if (!Number.isFinite(s[k])) throw new Error('colliders.add: bad ' + k);
   if (s.yaw) { s.c = Math.cos(s.yaw); s.n = Math.sin(s.yaw); }
+  // v7.5.16 (Collin: vehicles stuck all the time at Olympus Row): small props (benches, bins, barrels, crates, kiosks' clutter)
+  // still stop people but a vehicle drives through them; `solid: true` on a shape opts out
+  s.small = !s.solid && (s.type === 'cyl' ? s.r <= SMALL : Math.max(s.hx, s.hz) <= SMALL * 1.6 && Math.min(s.hx, s.hz) <= SMALL);
   s.id = s.id != null ? String(s.id) : 'col' + (++seq); s._s = 0; return s;
 }
 export function add(shape) {
@@ -54,15 +58,15 @@ export function resolve(x, z, r = 0.45) {
     stamp++; let moved = false;
     const i0 = Math.floor((x - r) / CELL), i1 = Math.floor((x + r) / CELL), j0 = Math.floor((z - r) / CELL), j1 = Math.floor((z + r) / CELL);
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const a = grid.get(key(i, j)); if (!a) continue;
-      for (const s of a) { if (s._s === stamp) continue; s._s = stamp; stats.tests++; const p = push(s, x, z, r); if (p) { x = p[0]; z = p[1]; hit = moved = true; } } }
+      for (const s of a) { if (s._s === stamp) continue; s._s = stamp; if (vehicleMover && s.small) continue; stats.tests++; const p = push(s, x, z, r); if (p) { x = p[0]; z = p[1]; hit = moved = true; } } }
     if (!moved) break;
   }
   if (hit) { stats.hits++; return { x, z }; } return null;
 }
 const pub = s => s.type === 'cyl' ? { id: s.id, type: 'cyl', x: s.x, z: s.z, r: s.r, group: s.group } : { id: s.id, type: 'box', x: s.x, z: s.z, hx: s.hx, hz: s.hz, yaw: s.yaw || 0, group: s.group };
-export function query(x, z, r = 1) { const out = []; stamp++; cells([x - r, z - r, x + r, z + r], k => { for (const s of grid.get(k) || []) if (s._s !== stamp) { s._s = stamp; const b = s._b; if (x + r > b[0] && x - r < b[2] && z + r > b[1] && z - r < b[3]) out.push(pub(s)); } }); return out; }
+export function query(x, z, r = 1) { const out = []; stamp++; cells([x - r, z - r, x + r, z + r], k => { for (const s of grid.get(k) || []) if (s._s !== stamp && !(vehicleMover && s.small)) { s._s = stamp; const b = s._b; if (x + r > b[0] && x - r < b[2] && z + r > b[1] && z - r < b[3]) out.push(pub(s)); } }); return out; }
 export const API = {
-  add, remove, removeGroup, resolve, query,
+  add, remove, removeGroup, resolve, query, setVehicle: v => { vehicleMover = !!v; },
   blocked: (x, z, r = 0.45) => !!resolve(x, z, r),
   list: group => [...byId.values()].filter(s => group == null || s.group === group).map(pub),
   get count() { return byId.size; }, get cells() { return grid.size; },

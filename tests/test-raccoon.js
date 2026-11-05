@@ -21,7 +21,8 @@ const tag = `raccoon-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
   const toastTx = () => G(() => document.getElementById('toast')?.textContent || '');
   const P = (t, sel, id, dx = 0, dy = 0) => G(([t, sel, id, dx, dy]) => { const e = document.querySelector(sel); const r = e.getBoundingClientRect(); e.dispatchEvent(new PointerEvent(t, { pointerId: id, pointerType: 'touch', isPrimary: id === 41, clientX: r.left + r.width / 2 + dx, clientY: r.top + r.height / 2 + dy, bubbles: true, cancelable: true, composed: true, buttons: t === 'pointerup' ? 0 : 1 })); return r.width > 0; }, [t, sel, id, dx, dy]);
   const heldTap = async sel => { await P('pointerdown', '#joy', 41); await P('pointermove', '#joy', 41, 0, -20); const v = await P('pointerdown', sel, 42); await P('pointerup', sel, 42); await P('pointerup', '#joy', 41, 0, -20); return v; };
-  const act = async () => { if (touch) { await wait(() => getComputedStyle(document.getElementById('dockRcn')).display !== 'none', 30000); return heldTap('#dockRcn'); } await page.keyboard.press('Digit5'); return true; };
+  const kbKey = async sel0 => { const sel = await page.evaluate(s => (window.SSX.keys?.audit?.(), document.getElementById('kbp_' + s.slice(1))) ? '#kbp_' + s.slice(1) : s, sel0); await page.evaluate(() => window.SSX.keys.audit()); await page.waitForFunction(s => !!document.querySelector(s)?.dataset.kb, sel, { timeout: 20000 }).catch(() => {}); const k = await page.evaluate(s => document.querySelector(s)?.dataset.kb || '', sel); return ({ 'Enter': 'Enter', '⇧Enter': 'Shift+Enter', '=': 'Equal', '-': 'Minus' })[k] || 'Enter'; }; // v7.5.16: context key from hud/keys.js
+  const act = async () => { if (touch) { await wait(() => getComputedStyle(document.getElementById('dockRcn')).display !== 'none', 30000); return heldTap('#dockRcn'); } await page.keyboard.press(await kbKey('#dockRcn')); return true; };
   const st = () => G(() => window.SSX.raccoon.state);
   const junk = () => G(() => window.__raccoon.debug.junkers()[0] || null);
   const faceFrom = (j, dx, dz) => ({ x: j.x + dx, z: j.z + dz, yaw: Math.atan2(dx, dz) }); // fwd = (-sin, -cos): look back at j
@@ -60,7 +61,7 @@ const tag = `raccoon-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await G(() => window.__app.surface.interact());
     ok('stealDrive', await wait(() => window.__app.surface.info.driving && window.__app.surface.info.vehicle === 'raccoon_rover', 15000));
     ok('stealOwned', await wait(() => window.SSX.raccoon.state.owned && window.SSX.raccoon.state.how === 'stole', 15000));
-    ok('stealHeat', await G(() => window.__app.surface.world.wanted), (await G(() => window.__app.surface.world.wanted)) >= 1);
+    ok('stealHeat (v7.5.28: taking a car = 0 stars)', await G(() => window.__app.surface.world.wanted), (await G(() => window.__app.surface.world.wanted)) === 0);
     ok('stealGarage', await G(() => { const r = window.SSX.garage?.rides || []; return `${r.length} rides, last ${r[r.length - 1]?.vehicle || r[r.length - 1]?.kind} noPlates=${r[r.length - 1]?.noPlates}`; }),
       await G(n => { const r = window.SSX.garage?.rides || []; const l = r[r.length - 1]; return r.length === n + 1 && l?.noPlates === true; }, ridesBefore));
     ok('stealBark', await wait(() => window.__raccoon.debug.barks().some(b => b.cat === 'raccoon_steal'), 5000));

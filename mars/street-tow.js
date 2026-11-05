@@ -60,11 +60,17 @@ export function createTow(K) {
     const oil = K.mat('st_oil', { color: 0x050505, transparent: true, opacity: 0.6, roughness: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     for (const [ox, oz, s] of [[45.6, 25.6, 2.4], [48.5, 23.4, 1.4], [43.6, 26.8, 1.0]]) { const p = K.L(ox, oz); const d = new THREE.Mesh(K.geo().plane, oil); d.rotation.x = -Math.PI / 2; d.position.set(p.x, p.y + 0.03, p.z); d.scale.set(s, s * 0.7, 1); g.add(d); }
   }
-  const quoteFor = (kind, strip) => { const base = VAL[kind] ?? VAL0, heat = Math.max(0.5, 1 - 0.12 * K.wanted()); return Math.round(base * heat * (strip ? 0.45 : 1) / 5) * 5; };
+  const quoteFor = (kind, strip) => { const base = VAL[kind] ?? (Number.isFinite(VEHICLES[kind]?.price) ? Math.round(VEHICLES[kind].price * 0.3) : VAL0), heat = Math.max(0.5, 1 - 0.12 * K.wanted()); return Math.round(base * heat * (strip ? 0.45 : 1) / 5) * 5; };
   function despawn() { try { const s = K.X().despawnVehicle; if (typeof s === 'function') return !!s(); return !!K.surf()?.chopVehicle?.(); } catch (e) { console.warn('street despawn', e); return false; } }
   function sell(strip) {
     const P = K.player; if (!P?.stolen) return { ok: false, msg: 'Lou: That\u2019s not a stolen ride. Or it\u2019s yours. Either way, no.' };
-    const kind = P.kind, cash = quoteFor(kind, strip); if (!despawn()) return { ok: false, msg: 'Lou: Can\u2019t get a hook on it. Pull in closer.' };
+    if (!despawn()) return { ok: false, msg: 'Lou: Can\u2019t get a hook on it. Pull in closer.' };
+    return payout(P.kind, strip, P);
+  }
+  // v7.5.22: a ride that arrives on the magnet crane (mars/crane.js) is paid the same way; the crane removes the car itself
+  function fence(kind, strip) { if (!K.D) return { ok: false, msg: 'Lou: I\u2019m in the Flats. Bring it here.' }; const o = louPos(); return payout(kind, strip, { x: o.x, z: o.z }); }
+  function payout(kind, strip, P) {
+    const cash = quoteFor(kind, strip);
     K.pay(cash, strip ? 8 : 12); let extra = '';
     if (strip) {
       K.ST.stats.stripped++; const G = garage();
@@ -140,7 +146,7 @@ export function createTow(K) {
     always(dt, c, loaded) {
       regOffer(); const rv = c.rover; if (!rv || !K.D) return; if (K.surf()) K.surf().__lastRover = rv;
       const I = K.ST.impound;
-      if (I) { const away = Math.hypot(rv.x - I.x, rv.z - I.z); if (c.car === rv || away > 8) { K.ST.impound = null; K.save(); K.crime(1, 'skipped the Hook & Crook impound fee'); const p = louPos(); K.say(p, 'Lou', 'louJumped', { toastToo: true }); K.emit('impoundJumped', {}); } return; }
+      if (I) { const away = Math.hypot(rv.x - I.x, rv.z - I.z); if (c.car === rv || away > 8) { K.ST.impound = null; K.save(); /* v7.5.28: Lou yells, he doesn't call ColSec (taking a car is no police matter) */ const p = louPos(); K.say(p, 'Lou', 'louJumped', { toastToo: true }); K.emit('impoundJumped', {}); } return; }
       const parkedHere = c.car !== rv && Math.hypot(rv.x - K.D.x, rv.z - K.D.z) < 72, pl = c.car || c.player, far = Math.hypot(pl.x - rv.x, pl.z - rv.z) > 30 || !!c.world?.inside;
       if (!parkedHere) { parkT = 0; return; } if (!far) { parkT = Math.max(0, parkT - dt * 2); return; }
       parkT += dt; if (parkT < 75) return; if ((rollT -= dt) > 0) return; rollT = 20;
@@ -150,12 +156,12 @@ export function createTow(K) {
       if (lou) { const h = lou; h.torso.rotation.z = Math.sin(t * 0.5) * 0.04; h.head.rotation.y = Math.sin(t * 0.3) * 0.5; h.arms[0].rotation.x = 0.6; h.arms[1].rotation.x = 0.6; } },
     acts(P) {
       const out = [], c = K.L(YARD.counter[0], YARD.counter[1]), dz = K.L(YARD.drop[0], YARD.drop[1]);
-      if (P.driving && P.stolen) { const d = Math.hypot(P.x - dz.x, P.z - dz.z); if (d < YARD.dropR && P.speed < 3) out.push({ d, label: '\ud83d\udd27 Sell this ride to Lou', fn: dropPanel }); }
+      if (P.driving && P.stolen && P.kind !== 'magnet_crane') { const d = Math.hypot(P.x - dz.x, P.z - dz.z); if (d < YARD.dropR && P.speed < 3) out.push({ d, label: '\ud83d\udd27 Sell this ride to Lou', fn: dropPanel }); }
       if (!P.driving) { const d = Math.hypot(P.x - c.x, P.z - c.z); if (d < 2.6) out.push({ d, label: K.ST.impound ? '\ud83d\udd27 Impound counter' : '\ud83d\udd27 Hook & Crook counter', fn: office }); }
       return out;
     },
     marks() { const p = K.L(YARD.at[0], YARD.at[1]); return [{ x: p.x, z: p.z, r: K.ST.impound ? 3.6 : 2.8, color: K.ST.impound ? '#ff3030' : '#c89a1a', ring: true }]; },
-    hook, payImpound, sell, buyHot, stock, quote: () => K.player?.stolen ? { kind: K.player.kind, whole: quoteFor(K.player.kind, false), strip: quoteFor(K.player.kind, true) } : null,
+    hook, payImpound, sell, fence, quoteKind: kind => ({ kind, whole: quoteFor(kind, false), strip: quoteFor(kind, true) }), buyHot, stock, quote: () => K.player?.stolen ? { kind: K.player.kind, whole: quoteFor(K.player.kind, false), strip: quoteFor(K.player.kind, true) } : null,
     yard: () => { const p = K.D ? K.L(YARD.at[0], YARD.at[1]) : null, c = K.D ? K.L(YARD.counter[0], YARD.counter[1]) : null, s = K.D ? K.L(YARD.slot[0], YARD.slot[1]) : null; return { name: 'HOOK & CROOK TOWING', local: [...YARD.at], x: p?.x, z: p?.z, counter: c, slot: s, drop: K.D ? K.L(YARD.drop[0], YARD.drop[1]) : null }; },
     debug: () => ({ ...dbg, parkT: +parkT.toFixed(1), offer: offerDone })
   };

@@ -44,13 +44,15 @@ const footK = () => (reason ? FOOT : 1);
 
 const css = `#mhChip{position:fixed;z-index:12;left:50%;transform:translateX(-50%);top:calc(100px + env(safe-area-inset-top));display:none;padding:3px 10px;border-radius:10px;background:#000;color:#fff;border:1px solid #fff;font:700 12px/1.25 system-ui,sans-serif;pointer-events:none;white-space:nowrap}
 body.surface #mhChip.show{display:block} body.duel #mhChip,body.indoors #mhChip{display:none!important}
-@media (max-width:640px){#mhChip{top:calc(132px + env(safe-area-inset-top));left:calc(50% + 34px);font-size:11px}}`;
+#stackR > #mhChip{position:static;transform:none;align-self:flex-end;flex:none;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis} /* v7.5.12 (playtest M1): in the HUD flow, never pinned over the tracker */
+@media (max-width:640px){#mhChip{font-size:11px}}`;
 function ui() {
   if (chip) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   chip = document.createElement('div'); chip.id = 'mhChip'; chip.textContent = '🎯 Mission: police easing off'; document.body.appendChild(chip);
 }
 function render() {
   const on = !!reason && ((world()?.wanted | 0) > 0);
+  if (on && chip) { const st = document.getElementById('stackR'); if (st && chip.parentNode !== st) { const card = document.getElementById('hxCard'); st.insertBefore(chip, card && card.parentNode === st ? card.nextSibling : null); } } // v7.5.12: flow slot in the top-right stack
   if (on !== chipOn) { chipOn = on; chip?.classList.toggle('show', on); }
 }
 function tick(dt, tc) {

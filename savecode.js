@@ -20,16 +20,24 @@
   'use strict';
   const PREFIX = 'SSX1-', PENDING = 'ssx.savecode.pending', BAK = 'ssx.savecode.bak', DONE = 'ssx.savecode.done';
   const KNOWN = [
-    'ssx.progress.v1', 'ssx.discoveries.v1', 'ssx.contacts', 'ssx.texts', 'ssx.dannyShows', 'ssx.adult', 'ssx.dogName', 'ssx.heist.unlock',
+    'ssx.progress.v1', 'ssx.discoveries.v1', 'ssx.contacts', 'ssx.texts', 'ssx.dannyShows', 'ssx.adult', 'ssx.dogName', 'ssx.heist.unlock', 'ssx.megaPot', 'ssx.megaBet',
     'ssx.ambient.v1', 'ssx.arsenal.v1', 'ssx.base.v1', 'ssx.beltway.v1', 'ssx.bribes.v1', 'ssx.consequences.v1', 'ssx.contraband.v1',
     'ssx.controlMode', 'ssx.danger.v1', 'ssx.director.v1', 'ssx.empire.v1', 'ssx.farm.v1', 'ssx.farm.v1.bak', 'ssx.fight.v1', 'ssx.flats.v1',
     'ssx.grime.v1', 'ssx.hudx.more', 'ssx.hudx.v1', 'ssx.jobs.v1', 'ssx.lab.v1', 'ssx.mars.act.v1', 'ssx.marstracks.snap', 'ssx.mix.v1',
     'ssx.onboard.v1', 'ssx.planets.v1', 'ssx.pursuit.v1', 'ssx.r2r.v1', 'ssx.raccoonRover.v1', 'ssx.race.v1', 'ssx.radioBanner', 'ssx.rep.v1',
     'ssx.smuggle.v1', 'ssx.stars.v1', 'ssx.street.v1', 'ssx.time.v1', 'ssx.turf.v1',
-    'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1' // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
+    'ssx.still.v1', 'ssx.still.v1.bak', 'ssx.hydroden.v1', /* Hydro Den rented grow rack (v7.5.30) */ 'ssx.shoptiers.v1', /* shop restock tiers + dealer waves (v7.5.45) */ // moonshine still (mars/still.js) + its #83-style mirror
+    'ssx.bar.v1', // Nova's space-liquor bar (bar.js): daily sell cap + drunk level
+    'ssx.harvest.v1', 'ssx.skins.v1', 'ssx.flame.v1', 'ssx.jetpack.v1', // v7.5.9 flamethrower (#84) + jetpack (#85) ownership/fuel
+    'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
+    'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
+    'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
+    'ssx.velvetdeal.v1', // v7.5.26 Ines's side deal (job chain, comps, product shows)
+    'ssx.heliospass.v1', //  v7.5.33 Helios Heights guest pass (bribe: one entry + one heist)
+    'ssx.crew.v1' // v7.5.42 crew (crewcore.js)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
-  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted',
+  const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted',
     'ssx.v8.v1', 'ssx.v8.nodrs', 'ssx.v8.nogov', 'ssx.models']; // v8 look tier / dev toggles + models on/off (#35/#48): per device
   const OWN = [PENDING, BAK, DONE];
   const MAX_CODE = 4e6, MAX_VAL = 2e6;

@@ -142,7 +142,7 @@ function install() {
   addEventListener('keyup', e => { held[e.code] = false; });
   addEventListener('keydown', e => {
     held[e.code] = true;
-    if (e.code !== 'KeyZ' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    if (e.code !== 'KeyZ' || e.shiftKey /* v7.5.16: Shift+Z = gravity, any time */ || e.repeat || e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
     const left = held.KeyA || held.ArrowLeft, right = held.KeyD || held.ArrowRight;
     airRoll.roll(left && !right ? 'left' : 'right');
   });

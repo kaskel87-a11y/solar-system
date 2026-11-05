@@ -43,7 +43,10 @@ const CSS = `
  padding:6px 6px 6px 9px;border-radius:10px;background:rgba(6,14,26,.88);border:1px solid rgba(56,225,255,.55);color:#e8f6ff;font:600 12.5px/1.3 system-ui,-apple-system,sans-serif;
  box-shadow:0 2px 10px rgba(0,0,0,.35)}
 #obLine[hidden]{display:none!important}
-#obLine .ob-t{flex:1 1 auto;min-width:0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+#obLine .ob-t{flex:1 1 auto;min-width:0;overflow-wrap:anywhere} /* v7.5.50: full text, never clamped (SE cut the 4th line off) */
+@media (max-width:400px){#obLine{font-size:12px;line-height:1.25;padding:5px 5px 5px 8px}}
+@media (orientation:portrait){body.hudx #stackR:has(> #obLine:not([hidden])){max-height:calc(42vh - 62px - var(--sat))}}
+@media (orientation:landscape) and (max-height:500px){#obLine{font-size:11.5px;line-height:1.22}}
 #obLine .ob-k{display:block;font:700 10px/1.2 system-ui,sans-serif;letter-spacing:.04em;color:#38e1ff;text-transform:uppercase;margin-bottom:1px}
 #obLine .ob-d{flex:none;font:700 12px/1 system-ui,sans-serif;color:#38e1ff;white-space:nowrap;text-align:center;min-width:34px}
 #obLine .ob-d i{display:block;font-style:normal;font-size:17px;line-height:1;margin-bottom:2px}
@@ -199,7 +202,7 @@ function target(id, i) {
       try { const f = x.fight?.status?.(); if (Array.isArray(f?.at)) return aj(f.at, '🥊 Rust Pit'); } catch (e) { /* optional */ }
       // the activities runner checks its pins against raw world x/z: aim where its 📋 The Pit button actually shows
       const a = window.__activities?.list?.().find(v => v.id === 'act-pit-fight'); if (Array.isArray(a?.at)) return { x: a.at[0], z: a.at[1], label: '📋 The Pit' };
-      return aj([-316, -58], '📋 The Pit');
+      return aj([-320, -49], '📋 The Pit');
     }
     case 'club': {
       const d = x.city?.world?.doorFor?.('velvet'); if (d && Number.isFinite(d.x)) return { x: d.x, z: d.z, label: '🍸 Velvet Airlock' };

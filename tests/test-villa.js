@@ -78,6 +78,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const v2 = await walkTo(6.5, -3.6, 4000); ok('at the safe', v2, await wait(() => /Crack/.test(window.SSX.heist.action || ''), 4000));
     await face(6.5, -6); await frames(15); await shot('vault');
     await G(() => { const H = window.SSX.heist, o = H.safeCrack; H.safeCrack = () => { H.safeCrack = o; return Promise.resolve({ success: true, ok: true, time: 20, noise: 0 }); }; });
+    await G(() => { window.__hstars = null; window.__hx0 = window.__app.surface.game.progress.xp; addEventListener('heist:done', e => { window.__hstars = { stars: e.detail.stars, xp: window.__app.surface.game.progress.xp }; }, { once: true }); }); // v7.5.46 heist stars
     await tapEl('#heistBtn'); ok('safe open: escape', await wait(() => window.SSX.heist.active?.stage === 'escape', 8000));
     // ---- walk back out the way you came (vault door, hall, front door)
     await walkTo(5.5, 1.2, 5000); await walkTo(0.2, 3, 6000); const o1 = await walkTo(0, 12, 6000);
@@ -85,6 +86,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { const s = window.__villa.state; window.__app.surface.debugMove(s.x + 40, s.z + 40, 0); }); await frames(10);
     await wait(() => window.SSX.heist.active?.stage !== 'escape', 8000); await G(() => window.__app.surface.world.setWanted(0, 'test: lost them'));
     ok('clean getaway', await wait(() => !window.SSX.heist.active, 8000));
+    const hs = await G(() => window.__hstars && { stars: window.__hstars.stars, dxp: window.__hstars.xp - window.__hx0 }); ok("heist stars (v7.5.46)", hs, hs?.stars === 220 && hs.dxp >= 220);
     // ---- guards can see you (and walls hide you)
     await G(() => { window.__villa.blind(false); window.SSX.heist.startHeist('heist-halvorsen-villa'); }); await wait(() => !!window.SSX.heist.active?.w, 5000);
     await G(() => window.__villa.guardAt('hv-guard-yard', 2)); await frames(3); // standing at his first corner, about to walk east

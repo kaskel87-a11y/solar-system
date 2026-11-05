@@ -326,6 +326,7 @@ function buildGuns(api, o, d, s) {
   box(w / 2 - 1.2, 0.55, -1.2, 0.8, 1.1, 2.4, mat(T.case)); api.col(w / 2 - 1.2, -1.2, 0.45, 1.25);
   api.person(T.keeper, w / 2 - 0.5, -1.2, -Math.PI / 2, (p, t) => idle(p, t, 0.3));
   api.person(T.guest, -3.2, 2.6, Math.PI * 0.9, (p, t, k) => browse(p, t, k), 1.1);
+  window.SSX_SHOPTIER?.rack(api, o, s.key, { x: -w / 2 + 0.5, z: -1.2, face: 'e', len: 4.2, venue: 'ms:' + s.key, who: s.keeper }); // v7.5.45 restock tiers
   decor(api, d, s);
 }
 function buildClothes(api, o, d, s) {
@@ -348,6 +349,7 @@ function buildClothes(api, o, d, s) {
   api.sign(o.title || s.sign, s.color, 0, 3.4, -D / 2 + 0.06, 0, 4.4);
   box(2.6, 0.55, 1.6, 2.0, 1.1, 0.7, mat(T.case)); api.col(2.6, 1.6, 1.05, 0.4);
   api.person(T.keeper, 2.6, 0.9, Math.PI, (p, t) => idle(p, t, 0.7));
+  window.SSX_SHOPTIER?.rack(api, o, s.key, { x: -1.6, z: -0.7, face: 's', len: 4, venue: 'ms:' + s.key, who: s.keeper }); // v7.5.45 restock tiers
   decor(api, d, s);
 }
 function buildPharm(api, o, d, s) {

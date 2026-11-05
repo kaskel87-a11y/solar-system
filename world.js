@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
 import * as ROOF from './roofs.js';
+import { aiInit as pitAi, aiStep as pitStep, aiHit as pitHit, oppDamage as pitDmg, countIn as pitCount, TUNE as PITT } from './mars/pitshowcore.js'; // v7.5.29 the Pit show: pit fighter AI + tuning
+import { bountyFor } from './copbounty.js'; // v7.5.12 flat 500 cr + 100 ⭐ per cop kill
+import * as CP from './copcore.js'; // v7.5.28 cops calm down (car theft = no heat unless a cop is right there)
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
 export const COLONIES = {
@@ -13,7 +16,7 @@ export const COLONIES = {
     domes: [[0, 0, 14, 'ARES JUNCTION', 0xff7a2a], [-22, -16, 8], [24, 6, 9, 'HAB 3', 0x6ad0ff]],
     // [x, z, w, d, h, sign, colour, interior kind?, inside title?]; the door is the middle of the +z face
     blocks: [[31, -17, 9, 5, 6, 'CANTINA', 0xff2a5a, 'cantina', 'CANTINA'], [-6, 23, 7, 4, 4, 'SUPPLY', 0x3cff8a, 'supply', 'ARES SUPPLY'], [-44, -14, 6, 4, 5, 'DEPOT', 0xffd040, 'depot', 'MERIDIAN DEPOT'],
-      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -36, 12, 7, 7, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'], [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
+      [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -39.5, 24, 14, 8, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'] /* v7.5.33 4x (was 12 x 7 at z -36): same front face + door, grew back + sideways */, [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
     pad: [-38, 10, 9], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]],
     shop: [-6, 26.2], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
     // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the VIP room
@@ -188,6 +191,7 @@ export function createWorld(ctx) {
   let wname = '', duel = null, ringM = null, camBoxes = [], solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
   let wanted = 0, evade = 0, bustT = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
   let doors = [], rooms = new Map(), inside = null, coverPaid = false, interiorsRoot = null, roomIdx = 0;
+  const warm = { age: 0, t: 0, busy: false, built: 0 }; // v7.5.17 interior prewarm (warmRooms)
   const caps = { drones: isMobile ? 2 : 3, buggies: isMobile ? 1 : 2, officers: isMobile ? 2 : 4, heavies: isMobile ? 1 : 2 };
   const toW = (p) => ({ x: cx + p[0], z: cz + p[1] });
 
@@ -289,7 +293,9 @@ export function createWorld(ctx) {
     // perimeter lamps; a few flicker like they're wired by the lowest bidder
     const lr = isColony ? 50 : (D.lampR || 44);
     for (let k = 0; k < (D.lamps || 0); k++) {
-      const a = k / D.lamps * Math.PI * 2, X = ox + Math.cos(a) * lr, Z = oz + Math.sin(a) * lr;
+      const a = k / D.lamps * Math.PI * 2; let r = lr; // v7.5.33: a lamp that would stand inside a block (the bigger club) steps outward past it
+      for (let n = 0; n < 40 && (D.blocks || []).some(([bx, bz, bw, bd]) => Math.abs(Math.cos(a) * r - bx) < bw / 2 + 1 && Math.abs(Math.sin(a) * r - bz) < bd / 2 + 1); n++) r += 0.5;
+      const X = ox + Math.cos(a) * r, Z = oz + Math.sin(a) * r;
       add(mesh(R.cyl, R.frame, X, y0 + 2.5, Z, 0.09, 5, 0.09)); const bulb = add(mesh(R.sph, R.lampOn, X, y0 + 5.1, Z, 0.28));
       if (k % 4 === 1) flick.push({ m: bulb, flicker: true });
     }
@@ -329,7 +335,7 @@ export function createWorld(ctx) {
     m.position.set(x, y, z); m.rotation.y = yaw; add(m); signs.push(m);
     if (Math.random() < 0.5) flick.push({ m, sign: true });
   }
-  const DUEL_NAMES = ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Juno Reyes', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan'];
+  const DUEL_NAMES = ['Dex Morrow', 'Lina Sato', 'Bram Kell', 'Kit Arden', 'Tobi Achebe', 'Mara Quist', 'Sol Varga', 'Pike Lund', 'Rae Okoro', 'Hux Brennan'];
   function spawnPerson(kind, p, i, pts, style = null) {
     const b = buildPerson(kind, i, style); b.group.position.set(p.x, height(p.x, p.z), p.z); scene.add(b.group);
     const o = { ...b, kind, zone: curZone, on: true, style, x: p.x, z: p.z, home: { x: p.x, z: p.z }, yaw: Math.random() * 6, pts, ti: i, phase: Math.random() * 6, hp: kind === 'guard' ? 6 : 3, stun: 0, cd: 1, flee: 0, wait: Math.random() * 3 };
@@ -350,7 +356,7 @@ export function createWorld(ctx) {
     if (inside) inside = null;
     for (const r of rooms.values()) { r.dispose(); }
     if (interiorsRoot) { scene.remove(interiorsRoot); interiorsRoot = null; }
-    rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0;
+    rooms = new Map(); doors = []; coverPaid = false; roomIdx = 0; warm.age = 0; warm.t = 0; warm.busy = false;
     col = null; camBoxes = []; solids = []; vehicles = []; people = []; flick = []; lights = []; security = []; shots = []; signs = []; C = null; wanted = 0;
   }
 
@@ -364,6 +370,7 @@ export function createWorld(ctx) {
     const vehicles = yb === undefined ? allVehicles() : allVehicles().filter(v => !(v.parked && ROOF.clearsCar(v, yb, height))); // cars it's above don't block
     let hit = false;
     for (const s of solids) {
+      if (s.deck) continue; // v7.5.40: a deck (the villa roof) only holds you up from above; it never pushes anyone sideways
       if (yb !== undefined && ROOF.overlaps(s, x, z, r) && ROOF.clears(s, x, z, r, yb, height)) continue;
       if (s.box) { const dx = x - s.x, dz = z - s.z, ex = s.box[0] + r, ez = s.box[1] + r;
         if (Math.abs(dx) < ex && Math.abs(dz) < ez) { hit = true; if (ex - Math.abs(dx) < ez - Math.abs(dz)) x = s.x + Math.sign(dx || 1) * ex; else z = s.z + Math.sign(dz || 1) * ez; } continue; }
@@ -371,7 +378,7 @@ export function createWorld(ctx) {
       if (d < m) { hit = true; const k = m / (d || 1); x = s.x + dx * k; z = s.z + dz * k; }
     }
     for (const v of vehicles) { if (v === skip || !v.parked) continue; const dx = x - v.x, dz = z - v.z, d = Math.hypot(dx, dz), m = v.spec.r * 0.8 + r; if (d < m) { hit = true; const k = m / (d || 1); x = v.x + dx * k; z = v.z + dz * k; } }
-    const xc = globalThis.SSX?.colliders?.resolve?.(x, z, r); if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
+    const CO = globalThis.SSX?.colliders; CO?.setVehicle?.(r > 0.6 && (yb !== undefined || !!skip?.spec)); let xc = null; try { xc = CO?.resolve?.(x, z, r); } finally { CO?.setVehicle?.(false); } if (xc) { hit = true; x = xc.x; z = xc.z; } // add-on outdoor colliders (mars/colliders.js); height-aware via roofs.js's wrap + ROOF.setMover
     return hit ? { x, z } : null;
   }
   function allVehicles() { return vehicles; } // collide() shadows `vehicles` with the cars a flying vehicle can't clear
@@ -385,9 +392,20 @@ export function createWorld(ctx) {
       return g;
     };
   }
+  // v7.5.39 rooftops on foot: ground under a person at (x,z) whose feet are at `feet` = terrain or any roof / ledge / parked
+  // car top they're on (or within ROOF.CLEAR above). Support radius is negative so you stand on the visible roof, not the
+  // 0.4 m collision margin around it. Same surfaces vehicles land on (roofs.js), so a jetpack or a parked ride both work.
+  const FOOT_R = -0.2;
+  function playerGround(x, z, feet) {
+    const t = height(x, z);
+    if (!C || inside || !Number.isFinite(feet) || feet < t - 0.5) return t;
+    let g = ROOF.groundUnder(solids, x, z, FOOT_R, feet, height, vehicles).g;
+    const cs = ROOF.colliderSolids(x, z, 0.1, height); if (cs.length) { const h = ROOF.groundUnder(cs, x, z, FOOT_R, feet, height).g; if (h > g) g = h; }
+    return g;
+  }
   function solidAt(x, y, z) {
     if (!C) return false;
-    for (const s of solids) { if (y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
+    for (const s of solids) { if (s.deck || y > height(s.x, s.z) + (s.h || 4)) continue; if (s.box ? Math.abs(x - s.x) < s.box[0] && Math.abs(z - s.z) < s.box[1] : Math.hypot(x - s.x, z - s.z) < s.r - 0.6 && Math.hypot(x - s.x, z - s.z) > s.r - 2.2) return true; }
     return false;
   }
 
@@ -396,7 +414,7 @@ export function createWorld(ctx) {
     if (!C) return false;
     for (const b of camBoxes) { const hw = b.h || 0.75; if (y < b.y && Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hw) return true; } // v7.5.1 (m2): rotated crate corners count
     for (const s of solids) {
-      if (s.nocam) continue; // v7.5.4: street dressing never pulls the camera in
+      if (s.nocam || s.deck) continue; // v7.5.4: street dressing never pulls the camera in
       const gy = height(s.x, s.z);
       if (s.box) { if (y < gy + (s.h || 4) + 0.4 && Math.abs(x - s.x) < s.box[0] - 0.1 && Math.abs(z - s.z) < s.box[1] - 0.1) return true; continue; }
       const r = s.r - 0.1; if (Math.hypot(x - s.x, (y - gy) * (r / Math.max(0.5, s.h || r)), z - s.z) < r) return true;
@@ -516,7 +534,7 @@ export function createWorld(ctx) {
       if (v === st.car && st.driving) { traffic.splice(traffic.indexOf(v), 1); delete v.traffic; continue; } // carjacked
       const dP = Math.hypot(v.x - player.x, v.z - player.z);
       if (dP > 210 || inCore(v.x, v.z) || (!HW.closed && (t.s <= 1 || t.s >= HW.len - 1))) { despawnCar(v); continue; }
-      if (t.cop && wanted > 0 && dP < 50) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
+      if (t.cop && CP.trafficCopsJoin(wanted) && dP < 50) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
       if (t.wreck > 0) { t.wreck -= dt; t.v = 0; v.speed = 0; v.group.position.set(v.x, v.y, v.z); continue; }
       const p = roadAt(t.s), fx = p.fx * t.dir, fz = p.fz * t.dir;
       // brake for anything in the lane ahead: you, your car, other traffic
@@ -576,7 +594,7 @@ export function createWorld(ctx) {
       const du = Math.hypot(cxp - x, czp - z), dp = Math.hypot(cxp - px, czp - pz); if (du > maxD || dp < 6 || dp > 42) return;
       const sc = du + Math.abs(dp - 16) * 0.4; if (sc < bs) { bs = sc; best = { x: cxp, z: czp, sx, sz }; }
     };
-    for (const s of solids) if (Math.hypot(s.x - x, s.z - z) < maxD + 12) { if (s.box) consider(s.x, s.z, s.box[0], s.box[1], s); else if (s.r < 6) consider(s.x, s.z, 0, 0, s); }
+    for (const s of solids) if (!s.deck && Math.hypot(s.x - x, s.z - z) < maxD + 12) { if (s.box) consider(s.x, s.z, s.box[0], s.box[1], s); else if (s.r < 6) consider(s.x, s.z, 0, 0, s); }
     for (const b of camBoxes) if (Math.hypot(b.x - x, b.z - z) < maxD) consider(b.x, b.z, 0, 0, { r: 0.9 });
     for (const v of vehicles) if (v.parked && Math.hypot(v.x - x, v.z - z) < maxD) consider(v.x, v.z, 0, 0, { r: v.spec.r * 0.8 });
     return best;
@@ -590,7 +608,9 @@ export function createWorld(ctx) {
       if (gib) scene.remove(s.group); else { s.group.scale.y = s.group.scale.x; corpse(s.group, s.x, s.z); }
       backupT = 25; onEvent('backup', { officerDown: true, kind: s.kind }); }
     else { scene.remove(s.group); g.gore?.(s.x, s.y + 0.5, s.z, { mech: true, n: 2 }); }
-    onEvent('secDown', { kind: s.kind }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
+    if (s.foot) { s.ssxCop = 1; s.ssxDropDone = 1; } // v7.5.12: never also a 20-80 cr KO drop (economy.js npcDown)
+    let bounty = bountyFor(s); if (bounty) { try { bounty = g.copBounty?.(bounty) || null; } catch (e) { bounty = null; } } // v7.5.12: once per kill (spliced above)
+    onEvent('secDown', { kind: s.kind, bounty }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
   }
   const behindCover = (s, from) => s.crouch && s.cover && Math.hypot(from.x - s.x, from.z - s.z) > 4 && ((s.cover.sx - s.x) * (from.x - s.x) + (s.cover.sz - s.z) * (from.z - s.z)) > 0;
 
@@ -609,10 +629,10 @@ export function createWorld(ctx) {
     if (n === wanted) return;
     const up = n > wanted; wanted = n; evade = 0;
     if (up) onEvent('wanted', { stars: n, why: why || '' });
-    else if (n === 0) { easeCarry = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
+    else if (n === 0) { easeCarry = 0; strikes = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
   }
-  let crimeCd = 0;
-  function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; setWanted(wanted > 0 ? Math.min(5, Math.max(wanted + 1, min)) : min, why); }
+  let crimeCd = 0, strikes = 0;
+  function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; const r = CP.escalate(wanted, min, why, strikes); strikes = r.strikes; if (r.to !== wanted) setWanted(r.to, why); } // v7.5.28: minor crimes on top of heat escalate at half speed
   function witnessed(x, z) {
     if (!C) return false;
     if (Math.hypot(x - cx, z - cz) < 70) return true; // colony cameras
@@ -703,7 +723,7 @@ export function createWorld(ctx) {
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 9 + Math.sin(s.phase) - s.y) * Math.min(1, dt * 2);
         s.cd -= dt * E; if (!inside && d < 60 && s.cd <= 0) { s.burst = (s.burst || 0) + 1; s.cd = s.burst % 4 ? 0.14 : 1.8; secShoot(s, 6 + wanted); }
       } else if (s.kind === 'drone') {
-        const keep = 9, sp = 26 * FK; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
+        const keep = 9, sp = CP.droneSpeed(wanted) * FK; s.x += dx / d * Math.min(sp, (d - keep) * 2) * dt; s.z += dz / d * Math.min(sp, (d - keep) * 2) * dt;
         s.y += (Math.max(height(s.x, s.z), (st.driving ? st.car.y : player.y - 1.7)) + 5 + Math.sin(s.phase * 2) - s.y) * Math.min(1, dt * 3);
         s.cd -= dt * E; if (!inside && d < 45 && s.cd <= 0 && wanted >= 2) { s.cd = 1.6 - wanted * 0.12; secShoot(s, 5 + wanted); }
       } else {
@@ -730,13 +750,14 @@ export function createWorld(ctx) {
     // busted: they get hands on you (on foot or boxed in while stopped)
     if (wanted > 0 && !down) {
       if (inside) close = false; // they can't see you in here
+      if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
-      if (bustT > (st.driving ? 3 : 2)) { bustT = 0; game.bust(); }
+      if (bustT > CP.bustNeed(wanted, st.driving)) { bustT = 0; game.bust(); } // v7.5.28: 1★ takes longer to grab you
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
       const lyingLow = !st.driving && (player.moving || 0) < 0.05;
       if (inside) evade += dt * 1.5; // hiding indoors: the heat cools off (faster at low stars)
-      else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else evade = Math.max(0, evade - dt * 0.5);
-      if (evade > (5 + wanted * 2.5) * E) setWanted(0); // mission ease: heat cools twice as fast
+      else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else if (CP.lowHeatCools(wanted, nearest)) evade += dt; else evade = Math.max(0, evade - dt * 0.5); // v7.5.28: 1-2★ cool off out of sight, even in town
+      if (evade > CP.evadeNeed(wanted) * E) setWanted(0); // mission ease: heat cools twice as fast
     }
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
@@ -795,10 +816,10 @@ export function createWorld(ctx) {
     backupT -= dt;
     updatePeople(dt); updateSecurity(dt); updateFx(dt); updateTraffic(dt); updateCheckpoints(dt);
     for (const c of [...corpses]) { c.t -= dt; if (c.t <= 0) { scene.remove(c.group); corpses.splice(corpses.indexOf(c), 1); } }
-    if (inside) inside.room.tick(dt);
+    if (inside) inside.room.tick(dt); else warmRooms(dt);
     // parked vehicles hug the ground (hover ones bob)
     const st = ctx.st();
-    for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = height(v.x, v.z) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
+    for (const v of vehicles) if (v !== st.car || !st.driving) { if (v.parked) { v.y = (v.restY != null && v.restX === v.x && v.restZ === v.z ? v.restY : height(v.x, v.z)) + (v.spec.hover ? v.spec.hover * 0.35 + Math.sin(time * 2 + v.x) * 0.06 : 0); v.group.position.set(v.x, v.y, v.z); v.group.rotation.set(0, v.yaw, 0); } }
   }
 
   // ----- vehicles: take one (stealing is a crime if anyone sees), leave it wherever -----
@@ -808,15 +829,34 @@ export function createWorld(ctx) {
     return best;
   }
   function nearestVehicle() { let best = null, bd = 1e9; for (const v of vehicles) { const d = Math.hypot(v.x - player.x, v.z - player.z); if (d < bd) { bd = d; best = v; } } return best; }
+  // v7.5.28: taking a car is no police matter unless a ColSec officer / guard is within CP.THEFT_COP_R m with line of sight
+  // (1★ if you were clean) or the ride is a marked ColSec cruiser (2★). Otherwise the owner shouts and runs, nobody calls it in.
+  function los(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }
+  function copSees(x, z, R = CP.THEFT_COP_R) { // nearest ColSec eyes within R that can actually see the spot: { d, los }
+    let best = { d: Infinity, los: false };
+    const look = (ox, oz) => { const d = Math.hypot(ox - x, oz - z); if (d < R && d < best.d) { const l = los(ox, oz, x, z); if (l || !best.los) best = { d, los: l }; } };
+    for (const s of security) if (s.kind !== 'drone' && s.kind !== 'gunship') look(s.x, s.z);
+    for (const p of people) if (p.kind === 'guard' && p.on !== false && !p.stun) look(p.x, p.z);
+    for (const t of traffic) if (t.traffic?.cop) look(t.x, t.z);
+    return best;
+  }
+  const isPolice = v => !!(v?.traffic?.cop || v?.cop || v?.police || v?.sec);
+  function theftHeat(v, what, police = isPolice(v)) {
+    const c = copSees(v.x, v.z), n = CP.theftStars({ police, copDist: c.d, copLOS: c.los, wanted });
+    if (n > 0) crime(n, police ? 'stole a ColSec cruiser' : `${what} a ${v.spec.name.toLowerCase()} in front of ColSec`);
+    return n;
+  }
   function take(v) {
-    if (v.traffic) { const j = traffic.indexOf(v); if (j >= 0) traffic.splice(j, 1); delete v.traffic; v.speed = 0; onEvent('take', { kind: v.kind, name: v.spec.name, seen: true, carjack: true }); crime(1, `carjacked a ${v.spec.name.toLowerCase()}`); v.parked = false; v.taken = true; return; }
+    if (v.traffic) { const police = isPolice(v), j = traffic.indexOf(v); if (j >= 0) traffic.splice(j, 1); delete v.traffic; v.speed = 0; onEvent('take', { kind: v.kind, name: v.spec.name, seen: true, carjack: true }); theftHeat(v, 'carjacked', police); v.parked = false; v.taken = true; return; } // the driver bails and runs
     v.parked = false;
     if (!v.taken) { v.taken = true; const g = ctx.game(); g.progress.stats.stolen = (g.progress.stats.stolen || 0) + 1; }
-    const seenBy = witnessed(v.x, v.z);
+    const seenBy = witnessed(v.x, v.z); // seen = the owner / passers-by shout (barks), not a police matter
     onEvent('take', { kind: v.kind, name: v.spec.name, seen: seenBy });
-    if (seenBy) crime(1, `stole a ${v.spec.name.toLowerCase()}`);
+    theftHeat(v, 'stole');
   }
-  function leave(v) { v.parked = true; v.speed = 0; }
+  function leave(v) { v.parked = true; v.speed = 0; // v7.5.39: a ride left on a roof stays up there (rest height, valid while it isn't moved)
+    const g = ROOF.groundUnder(solids, v.x, v.z, (v.spec?.r || 2) * 0.75, v.y, height, vehicles, v).g;
+    if (g > height(v.x, v.z) + 0.3) { v.restY = g; v.restX = v.x; v.restZ = v.z; } else v.restY = null; }
   // player bolts can hit people and security (that\u2019s a crime, obviously)
   const seg = new THREE.Vector3(), q = new THREE.Vector3(), tv = new THREE.Vector3();
   function segHit(p0, p1, c, r) { seg.copy(p1).sub(p0); const L2 = seg.lengthSq(); const t = L2 ? Math.max(0, Math.min(1, tv.copy(c).sub(p0).dot(seg) / L2)) : 0; q.copy(p0).addScaledVector(seg, t); return q.distanceTo(c) < r; }
@@ -846,6 +886,16 @@ export function createWorld(ctx) {
     for (const p of people) if (!p.stun && p.kind !== 'contact' && p.on !== false) consider(p, p.kind);
     for (const s of security) if ((s.kind !== 'drone' && s.kind !== 'gunship') || Math.abs(s.y - player.y) < 3) consider(s, s.kind);
     return best;
+  }
+  // v7.5.31: a scare (the Grin Reaper's bulb horn): colonists within r flinch and run from (x, z) for t s. No damage, no crime.
+  function scare(x, z, r = 10, t = 2.5) {
+    let n = 0; if (!C) return 0;
+    for (const p of people) {
+      if (p.on === false || p.stun > 0 || p.kind !== 'colonist' || p.fighter || p.watch !== undefined || (duel && p === duel.p)) continue;
+      const dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d > r) continue;
+      p.flee = Math.max(p.flee || 0, t); p.fx = d > 0.01 ? dx / d : 1; p.fz = d > 0.01 ? dz / d : 0; n++;
+    }
+    return n;
   }
   // a punch/kick/blade hit on colony folk or security. Returns true if something was hit.
   function meleeWorld(x, z, fx, fz, range, dmg, knock) {
@@ -906,11 +956,18 @@ export function createWorld(ctx) {
     if (F && wager < F.minWager) return { ok: false, msg: `${p.name}: I don’t get out of bed for less than ${F.minWager}.` };
     if (!F && p.temper < 0.2) return { ok: false, refused: true, msg: `${p.name}: ` + ['Not today, spacer. I just got this suit cleaned.', 'Fight you? I’ve seen you drive. Pass.', 'Nope. Go bother somebody tougher.'][(p.duels || 0) % 3] };
     if (wager && !g.spend(wager)) return { ok: false, msg: `You don’t have ${wager} cr to put up.` };
-    const dx = p.x - player.x, dz = p.z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
+    // v7.5.21 opts.at: a fixed ring (The Pit) lines the fight up through its centre instead of toward the opponent
+    const at = opts?.at && Number.isFinite(opts.at.x) && Math.hypot(opts.at.x - player.x, opts.at.z - player.z) > 0.3 ? opts.at : null;
+    const dx = (at || p).x - player.x, dz = (at || p).z - player.z, dl = Math.hypot(dx, dz) || 1, ux = dx / dl, uz = dz / dl;
     const gap = type === 'pistol' ? 7.5 : 3.2; // pistols: 10 paces
     p.x = player.x + ux * gap; p.z = player.z + uz * gap; p.yaw = Math.atan2(ux, uz); p.flee = 0;
+    // v7.5.29 opts.pit { round, seed }: a Pit round (mars/pitshowcore.js). Same fighter every round: back on their feet, healed,
+    // no yield or bottling, tougher, and they fight back with guard / slip / circle / flurry instead of walking in and swinging
+    const pit = opts?.pit && type === 'fists' ? { ai: pitAi(opts.pit.seed || ((p.temper * 1e4) | 0) + (opts.pit.round || 1)), round: opts.pit.round || 1, ev: 0, last: '' } : null;
+    if (pit) { p.stun = 0; p.hp = Math.max(3, p.hp || 0); p.group.rotation.x = 0; p.wait = 99; }
     duel = { p, type, T, wager, pot: wager * 2 + (F ? F.purse : 0), me: 100, them: 100, tough: F ? F.tough : 1, t: 0, phase: 'count', ocd: 1.2, cx: (player.x + p.x) / 2, cz: (player.z + p.z) / 2,
-      chicken: type === 'pistol' && !F && p.temper < 0.42, yieldAt: !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null };
+      chicken: !pit && type === 'pistol' && !F && p.temper < 0.42, yieldAt: !pit && !F && p.temper < 0.65 ? 22 : 0, hits: 0, taken: 0, restore, dmgK: as?.dmg || null, tag: opts?.tag ?? null, pit, countS: pit ? pitCount(pit.round) : 3 };
+    if (pit) duel.tough = PITT.tough;
     // the ring, and a crowd (guards too, but they only watch)
     if (!ringM) { ringM = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.0, 48), new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })); ringM.rotation.x = -Math.PI / 2; }
     ringM.position.set(duel.cx, height(duel.cx, duel.cz) + 0.06, duel.cz); scene.add(ringM);
@@ -919,7 +976,15 @@ export function createWorld(ctx) {
     return { ok: true, msg: `${T.icon} ${T.name} with ${p.name}. Pot ${duel.pot} cr.` };
   }
   function duelHit() {
-    const D = duel; D.them = Math.max(0, D.them - D.T.hit / D.tough); D.hits++; onEvent('duelHit', { who: 'them', them: D.them });
+    const D = duel;
+    if (D.pit) { // v7.5.29: they can slip it or take it on the gloves; a clean one staggers them back
+      const h = pitHit(D.pit.ai); D.pit.ev++; D.pit.last = h.slipped ? 'slip' : h.blocked ? 'block' : 'hit';
+      if (h.slipped) { onEvent('duelSwing', { hit: false, slip: true }); return; }
+      D.them = Math.max(0, D.them - h.dmg); D.hits++; onEvent('duelHit', { who: 'them', them: D.them, blocked: h.blocked });
+      D.p.flee = 0; if (!h.blocked) { const dx = D.p.x - player.x, dz = D.p.z - player.z, l = Math.hypot(dx, dz) || 1; D.p.x += dx / l * PITT.knock; D.p.z += dz / l * PITT.knock; }
+      if (D.them <= 0) endDuel('ko-win'); return;
+    }
+    D.them = Math.max(0, D.them - D.T.hit / D.tough); D.hits++; onEvent('duelHit', { who: 'them', them: D.them });
     D.p.flee = 0; D.p.x += (D.p.x - player.x) * 0.08; D.p.z += (D.p.z - player.z) * 0.08;
     if (D.them <= 0) endDuel('ko-win'); else if (D.yieldAt && D.them <= D.yieldAt) endDuel('yield-win');
   }
@@ -929,11 +994,18 @@ export function createWorld(ctx) {
     let moving = false;
     if (D.phase === 'count') {
       if (D.chicken && D.t > 1.7) return endDuel('chicken');
-      if (D.t >= 3) { D.phase = 'fight'; D.ocd = D.type === 'pistol' ? (p.fighter ? 0.55 : 0.85) + (p.temper % 0.3) : 0.8; onEvent('duel', { go: true }); }
+      if (D.t >= (D.countS || 3)) { D.phase = 'fight'; D.ocd = D.type === 'pistol' ? (p.fighter ? 0.55 : 0.85) + (p.temper % 0.3) : 0.8; onEvent('duel', { go: true }); }
     } else if (D.phase === 'fight') {
       if (Math.hypot(player.x - D.cx, player.z - D.cz) > 11) return endDuel('forfeit');
       D.ocd -= dt;
-      if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
+      if (D.pit) { // v7.5.29 pit fighter (mars/pitshowcore.js aiStep): press, guard, circle, flurry
+        const s = pitStep(D.pit.ai, dt, d, D.them); D.pit.guard = s.guard; D.pit.mode = D.pit.ai.mode;
+        if (s.move === 'in' && d > PITT.reach) { const sp = Math.min(d - 0.9, PITT.walk * dt); p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
+        else if (s.move === 'circle') { const dir = D.pit.ai.dir, out = d < 3.2 ? 1 : 0, sp = PITT.circle * dt; p.x += (dz / d * dir - dx / d * out) * sp; p.z += (-dx / d * dir - dz / d * out) * sp; moving = true; }
+        const cd = Math.hypot(p.x - D.cx, p.z - D.cz); if (cd > 5.3) { p.x = D.cx + (p.x - D.cx) * 5.3 / cd; p.z = D.cz + (p.z - D.cz) * 5.3 / cd; } // stay inside the ropes
+        if (s.swing) { onEvent('duelSwing', { hit: !!s.land }); if (s.land && d <= PITT.reach + 0.2) duelHurt(pitDmg(D.dmgK)); }
+      }
+      else if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
       else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
       else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1))); }
     }
@@ -958,7 +1030,7 @@ export function createWorld(ctx) {
     lastDuel = res; return res;
   }
   let lastDuel = null;
-  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil(3 - duel.t)), me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil((duel.countS || 3) - duel.t)), t: duel.t, pit: duel.pit ? { round: duel.pit.round, mode: duel.pit.ai.mode, guard: !!duel.pit.guard, ev: duel.pit.ev, last: duel.pit.last } : null, me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
@@ -981,6 +1053,33 @@ export function createWorld(ctx) {
   }
   const doorMatch = (d, q) => { q = String(q || '').toLowerCase().replace(/^the\s+/, ''); const n = (d.name + ' ' + d.title + ' ' + INTERIORS[d.kind].name + ' ' + d.kind).toLowerCase(); return n.includes(q) || (q.includes('gun') && d.kind === 'guns') || (q.includes('bar') && d.kind === 'cantina'); };
   function doorFor(q) { return doors.find(d => doorMatch(d, q)) || null; }
+  // build (once per colony) the hidden interior behind a door; rooms are kept, hidden, between visits
+  function ensureRoom(door) {
+    let room = rooms.get(door.i); if (room) return room;
+    const game = ctx.game();
+    if (!interiorsRoot) { interiorsRoot = new THREE.Group(); interiorsRoot.userData.keep = true; scene.add(interiorsRoot); }
+    const ins = door.ins || C.inside?.[door.kind] || {};
+    room = buildRoom(door.kind, { title: door.title, ...ins, safeId: door.kind === 'mansion' ? 'safe:' + door.name : undefined, taken: id => game.flag('stash:' + id), vip: game.flag('vip'), vipNow: () => game.flag('vip'), cracked: id => game.flag('cracked:' + id), heist: () => !!game.heistAt?.(door.kind, door.name), shop: { item: id => game.shopItem(id), list: v => game.shopList(v).items } });
+    const ay = height(cx, cz) + 60 + (roomIdx++) * 12;
+    room.group.position.set(cx, ay, cz); room.ay = ay; room.group.visible = false; interiorsRoot.add(room.group); rooms.set(door.i, room);
+    return room;
+  }
+  // v7.5.17 club prewarm: the club (and its dancer GLBs) used to be built and compiled in the frame you walked in (~300 ms
+  // on a phone). Now it is built hidden while you approach (150 m) or once the colony has been idle for 10 s, and its
+  // materials are compiled + linked + uploaded over the next frames by stormguard's prewarm queue (one new program a frame).
+  // Lights: the room uses lights[0] (same light, same count, only uniforms change), so the programs match inside.
+  const WARM = { club: 150 };
+  function warmRooms(dt) {
+    if (inside || !C) return; warm.age += dt; if ((warm.t -= dt) > 0) return; warm.t = 1;
+    for (const d of doors) {
+      const r = WARM[d.kind]; if (!r || rooms.has(d.i) || warm.busy) continue;
+      if (warm.age < 10 && Math.hypot(d.x - player.x, d.z - player.z) > r) continue;
+      warm.busy = true; const c0 = C;
+      const go = () => { warm.busy = false; if (C !== c0 || inside || rooms.has(d.i)) return; try { const room = ensureRoom(d); window.SSX?.stormGuard?.prewarm?.(room.group, { draw: true }); warm.built++; } catch (e) { console.warn('interior prewarm failed', e); } };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 0);
+      return; // one room per second
+    }
+  }
   function enterBuilding(door) {
     door = typeof door === 'number' ? doors[door] : (door || nearDoor()); if (!door || inside) return { ok: false, msg: '' };
     const game = ctx.game(), def = INTERIORS[door.kind];
@@ -992,19 +1091,13 @@ export function createWorld(ctx) {
       if (!game.spend(def.cover)) return { ok: false, msg: `Brick: Cover’s ${def.cover}. You’ve got lint. Beat it.` };
       coverPaid = true; paid = def.cover;
     }
-    let room = rooms.get(door.i);
-    if (!room) {
-      if (!interiorsRoot) { interiorsRoot = new THREE.Group(); interiorsRoot.userData.keep = true; scene.add(interiorsRoot); }
-      const ins = door.ins || C.inside?.[door.kind] || {};
-      room = buildRoom(door.kind, { title: door.title, ...ins, safeId: door.kind === 'mansion' ? 'safe:' + door.name : undefined, taken: id => game.flag('stash:' + id), vip: game.flag('vip'), vipNow: () => game.flag('vip'), cracked: id => game.flag('cracked:' + id), heist: () => !!game.heistAt?.(door.kind, door.name), shop: { item: id => game.shopItem(id), list: v => game.shopList(v).items } });
-      const ay = height(cx, cz) + 60 + (roomIdx++) * 12;
-      room.group.position.set(cx, ay, cz); room.ay = ay; room.group.visible = false; interiorsRoot.add(room.group); rooms.set(door.i, room);
-    }
+    const room = ensureRoom(door);
+    if (game.flag('vip')) room.openRope(); // a prebuilt club (v7.5.17 prewarm) may predate the VIP pass
     room.group.visible = true;
     inside = { door, room, ax: cx, ay: room.ay, az: cz };
-    if (lights[0]) { const L = room.def.light; lights[0].position.set(cx, room.ay + room.h - 0.5, cz); lights[0].color.setHex(L.color); lights[0].distance = 60; lights[0].decay = 1.2; lights[0].intensity = L.int; }
+    if (lights[0]) { const L = room.def.light; lights[0].position.set(cx + room.cx, room.ay + room.h - 0.5, cz + room.cz); lights[0].color.setHex(L.color); lights[0].distance = Math.max(60, Math.hypot(room.w, room.d) * 1.2); lights[0].decay = 1.2; lights[0].intensity = L.int; }
     onEvent('door', {});
-    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx, y: room.ay, z: cz + room.d / 2 - 1.3, yaw: 0 } };
+    return { ok: true, paid, kind: door.kind, name: door.name, spawn: { x: cx + room.cx, y: room.ay, z: cz + room.cz + room.d / 2 - 1.3, yaw: 0 } };
   }
   function exitBuilding() {
     if (!inside) return null; const { door, room } = inside; room.group.visible = false; inside = null;
@@ -1012,8 +1105,8 @@ export function createWorld(ctx) {
     onEvent('door', {});
     return { x: door.x, z: door.z + 0.6, yaw: Math.PI };
   }
-  function collidePlayer(x, z, r) {
-    if (!inside) return collide(x, z, r);
+  function collidePlayer(x, z, r, feet) {
+    if (!inside) return collide(x, z, r, null, Number.isFinite(feet) ? feet : undefined); // v7.5.39 rooftops: with feet height, roofs you're above don't block (land / walk on them)
     const c = inside.room.collide(x - inside.ax, z - inside.az, r); return c ? { x: c.x + inside.ax, z: c.z + inside.az } : null;
   }
   function camBlockedIn(x, y, z) { return !!inside && inside.room.camBlocked(x - inside.ax, y - inside.ay, z - inside.az); } // v7.4 indoor camera vs partitions/shelving
@@ -1027,10 +1120,10 @@ export function createWorld(ctx) {
   return {
     // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
-    vehicleGround: car => roofGround(car), addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
-    get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax - inside.room.w / 2, x1: inside.ax + inside.room.w / 2, z0: inside.az - inside.room.d / 2, z1: inside.az + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
-    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, nearContact, nearShop, gate, setWanted, crime,
+    vehicleGround: car => roofGround(car), playerGround, addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
+    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; }, get inDuel() { return !!duel; },
     securityList: () => security.map(s => ({ kind: s.kind, x: s.x, y: s.y, z: s.z, hp: s.hp })), // v7.4: stable read-only view for add-on modules (street danger)
@@ -1039,11 +1132,12 @@ export function createWorld(ctx) {
     districts: () => sites.map(s => ({ id: s.id, name: s.name, kind: s.kind, x: s.x, z: s.z, r: s.r, fast: s.fast })), districtAt, get zone() { return actZone; },
     lots: (id) => sites.flatMap(s => s.lots || []).filter(l => !id || l.district === id || l.id === id).map(l => ({ ...l })),
     cameras: () => cams.map(c => ({ id: c.id, x: c.x, z: c.z, site: c.site, cased: c.cased > time })), caseCamera, nearCamera: () => { const c = nearCamera(); return c ? { id: c.id, x: c.x, z: c.z, cased: c.cased > time } : null; }, alarm,
-    npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
+    npcRefresh: () => updateZones(true), groundAt: (x, z) => height(x, z), parkedVehicles: () => vehicles.filter(v => v.parked && !v.traffic), // v7.5.22 raw parked cars (mars/crane.js lifts them)
+    despawnVehicle: v => { if (v && vehicles.includes(v)) { despawnCar(v); return true; } return false; },
     lineOfSight(x1, z1, x2, z2, y = 1.6) { const L = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.ceil(L / 0.8)); for (let i = 1; i < n; i++) { const t = i / n; if (camBlocked(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t)) return false; } return true; }, // v7.5.1: walls/domes block camera cones
-    coverNear, hostileAt: (x, z) => witnessed(x, z), freeSpot,
+    coverNear, hostileAt: (x, z) => witnessed(x, z), copSees: (x, z, r) => copSees(x, z, r), freeSpot,
     // v7.5.4 API: add-on solids (street dressing). nocam defaults to true. Cleared on world exit; returns a remover.
-    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
+    addSolid(o) { if (!C || !o || !isFinite(o.x) || !isFinite(o.z)) return null; const sd = { x: o.x, z: o.z, r: o.r || 0.5, h: o.h || 1.2, box: o.box, zone: o.zone || 'dress', nocam: o.nocam !== false }; if (Number.isFinite(o.y0)) sd.y0 = o.y0; if (Number.isFinite(o.top)) sd.top = o.top; if (o.deck) sd.deck = true; /* v7.5.40: heights + support-only decks (roofs.js) */ const list = solids; list.push(sd); return () => { const i = list.indexOf(sd); if (i >= 0) list.splice(i, 1); }; },
     spawnPoints, roadAhead, npcBudget, npcReserve(key, n) { if (!n) delete npcReserved[key]; else npcReserved[key] = Math.max(0, n | 0); updateZones(true); return npcBudget(); },
     setMaterialSlot(role, m) { res(); const key = MATERIAL_ROLES[role]; if (!key || !m) return false; const old = R[key]; R[key] = m; for (const g of [...sites.map(s => s.group), road]) g?.traverse(o => { if (o.material === old) o.material = m; }); return true; },
     highway: () => HW ? { name: HW.def.name, len: HW.len, closed: HW.closed, checkpoints: cps.map(c => ({ id: c.id, name: c.name, faction: c.faction, x: c.x, z: c.z })), ramps: HW.ramps.map(r => ({ x: r.x, z: r.z, len: r.len, h: r.h })), at: s2 => roadAt(s2), project: (x, z) => projectRoad(x, z) } : null,

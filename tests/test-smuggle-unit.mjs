@@ -5,7 +5,7 @@ const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('
 const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 
 // keys: free on main and every open PR; B / X only in space
-ok('keys', C.RUN_KEY === 'Digit8' && C.FAVOR_KEY === 'Digit9' && C.BRIBE_KEY === 'KeyB' && C.DUMP_KEY === 'KeyX');
+ok('keys', C.RUN_KEY === null && C.FAVOR_KEY === null && C.BRIBE_KEY === 'KeyB' && C.DUMP_KEY === 'KeyX');
 // route geometry
 const ph = C.phobosAt(0, 0);
 ok('phobosR', near(Math.hypot(ph[0], ph[2]), C.PHOBOS.R, 1e-9) && ph[1] === C.PHOBOS.y);

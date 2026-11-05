@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import * as C from './flamecore.js';
 import { babble, tone, burst, noiseBuf, createVoicePool } from '../synth.js';
+import { getAudioCtx, realDest } from '../audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const app = () => window.__app, surf = () => app()?.surface;
 const fin = Number.isFinite;
@@ -140,7 +141,7 @@ let ac = null, out = null, roar = null, roarG = null; const voices = createVoice
 function mix() { try { const m = window.SSX?.audio?.mix?.get?.(); if (m) return m.mute ? 0 : (fin(m.master) ? m.master : 1); } catch (e) { /* */ } try { if (localStorage.getItem('ssx.muted') === '1') return 0; } catch (e) { /* */ } return 1; }
 function audio() {
   try {
-    if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); out = ac.createGain(); out.connect(ac.destination); }
+    if (!ac) { ac = getAudioCtx(); if (!ac) return null; out = ac.createGain(); out.connect(realDest(ac)); }
     if (ac.state === 'suspended') { const p = ac.resume?.(); p?.catch?.(() => {}); }
     if (ac.state !== 'running') return null; out.gain.value = 0.9 * mix(); return mix() > 0 ? ac : null;
   } catch (e) { warnOnce('audio', e); return null; }
