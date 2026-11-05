@@ -131,7 +131,7 @@ export function meetId(nowMs, offsetMin = 0) { const m = nowMs / 60000 + offsetM
 export const fmtHour = h => { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); };
 
 // ---------- save data (stored inside the game's own progress save, ssx.progress.v1 → progress.garage) ----------
-export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1, partner: freshPartner(), fenced: 0 }; }
+export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1, partner: freshPartner(), fenced: 0, dome: freshDome() }; }
 export function newRide(id, kind) { return { id, kind, paint: 'factory', kit: 'stock', wheels: 'stock', glow: 'none', up: { engine: 0, handling: 0, brakes: 0, boost: 0 }, owned: { paint: ['factory'], kit: ['stock'], wheels: ['stock'], glow: ['none'] }, spent: 0 }; }
 // accepts anything (undefined from an old save, a partial or corrupt object) and returns a valid garage
 export function migrateGarage(g) {
@@ -161,6 +161,7 @@ export function migrateGarage(g) {
   out.nextId = Math.max(+out.nextId || 1, ...out.rides.map(r => (+String(r.id).replace(/\D/g, '') || 0) + 1));
   out.partner = migratePartner(out.partner);
   out.fenced = Math.max(0, out.fenced | 0);
+  out.dome = migrateDome(out.dome);
   return out;
 }
 export const MAX_RIDES = 6; // garage slots (stock rover included)
@@ -263,13 +264,13 @@ export function partnerRateAt(h) {
 }
 export function partnerCap() { return Math.round(PARTNER.rate * PARTNER.capHours); }
 // accrue hours of lot income into partner.pending (capped). Mutates partner. Returns cr added.
-export function partnerAccrue(partner, hour, hours) {
+export function partnerAccrue(partner, hour, hours, mult = 1) {
   if (!partner?.on || !(hours > 0)) return 0;
-  const cap = partnerCap();
+  const cap = partnerCap() * (mult > 1 ? mult : 1);
   let left = hours, t = hour, sum = 0;
   while (left > 1e-9) {
     const step = Math.min(left, 0.25);
-    sum += partnerRateAt(t + step / 2) * step;
+    sum += partnerRateAt(t + step / 2) * step * (mult > 0 ? mult : 1);
     t += step; left -= step;
   }
   const room = Math.max(0, cap - (+partner.pending || 0));
@@ -298,3 +299,27 @@ export function fenceOffer(kind, { price = null, wanted = 0, partner = false, ra
   const stars = Math.max(1, FENCE.starReward + (partner ? 2 : 0) - Math.min(3, w));
   return { ok: true, bust: false, cr, stars, heatAdd: 0, kind, base, wanted: w };
 }
+
+// ---------- showroom dome upgrade (Collin: "⭐ plus cr can upgrade it from the side of the road to the dome") ----------
+// Lives in progress.garage.dome ({ on, at }) — same ssx.progress.v1 save / savecode, no new key. A NEW glass dome over the
+// Red Line lot itself (not the old Velvet-side dome). Always a mix of credits AND stars; a clear step up from partner buy-in.
+export const DOME = {
+  offers: [
+    { id: 'cr', cr: 9000, stars: 300 },   // credit-heavy mix
+    { id: 'stars', cr: 4500, stars: 750 } // star-heavy mix
+  ],
+  lotCutBonus: 0.25,   // +25% partner lot cut once the lot is under glass
+  rx: 36, ry: 14, rz: 20 // half-ellipsoid radii (dealer-local metres) over the 50 x 22 m lot
+};
+export function freshDome() { return { on: false, at: null }; }
+export function migrateDome(d) { if (!d || typeof d !== 'object') return freshDome(); return { on: !!d.on, at: Number.isFinite(+d.at) && d.at != null ? +d.at : null }; }
+export function domeOffers() { return DOME.offers.map(o => ({ ...o, label: `${o.cr} cr + ${o.stars} ⭐` })); }
+// pure check: can this wallet pay this offer? { ok, offer, why, shortCr, shortStars }
+export function domeCheck(g, offerId, { cr = 0, stars = 0 } = {}) {
+  if (g?.dome?.on) return { ok: false, why: 'owned' };
+  const offer = domeOffers().find(o => o.id === offerId); if (!offer) return { ok: false, why: 'offer' };
+  const shortCr = Math.max(0, offer.cr - (+cr || 0)), shortStars = Math.max(0, offer.stars - (+stars || 0));
+  return shortCr || shortStars ? { ok: false, why: 'funds', offer, shortCr, shortStars } : { ok: true, offer };
+}
+// is a dealer-local point (lx, lz) under the dome? (centre = the lot centre)
+export function underDome(lx, lz, cx = -12, cz = 2) { const a = (lx - cx) / DOME.rx, b = (lz - cz) / DOME.rz; return a * a + b * b <= 1; }

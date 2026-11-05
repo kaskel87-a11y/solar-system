@@ -2,6 +2,7 @@
 // - Dealership: buy new rides with credits (garagecore.js MODELS + any registerVehicle kind with a `price`).
 // - Showroom: selecting a car isolates it on the lot with Pit-style spot beams / floor pool / camera focus.
 // - Partner buy-in: cash and/or stars → lot income, bigger garage, buy discount, early stock wave, better fence cut.
+// - Showroom Dome: a cr + ⭐ upgrade puts the whole Red Line lot under its own glass dome (progress.garage.dome).
 // - Fence: drive a stolen world car onto the lot and sell it for cr + ⭐ (heat cuts payout; 4+ ★ can bust).
 // - Garage: store up to MAX_RIDES rides; paint, body kits, wheels, underglow and engine/handling/brakes/boost upgrades
 //   that change the driving spec. The ride you pick becomes "your rover" (same thrusters, turret, Frankie, radio).
@@ -115,7 +116,7 @@ function respray({ reason = '', price } = {}) {
   return { ok: true, plate: r.plate, price: r.price, ride: r.ride, heat };
 }
 export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), respray, get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
-  get partner() { return { ...partnerOf() }; }, buyPartner, collectPartner, fenceRide, get maxRides() { return GC.maxRidesOf(garage()); },
+  get partner() { return { ...partnerOf() }; }, buyPartner, collectPartner, fenceRide, get dome() { return { ...domeOf() }; }, buyDome, get maxRides() { return GC.maxRidesOf(garage()); },
   upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
@@ -187,7 +188,7 @@ function buildLot() {
   // --- dealer: concrete apron, neon sign on a gantry, a row of lit podiums ---
   const d = new THREE.Group(); d.position.set(S.dealer.x, H(S.dealer.x, S.dealer.z), S.dealer.z); d.rotation.y = CFG.yaw; root.add(d); lot.dealer = d;
   // v7.5.45 the lot grew west: 50 x 22 m apron, two rows of podiums (LOT box below), more floods, a WAR RIGS gantry
-  d.add(put(a.box, a.mConc, LOT.w, 1.2, LOT.d, LOT.cx, -0.5, LOT.cz));
+  lot.apron = put(a.box, a.mConc, LOT.w, 1.2, LOT.d, LOT.cx, -0.5, LOT.cz); d.add(lot.apron);
   for (let i = 0; i < 9; i++) d.add(put(a.box, a.mNeonC, 0.12, 0.03, 4, LOT.cx - LOT.w / 2 + 3 + i * (LOT.w - 6) / 8, 0.12, LOT.rowB + 4.4)); // bay lines
   d.add(put(a.box, a.mNeonR, 0.08, 0.08, LOT.d - 0.2, LOT.cx - LOT.w / 2 + 0.05, 0.14, LOT.cz));
   for (const s of [-1, 1]) d.add(put(a.box, a.mSteel, 0.4, 7, 0.4, s * 7.5, 3.5, -7.5));
@@ -203,6 +204,7 @@ function buildLot() {
   lot.waveSigns = [signMesh('MORE RIGS INBOUND', 0x888888, 11, 1.4), signMesh('🆕 WAR RIGS \u00b7 NEW STOCK', 0xffb020, 11, 1.4)];
   for (const sg of lot.waveSigns) { sg.position.set(-28, 6.7, -7.5); d.add(sg); }
   lot.podG = new THREE.Group(); d.add(lot.podG); rebuildPodiums();
+  applyDome(); // Showroom Dome upgrade (no-op on a roadside lot)
   // --- garage: quonset lock-up with a roller door and a work bay in front ---
   const g = new THREE.Group(); g.position.set(S.garage.x, H(S.garage.x, S.garage.z), S.garage.z); g.rotation.y = CFG.yaw; root.add(g); lot.garage = g;
   g.add(put(a.half, a.mShut, 3.4, 4.2, 9, 0, 0, -5)); // quonset arch, 9 m deep
@@ -351,7 +353,7 @@ function updateCtx() {
   const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
   if (dist(me, S.garage) < 11) return setCtx('🔧 Garage', () => openGarage());
-  if (onLot(me)) return setCtx('🚗 Dealer', () => openDealer());
+  if (onLot(me)) return setCtx(domeOn() ? '🚗 Dealer · Dome' : '🚗 Dealer', () => openDealer());
   setCtx(null);
 }
 
@@ -414,19 +416,21 @@ function renderDealer() {
         const crOk = !o.cr || credits() >= o.cr, stOk = !o.stars || starsBal() >= o.stars, ok = crOk && stOk;
         return `<button data-partner="${o.id}" ${ok ? '' : 'disabled'}>🤝 ${esc(o.label)}</button>`;
       }).join('')}</div>`;
-  return head(`🚗 ${esc(CFG.name)}`, wallet()) +
+  return head(`🚗 ${esc(CFG.name)}${domeOn() ? ' · Dome' : ''}`, wallet()) +
     `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
     <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${P.on && price < s.price ? ' · partner' : ''}${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
     <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>
     <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
     ${partnerBlock}
+    ${domeBlock()}
     <div class="blurb">${esc(waveLine())}</div>
     <div class="sub">💸 Steal a world car and drive it onto this lot to fence it for cash. Heat cuts the payout.</div>`;
 }
 handlers.dsel = k => { dSel = k; camA = 0; applyDealerFocus(); rerender(); };
 handlers.buy = k => { const r = buy(k); toast(r.msg, 3200); if (r.ok) closeSheet(); else rerender(); };
 handlers.partner = id => { const r = buyPartner(id); toast(r.msg, 3600); rerender(); };
+handlers.dome = (id, b) => { if (!b.dataset.armed) { for (const x of sheet.el.querySelectorAll('[data-dome]')) delete x.dataset.armed; b.dataset.armed = '1'; b.textContent = `Sure? Tap again · ${b.dataset.lbl}`; return; } const r = buyDome(id); toast(r.msg, 4200); rerender(); };
 handlers.pcollect = () => { const r = collectPartner(); toast(r.msg, 2800); rerender(); };
 handlers.togarage = () => { closeSheet(true); const m = meOf(), S = spots(); if (dist(m, S.garage) < 40) openGarage(); else navTo('garage'); };
 export function buy(kind) {
@@ -450,6 +454,60 @@ export function buyPartner(offerId = 'cash') {
   // partner perk: unlock the next stock wave early (WAR RIGS) without owning every model
   const D = TC.shared().dealer; if (D.wave < TC.DEALER_WAVES.length) { D.wave = Math.min(TC.DEALER_WAVES.length, D.wave + 1); TC.save(TC.shared()); applyWave(); rebuildPodiums(); }
   return { ok: true, msg: `🤝 You’re a partner at ${CFG.name}. Bigger garage, partner prices, lot cut, and better fence money. Drive stolen rides onto the lot to fence them.` };
+}
+// ----- Showroom Dome upgrade: the lot moves off the roadside into its own glass dome -----
+const domeOf = () => garage().dome || (garage().dome = GC.freshDome());
+export const domeOn = () => !!(app()?.game?.progress && domeOf().on);
+function domeBlock() {
+  if (domeOn()) return `<div class="blurb">🏟️ <b>Showroom Dome</b> · your lot is under glass${partnerOf().on ? ` · +${GC.DOME.lotCutBonus * 100 | 0}% lot cut` : ''}</div>`;
+  return `<div class="blurb">🏟️ <b>Move into the Dome</b>: get Red Line off the roadside. A glass showroom dome over the whole lot, floor, lights and all.${partnerOf().on ? ` +${GC.DOME.lotCutBonus * 100 | 0}% partner lot cut.` : ` Partners also get +${GC.DOME.lotCutBonus * 100 | 0}% lot cut.`}</div>
+    <div class="row">${GC.domeOffers().map(o => { const ok = credits() >= o.cr && starsBal() >= o.stars;
+      return `<button data-dome="${o.id}" data-lbl="${esc(o.label)}" ${ok ? '' : 'disabled'}>🏟️ ${esc(o.label)}</button>`; }).join('')}</div>`;
+}
+export function buyDome(offerId = 'cr') {
+  const G = garage(), chk = GC.domeCheck(G, offerId, { cr: credits(), stars: starsBal() });
+  if (!chk.ok) {
+    if (chk.why === 'owned') return { ok: false, msg: '🏟️ Red Line is already under the dome.' };
+    if (chk.why === 'offer') return { ok: false, msg: 'No such deal.' };
+    return { ok: false, msg: `🏟️ The dome is ${chk.offer.label}. Short ${[chk.shortCr ? chk.shortCr + ' cr' : '', chk.shortStars ? chk.shortStars + ' ⭐' : ''].filter(Boolean).join(' + ')}.` };
+  }
+  const o = chk.offer;
+  if (!spend(o.cr)) return { ok: false, msg: 'Payment failed.' };
+  if (!spendStars(o.stars, 'Red Line showroom dome')) { give(o.cr); return { ok: false, msg: '⭐ Stars payment failed. Credits refunded.' }; }
+  const D = domeOf(); D.on = true; D.at = Date.now(); save();
+  applyDome(); rockDone = new WeakSet(); rockT = 0; // re-tuck boulders under the bigger footprint
+  try { window.dispatchEvent(new CustomEvent('ssx:dealerdome', { detail: { offer: o.id, cr: o.cr, stars: o.stars } })); } catch (e) { }
+  return { ok: true, msg: `🏟️ ${CFG.name} moved into the Showroom Dome. Same lot, same deals — now under glass.` };
+}
+// the dome itself: a NEW half-ellipsoid of glass over the Red Line lot (dealer-local, centred on the lot). Built lazily, shown only when owned.
+function buildDome() {
+  const a = assets(), { rx, ry, rz } = GC.DOME, g = new THREE.Group(); g.name = 'dealer-dome'; g.position.set(LOT.cx, 0, LOT.cz);
+  const glass = new THREE.MeshStandardMaterial({ color: 0xbfe6ff, emissive: 0x1d4a66, emissiveIntensity: 0.6, transparent: true, opacity: 0.2, roughness: 0.05, metalness: 0.3, side: THREE.DoubleSide, depthWrite: false });
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 14, 0, Math.PI * 2, 0, Math.PI / 2), glass); shell.scale.set(rx, ry, rz); shell.name = 'dealer-dome-glass'; shell.renderOrder = 2; g.add(shell);
+  // polished floor slab (its sides skirt the ground where it drops off south of the lot)
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48), new THREE.MeshStandardMaterial({ color: 0x17181f, roughness: 0.22, metalness: 0.55 }));
+  floor.scale.set(rx, 4.2, rz); floor.position.y = 0.11 - 2.1; floor.name = 'dealer-dome-floor'; g.add(floor);
+  // ribs: meridian arches + latitude rings, sized in ellipsoid space so the steel stays round
+  const ell = (th, ph) => new THREE.Vector3(rx * Math.cos(ph) * Math.cos(th), ry * Math.sin(ph), rz * Math.cos(ph) * Math.sin(th));
+  const steel = a.mSteel, tube = (pts, r, closed, m) => { const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), closed ? 64 : 28, r, 5, closed), m); g.add(t); return t; };
+  for (let k = 0; k < 4; k++) { const th = k * Math.PI / 4, pts = []; for (let i = 0; i <= 24; i++) { const ph = i / 24 * Math.PI; pts.push(ph <= Math.PI / 2 ? ell(th, ph) : ell(th + Math.PI, Math.PI - ph)); } tube(pts, 0.22, false, steel); }
+  const lat = (ph, r, m, name) => { const pts = []; for (let i = 0; i < 48; i++) pts.push(ell(i / 48 * Math.PI * 2, ph)); const t = tube(pts, r, true, m); if (name) t.name = name; return t; };
+  lat(0.02, 0.35, steel); lat(0.05, 0.12, a.mNeonR, 'dealer-dome-neon'); lat(0.55, 0.16, steel); lat(1.05, 0.14, a.mNeonC, 'dealer-dome-halo');
+  // front portal (+z, where you drive in) with its own sign
+  const pz = rz - 1.2;
+  for (const s of [-1, 1]) g.add(put(a.box, steel, 0.6, 6.4, 0.6, s * 6, 3.2, pz));
+  g.add(put(a.box, a.mDark, 12.6, 0.8, 0.8, 0, 6.4, pz));
+  g.add(put(a.box, a.mNeonR, 12.6, 0.1, 0.1, 0, 5.95, pz + 0.42));
+  const sg = signMesh('SHOWROOM DOME', 0x38e1ff, 11, 1.5); sg.position.set(0, 7.7, pz + 0.1); g.add(sg);
+  // hanging showroom spots (unlit additive pools on the floor, no real lights)
+  for (const [x, z] of [[-22, -6], [-22, 8], [0, -6], [0, 8], [20, 0]]) g.add(put(a.disc, a.mPool, 6.5, 1, 6.5, x, 0.125, z));
+  return g;
+}
+function applyDome() {
+  if (!lot?.dealer) return; const on = domeOn();
+  if (on && !lot.dome) { lot.dome = buildDome(); lot.dealer.add(lot.dome); }
+  if (lot.dome) lot.dome.visible = on;
+  if (lot.apron) lot.apron.visible = !on; // the dome brings its own polished floor
 }
 export function collectPartner() {
   const P = partnerOf(); if (!P.on) return { ok: false, msg: 'Not a partner.' };
@@ -609,7 +667,7 @@ function tickPartnerIncome() {
   if (hrs < -12) hrs += 24; // crossed midnight
   if (hrs < 0) { P.lastHour = h; return; } // clock noise / rewind: don't pay
   if (hrs > 8) hrs = 8; // cap one jump (sleep / time skip)
-  if (hrs > 1e-4) { GC.partnerAccrue(P, P.lastHour, hrs); P.lastHour = h; }
+  if (hrs > 1e-4) { GC.partnerAccrue(P, P.lastHour, hrs, domeOn() ? 1 + GC.DOME.lotCutBonus : 1); P.lastHour = h; }
 }
 export function dealerTick(dt, ctx) {
   C = ctx; last = performance.now();
@@ -629,10 +687,10 @@ export function dealerTick(dt, ctx) {
   const nowMs = performance.now(); if (nowMs - ui.t > 200) { ui.t = nowMs; updateCtx(); } // real-time throttle (slow phones still update promptly)
 }
 // the terrain scatters instanced boulders everywhere; tuck the ones sitting on our lots / the strip out of sight (visual only)
-const rockDone = new WeakSet(), rm = new THREE.Matrix4(), rp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); let rockT = 0;
+let rockDone = new WeakSet(); const rm = new THREE.Matrix4(), rp = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0); let rockT = 0;
 function clearRocks(dt) {
   if ((rockT -= dt) > 0) return; rockT = 0.5; const S = spots(), cx = S.stripFrom.x, z0 = Math.min(S.stripFrom.z, S.stripTo.z) - 20, z1 = Math.max(S.stripFrom.z, S.stripTo.z) + 10;
-  const zones = [[{ x: S.dealer.x + LOT.cx, z: S.dealer.z + LOT.cz }, 29], [S.garage, 14], [S.meet, 27]];
+  const zones = [[{ x: S.dealer.x + LOT.cx, z: S.dealer.z + LOT.cz }, domeOn() ? GC.DOME.rx + 1 : 29], [S.garage, 14], [S.meet, 27]];
   for (const g of C.scene.children) if (g.isGroup && g !== root) for (const o of g.children) {
     if (!o.isInstancedMesh || rockDone.has(o) || o.geometry?.type !== 'IcosahedronGeometry') continue; rockDone.add(o); let hit = false;
     for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, rm); rp.setFromMatrixPosition(rm); rp.applyMatrix4(o.matrixWorld);
@@ -735,8 +793,9 @@ window.__dealer = {
   get fenceOn() { return !!(ui?.fence && ui.btn.style.display === 'block' && ui.act); },
   get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
-  buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  buy, buyPartner, buyDome, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
   get partner() { return { ...partnerOf() }; },
+  get dome() { return { ...domeOf(), built: !!lot?.dome, visible: !!lot?.dome?.visible, apron: lot?.apron ? lot.apron.visible : null }; }, applyDome,
   get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, get showroom() { return { on: !!showFX?.G.visible, kind: dSel || null, sheet: sheet?.kind || null }; }, noteBought, rebuildPodiums, applyDealerFocus,
-  tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
+  heightAt: (x, z) => H(x, z), tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };
