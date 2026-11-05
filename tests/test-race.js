@@ -90,8 +90,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     const res = await G(() => window.__race.result);
     R.result = JSON.stringify(res);
     ok('won', null, res.done && res.won && res.laps.length === 3 && res.newBest && res.firstWin);
-    ok('purse', res.credits, res.credits === 120 + 40 + 100);
-    const cPost = await credits(); ok('creditsPaid', cPost - cPre, cPost - cPre === 260);
+    ok('purse', res.credits, res.credits === Math.round((120 + 40 + 100) * (await G(() => window.SSX.economy?.payoutMult ?? 1)))); // money boost: payoutMult x
+    const cPost = await credits(); ok('creditsPaid', cPost - cPre, [0, 25, 50, 75, 100].includes(cPost - cPre - res.credits)); // + streak bonus if any
     const st = await G(() => ({ race: JSON.parse(localStorage.getItem('ssx.race.v1')), ghost: JSON.parse(localStorage.getItem('ssx.race.ghost.mars-gutter') || 'null'), prog: JSON.parse(localStorage.getItem('ssx.progress.v1') || '{}').credits }));
     ok('bestSaved', st.race?.best?.['mars-gutter'], st.race?.best?.['mars-gutter'] === Math.round(Math.min(...res.laps)) && st.race.wins['mars-gutter'] === 1);
     ok('ghostSaved', st.ghost?.length, Array.isArray(st.ghost) && st.ghost.length >= 24);
@@ -107,7 +107,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     for (let l = 0; l < 3; l++) await lap(gut);
     await wait(() => !window.__race.state, 5000);
     const res2 = await G(() => window.__race.result);
-    ok('lost', null, res2.done && !res2.won && res2.rivalTime > 0 && res2.credits === (res2.newBest ? 40 : 0));
+    ok('lost', null, res2.done && !res2.won && res2.rivalTime > 0 && res2.credits === (res2.newBest ? Math.round(40 * (await G(() => window.SSX.economy?.payoutMult ?? 1))) : 0)); // money boost: payoutMult x
     await tapAt('#raceResClose'); await sleep(200); ok('resultClosed', null, !(await vis('#raceResult')));
     // ---------- 4. props: boost pad, ramp, barrier ----------
     await G(() => window.__race.start('mars-gutter', { noRival: true })); await G(() => window.__race.skipCountdown()); await wait(() => window.__race.state?.phase === 'run', 15000);

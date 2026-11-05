@@ -11,6 +11,7 @@ export const STATIONS = [
 ];
 
 export function createAudio7(getCtx) {
+const _free = (...n) => () => { for (const x of n) { try { x.disconnect(); } catch (e) { /* */ } } }; // v7.5.15: one-shot voices disconnect when done (iOS WebKit keeps connected nodes alive)
   // v7.3 venue music (club / cantina) plays through the same bus, muffled like it's coming through the walls
   const VENUES = { club: { id: 'club', bpm: 118 }, cantina: { id: 'cantina', bpm: 92 } };
   let venue = null, venueWas = false;
@@ -25,12 +26,12 @@ export function createAudio7(getCtx) {
   function osc(a, dest, type, f, t, dur, vol, f1) {
     const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05);
+    o.connect(g).connect(dest); o.start(t); o.stop(t + dur + 0.05); o.addEventListener('ended', _free(o, g));
   }
   function hiss(a, dest, t, dur, vol, freq = 2000, q = 0.8, type = 'bandpass') {
     const s = a.createBufferSource(); s.buffer = noise(a); const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
     const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+    s.connect(f).connect(g).connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05); s.addEventListener('ended', _free(s, f, g));
   }
   // ---- radio ----
   function bus(a) {
@@ -134,6 +135,7 @@ export function createAudio7(getCtx) {
     cash() { const a = getCtx(); if (!a) return; const t = a.currentTime; [1568, 2093].forEach((f, i) => osc(a, a.destination, 'triangle', f, t + i * 0.07, 0.2, 0.09)); hiss(a, a.destination, t, 0.08, 0.05, 6000, 1); },
     whoosh() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.12, 0.12, 1400, 0.8); },
     punch() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 95, t, 0.14, 0.35, 45); hiss(a, a.destination, t, 0.06, 0.22, 900, 0.7, 'lowpass'); },
+    thwack() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'triangle', 620, t, 0.07, 0.3, 190); osc(a, a.destination, 'sine', 150, t, 0.16, 0.38, 60); hiss(a, a.destination, t, 0.05, 0.28, 1800, 3, 'bandpass'); }, // v7.5.15 Velvet Mack's cane: woody knock + body thud
     blade() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.22, 0.32, 3200, 2.5); osc(a, a.destination, 'sawtooth', 240, t, 0.18, 0.08, 70); hiss(a, a.destination, t + 0.04, 0.25, 0.25, 600, 1.5); },
     crate() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'square', 300, t, 0.05, 0.06); osc(a, a.destination, 'square', 420, t + 0.07, 0.08, 0.06); hiss(a, a.destination, t, 0.1, 0.08, 2000, 1); },
     door() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.4, 0.12, 700, 1); osc(a, a.destination, 'sine', 180, a.currentTime, 0.25, 0.06, 90); },

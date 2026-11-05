@@ -84,12 +84,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const sb = await center('#sndStations button[data-id="rust"]'); ok('stationTap44', sb && Math.round(sb.h), sb && sb.h >= 44);
     await tap('#sndStations button[data-id="rust"]');
     ok('tuneRust', await wait(() => window.__app.marsAudio.state.station === 'rust' && window.__app.marsAudio.state.tuned === 'rust', 4000));
+    await G(() => window.__app.marsAudio.banner.set('all')); // phones default the radio banner to off
     await tap('#sndStations button[data-id="olympus"]');
     ok('tuneTalk', await wait(() => window.__app.marsAudio.state.station === 'olympus', 4000));
     ok('talkCaption', await wait(() => document.getElementById('ssxTicker').classList.contains('on'), 6000)); R.talk = await G(() => document.getElementById('ssxTicker').textContent);
     ok('savedRadioId', await G(() => window.__app.game.progress.settings.radioId), await G(() => window.__app.game.progress.settings.radioId === 'olympus'));
     const tk = await G(() => { const r = document.getElementById('ssxTicker').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
-    ok('tickerOffCentre', JSON.stringify(tk), tk.y + tk.h < vh * 0.3);
+    ok('tickerOffCentre', JSON.stringify(tk), tk.y > vh * 0.6 && tk.h <= 26); // one slim line at the bottom, above the joystick
     await page.screenshot({ path: `${out}ambience-${tag}-radio.png` });
     await tap('#sndClose'); await wait(() => !document.getElementById('sndPanel').classList.contains('show'), 2000);
     await page.screenshot({ path: `${out}ambience-${tag}-radio-ticker.png` });

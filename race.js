@@ -8,8 +8,10 @@
 import * as THREE from 'three';
 import { buildVehicle, VEHICLES, QUESTS, addMenuItem, panelTap } from './racehooks.js';
 import * as RC from './racecore.js';
+import { jobPay, boost } from './economy.js'; // money boost: SSX.economy.payoutMult (boost() for the purses we list)
 import { segHit } from './gatecore.js'; // v7.5.3 gate guards
 import { createBuilder } from './trackbuilder.js';
+import { getAudioCtx } from './audioctx.js'; // v7.5.37 one shared AudioContext (iOS)
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 let C = null;                       // latest surface context from the hook
@@ -186,16 +188,27 @@ function defsHere() { return allDefs().filter(d => d.world === planet); }
 // gates never sit inside a dome or building: world.collide(x, z, r) is the same test the cars use
 function blockedFn() { const w = C?.world; return w?.collide ? (x, z, r) => !!w.collide(x, z, r) : null; }
 function resolve(def) { return RC.resolveTrack(def, C?.world?.colony, blockedFn()); }
+// v7.5.16 (Collin: "lags every 2-3 seconds, even on a laptop"): the minimap's POI list (hudx pois, refreshed every 1 s) called
+// tracks(), which re-resolved every track against the live world: clearGates/pickSpot probe up to 1,920 spots x world.collide per
+// blocked gate, ~40-230 ms of main thread, once a second. Views (minimap, race list) now reuse one resolve per track per world;
+// a race start still resolves fresh against the live world.
+const viewCache = new Map();
+function viewKey(def) { const w = C?.world, c = w?.colony; return `${planet}|${c?.x}|${c?.z}|${def.custom ? 1 : 0}|${def.anchor || ''}|${JSON.stringify(def.gates)}`; }
+function resolveView(def) {
+  const k = viewKey(def), e = viewCache.get(def.id);
+  if (e && e.k === k && e.w === C?.world) return e.t;
+  const t = resolve(def); viewCache.set(def.id, { k, w: C?.world, t }); return t;
+}
 
 function setupPlanet() {
-  disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
+  viewCache.clear(); disposeGroup(root); root = new THREE.Group(); root.name = 'raceRoot'; C.scene.add(root);
   idleG = new THREE.Group(); root.add(idleG); raceG = null; planet = C.name;
   rebuildIdle();
 }
 function rebuildIdle() {
   if (!idleG) return; for (const c of [...idleG.children]) disposeGroup(c);
   for (const d of defsHere()) {
-    const t = resolve(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
+    const t = resolveView(d), g0 = t.gates[0], o = buildGate(g0, true); setGateLook(o, A.mIdle);
     const lab = labelSprite('\ud83c\udfc1 ' + d.name.toUpperCase(), d.custom ? '#7dd3fc' : '#ffd25a', d.pit ? 18 : 13); lab.position.set(0, o.userData.top + 3.2, 0); o.add(lab);
     o.userData.def = d; idleG.add(o);
   }
@@ -342,6 +355,7 @@ function finish(done, why) {
   const firstWin = won && !data.wins[id];
   data.runs[id] = (data.runs[id] || 0) + 1; if (won) data.wins[id] = (data.wins[id] || 0) + 1; RC.saveRace(LS, data);
   const pay = done ? RC.payout(r.t, { won, newBest: !!r.newBest, firstWin, custom: !!r.def.custom, broke: r.broke }) : { credits: 0, xp: 0, note: '' };
+  if (pay.credits > 0) pay.credits = jobPay(pay.credits, 'race:' + id); // money boost (economy.js); lastResult shows the doubled purse
   const P = C.game.progress; P.credits += pay.credits; P.xp += pay.xp; C.game.save();
   const rivalName = r.rival?.name || 'Rival';
   const line = !done ? why : r.practice ? `${rivalName}: "Practice laps don\u2019t pay. Build something longer and we\u2019ll talk money."` : won ? pick([`${rivalName}: "Lucky. Do it again and I\u2019ll call it skill."`, `${rivalName}: "Fine. Take the purse. I\u2019ll take your paint next time."`, `${rivalName}: "Cheater. I respect it."`])
@@ -365,10 +379,13 @@ function propPhysics(props, dt) {
     const ent = car || C.player, r = car ? (car.spec?.r || 2.4) * 0.75 : 0.45;
     const dx = ent.x - p.x, dz = ent.z - p.z; if (dx * dx + dz * dz > 144) continue;
     const along = dx * fx + dz * fz, lat = dx * lx + dz * lz, key = p, cd = (R?.cool || propCool).get(key) || 0;
-    if (p.t === 'barrier') {
-      if (Math.abs(lat) < 3 + r && Math.abs(along) < 0.4 + r) {
-        const push = (Math.sign(along) || 1) * (0.4 + r) - along; ent.x += fx * push; ent.z += fz * push;
-        if (car && Math.abs(car.speed) > 3) { if (now > cd) { sfx('crash'); (R?.cool || propCool).set(key, now + 400); } car.speed *= -0.3; }
+    if (p.t === 'barrier') { // race fix (BUGS-v7.4 M2): slide along the barrier instead of bouncing back into it and pinning
+      // live fix (#63): a car whose physics bottom (car.y, not the mesh) clears the 1.1 m barrier flies over it
+      if (car && Number.isFinite(car.y) && car.y > H(p.x, p.z) + 1.0) continue;
+      const s = RC.barrierSlide(car ? { x: car.x, z: car.z, yaw: car.yaw, speed: car.speed } : { x: ent.x, z: ent.z }, p, r);
+      if (s) {
+        ent.x = s.x; ent.z = s.z;
+        if (car && s.hit) { car.yaw = s.yaw; car.speed = s.speed; if (s.impact > 3 && now > cd) { sfx('crash'); (R?.cool || propCool).set(key, now + 400); } }
       }
     } else if (car && now > cd) {
       if (p.t === 'ramp' && Math.abs(lat) < 3.2 && Math.abs(along) < 4 && (!car.air || car.y - H(car.x, car.z) < 0.9) && (car.vy || 0) < 2 && Math.abs(car.speed) > 3) {
@@ -382,6 +399,37 @@ function propPhysics(props, dt) {
   }
 }
 const propCool = new Map();
+// race fix (BUGS-v7.4 M1): the active race's solid geometry as camera blockers: barriers and ramps (exact shapes, see
+// RC.propCamHit) plus the gate gantries (legs, truss, lamps as padded oriented boxes; the 16 m chase boom used to end up
+// inside the truss of the gate behind the car). surface.js's third-person boom asks camBlocked (via window.__race)
+// alongside world.camBlocked, so the camera pulls in instead of clipping through.
+let camGates = null, camGatesFor = null;
+function gateBoxes() {
+  if (camGatesFor === raceG) return camGates;
+  camGatesFor = raceG; camGates = []; raceG.updateMatrixWorld(true);
+  for (const g of raceG.userData.gates) g.traverse(o => {
+    if (!o.isMesh || !o.visible || o.material.transparent || o.geometry.type === 'PlaneGeometry') return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const b = o.geometry.boundingBox, sc = new THREE.Vector3().setFromMatrixScale(o.matrixWorld), c = b.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+    camGates.push({ inv: o.matrixWorld.clone().invert(), b: b.clone(), pad: [CAM_PAD / Math.abs(sc.x || 1), CAM_PAD / Math.abs(sc.y || 1), CAM_PAD / Math.abs(sc.z || 1)], c, r2: (b.getSize(new THREE.Vector3()).multiply(sc).length() / 2 + 1.5) ** 2 });
+  });
+  return camGates;
+}
+const camV = new THREE.Vector3(), CAM_PAD = 1.1; // lens clearance: closer than this and the prop fills the bottom/top of the frame
+export function raceCamBlockers() { return R && raceG ? { props: R.t.props.filter(p => p.t === 'barrier' || p.t === 'ramp'), gates: gateBoxes().length } : null; }
+export function camBlocked(x, y, z) {
+  if (!R || !raceG) return false;
+  for (const p of R.t.props) {
+    if (p.t === 'boost') continue; const dx = x - p.x, dz = z - p.z; if (dx * dx + dz * dz > 49) continue;
+    if (RC.propCamHit(p, x, y, z, H(p.x, p.z) - (p.t === 'ramp' ? 0.15 : 0), CAM_PAD)) return true;
+  }
+  for (const g of gateBoxes()) {
+    if (camV.set(x, y, z).distanceToSquared(g.c) > g.r2) continue;
+    camV.applyMatrix4(g.inv); const { min, max } = g.b, [px, py, pz] = g.pad;
+    if (camV.x > min.x - px && camV.x < max.x + px && camV.y > min.y - py && camV.y < max.y + py && camV.z > min.z - pz && camV.z < max.z + pz) return true;
+  }
+  return false;
+}
 
 // ---------- HUD ----------
 const CSS = `
@@ -410,7 +458,16 @@ function ensureUI() {
   const res = document.createElement('div'); res.id = 'raceResult'; chip.after(res);
   const count = document.createElement('div'); count.id = 'raceCount'; document.getElementById('surfHud')?.appendChild(count);
   const ctx = document.createElement('button'); ctx.id = 'raceCtxBtn'; ctx.className = 'glass'; ctx.style.display = 'none'; ctx.textContent = '\ud83c\udfc1 Race';
-  btns?.prepend(ctx); tapButton(ctx, () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } });
+  btns?.prepend(ctx); const goNear = () => { const d = ui.near; if (d) { const r = startRace(d.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); else toast(`\ud83c\udfc1 ${d.name}: buy-in ${RC.BUY_IN} cr. Beat ${d.rival?.name || 'the rival'}.`, 2600); } }; tapButton(ctx, goNear);
+  // v7.5.16 (Collin): Enter starts the race at a start pad, and Rematch / Next on the result card. Never while typing
+  // (Save Code, track name, chat) or when another handler already took Enter (radio offer, controls panel).
+  window.addEventListener('keydown', e => {
+    if ((e.code !== 'Enter' && e.code !== 'NumpadEnter') || e.repeat || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = document.activeElement; if (t && t !== document.body && t.tagName !== 'CANVAS') return; // typing, or Enter already presses a focused menu button
+    if (panel.classList.contains('on') || builder?.open) return;
+    if (ui.res.classList.contains('on')) { const b = ui.res.querySelector('#raceNext') || ui.res.querySelector('#raceAgain'); if (b) { e.preventDefault(); b.click(); /* detail 0 -> tapButton's keyboard path, once */ } return; }
+    if (ui.ctx.style.display !== 'none' && ui.near) { e.preventDefault(); goNear(); }
+  });
   const mRace = addMenuItem(app(), { id: 'rmRaces', label: '\ud83c\udfc1 Street races', onTap: () => { if (R) quitRace('You walked away from the race. Buy-in stays on the table.'); else openPanel(); } });
   const mBuild = addMenuItem(app(), { id: 'rmBuilder', label: '\ud83d\udee0 Track builder', onTap: () => openBuilder() });
   const panel = document.createElement('div'); panel.id = 'racePanel'; document.body.appendChild(panel);
@@ -451,7 +508,7 @@ function showResult(res) {
   const head = !res.done ? '\ud83c\udff3 DNF' : res.won ? '\ud83c\udfc6 YOU WIN' : '\ud83e\udd48 SECOND';
   const money = res.done ? `${res.buyIn ? `Buy-in \u2212${res.buyIn} \u00b7 ` : ''}Purse +${res.credits} cr \u00b7 +${res.xp} XP${res.firstWin ? ' \u00b7 first win bonus' : ''}${res.note ? `<br><small>${esc(res.note)}</small>` : ''}` : (res.buyIn ? `Buy-in \u2212${res.buyIn} cr lost` : '');
   ui.res.innerHTML = `<h4>${head} \u00b7 ${esc(res.name)}</h4>${res.done ? `Time ${RC.fmtTime(res.time)} \u00b7 best lap ${RC.fmtTime(res.best ?? NaN)}${res.newBest ? ' \u2b50 NEW' : ''}<br>` : ''}${res.rivalTime ? `Rival ${RC.fmtTime(res.rivalTime)}<br>` : ''}${money}<br><i>${esc(res.line || '')}</i>
-    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch</button><button id="raceResClose">\u2716</button></div>`;
+    <div class="row"><button id="raceAgain">\ud83d\udd01 Rematch${document.body.classList.contains('touch') ? '' : ' (Enter)'}</button><button id="raceResClose">\u2716</button></div>`;
   ui.res.classList.add('on');
   tapButton(ui.res.querySelector('#raceAgain'), () => { showResult(null); const r = startRace(res.id); if (!r.ok) toast(`\ud83d\udeab ${r.why}`, 2500); });
   tapButton(ui.res.querySelector('#raceResClose'), () => showResult(null));
@@ -463,9 +520,9 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 // ---------- race list panel ----------
 function openPanel() {
   if (!ensureUI() || !planet) return; const P = C?.game?.progress, defs = defsHere();
-  const items = defs.map(d => { const t = resolve(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
+  const items = defs.map(d => { const t = resolveView(d), best = data.best[d.id], wins = data.wins[d.id] || 0;
     const kind = t.loop ? `${t.laps}-lap loop` : 'sprint', far = C ? Math.round(Math.hypot(t.gates[0].x - C.player.x, t.gates[0].z - C.player.z)) : 0;
-    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${RC.payout(t, { won: true, custom: true }).credits} cr`) : `purse ${d.purse || 120} cr${wins ? '' : ' + 100 first win'}`;
+    const purse = d.custom ? (t.length < RC.MIN_PAID_LEN ? 'practice (too short for a purse)' : `purse up to ${boost(RC.payout(t, { won: true, custom: true }).credits)} cr`) : `purse ${boost(d.purse || 120)} cr${wins ? '' : ` + ${boost(100)} first win`}`; // v7.5.9: listed = paid
     return `<div class="item${d.custom ? ' custom' : ''}"><b>${d.custom ? '\ud83d\udee0' : d.fromQuest ? '\ud83d\udcfb' : '\ud83c\udfc1'} ${esc(d.name)}</b> \u00b7 ${kind} \u00b7 ${t.gates.length} gates \u00b7 ${Math.round(t.length)} m
       <small>${esc(d.blurb || 'Your own track.')}</small><small>Rival: ${esc(d.rival?.name || 'Pit Viper')} \u00b7 ${purse} \u00b7 buy-in ${RC.BUY_IN} cr \u00b7 best lap ${RC.fmtTime(best ?? NaN)} \u00b7 wins ${wins} \u00b7 ${far} m away</small>
       <div class="row"><button class="go" data-race="${esc(d.id)}">\ud83c\udfc1 Race</button>${d.custom ? `<button data-edit="${esc(d.id)}">\u270f\ufe0f Edit</button><button data-del="${esc(d.id)}">\ud83d\uddd1</button>` : `<button data-copy="${esc(d.id)}">\ud83d\udee0 Remix</button>`}</div></div>`; }).join('');
@@ -505,7 +562,7 @@ function openBuilder(def = null, copy = false) {
 
 // ---------- tiny synth (WebAudio): countdown beeps, gate chimes, boost/jump ----------
 let ac = null;
-function unlockAudio() { try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; } }
+function unlockAudio() { try { if (!ac) ac = getAudioCtx(); if (ac && ac.state !== 'running') ac.resume().catch(() => {}); } catch (e) { ac = null; } }
 function sfx(kind) {
   if (!ac || ac.state !== 'running') return;
   const tone = (f, d, type = 'square', v = 0.06, f2) => { const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
@@ -529,7 +586,7 @@ export function raceTick(dt, ctx) {
   let near = null, bd = 18; const px = ctx.car ? ctx.car.x : ctx.player.x, pz = ctx.car ? ctx.car.z : ctx.player.z;
   for (const o of idleG.children) { const d = Math.hypot(o.position.x - px, o.position.z - pz); if (d < bd) { bd = d; near = o.userData.def; } }
   ui.near = near; const show = !!near && !ctx.game.isDown();
-  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = `\ud83c\udfc1 Race`;
+  ui.ctx.style.display = show ? 'block' : 'none'; if (show) ui.ctx.textContent = document.body.classList.contains('touch') ? '\ud83c\udfc1 Race' : '\ud83c\udfc1 Race (Enter)';
 }
 // minimap: our next gate shows where the quest gate would
 const patched = new WeakSet();
@@ -548,9 +605,11 @@ setInterval(() => {
 
 // ---------- test/debug hooks ----------
 window.__race = {
+  showResult: res => showResult(res), // v7.5.15 test hook (card-fit screenshots)
   get state() { return R ? { id: R.def.id, phase: R.phase, lap: R.lap, next: R.next, passed: R.passed, time: R.time, laps: R.laps.slice(), best: R.best, rival: R.rival ? { dist: R.rival.dist, prog: R.rival.lastProg, finish: R.rival.finish } : null, myProg: R.myProg, ghost: !!R.ghost, buyIn: R.buyIn || 0 } : null; },
   get result() { return lastResult; }, get data() { return data; }, get planet() { return planet; },
-  tracks: () => defsHere().map(d => { const t = resolve(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
+  gates: () => R ? R.t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw })) : null, // the RUNNING race's gates (tracks() re-resolves against the live world)
+  tracks: () => defsHere().map(d => { const t = resolveView(d); return { id: d.id, name: d.name, loop: t.loop, laps: t.laps, gates: t.gates.map(g => ({ x: g.x, z: g.z, yaw: g.yaw, ...(g.moved ? { moved: g.moved } : {}) })), props: t.props, length: t.length, custom: !!d.custom }; }),
   start: (id, o) => startRace(id, o), quit: () => quitRace(null), openPanel, closePanel, openBuilder: (id, copy) => openBuilder(id ? allDefs().find(d => d.id === id) : null, copy),
   get builder() { return builder; }, reload() { data = RC.loadRace(LS); rebuildIdle(); },
   skipCountdown() { if (R && R.phase === 'grid') R.count = 0.001; },
@@ -558,6 +617,7 @@ window.__race = {
   place(x, z, yaw) { const c = myCar(); if (c) { c.x = x; c.z = z; if (yaw !== undefined) c.yaw = yaw; c.y = H(x, z); c.prevG = null; c.vy = 0; c.air = false; } else { C.player.x = x; C.player.z = z; } },
   car: () => { const c = myCar(); return c ? { x: c.x, z: c.z, y: c.y, yaw: c.yaw, speed: c.speed, air: !!c.air, vy: c.vy, lift: c.lift || 0, kind: c.kind } : null; },
   setCarSpeed(v) { const c = myCar(); if (c) c.speed = v; },
+  camBlocked, camBlockers: raceCamBlockers, // race fix (M1): surface.js's camera boom checks camBlocked each frame
   rivalPace(k) { if (R?.rival) R.rival.pace *= k; },
   blocked: (x, z, r = 0) => !!blockedFn()?.(x, z, r),
   counts: () => ({ root: root?.children.length || 0, idle: idleG?.children.length || 0, race: raceG?.children.length || 0, ctx: ui?.ctx.style.display })

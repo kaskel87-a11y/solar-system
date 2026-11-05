@@ -56,7 +56,7 @@ function allowedAttackers() {
   const W = C?.world;
   if (typeof W?.npcBudget === 'function') {
     try {
-      const b = W.npcBudget(), res = b.reserved || {}, others = Object.entries(res).reduce((a, [k, v]) => a + (k === 'raids' ? 0 : v), 0);
+      const b = W.npcBudget(), res = b.reserved || {}, others = Object.entries(res).reduce((a, [k, v]) => a + (k === 'raids' || k === 'street' || k === 'grime-street' ? 0 : v), 0); // v7.5.4: the Flats street crowd (#44) yields to raiders (its room() counts our reservation)
       let footNow = 0; try { footNow = (W.securityList?.() || []).filter(s => s.kind === 'officer' || s.kind === 'heavy').length; } catch {}
       const foot = Math.max(footNow, expectedSecurity(W.wanted || 0).foot), hum = C.game?.humanCount?.() || 0;
       const room = (b.cap || npcCap()) - (mobile ? 4 : 0) - foot - hum - others;
@@ -65,7 +65,7 @@ function allowedAttackers() {
   }
   return Math.max(0, n);
 }
-function reserve(n) { try { if (typeof C?.world?.npcReserve === 'function' && reserved !== n) { reserved = n; C.world.npcReserve('raids', n); } } catch {} }
+function reserve(n) { try { if (typeof C?.world?.npcReserve === 'function' && reserved !== n) { const up = n > reserved; reserved = n; C.world.npcReserve('raids', n); if (up) dispatchEvent(new CustomEvent('ssx:npcbudget', { detail: { by: 'raids', n } })); } } catch {} }
 let reserved = 0;
 function aliveAttackers() { return raid ? raid.npcs.filter(n => n.alive) : []; }
 const playerXZ = () => C.car ? { x: C.car.x, z: C.car.z } : { x: C.player.x, z: C.player.z };

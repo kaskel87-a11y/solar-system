@@ -624,12 +624,12 @@
       "location": {
         "district": "mars-rough",
         "at_local": [
-          -36,
-          -18
+          -40,
+          -9
         ],
         "at_aj": [
-          -316,
-          -58
+          -320,
+          -49
         ],
         "label": "water tower pit"
       },
@@ -641,8 +641,8 @@
           {
             "type": "goto",
             "at_local": [
-              -36,
-              -18
+              -40,
+              -9
             ],
             "r": 4,
             "text": "Drop into the pit"

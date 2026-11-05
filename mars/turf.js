@@ -42,7 +42,7 @@ const BLOCKS = [
   { id: 'blues-den', name: 'Blue\u2019s Den', c: [28, -12], flag: [44, -10], tier: 2, income: 12, gang: 'saltblood', note: 'The no-name dealer den. Glow-dust money.' },
   { id: 'marrow-court', name: 'Marrow\u2019s Court', c: [0, -8], flag: [-6, -30], tier: 3, income: 16, gang: 'saltblood', hq: true, note: 'Saltblood HQ under the big dome. Hold two blocks first.' },
   { id: 'funeral-mile', name: 'Funeral Mile', c: [14, 34], flag: [24, 42], tier: 1, income: 8, gang: 'saints', note: 'Ashes to Orbit and the closed stalls.' },
-  { id: 'hab-stacks', name: 'Hab Stacks', c: [-38, -24], flag: [-52, -32], tier: 1, income: 7, gang: 'dustjaws', note: 'Stacked habs round the west dome.' },
+  { id: 'hab-stacks', name: 'Hab Stacks', c: [-38, -24], flag: [-52, -32], tier: 1, income: 7, gang: 'dustjaws', note: 'Stacked habs round The Pit and the water tower.' },
   { id: 'tag-tower', name: 'Tag Tower', c: [-48, 6], flag: [-60, 4], tier: 2, income: 9, gang: 'dustjaws', note: 'The water tower, tagged top to bottom.' }
 ];
 const R_FLAG = 6, R_ZONE = 34, FLATS_R = 92;
@@ -369,7 +369,7 @@ function ui() {
   dockButton('dockTurf', '🚩\nTurf', 'Turf (K)', 3, () => panel.classList.contains('show') ? close() : open());
   addEventListener('keydown', e => {
     if (e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return;
-    if (e.code === 'KeyK') { panel.classList.contains('show') ? close() : open(); }
+    if (e.code === 'KeyK') { if (!panel.classList.contains('show') && document.getElementById('baseBtn')?.style.display === 'block') return; panel.classList.contains('show') ? close() : open(); } // v7.5.4: at your base plot K is the base action (#24)
     else if (e.code === 'KeyY' && actBtn.classList.contains('show')) { e.preventDefault(); doAction(); }
   });
 }

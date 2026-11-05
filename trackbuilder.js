@@ -169,7 +169,7 @@ body.tb-on #surfHud, body.tb-on #racePanel, body.tb-on #joy { display: none !imp
     recenter();
   }
   function place(cx, cy) {
-    const g = ground(cx, cy); if (!g) return;
+    const g0 = ground(cx, cy), sn = g0 && globalThis.SSX_TRACK_SNAP?.(D.planet(), g0, tool), g = sn === false ? null : sn || g0; if (!g) return; // add-on road snap / gate sanity (marstracks.js): false = refused
     if (tool === 'gate') {
       if (draft.gates.length >= RC.MAX_GATES) { D.toast?.(`\ud83d\udea9 ${RC.MAX_GATES} gates max.`, 2000); return; }
       pushUndo(); const at = sel?.kind === 'gate' ? sel.i + 1 : draft.gates.length; draft.gates.splice(at, 0, { x: g.x, z: g.z }); sel = { kind: 'gate', i: at };

@@ -22,6 +22,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
     const dock = { contraband: ['#dockStash', '#cbPanel', '#cbClose'], jobs: ['#dockJobs', '#jobPanel', '#jobClose'], turf: ['#dockTurf', '#turfPanel', '#turfClose'] }[MODE];
     if (desk) { const b = await box(dock[0]); ok('dockHiddenOnDesktop', !b?.vis); }
+    else if (await G(() => document.body.classList.contains('hxFold'))) {
+      // v7.5.5 HUD pass: on phones the dock folds into the ☰ menu; the same panel opens from there
+      ok('dockFolded', !(await box(dock[0]))?.vis);
+      const word = { contraband: 'Stash', jobs: 'Jobs', turf: 'Turf' }[MODE];
+      // v7.6: the folded column lives in the black ▤ More button (its ☰ twin is hidden while More is up); ☰ is the fallback
+      const more = await G(() => { const m = document.getElementById('hxMore'); return !!m && getComputedStyle(m).display !== 'none'; }); R.via = more ? 'more' : 'menu';
+      const host = more ? '#hxMoreP' : '#roverMenu';
+      if (more) { await checkBtn('moreBtn', '#hxMore'); if (!(await G(() => document.getElementById('hxMoreP').classList.contains('show')))) await tapSel('#hxMore'); } else await tapSel('#menuBtn'); await sleep(300);
+      ok('menuItem', await G(([w, h]) => { const b = [...document.querySelectorAll(h + ' button')].find(e => e.textContent.includes(w) && getComputedStyle(e).display !== 'none'); if (b) b.dataset.td = '1'; return b ? b.textContent.trim() : false; }, [word, host]));
+      if (more) { await G(h => document.querySelector(h + ' button[data-td="1"]').scrollIntoView({ block: 'nearest' }), host); await sleep(250); await checkBtn('moreItemBtn', `${host} button[data-td="1"]`); } // the panel scrolls on short screens; the tap guard ignores taps < 150 ms after a scroll
+      await tapSel(`${host} button[data-td="1"]`);
+      if (more) ok('moreClosesAfterPick', await G(() => !document.getElementById('hxMoreP').classList.contains('show'))); ok('menuOpensPanel', await wait(sel => document.querySelector(sel).classList.contains('show'), 4000, dock[1]));
+      await shot('panel'); await tapSel(dock[2]); ok('panelClosed', !(await G(sel => document.querySelector(sel).classList.contains('show'), dock[1])));
+    }
     else {
       const b = await checkBtn('dockBtn', dock[0]); R.dockTop = Math.round(b?.top);
       // no overlap with core touch controls (Jump/Run/Pet column, FIRE, minimap)
@@ -58,7 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       ok('yShows', await wait(() => /Take Hab Stacks/.test(document.getElementById('turfAct').textContent) && getComputedStyle(document.getElementById('turfAct')).display !== 'none', 8000));
       await checkBtn('yBtn', '#turfAct'); await shot('y');
       await tapSel('#turfAct'); ok('yTapWorks', await G(() => window.SSX.turf.fight()?.kind === 'take'));
-      await checkBtn('retreatBtn', '#turfRetreat'); await tapSel('#turfRetreat'); ok('retreated', await G(() => !window.SSX.turf.fight()));
+      const RT = await G(() => document.body.classList.contains('hudx') ? '#hxQuit' : '#turfRetreat'); await checkBtn('retreatBtn', RT); await tapSel(RT); // v7.5.5: Retreat lives in the mission card ok('retreated', await G(() => !window.SSX.turf.fight()));
     }
   } catch (e) { R.exception = String(e && e.stack || e); bad.push('exception'); }
   R.errors = errors.slice(0, 8); if (errors.length) bad.push('consoleErrors'); R.bad = bad; R.pass = !bad.length;

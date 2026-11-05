@@ -23,7 +23,7 @@ function measure() {
     if (EXPAND.has(e.id)) { if (!vis(e)) continue; const pr = e.getBoundingClientRect(), ov = getComputedStyle(e).overflow !== 'visible'; for (const c of e.children) add(c, ov ? { l: pr.left, t: pr.top, r: pr.right, b: pr.bottom } : null); }
     else add(e);
   }
-  for (const id of ['joy', 'discPop', 'fact-panel']) if (!hud.contains(document.getElementById(id))) add(document.getElementById(id));
+  for (const id of ['joy', 'discPop', 'fact-panel', 'jobAct', 'cbBtn', 'turfAct', 'hxCtxNext']) if (!hud.contains(document.getElementById(id))) add(document.getElementById(id));
   const overlaps = [];
   for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = items[i], b = items[j]; if (a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 && b.t < a.b - 0.5) overlaps.push(`${a.id}×${b.id}`); }
   const C = { l: W * 0.25, r: W * 0.75, t: H * 0.25, b: H * 0.75 };
@@ -80,9 +80,13 @@ function measure() {
       // 4) menu open (overlay) + cinematic
       if (TAG !== 'before') {
         await page.tap('#menuBtn'); await sleep(300); R.menu = await page.isVisible('#roverMenu'); await shot('menu');
+        await page.evaluate(() => document.getElementById('hideHudBtn')?.scrollIntoView({ block: 'center' })); await sleep(250); // v7.6 tap guard ignores taps < 150 ms after a sheet scroll
         await page.tap('#hideHudBtn'); await sleep(300); const c = await check('cinematic'); R.cinematicWidgets = c.ids; await shot('cinematic');
         await page.tap('#hudShow'); await sleep(300); R.restored = await page.isVisible('#topBar');
-        await page.tap('#miniMap'); await sleep(300); R.mapOpensMenu = await page.isVisible('#rmWarp'); await page.tap('#rmClose');
+        // v7.5.5: the minimap opens the full-screen map; its ☰ button still reaches the rover menu
+        await page.tap('#miniMap'); await sleep(400); R.mapOpens = await page.isVisible('#hxMap'); if (!R.mapOpens) bad.push('minimap tap: no full map');
+        if (R.mapOpens) { await page.tap('#hxMapMenu'); await sleep(700); } else await page.tap('#miniMap');
+        R.mapOpensMenu = await page.isVisible('#rmWarp'); if (!R.mapOpensMenu) bad.push('map ☰: no menu'); await page.tap('#rmClose');
         R.map = await G(() => window.__app.mapInfo());
       }
     } catch (e) { R.fail = e.message.split('\n')[0]; bad.push('exception'); }

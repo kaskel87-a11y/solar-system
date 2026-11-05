@@ -75,8 +75,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const c0 = await C();
     await tapSel('#turfAct');
     ok('takeStarted', (await F())?.kind, (await F())?.kind === 'take' && (await F())?.gang === 'dustjaws');
-    ok('hudShown', await wait(() => getComputedStyle(document.getElementById('turfHud')).display !== 'none', 10000));
-    const hb = await center('#turfRetreat'); ok('hudBtn44', hb?.h, hb?.h >= 44);
+    // v7.5.5 (hud/hudx.js): the fight folds into the one mission card (#hxJob); its 🏳️ button (#hxQuit) is Retreat / Let it go
+    const RETREAT = await G(() => document.body.classList.contains('hudx') ? '#hxQuit' : '#turfRetreat');
+    ok('hudShown', await wait(() => getComputedStyle(document.getElementById(document.body.classList.contains('hudx') ? 'hxJob' : 'turfHud')).display !== 'none', 10000));
+    const hb = await center(RETREAT); ok('hudBtn44', hb?.h, hb?.h >= 44);
     const tw = await fightWaves('take'); R.takeWaves = tw;
     ok('takeWaves2plus', tw.waves >= 2);
     ok('captured', await wait(() => window.SSX.turf.owner('hab-stacks') === 'player', 10000));
@@ -106,7 +108,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.turf.debug.counter('hab-stacks'));
     ok('alertPhase', (await F())?.phase, (await F())?.phase === 'alert');
     await sleep(500); R.alertHud = await G(() => document.getElementById('turfHud').innerText.replace(/\n/g, ' | '));
-    await tapSel('#turfRetreat');
+    await tapSel(RETREAT);
     ok('lostBack', await G(() => window.SSX.turf.owner('hab-stacks')), (await G(() => window.SSX.turf.owner('hab-stacks'))) === 'dustjaws');
 
     // ---- persistence, keys, events

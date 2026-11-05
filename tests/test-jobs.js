@@ -51,8 +51,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (!(await G(() => document.getElementById('jobPanel').classList.contains('show')))) { await G(() => window.SSX.jobs.open()); await sleep(300); }
     await tapSel('#jobPanel button[data-job="taxi"]');
     ok('taxiStarted', (await J())?.type, (await J())?.stage === 'pickup');
-    ok('hudShown', await wait(() => getComputedStyle(document.getElementById('jobHud')).display !== 'none', 10000));
-    const hs = await center('#jobStop'); ok('hudStop44', hs?.h, hs?.h >= 44);
+    // v7.5.5 (hud/hudx.js): the job folds into the one mission card (#hxJob) with one 🏳️ quit (#hxQuit); without hudx the old bar shows
+    const STOP = await G(() => document.body.classList.contains('hudx') ? '#hxQuit' : '#jobStop');
+    ok('hudShown', await wait(() => getComputedStyle(document.getElementById(document.body.classList.contains('hudx') ? 'hxJob' : 'jobHud')).display !== 'none', 10000));
+    const hs = await center(STOP); ok('hudStop44', hs?.h, hs?.h >= 44);
     R.hud = await G(() => document.getElementById('jobHud').innerText.replace(/\n/g, ' | '));
     await G(() => window.SSX.jobs.debug.setDone('taxi', 4));
     await goal(); ok('taxiPickedUp', await wait(() => window.SSX.jobs.active()?.stage === 'drop', 8000));
@@ -62,7 +64,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('taxiPaid', (await C()) - c0, (await C()) > c0);
     ok('taxiL2', await G(() => window.SSX.jobs.level('taxi')), (await G(() => window.SSX.jobs.level('taxi'))) === 2);
     ok('taxiNextFare', (await J())?.stage, (await J())?.stage === 'pickup' && (await J())?.level === 2);
-    await tapSel('#jobStop'); ok('taxiStopped', (await J()) === null);
+    await tapSel(STOP); ok('taxiStopped', (await J()) === null);
 
     // ---- vehicle toggle (in any vehicle with no job)
     ok('vehicleToggle', await wait(() => { const b = document.getElementById('jobAct'); return getComputedStyle(b).display !== 'none' && /Taxi duty/.test(b.textContent); }, 4000));

@@ -74,13 +74,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('roverIn', await wait(() => window.__app.surface.info.driving, 6000));
     ok('thrustBarInRover', await wait(() => window.__thrustHud().top && /%/.test(window.__thrustHud().topBar), 3000)); await page.screenshot({ path: `${out}v74-${tag}-meters.png`, clip: { x: 0, y: 0, width: desk ? 1366 : 393, height: 70 } });
     const cr0 = await G(() => window.__app.game.progress.credits);
+    await G(() => { window.__toastLog = []; const el = document.getElementById('toast'); if (el) new MutationObserver(() => window.__toastLog.push(el.textContent)).observe(el, { childList: true, characterData: true, subtree: true }); }); // toasts can be replaced before we look
     await G(() => window.__app.surface.debugLaunch(10)); ok('air', await wait(() => window.__app.surface.info.air, 3000));
     await roll(); ok('rolling', await wait(() => window.__app.surface.info.rolling || window.__app.surface.info.stunts.rolls > 0, 3000));
     await sleep(250); await page.screenshot({ path: `${out}v74-${tag}-barrel-roll.png` });
     ok('cleanLanding', await wait(() => window.__app.surface.info.stunts.clean > 0 || window.__app.surface.info.stunts.crash > 0, 20000)); R.stunts = await G(() => JSON.stringify(window.__app.surface.info.stunts));
     if (await G(() => window.__app.surface.info.stunts.crash > 0)) bad.push('landedOnRoof');
     const cr1 = await G(() => window.__app.game.progress.credits); ok('stuntBonus', `${cr0} → ${cr1}`, cr1 - cr0 >= 25);
-    ok('stuntToast', await G(() => /Barrel roll/.test(document.body.innerText)));
+    ok('stuntToast', await G(() => /Barrel roll/i.test(document.body.innerText) || (window.__toastLog || []).some(t => /barrel roll/i.test(t))));
     ok('rollsSkipWeaponSwitch', await G(() => window.__app.surface.info.driving));
     // ---- Velvet Airlock: 18+ prompt, make it rain, private dance (letterboxed), upstairs fades to black and restores health
     await G(() => window.__app.surface.interact()); await wait(() => !window.__app.surface.info.driving, 6000);

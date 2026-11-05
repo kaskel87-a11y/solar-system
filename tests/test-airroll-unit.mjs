@@ -1,0 +1,51 @@
+// node tests/test-airroll-unit.mjs: pure checks for airroll.js (when the phone roll button shows, which way it rolls)
+import { rollVisible, rollDir, normDir, rollReady, rollEvents, airRoll } from '../airroll.js';
+let pass = 0, fail = 0; const t = (n, c) => { if (c) pass++; else { fail++; console.log('FAIL', n); } };
+const base = { touch: true, onSurface: true, flying: false, transitioning: false, driving: true, air: true, inside: false, cinematic: false };
+t('airborne vehicle shows', rollVisible(base));
+t('on the ground hides', !rollVisible({ ...base, air: false }));
+t('on foot hides', !rollVisible({ ...base, driving: false }));
+t('inside hides', !rollVisible({ ...base, inside: true }));
+t('desktop never', !rollVisible({ ...base, touch: false }));
+t('cinematic hides', !rollVisible({ ...base, cinematic: true }));
+t('landing transition hides', !rollVisible({ ...base, transitioning: true }));
+t('starship flight shows', rollVisible({ ...base, onSurface: false, flying: true, driving: false, air: false }));
+t('space orbit view hides', !rollVisible({ ...base, onSurface: false, flying: false }));
+t('null safe', !rollVisible(null));
+t('default right', rollDir(0, 0) === 1);
+t('stick left', rollDir(0, -0.6) === -1);
+t('stick dead zone', rollDir(0, 0.1) === 1);
+t('swipe beats stick', rollDir(-40, 0.9) === -1);
+t('tiny swipe ignored', rollDir(8, -0.8) === -1);
+
+// SSX.airRoll API shape (what mars/gravity.js and other mods call)
+t('api shape', ['roll', 'isRolling', 'canRoll', 'on'].every(k => typeof airRoll[k] === 'function'));
+t('dir left', normDir('left') === -1); t('dir right', normDir('right') === 1); t('dir -1', normDir(-1) === -1); t('dir bad', normDir('up') === 0);
+t('roll without app is false', airRoll.roll('left') === false);
+t('canRoll without app is false', airRoll.canRoll() === false && airRoll.isRolling() === false);
+let got = 0; const off = airRoll.on('start', () => got++); t('on returns unsubscribe', typeof off === 'function'); off();
+let threw = false; try { airRoll.on('start'); } catch (e) { threw = true; } t('on needs fn', threw);
+const R0 = { onSurface: true, flying: false, transitioning: false, driving: true, air: true, inside: false, rolling: false, shipRolling: false };
+t('ready airborne', rollReady(R0)); t('not while rolling', !rollReady({ ...R0, rolling: true })); t('not grounded', !rollReady({ ...R0, air: false }));
+t('not on foot', !rollReady({ ...R0, driving: false })); t('ship ready', rollReady({ ...R0, onSurface: false, flying: true }));
+t('ship not mid-roll', !rollReady({ ...R0, onSurface: false, flying: true, shipRolling: true })); t('not transitioning', !rollReady({ ...R0, transitioning: true }));
+const S0 = { rolling: false, shipRolling: false, shipRolls: 0, clean: 0, crash: 0, rolls: 0, dir: 1 };
+const names = (a, b) => rollEvents(a, b).map(e => e[0] + ':' + (e[1].target || '') + (e[1].dir ? ':' + e[1].dir : '')).join(',');
+t('vehicle start', names(S0, { ...S0, rolling: true, dir: -1 }) === 'start:vehicle:left');
+t('vehicle end + land', names({ ...S0, rolling: true }, { ...S0, clean: 1, rolls: 1 }) === 'end:vehicle,land:');
+t('crash', names({ ...S0, rolling: true }, { ...S0, crash: 1 }) === 'end:vehicle,crash:');
+t('ship start/end', names(S0, { ...S0, shipRolling: true }) === 'start:ship:right' && names({ ...S0, shipRolling: true }, { ...S0, shipRolls: 1 }) === 'end:ship');
+t('quiet', names(S0, S0) === '');
+t('land rolls count', rollEvents({ ...S0, rolls: 2 }, { ...S0, rolls: 4, clean: 1 })[0][1].rolls === 2);
+// index.html imports it once, sw.js precaches it
+import { readFileSync } from 'fs';
+const idx = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+t('one hook line', (idx.match(/import '\.\/airroll\.js'/g) || []).length === 1);
+t('import map entry', /"\.\/airroll\.js": "\.\/airroll\.js\?v=/.test(idx));
+t('precached', /'airroll'|airroll\.js/.test(sw));
+const src = readFileSync(new URL('../airroll.js', import.meta.url), 'utf8');
+t('no onclick', !/\.onclick\s*=|addEventListener\('click'/.test(src));
+t('desktop key Z', /KeyZ/.test(src));
+t('readme documents SSX.airRoll', /SSX\.airRoll/.test(readFileSync(new URL('../README.md', import.meta.url), 'utf8')));
+t('pointerup checks pointerId', /e\.pointerId !== pid/.test(src));
+console.log(`airroll unit: ${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

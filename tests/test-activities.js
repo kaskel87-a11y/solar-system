@@ -133,7 +133,7 @@ function measure() {
     ok('abandoned', null, await G(() => !window.__activities.active));
 
     // District helper near Olympus Row
-    await G(() => window.__app.surface.debugMove(0, -430, 0));
+    await G(() => { const c = window.__app.surface.info.colony; window.__app.surface.debugMove(c.x + 0, c.z - 430, 0); }); // Olympus centre is AJ-relative [0, -430]
     await sleep(200);
     const dist = await G(() => window.__activities.district);
     ok('districtOlympus', dist, dist && dist.id === 'mars-downtown');

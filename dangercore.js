@@ -39,6 +39,16 @@ export function districtAt(x, z, colony, opts = {}) {
 let clockOverride = null;
 export function setClock(h) { clockOverride = h == null ? null : ((h % 24) + 24) % 24; }
 export function marsHour(nowMs = Date.now()) { return clockOverride ?? ((nowMs / 120000) % 24); }
+// game clock from Steve's SSX.time (optional): hour() -> float [0,24) is the source when it exists; else isNight() overrides
+// the night flag; else our own clock. marsHour() stays the raw clock on purpose (SSX.time seeds from it, so no recursion).
+// readHour -> number | null, readNight -> true | false | null (absent / throws / junk). setClock() (tests) still wins.
+export function readHour(root = typeof window !== 'undefined' ? window : null) { try { const T = root?.SSX?.time, f = T?.hour; if (typeof f !== 'function') return null; const v = +f.call(T); return Number.isFinite(v) ? ((v % 24) + 24) % 24 : null; } catch (e) { return null; } }
+export function readNight(root = typeof window !== 'undefined' ? window : null) { try { const T = root?.SSX?.time, f = T?.isNight; if (typeof f !== 'function') return null; const v = f.call(T); return typeof v === 'boolean' ? v : null; } catch (e) { return null; } }
+// keep the hour unless it disagrees with the night flag, then swap in 23 (night) or 12 (day) so timeBand/ratePerMin/ambient gates agree
+export function nightHour(h, night) { if (night !== true && night !== false) return h; return night === (timeBand(h) === 'night') ? h : night ? 23 : 12; }
+export function gameHour(root, nowMs) { if (clockOverride != null) return clockOverride; const h = readHour(root); return h != null ? h : nightHour(marsHour(nowMs), readNight(root)); }
+export function isNight(root, nowMs) { return timeBand(gameHour(root, nowMs)) === 'night'; }
+export function nightSource(root) { return clockOverride != null ? 'setClock' : readHour(root) != null ? 'SSX.time.hour' : readNight(root) != null ? 'SSX.time.isNight' : 'clock'; }
 export function timeBand(h) { return h >= 21 || h < 5 ? 'night' : h >= 17 ? 'dusk' : h < 8 ? 'dawn' : 'day'; }
 const BAND_K = {
   mugging: { day: 0.5, dawn: 0.8, dusk: 1.2, night: 1.9 },
@@ -309,6 +319,28 @@ export function escapeRequest(d, worldName) {
   return { id: typeof d.id === 'string' ? d.id.slice(0, 40) : null, title: typeof d.title === 'string' ? d.title.slice(0, 60) : null, n: Math.max(1, Math.min(3, n)),
     heat, alarm: !!d.alarm, loot: cr, item: d.loot && typeof d.loot.item === 'string' ? d.loot.item : null, vehicle: typeof d.vehicle === 'string' ? d.vehicle : null, pos, world: typeof d.world === 'string' ? d.world : null };
 }
+
+// ---------- public mugging API (SSX.danger.startMugging / isMugging / mugging) ----------
+export const MUG_WEAPONS = ['knife', 'pipe', 'fists'];
+export const MUG_HIT = { knife: [9, 15], pipe: [7, 12], fists: [4, 7] };
+export function mugHit(weapon, rng = Math.random) { const [a, b] = MUG_HIT[weapon] || MUG_HIT.knife; return a + rng() * (b - a); }
+// normalise caller opts: { force?, near?:{x,z}, dist?, armed?, night? } (unknown keys such as grime's district/src are ignored)
+export function mugOpts(o) {
+  o = o && typeof o === 'object' ? o : {};
+  const nx = +o.near?.x, nz = +o.near?.z, near = o.near && typeof o.near === 'object' && Number.isFinite(nx) && Number.isFinite(nz) ? { x: nx, z: nz } : null;
+  const dist = Number.isFinite(+o.dist) && o.dist !== null && o.dist !== '' ? Math.max(4, Math.min(40, +o.dist)) : null;
+  return { force: o.force === true, near, dist, armed: MUG_WEAPONS.includes(o.armed) ? o.armed : 'knife', night: typeof o.night === 'boolean' ? o.night : null };
+}
+// s: { ready, mugging, enabled, car, inside, duel, heist }. Not ready / already mugging always refuse; force skips the rest.
+export function mugGuard(s, force = false) {
+  s = s || {};
+  if (!s.ready) return { ok: false, why: 'not-ready' };
+  if (s.mugging) return { ok: false, why: 'busy' };
+  if (!force) { for (const [k, why] of [['enabled', 'off'], ['car', 'vehicle'], ['inside', 'inside'], ['duel', 'duel'], ['heist', 'heist']]) if (k === 'enabled' ? s.enabled === false : s[k]) return { ok: false, why }; }
+  return { ok: true, why: null };
+}
+// SSX.heist.active is null when idle, else a callable/object; guarded
+export function heistActive(root = typeof window !== 'undefined' ? window : null) { try { return !!root?.SSX?.heist?.active; } catch (e) { return false; } }
 
 // ---------- gang backup escorts (barter.json gives.type "gang_backup": {faction, count, durationSec, armed, vehicle?}) ----------
 // faction slugs match mars/turf.js GANGS (PR #15): saltblood, dustjaws (Dustjaw Boys: many, cheap), saints (Vacuum Saints: fewer, tougher)

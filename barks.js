@@ -62,7 +62,8 @@ export const BARK_ALIASES = {
   poker_lose: 'activity_fail', poker_fail: 'activity_fail', poker_cashout_lose: 'activity_fail', poker_cheat_caught: 'warn',
   pit_crowd: 'crowd', pit_cheer: 'crowd',
   barter_offer: 'offer', barter_accept: 'activity_complete', barter_decline: 'warn', barter_caught: 'wanted',
-  greet: 'offer', deal: 'activity_complete', deny: 'warn' // modes/rags.js (R2R contacts)
+  greet: 'offer', deal: 'activity_complete', deny: 'warn', // modes/rags.js (R2R contacts)
+  drive: 'flashy', dim: 'warn' // scihooks.js bark(who, kind): kind is also the SSX fallback key if sci_* categories aren't registered
 };
 // Priority (higher interrupts the global gap sooner) and per-category gap in seconds
 export const CATS = {

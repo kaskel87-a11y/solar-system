@@ -31,6 +31,7 @@ const tag = (DEV ? DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : 'desktop') +
     await shot('colony-take');
     await G(() => document.getElementById('driveBtn').click());
     ok('stolen', await wait(() => window.__app.surface.info.driving && window.__app.surface.info.stolen, 8000));
+    R.stealWanted = await G(() => window.__app.surface.world.wanted); ok('stealCarNoStars (v7.5.28: colony cameras + bystanders, no cop close)', R.stealWanted, R.stealWanted === 0);
     R.vehicle = await G(() => window.__app.surface.info.vehicle);
     ok('radioOn', await G(() => window.__app.sfx().includes('radioOn')), await G(() => window.__app.sfx().includes('radioOn')));
     R.stationToast = await G(() => document.getElementById('toast').textContent);
@@ -50,6 +51,7 @@ const tag = (DEV ? DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : 'desktop') +
     ok('pursuit', await wait(() => window.__app.surface.world.debug.security().length > 0, 20000));
     R.security = await G(() => window.__app.surface.world.debug.security().map(s => s.kind).join(','));
     await sleep(1500); await shot('wanted-pursuit');
+    await G(() => window.SSX?.hudx?.mini?.('full')); await sleep(1200); // v7.5.5: lite minimap by default; the icon census needs the full one
     R.mapIcons = await G(() => { const m = window.__app.mapInfo(); return { colony: m.colony, vehicles: m.vehicles, people: m.people, contacts: m.contacts, security: m.security, shop: m.shop }; });
     // lose them: far out in the desert
     await G(() => { const c = window.__app.surface.world.colony; window.__app.surface.debugMove(c.x + 620, c.z + 380, 0); });

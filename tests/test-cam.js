@@ -8,7 +8,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const strip = d => { const { defaultBrowserType, ...o } = d; return o; };
   const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
-  const ctx = await browser.newContext(strip(devices[DEV])); const page = await ctx.newPage();
+  const ctx = await browser.newContext(devices[DEV] ? strip(devices[DEV]) : { viewport: { width: 1366, height: 768 } }); const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(String(e)));
   const tag = `${DEV}-${BR}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const R = { tag }, fails = [];

@@ -104,6 +104,52 @@ ok('faction: chase car', DC.npcDownDetail({ x: 0, z: 0, name: 'Saltblood driver'
 ok('faction: colonist/victim/getaway omitted', !('faction' in DC.npcDownDetail({ kind: 'colonist' })) && !('faction' in DC.npcDownDetail({ kind: 'victim' })) && !('faction' in DC.npcDownDetail({ name: 'Fence crew driver', faction: null })));
 ok('faction keeps x/z/name', (d => d.x === 3 && d.z === 4 && d.name === 'Saltblood')(DC.npcDownDetail({ kind: 'thug', x: 3, z: 4 })));
 ok('faction lowercased', DC.npcDownDetail({ kind: 'thug', faction: 'Saints' }).faction === 'saints');
+// public mugging API guard (SSX.danger.startMugging)
+const G0 = { ready: true, mugging: false, enabled: true, car: false, inside: false, duel: false, heist: false };
+ok('mugGuard: clear street ok', DC.mugGuard(G0).ok && DC.mugGuard(G0).why === null);
+for (const [k, why] of [['car', 'vehicle'], ['inside', 'inside'], ['duel', 'duel'], ['heist', 'heist']]) {
+  ok('mugGuard: refuses ' + k, DC.mugGuard({ ...G0, [k]: true }).why === why && !DC.mugGuard({ ...G0, [k]: true }).ok);
+  ok('mugGuard: force overrides ' + k, DC.mugGuard({ ...G0, [k]: true }, true).ok);
+}
+ok('mugGuard: danger off refuses, force overrides', DC.mugGuard({ ...G0, enabled: false }).why === 'off' && DC.mugGuard({ ...G0, enabled: false }, true).ok);
+ok('mugGuard: busy even with force', DC.mugGuard({ ...G0, mugging: true }).why === 'busy' && DC.mugGuard({ ...G0, mugging: true }, true).why === 'busy');
+ok('mugGuard: not ready even with force', DC.mugGuard({ ...G0, ready: false }, true).why === 'not-ready' && DC.mugGuard(null).why === 'not-ready');
+ok('mugGuard: priority busy > vehicle', DC.mugGuard({ ...G0, mugging: true, car: true }).why === 'busy');
+ok('mugOpts: defaults', JSON.stringify(DC.mugOpts()) === JSON.stringify({ force: false, near: null, dist: null, armed: 'knife', night: null }));
+ok('mugOpts: force must be true', DC.mugOpts({ force: 'yes' }).force === false && DC.mugOpts({ force: true }).force === true);
+ok('mugOpts: near', (o => o.near.x === 3 && o.near.z === -4)(DC.mugOpts({ near: { x: '3', z: -4 } })) && DC.mugOpts({ near: { x: NaN, z: 1 } }).near === null && DC.mugOpts({ near: true }).near === null);
+ok('mugOpts: dist clamped', DC.mugOpts({ dist: 1 }).dist === 4 && DC.mugOpts({ dist: 99 }).dist === 40 && DC.mugOpts({ dist: 9 }).dist === 9 && DC.mugOpts({ dist: undefined }).dist === null);
+ok('mugOpts: armed whitelist', DC.mugOpts({ armed: 'pipe' }).armed === 'pipe' && DC.mugOpts({ armed: 'fists' }).armed === 'fists' && DC.mugOpts({ armed: 'rpg' }).armed === 'knife');
+ok('mugOpts: night boolean only', DC.mugOpts({ night: true }).night === true && DC.mugOpts({ night: false }).night === false && DC.mugOpts({ night: 1 }).night === null);
+ok('mugOpts: grime opts tolerated', (o => o.dist === 6 && !o.force)(DC.mugOpts({ dist: 6, district: 'flats', src: 'grime' })));
+ok('mugHit ranges', DC.mugHit('knife', () => 0) === 9 && DC.mugHit('fists', () => 1) === 7 && DC.mugHit('nope', () => 0) === 9);
+ok('heistActive', DC.heistActive({ SSX: { heist: { active: null } } }) === false && DC.heistActive({ SSX: { heist: { get active() { return Object.assign(() => true, { id: 'bank' }); } } } }) === true && DC.heistActive({ SSX: { heist: { get active() { throw new Error('x'); } } } }) === false && DC.heistActive(null) === false);
+// night: SSX.time.isNight() overrides the clock's night flag
+const T = v => ({ SSX: { time: { isNight: () => v } } });
+ok('readNight absent/junk', DC.readNight({}) === null && DC.readNight(null) === null && DC.readNight(T('dark')) === null && DC.readNight({ SSX: { time: { isNight() { throw new Error('x'); } } } }) === null);
+ok('readNight reads', DC.readNight(T(true)) === true && DC.readNight(T(false)) === false);
+ok('readNight keeps this', DC.readNight({ SSX: { time: { dark: true, isNight() { return this.dark; } } } }) === true);
+ok('nightHour: no override keeps hour', DC.nightHour(13.5, null) === 13.5 && DC.nightHour(2, undefined) === 2);
+ok('nightHour: agrees keeps hour', DC.nightHour(23.5, true) === 23.5 && DC.nightHour(10, false) === 10);
+ok('nightHour: forces night', DC.timeBand(DC.nightHour(12, true)) === 'night');
+ok('nightHour: forces day', DC.timeBand(DC.nightHour(2, false)) === 'day');
+const DAYMS = 12 * 120000, NIGHTMS = 23 * 120000; // marsHour = (ms / 120000) % 24
+ok('isNight: clock fallback', DC.isNight({}, NIGHTMS) === true && DC.isNight({}, DAYMS) === false);
+ok('isNight: SSX.time wins over clock', DC.isNight(T(true), DAYMS) === true && DC.isNight(T(false), NIGHTMS) === false);
+ok('isNight: broken SSX.time falls back', DC.isNight({ SSX: { time: { isNight() { throw new Error('x'); } } } }, NIGHTMS) === true);
+ok('gameHour feeds rates', DC.ratePerMin('mugging', { ...base, hour: DC.gameHour(T(true), DAYMS) }) > DC.ratePerMin('mugging', { ...base, hour: DC.gameHour({}, DAYMS) }));
+ok('nightSource', DC.nightSource({}) === 'clock' && DC.nightSource(T(false)) === 'SSX.time.isNight' && DC.nightSource({ SSX: { time: { hour: () => 3 } } }) === 'SSX.time.hour');
+// Steve's SSX.time.hour() is the hour source when present
+const TH = (h, n) => ({ SSX: { time: { hour: () => h, isNight: () => n } } });
+ok('readHour absent/junk', DC.readHour({}) === null && DC.readHour(null) === null && DC.readHour({ SSX: { time: { hour: () => 'x' } } }) === null && DC.readHour({ SSX: { time: { hour() { throw new Error('x'); } } } }) === null && DC.readHour({ SSX: { time: { hour: 5 } } }) === null);
+ok('readHour reads + wraps', DC.readHour(TH(18.25)) === 18.25 && DC.readHour(TH(24)) === 0 && DC.readHour(TH(-1)) === 23);
+ok('gameHour uses hour()', DC.gameHour(TH(18.5, false), NIGHTMS) === 18.5 && DC.timeBand(DC.gameHour(TH(18.5, false), NIGHTMS)) === 'dusk');
+ok('hour() beats isNight()', DC.gameHour(TH(10, true), DAYMS) === 10 && DC.isNight(TH(10, true), DAYMS) === false);
+ok('hour() night', DC.isNight(TH(22, true), DAYMS) === true);
+ok('broken hour() falls back to isNight', DC.isNight({ SSX: { time: { hour() { throw new Error('x'); }, isNight: () => true } } }, DAYMS) === true);
+ok('broken hour() + no isNight falls back to clock', DC.gameHour({ SSX: { time: { hour: () => NaN } } }, DAYMS) === DC.marsHour(DAYMS));
+ok('marsHour stays raw clock (SSX.time seeds from it)', DC.marsHour(DAYMS) === 12);
+DC.setClock(12); ok('setClock beats SSX.time', DC.isNight(T(true)) === false && DC.isNight(TH(23, true)) === false && DC.nightSource(TH(23, true)) === 'setClock'); DC.setClock(null);
 // backup factions = mars/turf.js slugs
 ok('backup: dustjaws + saints', DC.backupPlan({ faction: 'dustjaws' }, 6, true).ok && DC.backupPlan({ faction: 'saints', count: 9 }, 6, true).n === 4 && DC.backupPlan({ faction: 'saints' }, 6, false).hp > DC.backupPlan({ faction: 'dustjaws' }, 6, false).hp);
 ok('backup: unknown faction refused', DC.backupPlan({ faction: 'colsec' }, 6, true).why === 'faction');

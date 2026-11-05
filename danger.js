@@ -164,14 +164,15 @@ function killNpc(n, how) {
 // ---------- the knife mugging ----------
 function startMugging(force) {
   if (budget() < 1) { stats.skippedBudget++; return null; }
-  const P = C.player, yaw = C.player.yaw ?? 0;
-  // come out of the dark from behind-left or behind-right, 18-24 m out
+  const P = C.player, yaw = C.player.yaw ?? 0, weapon = DC.MUG_WEAPONS.includes(force?.armed) ? force.armed : 'knife';
+  // come out of the dark from behind-left or behind-right, 18-24 m out (or at force.near {x,z})
   const side = Math.random() < 0.5 ? -1 : 1, a = yaw + Math.PI + side * (0.5 + Math.random() * 0.5), r = force?.dist ?? 20 + Math.random() * 4;
   let x = P.x - Math.sin(a) * r, z = P.z - Math.cos(a) * r;
+  if (force?.near && Number.isFinite(+force.near.x) && Number.isFinite(+force.near.z)) { x = +force.near.x; z = +force.near.z; }
   const c = C.world.collide?.(x, z, 0.5); if (c) { x = c.x; z = c.z; }
   const g = C.game, credits = g.progress.credits;
-  const n = spawnNpc('junkie', x, z, { hp: DC.MUG.hp, twitch: true, role: 'mugger' }); giveWeapon(n, 'knife');
-  mug = { n, phase: 'approach', t: 0, demand: DC.demandFor(credits), talks: 0, stabCd: 0, paid: 0, outcome: null, chaseT: 0 };
+  const n = spawnNpc('junkie', x, z, { hp: DC.MUG.hp, twitch: true, role: 'mugger' }); giveWeapon(n, weapon);
+  mug = { n, phase: 'approach', t: 0, demand: DC.demandFor(credits), talks: 0, stabCd: 0, paid: 0, outcome: null, chaseT: 0, weapon, night: typeof force?.night === 'boolean' ? force.night : null };
   n.onHurt = () => { if (!mug || mug.n !== n) return; say(n, 'junkieHit', null, 1400); if (mug.phase === 'approach' || mug.phase === 'standoff') commit('fight', { attacked: true }); else if (mug.phase === 'fleeing') { mug.phase = 'fight'; n.hostile = true; n.armed = true; } };
   n.onDeath = how => onMuggerDown(how);
   say(n, 'junkieApproach', null, 2600, '#ffb35a');
@@ -204,7 +205,7 @@ function setChip(html) { ensureUI(); if (html == null) { ui.chip.classList.remov
 function commit(choice, o = {}) {
   const m = mug; if (!m || (m.phase !== 'standoff' && !(o.attacked && m.phase === 'approach'))) return null;
   const g = C.game, P = g.progress;
-  const env = { credits: P.credits, xp: P.xp, armed: !!g.info?.canFire && !['blade', 'cleaver'].includes(P.equip.weapon), dog: !!C.dogNear, night: DC.timeBand(DC.marsHour()) === 'night', saltbloodRep: DC.saltbloodStanding(DC.readRep('saltblood'), P.flags) }; // SSX.rep when Marsmania's rep.js is loaded, else flag count
+  const env = { credits: P.credits, xp: P.xp, armed: !!g.info?.canFire && !['blade', 'cleaver'].includes(P.equip.weapon), dog: !!C.dogNear, night: m.night ?? DC.isNight(), saltbloodRep: DC.saltbloodStanding(DC.readRep('saltblood'), P.flags) }; // SSX.rep when Marsmania's rep.js is loaded, else flag count
   const out = o.attacked ? { result: 'fight', bark: 'junkieFight', lunge: false } : DC.resolveChoice(choice, m, env);
   m.outcome = out.result; stats.outcomes[out.result] = (stats.outcomes[out.result] || 0) + 1; stats.lastOutcome = { choice, ...out };
   setChoices(false); setChip(null); say(m.n, out.bark, null, 2400);
@@ -241,7 +242,7 @@ function updateMugging(dt) {
   } else if (m.phase === 'fight' || m.phase === 'chase') {
     const sp = m.phase === 'chase' ? DC.MUG.speed : d > 2 ? 4.6 : 0;
     if (d > DC.MUG.stabRange * 0.8) moveTo(n, P.x, P.z, sp, dt); else { n.speed = 0; face(n, P.x, P.z, dt); }
-    if (d < DC.MUG.stabRange && m.stabCd <= 0 && !C.game.isDown()) { m.stabCd = DC.MUG.stabCd + Math.random() * 0.4; if (Math.random() < 0.72) stab(n, 9 + Math.random() * 6); else n.swingT = 0.35; }
+    if (d < DC.MUG.stabRange && m.stabCd <= 0 && !C.game.isDown()) { m.stabCd = DC.MUG.stabCd + Math.random() * 0.4; if (Math.random() < 0.72) stab(n, DC.mugHit(m.weapon)); else n.swingT = 0.35; }
     if (m.phase === 'chase') { m.chaseT += dt; if (d > DC.MUG.giveUp || (m.chaseT > DC.MUG.chaseTime && d > 9)) { say(n, 'junkieGiveUp', null, 2200); m.phase = 'fleeing'; m.t = 0; n.armed = false; n.hostile = false; stats.outcomes.escaped = (stats.outcomes.escaped || 0) + 1; toast('😮‍💨 Lost him.', 1600); } }
     if (C.game.isDown()) { m.phase = 'fleeing'; m.t = 0; n.hostile = false; }
     if (d > 90) end('gone');
@@ -440,9 +441,10 @@ function hookContraband() {
     }
   } catch (e) { contrabandHooked = 'error'; console.warn('contraband hook', e); }
 }
-const SSX_DANGER = { spawnBackup: g => spawnBackup(g), get backup() { return backup ? { faction: backup.faction, alive: backup.escorts.filter(e => e.alive).length, left: Math.max(0, backup.dur - backup.t), leaving: !!backup.leaving } : null; } };
+const SSX_DANGER = { startMugging: o => apiStartMugging(o), isMugging: () => !!mug, get mugging() { return mugView(); }, get lastMugRefusal() { return stats.mugApi && !stats.mugApi.ok ? stats.mugApi.why : null; },
+  spawnBackup: g => spawnBackup(g), get backup() { return backup ? { faction: backup.faction, alive: backup.escorts.filter(e => e.alive).length, left: Math.max(0, backup.dur - backup.t), leaving: !!backup.leaving } : null; } };
 // someone may replace window.SSX after we load, so (re)attach from the tick
-function ensureSSX() { try { const X = window.SSX || (window.SSX = {}); if (!X.danger) X.danger = SSX_DANGER; else if (X.danger !== SSX_DANGER && !X.danger.spawnBackup) Object.defineProperties(X.danger, Object.getOwnPropertyDescriptors(SSX_DANGER)); } catch (_) {} }
+function ensureSSX() { try { const X = window.SSX || (window.SSX = {}); if (!X.danger) X.danger = SSX_DANGER; else if (X.danger !== SSX_DANGER && (!X.danger.spawnBackup || !X.danger.startMugging)) Object.defineProperties(X.danger, Object.getOwnPropertyDescriptors(SSX_DANGER)); } catch (_) {} }
 ensureSSX();
 
 function clearAll() {
@@ -475,7 +477,7 @@ export function dangerTick(dt, ctx) {
   // the director
   if (settings.on && col) {
     const racing = !!window.__race?.state, info = ctx.game.info;
-    const s = { district: C.district, hour: DC.marsHour(), onFoot: !ctx.car, driving: !!ctx.car, speed: ctx.car ? Math.abs(ctx.car.speed) : 0, wanted: ctx.world.wanted, inside: !!ctx.inside, busy: down || racing || !!info.combat || ctx.intro > 0, inDuel: duel, questActive: !!info.quest, saltbloodHeat };
+    const s = { district: C.district, hour: DC.gameHour(), onFoot: !ctx.car, driving: !!ctx.car, speed: ctx.car ? Math.abs(ctx.car.speed) : 0, wanted: ctx.world.wanted, inside: !!ctx.inside, busy: down || racing || !!info.combat || ctx.intro > 0, inDuel: duel, questActive: !!info.quest, saltbloodHeat };
     if (ctx.name === 'Mars') { s.hp = info.hp ?? 100; s.ambientReady = ambientAny(s, director.t); C.lastSituation = s; }
     if (ambientActive()) director.active = 1; else if (!mug && !fights.length) director.active = 0;
     const type = director.tick(dt, s);
@@ -514,11 +516,22 @@ setInterval(() => {
   if (ui) { setChoices(false); setChip(null); }
 }, 500);
 
+// ---------- forced encounters (window.__danger.force and SSX.danger.startMugging share this path) ----------
+function forceEncounter(type, o) { if (!C) return false; director.force(type); return type === 'mugging' ? !!startMugging(o) : type === 'fight' ? !!startFight(o) : type === 'gangChase' ? !!startChase(o?.kind) : type === 'setpiece' ? !!pursuitStart('setpiece', o) : type === 'ambient' ? !!ambientStart(C.lastSituation || { district: C.district, wanted: C.world.wanted }, director.t, o?.id) : false; }
+function mugGuardState() { return { ready: !!C, mugging: !!mug, enabled: settings.on, car: !!C?.car, inside: !!C?.inside, duel: !!C?.world?.inDuel, heist: DC.heistActive() }; }
+// SSX.danger.startMugging({ force?, near?:{x,z}, dist?, armed?:'knife'|'pipe'|'fists', night? }) -> boolean (never throws)
+function apiStartMugging(o) {
+  try { const opt = DC.mugOpts(o), g = DC.mugGuard(mugGuardState(), opt.force); stats.mugApi = { ok: g.ok, why: g.why };
+    if (!g.ok) return false; const ok = forceEncounter('mugging', opt); if (!ok) stats.mugApi = { ok: false, why: 'budget' }; return ok;
+  } catch (e) { console.warn('SSX.danger.startMugging', e); return false; }
+}
+function mugView() { const m = mug; if (!m) return null; return { phase: m.phase, npc: { x: m.n.x, z: m.n.z, hp: m.n.hp, alive: m.n.alive, armed: m.weapon || 'knife', name: m.n.name || 'Mugger' } }; }
+
 // ---------- test / debug hooks ----------
 window.__danger = {
-  get state() { return { on: settings.on, district: C?.district, hour: DC.marsHour(), mug: mug ? { phase: mug.phase, demand: mug.demand, outcome: mug.outcome, hp: mug.n.hp, alive: mug.n.alive, d: C ? Math.hypot(C.player.x - mug.n.x, C.player.z - mug.n.z) : null, line: mug.n.lastLine } : null,
+  get state() { return { on: settings.on, district: C?.district, hour: DC.gameHour(), night: DC.isNight(), nightSource: DC.nightSource(), mug: mug ? { phase: mug.phase, demand: mug.demand, outcome: mug.outcome, hp: mug.n.hp, alive: mug.n.alive, d: C ? Math.hypot(C.player.x - mug.n.x, C.player.z - mug.n.z) : null, line: mug.n.lastLine } : null,
     fights: fights.map(f => ({ kind: f.kind.id, over: f.over, a: f.a.alive, b: f.b.alive, d: C ? Math.hypot(C.player.x - f.a.x, C.player.z - f.a.z) : null })), npcs: npcs.length, splats: splats.length, stats, ui: ui ? { chip: ui.chip.classList.contains('on'), choices: ui.choices.classList.contains('on') } : null }; },
-  force(type, o) { if (!C) return false; director.force(type); return type === 'mugging' ? !!startMugging(o) : type === 'fight' ? !!startFight(o) : type === 'gangChase' ? !!startChase(o?.kind) : type === 'setpiece' ? !!pursuitStart('setpiece', o) : type === 'ambient' ? !!ambientStart(C.lastSituation || { district: C.district, wanted: C.world.wanted }, director.t, o?.id) : false; },
+  force: (type, o) => forceEncounter(type, o),
   budget: () => ({ room: budget(), world: C?.player ? DC.nearCount(C.world?.debug?.people?.(), C.player.x, C.player.z) + DC.nearCount(C.world?.securityList?.(), C.player.x, C.player.z) : 0, worldAll: C?.world?.debug?.people?.().length ?? 0, ours: npcs.filter(n => n.alive).length, chase: pursuitNpcCount(), cap: isTouch() ? DC.NPC_CAP.phone : DC.NPC_CAP.desktop }),
   get saltbloodHeat() { return saltbloodHeat; }, setSaltbloodHeat(v) { saltbloodHeat = v; },
   ambient: ambientDebug, ambientChoose: id => { const b = ui?.evBox?.querySelector(`[data-choice="${id}"]`); b?.__pick?.(); return !!b; },

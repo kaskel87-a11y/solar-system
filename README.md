@@ -21,6 +21,35 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
+## First Day on Mars and 📖 How to play (add-on: onboard.js)
+- **First Day on Mars:** new players get a short guided tour with 6 missions: on foot, your rover and the 🚕 Taxi stand, the phone dock and 💼 Jobs, Blue in Red Tape Flats, 🚩 Turf and The Pit, and a night out at the Velvet Airlock. Each mission pays a little cash (315 cr in all). One plain line at a time sits top right, with an arrow and distance, and a light beam with a label marks the spot. Phones see button names and keyboards see keys.
+- **Skipping:** tap ✕ on the line, then Skip. ☰ → 📖 How to play can start, resume or restart the tour. If your browser already has a save (xp, credits, quests, turf, jobs and so on), the tour skips itself.
+- **📖 How to play** (☰): one or two sentences on each system: moving, driving, fights, the phone dock, radio, barrel rolls, wanted stars, jobs, contraband, turf, The Pit, races, rides, the club and getting around. Systems from add-ons show up only when that add-on is loaded, tagged "if available".
+- Saves to `ssx.onboard.v1`. `?onboard=1` starts the tour, `?onboard=0` keeps it off for that visit. `window.SSX.onboard`: `state`, `missions()`, `current()`, `start()`, `resume()`, `skip()`, `openCodex()`, `closeCodex()`, `waypoint`. Fires `SSX.on('onboard:step', d => …)`.
+- Waypoints: if `SSX.hudx.setWaypoint` is there, the tour uses it. If not, it draws its own beam, minimap dot and arrow. It spawns no NPCs and changes nothing in the HUD.
+## v7.5.5: Mars dust storms (add-on: mars/storm.js)
+- Every 9 to 16 minutes of Mars time (the first one 6 to 10 minutes after you land) a dust storm rolls in. It takes about 30 s to build, holds for about a minute, then clears over about 30 s. Storms run on `SSX.time` when it's there (frozen time holds the storm, and the time scale is capped at 20×). Without it they use a real-time timer. Storms only run on the Mars surface and pause when you leave.
+- **Look:** fog closes in to about 38 m at the peak on med quality (30 m on low, 44 m on high). The sky, fog and sunlight turn rust red, the sun hides, and grit blows past the camera. The grit is one pooled `THREE.Points` draw call that wraps around the camera in the vertex shader: 160, 420 or 700 grains on phones for low, med and high quality. The storm layers on top of whatever set the look this frame (core zoom fog, v8 lighting, `SSX.time`, Director). It saves the look before each render and puts it back after, and it only ever pulls fog in, never pushes it out. With `SSX.time` the colours go through `SSX.time.addLookFilter`. Indoors nothing changes.
+- **Gameplay:** traffic drops to 55% speed at the peak. Core cars are slowed through the world API, and Beltway traffic too if it exposes `setSpeedScale`, `setSpeed` or `setDensity`. Crimes gain up to 50% less heat, so a 2★ crime at the peak costs 1★. Fractions carry over to your next crime. Indoor crimes aren't damped. Everything goes back to normal when the storm clears.
+- **HUD:** a one-line caption ("🌪️ Dust storm coming", "🌪️ Dust storm · heat −50%", "🌤️ Storm clearing") shows for about 3 s at each change, bottom-left above the joystick, clear of the screen centre and the top-right stack. Nothing stays on the HUD, and it never takes taps.
+- **URL:** `?storm=1` starts a storm 6 s after you land on Mars. `?storm=peak` starts one at full strength. `?storm=0` turns off periodic storms (handy for tests). `?stormq=low|med|high|ultra` overrides the grit and fog tier.
+
+`window.SSX.storm` (also `__app.storm`):
+
+| call | what it does |
+| --- | --- |
+| `active()` / `intensity()` / `phase()` | is a storm on; 0..1 strength; `clear` / `building` / `peak` / `clearing` |
+| `start({ build, peak, clear, intensity, instant })` | start a storm now (durations in seconds). Calling it during a storm extends the storm, and during clearing it builds back up without snapping |
+| `stop({ instant, clear })` | clear the storm (smoothly unless `instant`) |
+| `on(event, fn)` → unsubscribe / `off(event, fn)` | events: `start`, `peak`, `clearing`, `end`, `phase`, `shed` (heat was damped), `tier`; also `SSX.emit('storm:<event>')` |
+| `state()` / `next()` | phase, timer, tier, on Mars / indoor; seconds to the next periodic storm |
+| `setPeriodic(on)` / `periodic` | turn the schedule on or off |
+| `tier()` / `setTier(t)` | grit and fog tier (follows `SSX.look.tier()` unless set) |
+| `heatScale()` / `trafficScale()` / `visibility()` | current heat multiplier, traffic multiplier, fog far distance in metres |
+| `frameMs()` / `stats()` | the storm's own CPU cost per frame (EMA) |
+
+Core hook: `world.js` `setWanted` calls `SSX.heatFilter(from, to, why)` when it's set, and uses the result if it's a finite number. The call is guarded and wrapped in try/catch, so a broken filter can't stop crimes. The storm installs this filter only while a storm is on, and chains to any filter that was there before.
+
 ## v7.5.2: street life
 - **Fixed on iPhone:** ✅ Accept and Later on radio job offers (and every other in-game button: Log ▶ Start, duel, race and shop buttons, ☰, map, Land/Take off) now work while your thumb is on the joystick. iOS sends no click for a second finger's tap, so these now fire on the finger's own touch release.
 - Street danger: knife muggings with Pay / Fight / Run / Talk, street fights, gang and junkie car chases, the Red Tape Run highway set-piece, and ambient street vignettes. Toggle it from ☰ (🔪 Street danger).
@@ -145,6 +174,24 @@ SSX.registerDistrict('Mars', 'olympus-row', { name: 'Olympus Row', centre: [0, -
 SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 ```
 
+### Barrel rolls (airroll.js): `SSX.airRoll`
+Any vehicle you drive (rover, stolen cars, hover bikes, the Raccoon Mobile...) can barrel roll while it's airborne, and the
+Starship can roll in flight. Mods (e.g. a zero-g toggle) should call this instead of building their own roll. Also on `__app.airRoll`.
+
+```js
+SSX.airRoll.roll('left' | 'right')   // true if accepted (starts on the next frame; -1 / +1 also accepted); false when canRoll() is false
+SSX.airRoll.canRoll()                // driving + airborne + not already rolling (not inside), or flying the Starship
+SSX.airRoll.isRolling()              // a vehicle or the Starship is mid-roll
+const off = SSX.airRoll.on('start', e => console.log(e.dir, e.target)); off(); // returns an unsubscribe fn
+// events: 'start' { dir: 'left'|'right', target: 'vehicle'|'ship' } · 'end' { target } · 'land' { rolls } (clean landing)
+//         'crash' {} (landed on the roof: 22 hp + most of your speed) · '*' gets fn(evt, data) for all of them
+```
+A vehicle roll takes 0.75 s; land it clean for 25·n² cr (n = rolls in that jump). The Starship roll (0.9 s) is cosmetic and
+the camera stays level. Events are polled (about 50 ms), so treat them as UI/audio cues, not physics.
+Controls: phones get a 🌀 Roll button that shows only while you're airborne in a vehicle or flying the Starship (hold the stick
+or swipe the button left/right to pick the side; default right). Desktop: **Z** (toward the A/D you're holding, else right),
+plus the v7.4 inputs: Q / E in the air, double-tap A / D, double-flick the stick, swipe across Thrust.
+
 ### Heist mechanics (v7.5 add-on: heist.js)
 Generic, data-driven heist pieces for the Mars city builder. `SSX.heist` (also `__app.heist`, or `import { heist } from './heist.js?v=7.4'`):
 
@@ -169,6 +216,40 @@ Engine hooks for add-on modules: `surface.js` calls `raceTick(dt, ctx)` (race.js
 
 ```js
 ```
+
+### Empire: safehouses, fronts and rival crews (add-on: empire.js + empirecore.js)
+Buy property around the Mars districts and keep it. ☰ → **🏢 Empire** lists every place with its distance, till and status; walk up to a door for its one context button (desktop key **\\**). Following the team UI rule there are no permanent empire buttons and no standing threat chip: the context button only shows while you stand at a property, stash / office / park-rover live in the sheet, only one pop-up or caption shows at a time (messages go into the open sheet instead of a toast over it), and directions are plain words ("Go to the Red Dust Wash & Fold (190 m north) and tap Collect.").
+
+| Place | District | Kind | Price | What it does |
+|---|---|---|---|---|
+| Crater Rim Walk-up | Ares Junction | Safehouse | 1200 | 🛏️ rest = save + heal (sleeps to 07:00 at night when SSX.time is loaded), 💰 stash for credits and medkits, garage spot |
+| Tenement 9C | Red Tape Flats | Safehouse | 700 | same |
+| Meridian Loft | Olympus Row | Safehouse | 3000 | same |
+| Red Dust Wash & Fold | Ares Junction | Laundromat | 2000 | ~45 cr/game h, busy in the day |
+| The Thin Air | Olympus Row | Bar | 3500 | ~70 cr/game h, 1.8× at night |
+| Rustbucket Parts | Red Tape Flats | Chop shop | 2500 | ~55 cr/game h, and strip a stolen ride in the bay for 120-300 cr |
+| Greenhouse Nine | Helios Heights | Dispensary | 5000 | ~90 cr/game h, peaks at dusk |
+
+Fronts earn on the Mars clock (`SSX.time.hour()` when Steve's time.js is loaded, else `dangercore.marsHour()`: 2 real minutes per game hour) into a till that holds 10 hours of base income; collect at the counter. Up to 8 hours more accrue while the game is closed. A garage spot opens `SSX.garage.open('current')` when the garage module is there, otherwise it parks and refuels your rover. After a bust or med-evac, a one-line message tells you to open ☰ → Empire and tap **🏠 Back** to return to the last safehouse you rested in (for 60 s).
+
+Rival crews (the SSX.turf block owner, the crew that lost that block to you, or the district's crew) roll once per game hour. Odds rise with bad `SSX.rep`, at night and with turf grudges; they fall with good rep, on your own blocks and with a 🔒 security upgrade. Friendlier crews **extort** first (pay = rep +3 and 12 game hours of peace, refuse or ignore = raid). A **raid** gives you 150 s (180 s on phones) to get within ~24 m, then you defend through `SSX.raids.start` (waves, NPC cap, your rep −4 with them when you win). If SSX.raids is busy or missing, you hold the spot for 40 s against up to 3 crew. Lose and a front's till is taken and it shuts for 6 game hours (🔨 fix it for 20% of the price), or a safehouse loses 30% of its stash. Owned Mars base lots (`SSX.base`) can draw a crew too; that goes through `SSX.base.raid`. **Sharing the raid slot:** SSX.raids runs one raid at a time. While another add-on's raid holds it, rival crews skip their hourly roll and a defense goes straight to the hold fallback. To take the slot from a rival raid that's already running, call `SSX.empire.yieldRaid(why)` or `dispatchEvent(new CustomEvent('raid:request', { detail: { id } }))` before `SSX.raids.start`: the empire stops its `empire-*` raid and keeps the fight going as a 40 s hold (emits `'yield'`). `SSX.empire.raidSlot()` returns `'free' | 'ours' | 'other'`. The layer spawns no NPCs of its own outside a fallback hold, and those fit in `world.npcBudget()`.
+
+```js
+SSX.empire.props();               // [{ id, kind, name, district, price, owned, pending, cap, perHour, closedH, security, protect, stash, door, garage, pos }]
+SSX.empire.buy('fr-bar');         // at the door: { ok, prop, price } | { ok:false, why }
+SSX.empire.collect('fr-bar');     // at the counter: { ok, amount }
+SSX.empire.pending(); SSX.empire.perHour(); SSX.empire.clock(); // { hour, band, night, source: 'SSX.time'|'real', text }
+SSX.empire.on('hour', ({ hour, prev, at, catchUp, source, night, band, fronts }) => {}); // every whole game hour, fronts or not, in space too; returns off()
+// queue before the empire loads: (window.SSX_pending ||= {}).empire = [['hour', fn]] (or SSX._pendingEmpire). A clock jump fires each hour crossed
+// (all but the last flagged catchUp); SSX.time appearing re-baselines without a burst. '*' listeners don't get 'hour'. Income is unchanged.
+SSX.empire.threat();              // { prop, gang, kind: 'extort'|'raid', phase: 'demand'|'alert'|'defend', demand, left, engine } | null
+SSX.empire.pay(); SSX.empire.refuse(); SSX.empire.defend();
+SSX.empire.rest('sh-rim'); SSX.empire.deposit('sh-rim', { credits: 500, medkits: 1 }); SSX.empire.withdraw('sh-rim', { credits: 200 });
+SSX.empire.garage('sh-rim'); SSX.empire.chopRide(); SSX.empire.upgrade('fr-bar'); SSX.empire.repair('fr-bar');
+SSX.empire.open('fr-wash'); SSX.empire.close(); SSX.empire.frameMs();
+SSX.empire.on('collect', e => {}); // also SSX.emit('empire:collect') and window 'empire:collect'
+```
+Events: `ready`, `buy`, `collect`, `income`, `extort`, `pay`, `refuse`, `raid`, `defend:start`, `defend:win`, `defend:lose`, `lost`, `repair`, `security`, `rest`, `save`, `stash`, `garage`, `chop`, `wake`, `baseRaid`, `open`, `close`. Save: localStorage `ssx.empire.v1`. Tests: `node tests/test-empire-unit.mjs`, `tests/run-empire.sh`.
 
 ## Mars city ambience (add-on: radio stations, district soundscapes, pedestrian barks)
 

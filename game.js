@@ -8,8 +8,9 @@ import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
 import { kbOnly, KB_AIM_CONE } from './controlmode.js';
+const KB_FIRE_CONE = 0.52; // v7.5.16: F-key auto-aim, rad either side of the heading (~30 degrees)
 import { segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission checkpoints: xz segment hits (airborne / fast frames)
-import { clearGates } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
+import { clearGates, reachSpot } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
 
 // ---------- Saved progress ----------
 export const PROGRESS_KEY = 'ssx.progress.v1';
@@ -619,14 +620,17 @@ export function createGame(ctx) {
   const hasCleaver = () => P.unlocks.includes('melee:cleaver');
   // which edge you swing: the one you have selected, else the best you own
   const meleeKind = () => P.equip.weapon === 'cleaver' && hasCleaver() ? 'cleaver' : P.equip.weapon === 'blade' && hasBlade() ? 'blade' : hasCleaver() ? 'cleaver' : hasBlade() ? 'blade' : null;
+  // v7.5.15 (Collin): with the Velvet Mack skin on, his jeweled cane is the melee weapon instead of the machete —
+  // machete damage and reach, a little more knockback, a thwack instead of a slash (the thermal cleaver, when you pick it, stays the cleaver)
+  const caneOn = () => { try { return window.SSX?.skins?.equipped === 'mack' && P.equip.weapon !== 'cleaver'; } catch (_) { return false; } };
   function melee() {
     const st = ctx.st();
     if (st.driving || H.down > 0 || st.intro > 0 || st.outro > 0 || MEL.cd > 0) return false;
     if (st.inside) { holster(); return false; }
-    const mk = meleeKind(), blade = !!mk, heavy = mk === 'cleaver';
+    const cane = caneOn(), mk = cane ? 'blade' : meleeKind(), blade = !!mk, heavy = mk === 'cleaver';
     if (time - MEL.last > 1.1) MEL.combo = 0;
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
-    const kick = step === 2, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (kick ? 0.3 : 0), knock = kick ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9);
+    const kick = step === 2 && !cane, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff
     let yaw = player.faceYaw ?? player.yaw, best = null, bd = range + 2.5;
@@ -643,20 +647,21 @@ export function createGame(ctx) {
       if (!blade && hits) break; // fists hit one thing, the blade sweeps
       a.hp -= dmg * (1 - (a.T.armor || 0)); a.aggro = true; a.hit = 1; hits++;
       const c = center(a).clone();
-      if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
+      if (cane) burst(c.x, c.y, c.z, 12, 3.5, 0xf6cc50); // a gold-knob thwack, not a cut
+      else if (a.T.human && !a.T.mech) gore(c.x, c.y, c.z, { n: blade ? 0.8 : 0.3, spray: !blade }); else { burst(c.x, c.y, c.z, blade ? 22 : 8, blade ? 6 : 3, bloodOf(a) || (a.type === 'hunter' ? ICHOR_H : ICHOR));
       if (blade) splat(a.x + fx, a.z + fz, 0.6); }
-      if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1; a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, kick ? 1.2 : 0.6); if (!a.T.hover) a.vy = kick ? 5 : 2.5; }
+      if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1, big = kick || (cane && step === 2); a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, big ? 1.2 : 0.6); if (!a.T.hover) a.vy = big ? 5 : 2.5; }
       if (a.hp <= 0) killAgent(a);
     }
     if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
-    swing(yaw, blade, kick, heavy); player.melee = { t: kick ? 0.32 : 0.22, max: kick ? 0.32 : 0.22, kick, blade, step, heavy };
+    swing(yaw, blade, kick, heavy, cane); const mt = kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane };
     W.recoil = kick ? 1.6 : 1; W.lastShot = time;
-    onEvent('melee', { hit: hits > 0, blade, kick, step, heavy });
+    onEvent('melee', { hit: hits > 0, blade, kick, step, heavy, cane });
     return true;
   }
-  function swing(yaw, blade, kick, heavy) {
+  function swing(yaw, blade, kick, heavy, cane) {
     const arc = blade ? 2.4 : kick ? 1.2 : 0.8;
-    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? (heavy ? 1.9 : 1.7) : 1.1, blade ? (heavy ? 0.09 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? (heavy ? 1.9 : 1.7) : 1.1, blade ? (heavy ? 0.09 : cane ? 0.04 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: cane ? 0xd9a8ff : heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: cane ? 0.6 : blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
     m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (kick ? 0.5 : 0.15), yaw, (MEL.combo % 2 ? 1 : -1) * 0.3);
     m.geometry.rotateZ(Math.PI / 2 - arc / 2);
     m.position.set(player.x - Math.sin(yaw) * 0.6, player.y - (kick ? 1.2 : 0.55), player.z - Math.cos(yaw) * 0.6); scene.add(m);
@@ -882,7 +887,9 @@ export function createGame(ctx) {
       H.down -= dt;
       if (H.down <= 0) {
         const busted = downWhy === 'busted';
-        const fee = Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
+        // v7.5.x (Marsmania): mars/consequences.js can own the outcome penalty (hospital bill / booking); then no core fee
+        let owned = false; try { owned = globalThis.SSX?.consequences?.ownsOutcome?.(downWhy) === true; } catch (e) { owned = false; }
+        const fee = owned ? 0 : Math.min(P.credits, busted ? Math.max(50, Math.round(P.credits * 0.15)) : Math.round(P.credits * 0.1));
         P.credits -= fee; save();
         ctx.respawn(downWhy);
         H.hp = H.max; H.shield = H.smax; H.inv = 3; H.lastHit = time;
@@ -890,8 +897,8 @@ export function createGame(ctx) {
         for (const o of orbs) scene.remove(o.mesh); orbs = [];
         if (zone) { zone.active = false; zone.cool = Math.max(zone.cool, 20); }
         if (quest) { quest.wave = null; quest.killed = 0; if (busted && quest.def.contact) fail('You got pinched. Job\u2019s blown.'); }
-        onEvent('respawn', { why: downWhy, fee });
-        onEvent('radio', { text: busted
+        onEvent('respawn', { why: downWhy, fee, owned });
+        if (!owned) onEvent('radio', { text: busted
           ? `Colony Security: you\u2019ve been processed. Fine: ${fee} credits. Gear returned. Try not to make us do the paperwork again.`
           : `Control: med-evac dragged you back to the ship. That\u2019s ${fee} credits for the ride, and the doc says stop getting chewed on.` });
       }
@@ -957,6 +964,7 @@ export function createGame(ctx) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
     if (st.inside) { holster(); return false; }
+    if (!st.driving && typeof window !== 'undefined' && window.SSX?.fireHooks) for (const f of window.SSX.fireHooks) { try { if (f(aimAt) === true) return true; } catch (e) { /* an add-on hook (mars/harvest.js sickle) must never block a shot */ } }
     if (!st.driving && ((P.equip.weapon === 'blade' && hasBlade()) || (P.equip.weapon === 'cleaver' && hasCleaver()))) return melee();
     const wpn = curWeapon(); if (!wpn) return false;
     if (W.cd > 0 || (wpn.heat && W.over)) return false;
@@ -966,7 +974,13 @@ export function createGame(ctx) {
     if (wpn.twin || wpn.quad) W.side = (W.side + 1) % (wpn.quad ? 4 : 2);
     const from = muzzle(), useTurret = st.driving && st.own && turret;
     let to;
-    if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
+    if (aimAt?.auto) { // v7.5.16 (Collin, laptop): the F key fires with auto-aim, never at the mouse: nearest alien / cop / guard
+      // within ~30 degrees of where the car or the player faces, else straight ahead along that heading
+      const yw = st.driving ? st.rover.yaw : (player.faceYaw ?? player.yaw), dir = new THREE.Vector3(-Math.sin(yw), 0, -Math.cos(yw));
+      const t = autoTarget(from, dir, KB_FIRE_CONE), wt = !t && ctx.worldTargets ? worldTarget(from, dir, KB_FIRE_CONE) : null;
+      to = t ? center(t).clone() : wt ? wt : from.clone().addScaledVector(dir, 80);
+      W.autoAim = t ? 'alien' : wt ? 'world' : 'ahead';
+    } else if (aimAt) to = rayTarget(aimAt.x, aimAt.y, from).point;
     else {
       const kb = kbOnly() && !st.driving, dir = st.driving ? new THREE.Vector3(-Math.sin(st.rover.yaw), 0, -Math.cos(st.rover.yaw)) : kb ? new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)) : camera.getWorldDirection(new THREE.Vector3());
       const t = autoTarget(from, dir, st.driving ? 1.05 : kb ? KB_AIM_CONE : Math.PI);
@@ -1203,7 +1217,10 @@ export function createGame(ctx) {
     if (s.type === 'return') { const S = ctx.SHIP; return { x: S.x - 8, z: S.z + 8, r: 12 }; }
     if (s.type === 'enter' || s.type === 'crack') { const d = ctx.doorFor?.(s.building); return d ? { x: d.x, z: d.z, r: 2.5, door: d.kind } : { x: player.x, z: player.z, r: 0 }; }
     if (s.type === 'choice' && !s.at) return { x: player.x, z: player.z, r: 0 };
-    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2); if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
+    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2);
+      // v7.5.16: never inside a dome / building / prop footprint (Pad to Plaza's drop was the middle of the plaza dome)
+      const W = ctx.gateWorld?.(); if (p && W?.collide) p = reachSpot(p, (x, z, r) => !!W.collide(x, z, r));
+      if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
     if (s.type === 'take') { const v = ctx.nearestVehicle?.(); return v ? { x: v.x, z: v.z, r: 3 } : { x: player.x, z: player.z, r: 3 }; }
     if (s.type === 'clean') return { x: player.x, z: player.z, r: 0 };
     if (s.type === 'race') { const p = ctx.colonyAt?.(s.pts[0]) || ctx.safePoint(0, 60); return { x: p.x, z: p.z, r: 6 }; }
@@ -1299,7 +1316,7 @@ export function createGame(ctx) {
     const def = quest.def, qs = qState(def.id), first = !qs.everDone;
     clearQuestObjects();
     qs.status = 'done'; qs.everDone = true; qs.step = 0; qs.n = 0; delete P.active[world];
-    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25);
+    const r = def.reward, got = [], xp = first ? r.xp : Math.round(r.xp * 0.25), cr = (globalThis.SSX?.economy?.job || (n => n))(first ? (r.credits || 0) : Math.round((r.credits || 0) * 0.25), 'quest:' + def.id); // money boost (economy.js)
     if (first) {
       if (r.badge && !P.badges.includes(r.badge)) { P.badges.push(r.badge); got.push(`🏅 Badge: ${r.badge}`); }
       if (r.unlock && !P.unlocks.includes(r.unlock)) { P.unlocks.push(r.unlock); const [k, v] = r.unlock.split(':'); got.push(COSMETICS[k]?.[v] ? `${k === 'paint' ? '🎨 Rover paint' : '🧣 Bandana'}: ${COSMETICS[k][v].name}` : k === 'contact' ? `💬 New contact: ${v}` : k === 'shop' ? `🔓 Ozzie\u2019s discount: ${v}` : `🔓 ${k}: ${v.replace(/_/g, ' ')}`); }
@@ -1325,7 +1342,7 @@ export function createGame(ctx) {
     const s = stepDef(); if (s?.type !== 'choice') return false;
     const o = (s.options || []).find(x => x.id === optId); if (!o) return false;
     if (o.flag) setFlag(o.flag); if (o.wanted) ctx.setWanted?.(Math.max(ctx.wanted?.() || 0, o.wanted), 'choice');
-    if (o.credits) gain(0, o.credits, true);
+    if (o.credits) gain(0, (globalThis.SSX?.economy?.job || (n => n))(o.credits, 'choice:' + o.id, { streak: false }), true); // money boost (economy.js)
     onEvent('choiceMade', { id: quest.def.id, option: o.id, flag: o.flag || null });
     if (o.radio) onEvent('radio', { text: o.radio });
     if (o.skip) quest.step += o.skip; // e.g. take Rhee's retainer: no fight
@@ -1440,7 +1457,7 @@ export function createGame(ctx) {
   function offerNext() {
     if (!world || quest || H.down > 0) return;
     const next = available()[0];
-    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${next.reward.credits || 0}. Want it?`, offer: next.id });
+    if (next) onEvent('radio', { text: `Control: got a job if you\u2019re bored: "${next.title}". Pays ${globalThis.SSX?.economy?.boost?.(next.reward.credits || 0) ?? (next.reward.credits || 0)} cr. Want it?`, offer: next.id });
   }
 
   // ----- rewards -----
@@ -1663,7 +1680,7 @@ export function createGame(ctx) {
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
     for (const b of [...bodies]) { b.t -= dt; if (b.t <= 0) { scene.remove(b.g); bodies.splice(bodies.indexOf(b), 1); } }
     updateWeapons(dt, input);
-    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver();
+    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver(); player.caneHand = caneOn();
     updateQuest(dt); if (!ins) { updateRares(dt); updateZone(dt); updateDogWarn(dt); }
   }
   // tapping a quest item or rare find picks it up; returns undefined when the object is not ours
@@ -1704,6 +1721,7 @@ export function createGame(ctx) {
     enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, shopItem, buy, talk, spend, flag, setFlag, grantPerm, bribe, bribeCost, idleLine, ammoCap, registerMission,
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
+    copBounty(b) { if (!b || !(b.cr > 0)) return null; gain(b.stars | 0, b.cr | 0, true); return { cr: b.cr | 0, stars: b.stars | 0 }; }, // v7.5.12 cop kill: flat, no payoutMult (copbounty.js)
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
     gore, hostiles, heistAt, crack, choose, crackable, humanCount: () => agents.reduce((n, a) => n + (a.T.human ? 1 : 0), 0),
     // v7.5 mission helpers for add-on step runners (storymars.js, activities/runner.js)
