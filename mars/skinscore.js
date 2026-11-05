@@ -207,23 +207,37 @@ export const SKINS = [
       ['armL', 'cone', [0.03, 0.09, 4], [-0.09, -0.25, 0], [0, 0, 1.4], 'spike'], ['armR', 'cone', [0.03, 0.09, 4], [0.09, -0.25, 0], [0, 0, -1.4], 'spike'],
       ['armL', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow'], ['armR', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow']
     ] }),
-  // v7.5.69 Planum Swag: yeti suit. venue 'planum' so Threadbare does not sell it.
-  S('yeti', 'Yeti Suit', 2400, 'Cream fur, a yeti face, big paws. Sold at Planum, not downtown.', {
+  // v7.5.69 Planum Swag, reshaped v7.5.70. venue 'planum' so Threadbare does not sell it.
+  // The astronaut under this is a 0.56 m torso, 0.17 m face and 8 cm arms. A cream recolour of that
+  // reads as the player painted white from the chase camera (~8 m back). These shells are bigger than
+  // the suit they cover: a heavy head and snout, a barrel chest, thick limbs, oversized paws and feet.
+  S('yeti', 'Yeti Suit', 2400, 'Shaggy cream yeti: dark snout, fangs, big paws. Sold at Planum, not downtown.', {
     icon: '🦍', face: true, venue: 'planum',
-    pal: { skin: 0xf6f1e6, torso: 0xf3efe6, arms: 0xf3efe6, legs: 0xe7e0d2, pack: null, chest: null, helmet: null, visor: null, boots: 0x2a241c, fur: 0xf7f3ea, shade: 0xd9d2c2, nose: 0x2a2118, fang: 0xf4f0e4, claw: 0x1a1612 },
+    pal: { skin: 0xd7c4a4, torso: 0xd7c4a4, arms: 0xd7c4a4, legs: 0xcbb892, pack: null, chest: null, helmet: null, visor: null, boots: 0x3a3028,
+      fur: { c: 0xe4d0ae, r: 0.96 }, muzzle: { c: 0x8d6b4a, r: 0.9 }, nose: { c: 0x2c2118, r: 0.7 }, fang: { c: 0xf3ead8, r: 0.45 }, claw: { c: 0x1a140e, r: 0.55 } },
     parts: [
-      ['head', 'sph', [0.2, 10, 8], [0, 0.03, 0.01], 0, 'fur', [1.05, 1.08, 1.02]],
-      ['head', 'box', [0.24, 0.055, 0.07], [0, 0.07, -0.15], [0.2, 0, 0], 'shade'],
-      ['head', 'sph', [0.034, 8, 6], [-0.06, 0.02, -0.175], 0, 'black'], ['head', 'sph', [0.034, 8, 6], [0.06, 0.02, -0.175], 0, 'black'],
-      ['head', 'sph', [0.042, 8, 6], [0, -0.045, -0.185], 0, 'nose'],
-      ['head', 'cone', [0.018, 0.055, 4], [-0.032, -0.1, -0.165], [Math.PI, 0, 0.25], 'fang'], ['head', 'cone', [0.018, 0.055, 4], [0.032, -0.1, -0.165], [Math.PI, 0, -0.25], 'fang'],
-      ['head', 'cone', [0.055, 0.09, 5], [-0.16, 0.1, 0.02], [0, 0, 1.05], 'fur'], ['head', 'cone', [0.055, 0.09, 5], [0.16, 0.1, 0.02], [0, 0, -1.05], 'fur'],
-      ['torso', 'sph', [0.08, 6, 4], [-0.1, 0.12, -0.16], 0, 'fur'], ['torso', 'sph', [0.09, 6, 4], [0.08, 0.0, -0.16], 0, 'fur'], ['torso', 'sph', [0.07, 6, 4], [0, -0.14, -0.15], 0, 'shade'],
-      ['armL', 'sph', [0.11, 8, 6], [0, -0.66, -0.02], 0, 'fur'], ['armR', 'sph', [0.11, 8, 6], [0, -0.66, -0.02], 0, 'fur'],
-      ['armL', 'cone', [0.018, 0.06, 4], [-0.04, -0.74, -0.07], [1.15, 0, 0.35], 'claw'], ['armR', 'cone', [0.018, 0.06, 4], [0.04, -0.74, -0.07], [1.15, 0, -0.35], 'claw'],
-      ['armL', 'cone', [0.016, 0.055, 4], [0.03, -0.74, -0.08], [1.15, 0, -0.1], 'claw'], ['armR', 'cone', [0.016, 0.055, 4], [-0.03, -0.74, -0.08], [1.15, 0, 0.1], 'claw'],
-      ['legL', 'box', [0.22, 0.1, 0.32], [0, -0.82, -0.08], 0, 'fur'], ['legR', 'box', [0.22, 0.1, 0.32], [0, -0.82, -0.08], 0, 'fur'],
-      ['legL', 'cone', [0.022, 0.06, 4], [-0.05, -0.86, -0.2], [Math.PI / 2, 0, 0.2], 'claw'], ['legR', 'cone', [0.022, 0.06, 4], [0.05, -0.86, -0.2], [Math.PI / 2, 0, -0.2], 'claw']
+      // head centre is the old helmet (y 1.72). Keep the mass above the chest so the face is not sitting on the torso.
+      ['head', 'sph', [0.32, 10, 8], [0, 0.06, 0], 0, 'fur', [1.22, 1.08, 1.08]],
+      ['head', 'tor', [0.22, 0.1, 5, 10], [0, -0.22, 0], [Math.PI / 2, 0, 0], 'fur'],
+      ['head', 'cone', [0.1, 0.28, 5], [-0.16, 0.42, 0], [0.2, 0, 0.4], 'fur'], ['head', 'cone', [0.1, 0.28, 5], [0.16, 0.42, 0], [0.2, 0, -0.4], 'fur'],
+      ['head', 'box', [0.3, 0.16, 0.22], [0, -0.04, -0.4], 0, 'muzzle'],
+      ['head', 'box', [0.32, 0.07, 0.1], [0, 0.12, -0.34], [0.2, 0, 0], 'muzzle'],
+      ['head', 'sph', [0.065, 8, 6], [0, 0.0, -0.56], 0, 'nose'],
+      ['head', 'sph', [0.075, 8, 6], [-0.1, 0.06, -0.52], 0, 'black'], ['head', 'sph', [0.075, 8, 6], [0.1, 0.06, -0.52], 0, 'black'],
+      ['head', 'cone', [0.035, 0.14, 4], [-0.055, -0.18, -0.46], [Math.PI, 0, 0.12], 'fang'], ['head', 'cone', [0.035, 0.14, 4], [0.055, -0.18, -0.46], [Math.PI, 0, -0.12], 'fang'],
+      // chest stays inside the arm pivots (±0.37) so the paws are outside the body, not buried in it
+      ['torso', 'box', [0.72, 0.7, 0.5], [0, -0.1, 0.02], 0, 'fur'],
+      ['torso', 'sph', [0.2, 8, 6], [0, -0.18, -0.24], 0, 'fur'],
+      ['torso', 'sph', [0.18, 8, 6], [0, 0.12, 0.22], 0, 'fur'],
+      ['torso', 'sph', [0.13, 8, 6], [-0.32, 0.16, 0], 0, 'fur'], ['torso', 'sph', [0.13, 8, 6], [0.32, 0.16, 0], 0, 'fur'],
+      ['armL', 'cyl', [0.15, 0.18, 0.62, 7], [0, -0.32, 0], 0, 'fur'], ['armR', 'cyl', [0.15, 0.18, 0.62, 7], [0, -0.32, 0], 0, 'fur'],
+      ['armL', 'sph', [0.2, 8, 6], [0, -0.76, -0.05], 0, 'fur'], ['armR', 'sph', [0.2, 8, 6], [0, -0.76, -0.05], 0, 'fur'],
+      ['armL', 'cone', [0.035, 0.11, 4], [-0.07, -0.78, -0.24], [-Math.PI / 2, 0, 0.2], 'claw'], ['armR', 'cone', [0.035, 0.11, 4], [0.07, -0.78, -0.24], [-Math.PI / 2, 0, -0.2], 'claw'],
+      ['armL', 'cone', [0.03, 0.1, 4], [0.06, -0.76, -0.24], [-Math.PI / 2, 0, -0.2], 'claw'], ['armR', 'cone', [0.03, 0.1, 4], [-0.06, -0.76, -0.24], [-Math.PI / 2, 0, 0.2], 'claw'],
+      ['legL', 'cyl', [0.2, 0.22, 0.74, 7], [0, -0.38, 0.02], 0, 'fur'], ['legR', 'cyl', [0.2, 0.22, 0.74, 7], [0, -0.38, 0.02], 0, 'fur'],
+      ['legL', 'box', [0.36, 0.18, 0.54], [0, -0.9, -0.12], 0, 'fur'], ['legR', 'box', [0.36, 0.18, 0.54], [0, -0.9, -0.12], 0, 'fur'],
+      ['legL', 'cone', [0.032, 0.11, 4], [-0.09, -0.96, -0.38], [-Math.PI / 2, 0, 0.12], 'claw'], ['legR', 'cone', [0.032, 0.11, 4], [0.09, -0.96, -0.38], [-Math.PI / 2, 0, -0.12], 'claw'],
+      ['legL', 'cone', [0.028, 0.1, 4], [0.07, -0.94, -0.38], [-Math.PI / 2, 0, -0.12], 'claw'], ['legR', 'cone', [0.028, 0.1, 4], [-0.07, -0.94, -0.38], [-Math.PI / 2, 0, 0.12], 'claw']
     ] }),
   S('clown', 'Clown-Mask Heist Suit', 2800, 'Black suit, white clown mask, red nose, a duffel bag that is never empty. Smile for the cameras.', {
     icon: '🤡', face: true,
