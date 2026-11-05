@@ -20,6 +20,7 @@ const PRECACHE = [
   ...['hud/hudx', 'hud/hudmap', 'hud/hints'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter
   `hud/wpbeam.js${q}`, // v7.5.8 waypoint light beam
   ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
+  ...['mars/gulchbeam', 'mars/gulchbeamcore'].map(n => `${n}.js${q}`), // v7.5.71 glowing red beam over Red Static Gulch
   `mars/icecap.js${q}`, `mars/icecapcore.js${q}`, // ❄️ Planum Australe ice cap: snowboarding + snow bowling
   `mars/swag.js${q}`, `mars/swagcore.js${q}`, // 🛍️ Slick's swag stall at Planum: threads, boards, balls, chems, ban / fine
   `mars/hostage.js${q}`, `mars/hostagecore.js${q}`, // 🪢 hostage: haul a rival lieutenant to the ice cap
