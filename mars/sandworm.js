@@ -199,6 +199,7 @@ function spawn(o = {}) {
 }
 function edible() { const fm = farmById(fight.farm); return fm ? fm.plots.filter(p => !fight.eatenKeys.has(p.key)) : []; }
 function eatNext(from) {
+  if (!fight || fight.done || fight.f.over) return null;
   const p = K.pickPlot(edible(), fight.eatenKeys, from); if (!p) return null;
   const rec = eatPlot(p); fight.eatenKeys.add(p.key);
   if (rec) { burst(p.x, ground(p.x, p.z) + 1, p.z, 22, 0x6e8a2a, 5, 6); burst(p.x, ground(p.x, p.z) + 0.5, p.z, 14, 0xb07850, 6, 4); shake = Math.max(shake, 0.5); rumble(1, 0.7);
@@ -242,8 +243,8 @@ function tickFight(dt, tc) {
   }
   // --- phase 2: the worm stands; pop the sacs ---
   if (f.phase === K.P.SACS) {
-    if (F.dive > 0) { F.dive -= dt; const k = Math.max(0, F.dive / 0.8); poseWorm(F.base, 11 * k, pg, 0); if (F.dive <= 0) { const q = eatNext(F.base); if (f.over) return; F.base = spotNear(q || F.base); F.breach = 0.8; burst(F.base.x, ground(F.base.x, F.base.z), F.base.z, 24, 0xb07850, 7, 6); shake = 0.7; } return; }
-    if (F.breach > 0) { F.breach -= dt; poseWorm(F.base, 11 * (1 - F.breach / 0.8), pg, 0); return; }
+    if (F.dive > 0) { F.dive -= dt; const k = Math.max(0, F.dive / 0.8); poseWorm(F.base, 8 * k, pg, 0); if (F.dive <= 0) { const q = eatNext(F.base); if (f.over) return; F.base = spotNear(q || F.base); F.breach = 0.8; burst(F.base.x, ground(F.base.x, F.base.z), F.base.z, 24, 0xb07850, 7, 6); shake = 0.7; } return; }
+    if (F.breach > 0) { F.breach -= dt; poseWorm(F.base, 8 * (1 - F.breach / 0.8), pg, 0); return; }
     f.eatT -= dt; if (f.eatT <= 0) { f.eatT = K.TUNE.eatEveryS; F.dive = 0.8; F.lunge = null; rumble(1.2, 0.7); return; }
     // lunge: rear back (wind-up), strike where you stood
     let reach = 0;
@@ -253,7 +254,7 @@ function tickFight(dt, tc) {
       if (L.t < W) reach = -0.25 * (L.t / W); else if (L.t < W + 0.35) reach = (L.t - W) / 0.35; else if (L.t < W + 1.0) reach = 1 - (L.t - W - 0.35) / 0.65; else { F.lunge = null; f.lungeT = K.TUNE.lungeEveryS; }
       if (!L.hit && L.t >= W + 0.33) { L.hit = true; const gy = ground(L.at.x, L.at.z); burst(L.at.x, gy, L.at.z, 18, 0xb07850, 7, 5); shake = 0.8; if (pg && d2(pg, L.at) < K.TUNE.lungeR) hurt(K.TUNE.lungeDmg); }
     }
-    poseWorm(F.base, 11, pg, reach, F.lunge?.at);
+    poseWorm(F.base, 8, pg, reach, F.lunge?.at);
     // acid spit
     f.spitT -= dt; if (f.spitT <= 0 && pg && !F.lunge) { f.spitT = K.TUNE.spitEveryS; spit(pg); }
     globTick(dt, pg);
@@ -492,7 +493,7 @@ function status() {
   return { active: !!fight && !fight.done, farm: fight?.farm || null, phase: f?.phase || 0, health: f ? Math.round(K.health(f) * 100) / 100 : null, surf: f?.surf ?? null, sacs: f ? f.sacs.slice() : null,
     stun: f ? Math.round(f.stun * 10) / 10 : 0, maw: f?.maw ?? null, eaten: f?.eaten ?? 0, cap: f?.cap ?? null, over: f?.over || null, done: fight?.done || null,
     teeth: S.teeth, lastDay: S.lastDay, harvests: S.harvests, story: S.story, pending: S.eaten.map(e => ({ farm: e.farm, kind: e.kind, day: e.day })), stats: { ...S.stats },
-    blocked: blocked(), saveErr, aim: fight ? aimPoints() : [], caption: capEl?.classList.contains('on') ? capEl.textContent : '', act: actBtn?.classList.contains('on') ? actBtn.textContent : '' };
+    blocked: blocked(), saveErr, aim: fight && !fight.done ? aimPoints() : [], caption: capEl?.classList.contains('on') ? capEl.textContent : '', act: actBtn?.classList.contains('on') ? actBtn.textContent : '' };
 }
 const api = {
   version: 1, spawn, status, sellTooth, on: f => { if (typeof f !== 'function') return () => {}; subs.add(f); return () => subs.delete(f); },
@@ -509,7 +510,7 @@ const api = {
     hold(sec = 999) { if (!fight) return false; const f = fight.f; f.autoT = f.eatT = f.lungeT = f.spitT = sec; return true; },
     charge: () => (fight?.charge ? { ...fight.charge } : null), setCharge(x, z) { if (fight?.charge) { fight.charge.x = x; fight.charge.z = z; } return !!fight?.charge; },
     regrow: (force = true) => regrow(force), end: how => { if (fight) end(how || 'away'); return status(); }, farms: () => farms().map(f => ({ id: f.id, c: f.c, silo: f.silo, plots: f.plots.length })),
-    chewed: () => [...chewed], give(n = 1) { S.teeth = Math.min(99, S.teeth + n); save(); return S.teeth; }, harvests(n) { S.harvests = n | 0; save(); return S.harvests; }
+    chewed: () => [...chewed], base: () => (fight?.base ? { ...fight.base } : null), give(n = 1) { S.teeth = Math.min(99, S.teeth + n); save(); return S.teeth; }, harvests(n) { S.harvests = n | 0; save(); return S.harvests; }
   }
 };
 const attach = () => { if (!window.SSX) window.SSX = {}; if (window.SSX.sandworm !== api) window.SSX.sandworm = api; };

@@ -42,7 +42,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.onboard?.skip?.()); await sleep(300);
     await G(() => { const g = window.__app.game; g.debug?.calm?.(true); g.progress.credits = 30000; g.progress.xp = 500; g.save(); window.__app.surface.world.setWanted(0); window.SSX.farm.debug.reset(); window.SSX.harvest?.debug?.reset?.();
       window.SSX.sandworm.debug.reset(); window.SSX.sandworm.debug.noRandom(true); window.__wev = []; window.SSX.sandworm.on(e => window.__wev.push(e.type)); });
-    ok('noFarm', await G(() => window.SSX.sandworm.spawn().why), await G(() => window.SSX.sandworm.spawn().why === 'farm'));
+    const nf = await G(() => window.SSX.sandworm.spawn()); ok('noFarm', nf, nf.ok === false && nf.why === 'farm');
     // the homestead: 6 racks, 3 ripe (algae), 3 growing (potatoes)
     await farmAt(12);
     for (const a of ['buy', 'buildDome']) { await G(a => window.SSX.farm[a](), a); await sleep(400); }
@@ -72,7 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     racks = await G(() => window.SSX.farm.rackSpots().map(r => ({ crop: r.crop, ripe: r.ripe })));
     ok('eatRipe', { e1, racks }, e1 && racks.filter(r => r.ripe).length === 2 && (await St()).eaten === 1);
     // mid-attack shot: stand back, watch it rear up and spit acid
-    await farmAt(24); await G(() => window.SSX.sandworm.debug.hold()); await fr(4); await sleep(1000);
+    await G(() => { const b = window.SSX.sandworm.debug.base(), c = window.SSX.sandworm.debug.farms()[0].c; let dx = b.x - c.x, dz = b.z - c.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L; window.__app.surface.debugMove(b.x + dx * 22, b.z + dz * 22, Math.atan2(dx, dz)); window.SSX.sandworm.debug.hold(); }); await fr(4); await sleep(1000);
     await G(() => { window.SSX.sandworm.debug.spit(); }); await sleep(700); await shot('attack');
     // 5) a lunge and the acid hurt you when you stand still
     await G(() => window.SSX.sandworm.debug.lunge()); await sleep(2600);
@@ -83,7 +83,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const ch0 = await G(() => window.SSX.sandworm.debug.charge()); await sleep(1000); const ch1 = await G(() => window.SSX.sandworm.debug.charge());
     ok('charging', { ch0, ch1 }, await G(([a, b]) => { const f = window.SSX.sandworm.debug.farms()[0]; return Math.hypot(b.x - f.silo.x, b.z - f.silo.z) < Math.hypot(a.x - f.silo.x, a.z - f.silo.z); }, [ch0, ch1]));
     ok('mawShut', await shoot('maw', 50), (await St()).maw === 8);
-    await G(() => { const f = window.SSX.sandworm.debug.farms()[0], c = window.SSX.sandworm.debug.charge(); window.__app.surface.debugMove(c.x + 9, c.z + 9, 0); window.SSX.sandworm.debug.stun('ram'); });
+    await G(() => { const f = window.SSX.sandworm.debug.farms()[0], c = window.SSX.sandworm.debug.charge(); window.__app.surface.debugMove(c.x, c.z + 14, 0); window.SSX.sandworm.debug.stun('ram'); });
     await fr(6); await sleep(600); await shot('stunned');
     s = await St(); ok('stunned', { stun: s.stun, cap: s.caption }, s.stun > 0 && /mouth/.test(s.caption));
     // 7) kill: maw hits; payout once
@@ -94,7 +94,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       s.over === 'win' && s.teeth === 1 && (await cr()) - c0 === 1500 && (await G(() => window.__app.game.progress.xp)) - x0 === 150 && /Hell of a fertilizer/.test(s.caption));
     ok('gone', await wait(() => !window.SSX.sandworm.status().active && !window.SSX.sandworm.status().done, 6000));
     // 8) next game day the eaten racks regrow (the cut rack replanted free)
-    const c1 = await cr(); await farmAt(12); await G(() => { window.SSX.farm.refill('water'); window.SSX.farm.refill('power'); window.SSX.farm.skip(24); });
+    await farmAt(12); await G(() => { window.SSX.farm.refill('water'); window.SSX.farm.refill('power'); window.SSX.farm.skip(24); }); const c1 = await cr();
     ok('regrow', await wait(() => window.SSX.sandworm.status().pending.length === 0, 8000));
     racks = await G(() => window.SSX.farm.rackSpots().map(r => r.crop)); ok('regrown', { racks, spent: c1 - (await cr()) }, racks.every(Boolean) && c1 - (await cr()) <= 0);
     // 9) a lose run: it eats half the farm, never more
