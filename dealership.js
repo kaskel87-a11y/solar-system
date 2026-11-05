@@ -1,5 +1,7 @@
 // v7.5 add-on: Red Line Motors (rover dealership), your lock-up garages and night car meets on Mars.
 // - Dealership: buy new rides with credits (garagecore.js MODELS + any registerVehicle kind with a `price`).
+// - Partner buy-in: cash and/or stars → lot income, bigger garage, buy discount, early stock wave, better fence cut.
+// - Fence: drive a stolen world car onto the lot and sell it for cr + ⭐ (heat cuts payout; 4+ ★ can bust).
 // - Garage: store up to MAX_RIDES rides; paint, body kits, wheels, underglow and engine/handling/brakes/boost upgrades
 //   that change the driving spec. The ride you pick becomes "your rover" (same thrusters, turret, Frankie, radio).
 // - Car meets (carmeet.js): a timed night event with NPC cars, show-off rep and drag races run on race.js.
@@ -15,6 +17,7 @@ import { buildRide, decorate, shapeOf } from './rides.js';
 import { createMeet } from './carmeet.js';
 import { createMyRides } from './myrides.js';
 import * as TC from './mars/shoptierscore.js';
+import { grantStars } from './starmixcore.js';
 
 // ---------- registration: our models are ordinary vehicle kinds with a price (so they also show up for other mods) ----------
 for (const [kind, m] of Object.entries(GC.MODELS)) registerVehicle(kind, { ...m }, () => buildRide(kind));
@@ -81,7 +84,7 @@ export function grantPart(rideId = 'current', slot, value, fit = true) {
 // up: { engine: 2, ... } pre-fitted levels, paint/kit/wheels/glow pre-fitted parts.
 export function grantVehicle(vehicleId, opts = {}) {
   const G = garage(); if (vehicleId !== 'rover' && !VEHICLES[vehicleId]) return { ok: false, msg: `Unknown vehicle "${vehicleId}". Register it with SSX.registerVehicle first.` };
-  if (G.rides.length >= GC.MAX_RIDES) return { ok: false, full: true, msg: '🔧 Garage full. Sell something first.' };
+  if (G.rides.length >= GC.maxRidesOf(G)) return { ok: false, full: true, msg: '🔧 Garage full. Sell something first.' };
   const r = GC.newRide('r' + G.nextId++, vehicleId); r.spent = 0; r.gift = true; if (opts.noPlates) r.noPlates = true;
   for (const [k, l] of Object.entries(opts.up || {})) if (GC.UPGRADES[k]) r.up[k] = Math.max(0, Math.min(GC.MAX_LVL, l | 0));
   for (const k of Object.keys(GC.COSMETIC_SLOTS)) { const v = opts[k]; if (v && GC.COSMETIC_SLOTS[k][v] && !(vehicleId === 'rover' && (k === 'paint' || k === 'kit'))) { r[k] = v; if (!r.owned[k].includes(v)) r.owned[k].push(v); } }
@@ -110,6 +113,7 @@ function respray({ reason = '', price } = {}) {
   return { ok: true, plate: r.plate, price: r.price, ride: r.ride, heat };
 }
 export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), respray, get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
+  get partner() { return { ...partnerOf() }; }, buyPartner, collectPartner, fenceRide, get maxRides() { return GC.maxRidesOf(garage()); },
   upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
@@ -123,6 +127,12 @@ function garage() {
 const save = () => app()?.game?.save?.();
 const credits = () => app()?.game?.progress?.credits ?? 0;
 const spend = n => { const P = app()?.game?.progress; if (!P || P.credits < n) return false; P.credits -= n; return true; };
+const give = n => { const P = app()?.game?.progress; if (!P || !(n > 0)) return 0; P.credits = (P.credits | 0) + (n | 0); return n | 0; };
+const starsApi = () => window.SSX?.stars;
+const starsBal = () => { try { return starsApi()?.balance?.() | 0; } catch (e) { return 0; } };
+const spendStars = (n, why) => { if (!(n > 0)) return true; try { return !!starsApi()?.spend?.(n, why)?.ok; } catch (e) { return false; } };
+const partnerOf = () => garage().partner || (garage().partner = GC.freshPartner());
+const marsHour = () => { const T = window.SSX?.time; try { if (T) { const h = typeof T.hour === 'function' ? T.hour() : typeof T.now === 'function' ? T.now() : null; if (Number.isFinite(h)) return ((h % 24) + 24) % 24; } } catch (e) { /* */ } return GC.colonyHour(Date.now(), garage().clock); };
 export const rideById = id => garage().rides.find(r => r.id === id) || null;
 const activeRide = () => rideById(garage().active) || garage().rides[0];
 const listingOf = kind => kind === 'rover' ? { kind: 'rover', name: 'Rover (stock)', icon: '🚙', tier: 1, price: 600, rep: 0 } : dealerStock().find(s => s.kind === kind) || { kind, name: VEHICLES[kind]?.name || kind, icon: '🚗', tier: GC.inferTier(VEHICLES[kind]?.price || 0), price: VEHICLES[kind]?.price || 0, rep: 0 };
@@ -311,10 +321,13 @@ function setCtx(label, act) {
   if (!label) { if (ui.btn.style.display !== 'none') ui.btn.style.display = 'none'; return; }
   if (ui.btn.textContent !== label) ui.btn.textContent = label; if (ui.btn.style.display !== 'block') ui.btn.style.display = 'block';
 }
+function stolenCar() { const car = C?.car, rv = C?.rover; return car && rv && car !== rv ? car : null; }
 function updateCtx() {
   if (sheet || !here() || C.game.isDown() || window.__race?.state || app()?.surface?.info?.inside) return setCtx(null);
+  const me = meOf(), S = spots(), stolen = stolenCar();
+  // fence a stolen world ride on the lot (priority over open-dealer while you're still in it)
+  if (stolen && onLot(me)) return setCtx('💸 Fence ride', () => { const r = fenceRide(); toast(r.msg, 3200); });
   const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
-  const me = meOf(), S = spots();
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
   if (dist(me, S.garage) < 11) return setCtx('🔧 Garage', () => openGarage());
   if (onLot(me)) return setCtx('🚗 Dealer', () => openDealer());
@@ -354,7 +367,8 @@ function statBars(spec, after) {
     <span>¼ mile</span><span></span><span>${GC.dragTime(after || spec).toFixed(1)} s · PI ${GC.perfIndex(after || spec)}</span></div>`;
 }
 const head = (title, sub) => `<button class="close" data-close="1">✕</button><h3>${title}</h3><div class="sub">${sub}</div>`;
-const wallet = () => `💰 ${credits()} cr · ⭐ ${Math.round(garage().rep)} rep (${GC.repTitle(garage().rep)})`;
+const wallet = () => { const G = garage(), p = partnerOf(), pend = p.on ? Math.floor(p.pending) : 0;
+  return `💰 ${credits()} cr · ⭐ ${starsBal()} · rep ${Math.round(G.rep)} (${GC.repTitle(G.rep)})${p.on ? ` · 🤝 partner${pend ? ` · 💵 ${pend}` : ''}` : ''}`; };
 
 // ----- dealer -----
 let dSel = null;
@@ -364,29 +378,78 @@ function openDealer() {
   openSheet('dealer', renderDealer, () => { const p = lot.podiums.find(p => p.kind === dSel) || lot.podiums[0]; return p ? p.g : null; });
 }
 function renderDealer() {
-  const st = dealerStock(), s = st.find(x => x.kind === dSel) || st[0], G = garage(); if (!s) return head('🚗 ' + esc(CFG.name), 'Nothing on the lot today.');
-  const spec = specOf(GC.newRide('x', s.kind)), price = GC.sellPrice(s, G.rep), full = G.rides.length >= GC.MAX_RIDES, owned = G.rides.filter(r => r.kind === s.kind).length;
-  const why = G.rep < s.rep ? `Needs ${s.rep} rep. Make a name at the car meets first.` : full ? `Garage full (${GC.MAX_RIDES}). Sell a ride first.` : credits() < price ? `You’re ${price - credits()} cr short.` : '';
-  return head(`🚗 ${esc(CFG.name)}`, wallet()) +
+  const st = dealerStock(), s = st.find(x => x.kind === dSel) || st[0], G = garage(), P = partnerOf(); if (!s) return head('🚗 ' + esc(CFG.name), 'Nothing on the lot today.');
+  const maxR = GC.maxRidesOf(G), price = GC.partnerSellPrice(s, G.rep, P.on), full = G.rides.length >= maxR, owned = G.rides.filter(r => r.kind === s.kind).length;
+  const spec = specOf(GC.newRide('x', s.kind));
+  const why = G.rep < s.rep ? `Needs ${s.rep} rep. Make a name at the car meets first.` : full ? `Garage full (${maxR}). Sell a ride first.` : credits() < price ? `You’re ${price - credits()} cr short.` : '';
+  const partnerBlock = P.on
+    ? `<div class="blurb">🤝 <b>Partner</b> · lot cut ~${Math.round(GC.PARTNER.rate)} cr/h · garage ${maxR} · ${GC.PARTNER.buyDiscount * 100 | 0}% off buys · better fence${Math.floor(P.pending) > 0 ? ` · <b>💵 ${Math.floor(P.pending)} waiting</b>` : ''}</div>
+      <div class="row">${Math.floor(P.pending) > 0 ? `<button class="go" data-pcollect="1">💵 Collect · ${Math.floor(P.pending)} cr</button>` : ''}<button data-togarage="1">🔧 Garage</button></div>`
+    : `<div class="blurb">🤝 Buy in as a partner: bigger garage (+${GC.PARTNER.maxRidesBonus}), ${GC.PARTNER.buyDiscount * 100 | 0}% off stock, early WAR RIGS, lot income (~${Math.round(GC.PARTNER.rate)} cr/h), and a better cut when you fence stolen rides.</div>
+      <div class="row">${GC.partnerOffers().map(o => {
+        const crOk = !o.cr || credits() >= o.cr, stOk = !o.stars || starsBal() >= o.stars, ok = crOk && stOk;
+        return `<button data-partner="${o.id}" ${ok ? '' : 'disabled'}>🤝 ${esc(o.label)}</button>`;
+      }).join('')}</div>`;
+  return head(`🚗 ${esc(CFG.name)}`, wallet()) + partnerBlock +
     `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
-    <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
+    <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${P.on && price < s.price ? ' · partner' : ''}${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
     <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>
     <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
-    <div class="blurb">${esc(waveLine())}</div>`;
+    <div class="blurb">${esc(waveLine())}</div>
+    <div class="sub">💸 Steal a world car and drive it onto this lot to fence it for cash. Heat cuts the payout.</div>`;
 }
 handlers.dsel = k => { dSel = k; rerender(); };
 handlers.buy = k => { const r = buy(k); toast(r.msg, 3200); if (r.ok) closeSheet(); else rerender(); };
+handlers.partner = id => { const r = buyPartner(id); toast(r.msg, 3600); rerender(); };
+handlers.pcollect = () => { const r = collectPartner(); toast(r.msg, 2800); rerender(); };
 handlers.togarage = () => { closeSheet(true); const m = meOf(), S = spots(); if (dist(m, S.garage) < 40) openGarage(); else navTo('garage'); };
 export function buy(kind) {
-  const s = dealerStock().find(x => x.kind === kind), G = garage(); if (!s) return { ok: false, msg: 'Not on the lot.' };
-  const price = GC.sellPrice(s, G.rep);
+  const s = dealerStock().find(x => x.kind === kind), G = garage(), P = partnerOf(); if (!s) return { ok: false, msg: 'Not on the lot.' };
+  const price = GC.partnerSellPrice(s, G.rep, P.on), maxR = GC.maxRidesOf(G);
   if (G.rep < s.rep) return { ok: false, msg: `🔒 ${s.name}: the dealer wants ${s.rep} rep before he’ll even let you sit in it.` };
-  if (G.rides.length >= GC.MAX_RIDES) return { ok: false, msg: '🔧 Garage full. Sell something first.' };
+  if (G.rides.length >= maxR) return { ok: false, msg: '🔧 Garage full. Sell something first.' };
   if (!spend(price)) return { ok: false, msg: `💸 ${s.name} is ${price} cr. You’re short, pal.` };
   const r = GC.newRide('r' + G.nextId++, kind); r.spent = 0; MR.parkOutgoing(); G.rides.push(r); G.active = r.id; save(); // live fix: the old ride stays parked where it is
   parkActiveAt('dealer'); noteBought([kind]); rebuildPodiums();
   return { ok: true, id: r.id, msg: `🔑 ${s.name} is yours. Parked out front, keys in it. Customise it at the lock-ups next door.` };
+}
+export function buyPartner(offerId = 'cash') {
+  const G = garage(), P = partnerOf(); if (P.on) return { ok: false, msg: '🤝 You’re already a partner at Red Line.' };
+  const offer = GC.partnerOffers().find(o => o.id === offerId) || GC.partnerOffers()[0];
+  if (offer.cr && credits() < offer.cr) return { ok: false, msg: `💸 Need ${offer.cr} cr to buy in.` };
+  if (offer.stars && starsBal() < offer.stars) return { ok: false, msg: `⭐ Need ${offer.stars} stars to buy in.` };
+  if (offer.cr && !spend(offer.cr)) return { ok: false, msg: 'Payment failed.' };
+  if (offer.stars && !spendStars(offer.stars, 'Red Line partner')) { if (offer.cr) give(offer.cr); return { ok: false, msg: '⭐ Stars payment failed.' }; }
+  P.on = true; P.pending = 0; P.lastHour = marsHour(); save();
+  // partner perk: unlock the next stock wave early (WAR RIGS) without owning every model
+  const D = TC.shared().dealer; if (D.wave < TC.DEALER_WAVES.length) { D.wave = Math.min(TC.DEALER_WAVES.length, D.wave + 1); TC.save(TC.shared()); applyWave(); rebuildPodiums(); }
+  return { ok: true, msg: `🤝 You’re a partner at ${CFG.name}. Bigger garage, partner prices, lot cut, and better fence money. Drive stolen rides onto the lot to fence them.` };
+}
+export function collectPartner() {
+  const P = partnerOf(); if (!P.on) return { ok: false, msg: 'Not a partner.' };
+  const n = GC.partnerCollect(P); if (!n) return { ok: false, msg: 'Till is empty.' };
+  give(n); const stars = grantStars(app()?.game || app()?.surface?.game, Math.floor(n / 10)); save();
+  return { ok: true, amount: n, stars, msg: `💵 +${n} cr${stars ? ` · +${stars} ⭐` : ''} from your cut of the lot.` };
+}
+export function fenceRide() {
+  const car = stolenCar(); if (!car) return { ok: false, msg: 'Bring a stolen ride onto the lot.' };
+  if (!here() || !onLot(meOf())) return { ok: false, msg: 'Fence it on the Red Line lot.' };
+  const wanted = C?.world?.wanted | 0, P = partnerOf();
+  const listing = dealerStock().find(x => x.kind === car.kind) || GC.MODELS[car.kind] || null;
+  const price = listing?.price ?? car.spec?.price ?? null;
+  const offer = GC.fenceOffer(car.kind, { price, wanted, partner: P.on });
+  // scrap the stolen ride (never the stock rover)
+  let gone = false; try { gone = !!(app()?.surface?.chopVehicle?.()); } catch (e) { gone = false; }
+  if (!gone) { try { gone = !!(C?.world?.despawnVehicle?.(car)); } catch (e) { gone = false; } }
+  if (!gone) return { ok: false, msg: 'The lot boys couldn’t take it. Try again.' };
+  if (offer.bust) {
+    try { C.world?.crime?.(Math.max(1, offer.heatAdd || 1), 'fenced a hot ride in front of ColSec'); } catch (e) { /* */ }
+    save(); return { ok: false, bust: true, msg: '🚨 ColSec was watching the lot. No payout — stars went up.' };
+  }
+  give(offer.cr); const stars = grantStars(app()?.game || app()?.surface?.game, offer.stars);
+  const G = garage(); G.fenced = (G.fenced | 0) + 1; if (P.on) P.fenced = (P.fenced | 0) + 1; save();
+  return { ok: true, amount: offer.cr, stars, kind: car.kind, msg: `💸 Fenced the ${car.spec?.name || car.kind} for ${offer.cr} cr${stars ? ` · +${stars} ⭐` : ''}${wanted ? ' (hot — payout cut)' : ''}${P.on ? ' · partner cut' : ''}.` };
 }
 // put your (newly selected) ride at a spot, facing out
 function parkActiveAt(where) {
@@ -487,7 +550,7 @@ function renderHub() {
   if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>` + mine;
   const me = meOf(), S = spots(), dd = n => Math.round(dist(me, S[n]));
   return head('🚗 Rides & meets', wallet()) +
-    `<div>Your ride: <b>${esc(rideName(r))}</b> · ${G.rides.length}/${GC.MAX_RIDES} in the garage · drags ${G.wins}/${G.races} won</div>${statBars(r.kind === 'rover' ? specOf(r) : specOf(r))}
+    `<div>Your ride: <b>${esc(rideName(r))}</b> · ${G.rides.length}/${GC.maxRidesOf(G)} in the garage · drags ${G.wins}/${G.races} won</div>${statBars(r.kind === 'rover' ? specOf(r) : specOf(r))}
     <div>${shared ? (on ? '🌙 <b style="color:#3cff8a">Car meet is ON</b> (till dawn)' : '☀️ Car meets start at nightfall') : `🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}`}</div>
     <div class="row"><button data-nav="dealer">📍 Dealer · ${dd('dealer')} m</button><button data-nav="garage">📍 Garage · ${dd('garage')} m</button><button data-nav="meet">📍 Meet · ${dd('meet')} m</button></div>
     <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on || shared ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>` + mine;
@@ -513,11 +576,21 @@ const MR = createMyRides({ ctx: () => C, garage, save, activeRide, rideById, rid
   setNav: p => { nav = p; }, syncNow: () => { if (C?.rover) syncRover(0); }, disposeRoot, sheetOpen: () => !!sheet });
 Object.assign(GARAGE_API, { deliver: id => MR.deliver(id), locate: id => MR.locate(id), showOnMap: id => MR.showOnMap(id) });
 // ---------- the tick (window.SSX_TICKS, called by surface.js once per surface frame) ----------
+function tickPartnerIncome() {
+  const P = partnerOf(); if (!P.on) return;
+  const h = marsHour();
+  if (P.lastHour == null) { P.lastHour = h; return; }
+  let hrs = h - P.lastHour;
+  if (hrs < -12) hrs += 24; // crossed midnight
+  if (hrs < 0) { P.lastHour = h; return; } // clock noise / rewind: don't pay
+  if (hrs > 8) hrs = 8; // cap one jump (sleep / time skip)
+  if (hrs > 1e-4) { GC.partnerAccrue(P, P.lastHour, hrs); P.lastHour = h; }
+}
 export function dealerTick(dt, ctx) {
   C = ctx; last = performance.now();
   if (!root || !root.parent || planet !== ctx.name || (here() && !lot)) setupPlanet();
   ensureUI(); patchGame(ctx.game);
-  syncRover(dt); MR.tick(dt);
+  syncRover(dt); MR.tick(dt); tickPartnerIncome();
   if (!here()) { const mr = sheet ? null : MR.ctxAction(); setCtx(mr?.label || null, mr?.act); return; }
   if (nav && dist(meOf(), nav) < 14) nav = null;
   // turntables + showroom camera
@@ -560,7 +633,8 @@ window.__dealer = {
   get garage() { return garage(); }, get stock() { return dealerStock(); }, get spots() { return here() ? spots() : null; }, get sheet() { return sheet?.kind || null; },
   get brakeAssist() { return brakeAssist; }, get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
-  buy, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  buy, buyPartner, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  get partner() { return { ...partnerOf() }; },
   get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, noteBought, rebuildPodiums,
   tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };
