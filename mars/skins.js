@@ -1,6 +1,6 @@
 // Mars player skins (Pumpkin). Threadbare, a grimy second-hand clothes stall in downtown Ares Junction: walk up and a black
 // "👕 Threadbare" button opens the shop. Outfits from 0 to 5,000 cr (the Rusty Spacesuit and the Halloween Grin Reaper are free), bought with in-game
-// cr; ☰ → 👕 Wardrobe swaps between the ones you own (and back to the stock white suit) anywhere. Snow threads (venue planum) are sold at Slick's stall, not here.
+// cr; ☰ → 👕 Wardrobe swaps between the ones you own (and back to the stock white suit) anywhere. Snow threads (venue planum) are sold at Slick's shop, not here.
 // A skin recolours the actual player rig (models.js buildAstronaut: torso, arms, legs, helmet, pack, chest, visor, boots)
 // and adds low-poly parts (hats, masks, chains, duster, mohawk, duffel...) to the rig's own limbs, so they swing with it.
 // Phone rule: every part of a skin is merged per slot + material once (cached, shared, never disposed), so a skin is ~8-14
@@ -286,7 +286,7 @@ function open(m = 'shop') {
 function close() { panel?.classList.remove('open'); emit('close'); }
 function buy(id) {
   const k = C.BY_ID[id]; if (!k) return { ok: false, why: 'unknown' };
-  if (k.venue === 'planum') { toast(`👕 ${k.name} is at Slick's swag stall on Planum Australe.`); return { ok: false, why: 'venue' }; }
+  if (k.venue === 'planum') { toast(`👕 ${k.name} is at Slick's shop on Planum Australe.`); return { ok: false, why: 'venue' }; }
   if (mode === 'shop' && !nearShop() && !api.__anywhere) { toast('👕 Buy it at Threadbare, downtown Ares Junction.'); return { ok: false, why: 'far' }; }
   const c = C.canBuy(st, id, credits());
   if (!c.ok) { if (c.why === 'broke') { taps.refused++; toast(`👕 ${k.name} is ${C.fmt(k.price)} cr. You have ${C.fmt(credits())} cr.`, 2800); } else if (c.why === 'owned') equip(id); render(); return c; }
