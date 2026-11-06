@@ -49,6 +49,7 @@ function load(name) {
       for (const o of meshes) { // custom glTF attributes arrive as _cell/_gm
         const g = o.geometry; if (g.attributes._cell) { g.setAttribute('aCell', g.attributes._cell); g.deleteAttribute('_cell'); g.setAttribute('aGm', g.attributes._gm); g.deleteAttribute('_gm'); }
       }
+      enlargeDancerBust(gltf); // ~50% clothed bust (skin + tops), once per cached GLB
       if (HIGH) await Promise.all(meshes.flatMap(o => [ // desktop tier only; the 512 maps stay on failure
         tex(`${name}_${o.material.alphaTest ? 'hair' : 'skin'}_hd.webp`).then(t => { o.material.map?.dispose(); o.material.map = t; }, () => {}),
         o.material.alphaTest ? null : tex(`${name}_nrm_hd.webp`).then(t => { t.colorSpace = THREE.NoColorSpace; o.material.normalMap = t; o.material.normalScale.set(0.7, 0.7); }, () => {})
@@ -101,6 +102,121 @@ export const DANCERS = {
   rhea: { file: 'dancer_rhea', name: 'Rhea', sheen: 0.18 },
   kiara: { file: 'dancer_kiara', name: 'Kiara', sheen: 0.18 }
 };
+// Collin: ~50% bigger bust on the three club dancers. Skin + bikini/string/crop tops (and straps) are
+// scaled from chest-wall centers so the garment stays on and covering; bottoms/hair/cardigan untouched.
+export const BUST_SCALE = 1.7; // falloff lands measured cup depth near ~1.5x on Danny/Rhea/Kiara
+const TOP_GIDS = new Set([1, 3, 6, 10]); // SSX bikini/string/crop tops + straps
+function smooth01(e0, e1, x) { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+/** Bust mound depth (skin max-z minus sternum) for left/right cups; used by tests. */
+export function measureBustDepth(geometry) {
+  const pos = geometry.attributes.position, gm = geometry.attributes.aGm || geometry.attributes._gm;
+  if (!pos || !gm) return null;
+  let y0 = 1e9, y1 = -1e9, hasTop = false;
+  for (let i = 0; i < pos.count; i++) {
+    if (!TOP_GIDS.has(Math.round(gm.getX(i)))) continue;
+    hasTop = true; const y = pos.getY(i); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  if (!hasTop) return null;
+  // Cup band (skip underbust straps / upper collarbone) so sternum baseline stays stable.
+  const yCup0 = y0 + (y1 - y0) * 0.12, yCup1 = y0 + (y1 - y0) * 0.78;
+  let sternum = -1e9, L = -1e9, R = -1e9, topL = -1e9, topR = -1e9, topN = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i)), x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < yCup0 || y > yCup1) continue;
+    if (id === 0) {
+      if (Math.abs(x) < 0.03) sternum = Math.max(sternum, z);
+      if (x < -0.05 && x > -0.2) L = Math.max(L, z);
+      if (x > 0.05 && x < 0.2) R = Math.max(R, z);
+    } else if (TOP_GIDS.has(id)) {
+      topN++;
+      if (x < -0.05 && x > -0.2) topL = Math.max(topL, z);
+      if (x > 0.05 && x < 0.2) topR = Math.max(topR, z);
+    }
+  }
+  if (sternum < -1e8) return null;
+  return { depthL: L - sternum, depthR: R - sternum, depth: ((L + R) * 0.5 - sternum), sternumZ: sternum, y0, y1, topN, topCovers: topL >= L - 1e-4 && topR >= R - 1e-4 };
+}
+function findBreastCenters(pos, gm) {
+  let y0 = 1e9, y1 = -1e9, hasTop = false;
+  for (let i = 0; i < pos.count; i++) {
+    if (!TOP_GIDS.has(Math.round(gm.getX(i)))) continue;
+    hasTop = true; const y = pos.getY(i); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  if (!hasTop) return null;
+  const yCup0 = y0 + (y1 - y0) * 0.12, yCup1 = y0 + (y1 - y0) * 0.78;
+  let sternum = -1e9;
+  const apex = { '-1': null, '1': null };
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i)); if (id !== 0 && !TOP_GIDS.has(id)) continue;
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < yCup0 || y > yCup1) continue;
+    if (Math.abs(x) < 0.03) sternum = Math.max(sternum, z);
+    for (const side of [-1, 1]) {
+      if (x * side < 0.05 || x * side > 0.2) continue;
+      // prefer skin apexes; tops fill in when a prim has no skin (Danny's string-top layer)
+      const cur = apex[side];
+      const skin = id === 0;
+      if (!cur || (skin && !cur.skin) || (skin === cur.skin && z > cur.z)) apex[side] = { x, y, z, skin };
+    }
+  }
+  if (sternum < -1e8 || !apex['-1'] || !apex['1']) return null;
+  // Cup anchors on the chest wall under each breast; midline (|x| small) is left alone.
+  return {
+    y0, y1, sternum,
+    C: [
+      { x: apex['-1'].x * 0.78, y: apex['-1'].y, z: sternum },
+      { x: apex['1'].x * 0.78, y: apex['1'].y, z: sternum }
+    ]
+  };
+}
+/** Scale skin + top-garment cup depth/width ~scale. Idempotent via geometry.userData.ssxBustScale. */
+export function inflateBustGeometry(geometry, scale = BUST_SCALE, shared = null) {
+  if (geometry.userData.ssxBustScale) return geometry.userData.ssxBustScale;
+  const pos = geometry.attributes.position, gm = geometry.attributes.aGm || geometry.attributes._gm;
+  if (!pos || !gm) return null;
+  const info = shared || findBreastCenters(pos, gm);
+  if (!info) return null;
+  const { C, y0, y1, sternum } = info;
+  const R = 0.15, R0 = 0.03;
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i));
+    if (id !== 0 && !TOP_GIDS.has(id)) continue;
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < y0 - 0.05 || y > y1 + 0.08) continue;
+    if (Math.abs(x) < 0.035) continue; // keep cleavage / sternum fixed
+    let best = null, bestD = R;
+    for (const c of C) {
+      if ((c.x < 0) !== (x < 0)) continue;
+      const d = Math.hypot(x - c.x, y - c.y, z - c.z);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (!best) continue;
+    let w = 1 - smooth01(R0, R, bestD);
+    if (z < sternum - 0.005) w *= 0.15; // don't inflate the back of the ribcage
+    if (w <= 1e-4) continue;
+    // Depth grows off the sternum plane; width grows off the cup anchor — both ~scale at the apex.
+    const k = 1 + (scale - 1) * w;
+    const nx = best.x + (x - best.x) * k;
+    const ny = best.y + (y - best.y) * (1 + (scale - 1) * w * 0.35);
+    const nz = z <= sternum ? z : sternum + (z - sternum) * k;
+    pos.setXYZ(i, nx, ny, nz);
+  }
+  pos.needsUpdate = true;
+  geometry.boundingSphere = null; geometry.computeBoundingSphere?.();
+  geometry.userData.ssxBustScale = scale;
+  return scale;
+}
+function enlargeDancerBust(gltf, scale = BUST_SCALE) {
+  const meshes = []; gltf.scene.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o); });
+  let shared = null;
+  for (const o of meshes) {
+    const gm = o.geometry.attributes.aGm || o.geometry.attributes._gm; if (!gm) continue;
+    shared = findBreastCenters(o.geometry.attributes.position, gm); if (shared) break;
+  }
+  if (!shared) return;
+  for (const o of meshes) inflateBustGeometry(o.geometry, scale, shared);
+}
+
 // per-dancer material: one shader program per tier and primitive kind (custom cache key); per-dancer values are uniforms
 const RIM_A = new THREE.Color(0x40e0ff), RIM_B = new THREE.Color(0xff3cc8);
 // shader-only lighting per dancer (shared by her two materials): directions are world space, turned into view space per draw
@@ -325,7 +441,7 @@ function buildModel(gltf, auxTex, D, look, lu) {
     for (let i = 0; i < src.length; i += 3) { const id = Math.round(gm.getX(src[i])); if (id >= 11 || show.has(id)) (id === GID['SSX cardigan'] ? cd : keep).push(src[i], src[i + 1], src[i + 2]); }
     const g = new THREE.BufferGeometry(); for (const n in g0.attributes) g.setAttribute(n, g0.attributes[n]);
     const all = keep.concat(cd); g.setIndex(new THREE.BufferAttribute(gm.count > 65535 ? new Uint32Array(all) : new Uint16Array(all), 1));
-    g.boundingSphere = g0.boundingSphere; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
+    g.boundingSphere = g0.boundingSphere; if (g0.userData.ssxBustScale) g.userData.ssxBustScale = g0.userData.ssxBustScale; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
   });
   m.rotation.y = Math.PI; m.scale.setScalar(1.04); // the model faces +Z; rigs and seats face -Z
   const mixer = new THREE.AnimationMixer(m), acts = {};
