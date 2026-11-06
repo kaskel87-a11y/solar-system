@@ -76,7 +76,7 @@ const PRECACHE = [
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   `mars/missionheat.js${q}`, // v7.5.11 police ease off on missions (SSX.missionHeat)
   `mars/nocops.js${q}`, `mars/nocopscore.js${q}`, // v7.5.74 no ordinary ColSec at Red Static Gulch (SSX.copFree)
-  `mars/crimebreak.js${q}`, `mars/crimebreakcore.js${q}`, // v7.5.75 gulch crime break (SSX.crimebreak)
+  `mars/crimebreak.js${q}`, `mars/crimebreakcore.js${q}`, // v7.5.76 gulch crime break: meetings, 100 cr → 10 ⭐, gulch market (SSX.crimebreak)
   `perfgov.js${q}`, `hud/hudslim.js${q}`, `copbounty.js${q}`, `hud/cardfit.js${q}`, `hud/keys.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
