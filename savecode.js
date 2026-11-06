@@ -34,6 +34,7 @@
     'ssx.swag.v1', // Planum Swag (mars/swag.js): owned threads, boards, balls, pocket chems, ban / fine
     'ssx.hostage.v1', // hostage (mars/hostage.js): who you're hauling, lieutenant cool-downs, haul count
     'ssx.sniper.v1', // v7.5.19 sniper contracts (done/stats)
+    'ssx.crewfic.v1', // v7.5.76 crew mission chains (mars/crewficcore.js): beat, checklist, choice, claimed rewards per character
     'ssx.crane.v1', // v7.5.22 magnet crane (owned / lifts / fenced)
     'ssx.honk.v1', // v7.5.31 Grin Reaper bulb horn (given / honks)
     'ssx.velvetdeal.v1', // v7.5.26 Ines's side deal (job chain, comps, product shows)

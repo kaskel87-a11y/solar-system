@@ -72,6 +72,7 @@ const PRECACHE = [
   `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)
   `mars/farm2.js${q}`, `mars/farm2core.js${q}`, // Red Static Gulch grow op (SSX.farm2)
   `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
+  `mars/crewfic.js${q}`, `mars/crewficcore.js${q}`, // v7.5.76 📜 Contacts crew mission chains (SSX.crewfic)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   `mars/missionheat.js${q}`, // v7.5.11 police ease off on missions (SSX.missionHeat)
