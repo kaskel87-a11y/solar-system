@@ -39,6 +39,7 @@
     'ssx.velvetdeal.v1', // v7.5.26 Ines's side deal (job chain, comps, product shows)
     'ssx.heliospass.v1', //  v7.5.33 Helios Heights guest pass (bribe: one entry + one heist)
     'ssx.crew.v1', // v7.5.42 crew (crewcore.js)
+    'ssx.crewfic.v1', // v7.5.76 crew mission chains (mars/crewficcore.js): beat, checklist, choice, claimed rewards per character
     'ssx.velvetarc.v1' // Velvet expansion: Ines's arc + owning the Velvet Airlock (mars/velvetarccore.js)
   ];
   const PREFIXES = ['ssx.race.ghost.'];

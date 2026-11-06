@@ -10,7 +10,9 @@ import { panelTap, tap } from './racehooks.js';
 
 const W = () => (typeof window !== 'undefined' ? window : null), SSX = () => W()?.SSX, APP = () => W()?.__app;
 const game = () => APP()?.surface?.game, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const S = { ui: null, root: null, figs: {}, spot: null, colKey: '', near: null, tc: null, now: () => Date.now(), rng: Math.random, note: '', warned: {} };
+const S = { ui: null, root: null, figs: {}, spot: null, colKey: '', near: null, tc: null, now: () => Date.now(), note: '', warned: {},
+  // v7.5.76: the job roll goes through Soren's chain perk (mars/crewfic.js bustRoll: P(bust) x0.7 once his chain is done); debug.rng still sets the raw roll
+  _rng: Math.random, set rng(f) { this._rng = f; }, get rng() { const f = this._rng; return () => { const u = f(); try { const g = SSX()?.crewfic?.bustRoll; return typeof g === 'function' ? g(u) : u; } catch (e) { return u; } }; } };
 let D = C.fresh();
 function load() { try { D = C.load(localStorage.getItem(C.KEY)); } catch (e) { D = C.fresh(); } }
 function save() { try { localStorage.setItem(C.KEY, JSON.stringify(D)); } catch (e) { /* private mode */ } }
@@ -45,8 +47,10 @@ function assign(id, job) {
 function stop(id) { const m = D.crew.find(q => q.id === id); if (!m) return { ok: false }; m.job = null; m.at = 0; save(); return { ok: true }; }
 function collect(id) {
   const m = D.crew.find(q => q.id === id); if (!m || !m.bank.length) return { ok: false, why: 'Nothing to collect.' };
-  const pref = m.bank.find(b => b.front)?.front || m.front, r = C.collect(D, m), g = game(); let where = null, cr = r.cr;
-  if (cr > 0) { const E = emp(); if (E && fronts().length) { cr = Math.round(cr * (1 + C.WASH)); const w = E.launder(cr, pref); where = w?.name || null; if (!w) cr = r.cr; } }
+  const pref = m.bank.find(b => b.front)?.front || m.front, r = C.collect(D, m), g = game();
+  let boost = 0; try { boost = Math.max(0, Math.min(0.5, +SSX()?.crewfic?.payoffBoost?.() || 0)); } catch (e) { boost = 0; } // v7.5.76 Dex's chain perk (mars/crewfic.js)
+  const base = Math.round(r.cr * (1 + boost)); let where = null, cr = base;
+  if (cr > 0) { const E = emp(); if (E && fronts().length) { cr = Math.round(cr * (1 + C.WASH)); const w = E.launder(cr, pref); where = w?.name || null; if (!w) cr = base; } }
   if (!where && cr > 0) g?.reward?.(0, cr); if (r.xp > 0) g?.reward?.(r.xp, 0);
   save(); const b = r.busts ? ` (${r.busts} bust${r.busts > 1 ? 's' : ''})` : '';
   toast(where ? `🧺 ${cr} cr washed through ${where}, collect it at the counter. +${r.xp} ⭐${b}` : `💵 +${cr} cr, +${r.xp} ⭐ from ${roster(m.id).name.split(' ')[0]}${b}`, 3400);
