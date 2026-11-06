@@ -12,12 +12,12 @@ export const LINES = {
 export const P = { PLUMES: 1, SACS: 2, CHARGE: 3 };
 export const TUNE = {
   surfacings: 3, plumeHits: 2, plumeAutoS: 22,            // phase 1
-  sacs: 4, sacHp: 6, eatEveryS: 20,                       // phase 2 (v7.5.73: HP in bullet damage; a rifle bolt is 1.1)
+  sacs: 4, sacHp: 6, eatEveryS: 20,                       // phase 2 (v7.5.74: HP in bullet damage; a rifle bolt is 1.1)
   lungeEveryS: 7, lungeWindS: 1.1, lungeR: 4, lungeDmg: 22,
   spitEveryS: 4.5, spitFlightS: 1.4, spitR: 2.4, spitDmg: 10,
   chargeFrom: 42, chargeSpeed: 6.5, ramSpeed: 6, ramR: 4.5, // phase 3
   flameNeedS: 1.2, flameR: 9, flameCos: 0.75, stunS: 6, mawHp: 20,
-  // v7.5.73 aim pays (Collin: it took forever): weak-point hits crit, the armoured body only chips; a shot to the charging
+  // v7.5.74 aim pays (Collin: it took forever): weak-point hits crit, the armoured body only chips; a shot to the charging
   // plume head builds a stun too, so plain guns can open the maw (ram + flamethrower still stun at once)
   crit: { sac: 3, maw: 4 }, chip: 0.12, headStun: 4.4, minDmg: 0.5, maxDmg: 12,
   length: 40, leaveR: 140, atFarmR: 40,
@@ -61,7 +61,7 @@ export function segHit(p0, p1, c, r) {
 export function bez(a, b, c, t) { const u = 1 - t; return { x: u * u * a.x + 2 * u * t * b.x + t * t * c.x, y: u * u * a.y + 2 * u * t * b.y + t * t * c.y, z: u * u * a.z + 2 * u * t * b.z + t * t * c.z }; }
 // bullet damage -> weak-point hits (heavy rounds count double)
 export const hitsOf = b => (b && (b.heavy || (Number.isFinite(b.dmg) && b.dmg >= 40)) ? 2 : 1);
-// v7.5.73 damage: the bullet's own dmg (rifle 1.1, SMG 0.7, rail 8...), clamped; weak points multiply it, the body chips
+// v7.5.74 damage: the bullet's own dmg (rifle 1.1, SMG 0.7, rail 8...), clamped; weak points multiply it, the body chips
 export const dmgOf = b => { if (b?.heavy) return TUNE.maxDmg; const d = Number.isFinite(+b?.dmg) ? +b.dmg : 1; return Math.max(TUNE.minDmg, Math.min(TUNE.maxDmg, d)); };
 export const critDmg = (b, where) => dmgOf(b) * (TUNE.crit[where] || 1);
 export const chipDmg = b => dmgOf(b) * TUNE.chip;

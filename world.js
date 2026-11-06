@@ -534,7 +534,7 @@ export function createWorld(ctx) {
       if (v === st.car && st.driving) { traffic.splice(traffic.indexOf(v), 1); delete v.traffic; continue; } // carjacked
       const dP = Math.hypot(v.x - player.x, v.z - player.z);
       if (dP > 210 || inCore(v.x, v.z) || (!HW.closed && (t.s <= 1 || t.s >= HW.len - 1))) { despawnCar(v); continue; }
-      if (t.cop && copFree(v.x, v.z)) { despawnCar(v); copNote('traffic'); continue; } // v7.5.73 cruisers turn off before the gulch
+      if (t.cop && copFree(v.x, v.z)) { despawnCar(v); copNote('traffic'); continue; } // v7.5.74 cruisers turn off before the gulch
       if (t.cop && CP.trafficCopsJoin(wanted) && dP < 50 && !copFree(player.x, player.z)) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
       if (t.wreck > 0) { t.wreck -= dt; t.v = 0; v.speed = 0; v.group.position.set(v.x, v.y, v.z); continue; }
       const p = roadAt(t.s), fx = p.fx * t.dir, fz = p.fz * t.dir;
@@ -622,7 +622,7 @@ export function createWorld(ctx) {
   const footK = () => { const E = ease(); return E < 1 && !ctx.st().driving ? (1 + E) / 2 : 1; };
   const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
   let easeCarry = 0;
-  // v7.5.73 no ordinary ColSec at Red Static Gulch: SSX.copFree(x, z) (mars/nocops.js) is the one shared bounds check. Inside it no dispatch,
+  // v7.5.74 no ordinary ColSec at Red Static Gulch: SSX.copFree(x, z) (mars/nocops.js) is the one shared bounds check. Inside it no dispatch,
   // patrol units turn back and never enter, traffic cruisers stay out, no shots, no bust, and the evade timer holds (your stars stay as they were)
   const copFree = (x, z) => { try { const f = globalThis.SSX?.copFree; return typeof f === 'function' && !!f(x, z); } catch (e) { return false; } };
   const copOut = (o, pad) => { try { const q = globalThis.SSX?.copFree?.out?.(o.x, o.z, pad); if (q && Number.isFinite(q.x) && Number.isFinite(q.z)) { o.x = q.x; o.z = q.z; return true; } } catch (e) { /* */ } return false; };
@@ -651,7 +651,7 @@ export function createWorld(ctx) {
     const st = ctx.st(), h = sites.length ? hubAt(player.x, player.z) : { site: { x: cx, z: cz }, d: distC() }, far = h.d > 120, a = Math.random() * 6.28, foot = kind === 'officer' || kind === 'heavy';
     let sx = far ? player.x + Math.cos(a) * (foot ? 55 : 90) : h.site.x + Math.cos(a) * 20, sz = far ? player.z + Math.sin(a) * (foot ? 55 : 90) : h.site.z + Math.sin(a) * 20;
     if (at) { sx = at.x; sz = at.z; }
-    { const q = { x: sx, z: sz }; if (copFree(q.x, q.z) && copOut(q, 6)) { sx = q.x; sz = q.z; copNote('spawnOut'); } } // v7.5.73 never spawn inside the gulch
+    { const q = { x: sx, z: sz }; if (copFree(q.x, q.z) && copOut(q, 6)) { sx = q.x; sz = q.z; copNote('spawnOut'); } } // v7.5.74 never spawn inside the gulch
     if (foot) { const q = freeSpot(sx, sz, 0.6); sx = q.x; sz = q.z; }
     let o;
     if (kind === 'drone' || kind === 'gunship') {
@@ -723,7 +723,7 @@ export function createWorld(ctx) {
     for (const s of [...security]) {
       s.phase += dt; const dx = tx - s.x, dz = tz - s.z, d = Math.hypot(dx, dz) || 0.01;
       if (s.group.userData.bar) { const f = Math.sin(s.phase * 14) > 0; s.group.userData.bar[0].visible = f; s.group.userData.bar[1].visible = !f; }
-      if (wanted === 0 || down || gulchHold) { // head home and vanish (v7.5.73: also while you're in the gulch; the stars stay)
+      if (wanted === 0 || down || gulchHold) { // head home and vanish (v7.5.74: also while you're in the gulch; the stars stay)
         s.y += dt * 4; s.x -= dx / d * dt * 10; s.z -= dz / d * dt * 10; if (d > 140) { recall(s); continue; }
       } else if (s.foot) { footStep(s, dt, d, dx, dz, tx, tz);
         if (d > 230) { recall(s); continue; }
@@ -750,7 +750,7 @@ export function createWorld(ctx) {
         if (!inside && wanted >= 3 && !s.deployed && d < 26 && s.speed < 10 && security.filter(q => q.foot).length < caps.officers + caps.heavies) { s.deployed = true; for (let k = 0; k < (isMobile ? 1 : 2); k++) spawnSecurity('officer', { x: s.x + Math.cos(s.yaw) * (k ? -2.2 : 2.2), z: s.z - Math.sin(s.yaw) * (k ? -2.2 : 2.2) }); onEvent('backup', { deploy: true }); }
         if (d > 260) { recall(s); continue; } // left behind
       }
-      if (copFree(s.x, s.z) && copOut(s, 2)) copNote('keepOut'); // v7.5.73 a unit never enters the gulch
+      if (copFree(s.x, s.z) && copOut(s, 2)) copNote('keepOut'); // v7.5.74 a unit never enters the gulch
       s.group.position.set(s.x, s.y, s.z); if (s.kind === 'drone' || s.kind === 'gunship') s.group.rotation.y += dt;
       nearest = Math.min(nearest, d);
       if (d < (s.kind === 'drone' ? 7 : 7.5) && (!st.driving || pv < 2.5)) close = true;
@@ -758,7 +758,7 @@ export function createWorld(ctx) {
     // guards join in on foot
     for (const p of people) if (p.kind === 'guard' && p.on !== false && !p.stun && wanted > 0 && !down && !gulchHold) { const d = Math.hypot(tx - p.x, tz - p.z); nearest = Math.min(nearest, d); if (d < 4 && (!st.driving || pv < 2.5)) close = true; }
     // busted: they get hands on you (on foot or boxed in while stopped)
-    if (wanted > 0 && !down && !gulchHold) { // v7.5.73: in the gulch the bust and evade timers both hold
+    if (wanted > 0 && !down && !gulchHold) { // v7.5.74: in the gulch the bust and evade timers both hold
       if (inside) close = false; // they can't see you in here
       if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long

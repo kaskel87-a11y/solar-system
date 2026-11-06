@@ -1,4 +1,4 @@
-// No ordinary ColSec at Red Static Gulch (v7.5.73). Rules: mars/nocopscore.js. Publishes the shared bounds check
+// No ordinary ColSec at Red Static Gulch (v7.5.74). Rules: mars/nocopscore.js. Publishes the shared bounds check
 //   window.SSX.copFree(x, z)            -> true inside the gulch on Mars (ordinary police never trigger or enter there)
 //   window.SSX.copFree.out(x, z, pad)   -> {x, z} just outside the edge, or null when already outside
 //   window.SSX.copFree.zone()           -> { x, z, r, name } in world metres, or null off Mars

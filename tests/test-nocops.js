@@ -1,4 +1,4 @@
-// v7.5.73 no ordinary ColSec at Red Static Gulch (mars/nocops.js -> window.SSX.copFree, read by world.js, mars/pursuit.js,
+// v7.5.74 no ordinary ColSec at Red Static Gulch (mars/nocops.js -> window.SSX.copFree, read by world.js, mars/pursuit.js,
 // mars/bribes.js, modes/raids.js). Proves: (1) a cop response still works elsewhere; (2) a chase led into the gulch: pursuit
 // rovers drop, core units turn back and never enter, no shots land, no bust, and the stars stay; (3) heat raised AT the gulch
 // (grow-op heat via SSX.pursuit.addHeat + a crime) brings no dispatch; (4) a forced spawn at the gulch lands outside it;

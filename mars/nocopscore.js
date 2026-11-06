@@ -1,4 +1,4 @@
-// No ordinary ColSec at Red Static Gulch (v7.5.73, Collin): the pure zone rules for mars/nocops.js (tests/test-nocops-unit.mjs).
+// No ordinary ColSec at Red Static Gulch (v7.5.74, Collin): the pure zone rules for mars/nocops.js (tests/test-nocops-unit.mjs).
 // One shared bounds check: a circle around the gulch (farm2core SITE.at, Ares Junction metres). world.js (dispatch, patrol
 // units, traffic cruisers, checkpoints, colony guards, shots, bust + evade timers), mars/pursuit.js (rovers, SWAT,
 // roadblocks, spotlights, search), mars/bribes.js (pull-over stops, spot bribes) and modes/raids.js (ColSec raid squads) all

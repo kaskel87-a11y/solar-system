@@ -2,7 +2,7 @@
 // /workspace/story/worm-mission.md: Tully radios in, phase 1 dust plumes (shoot or tap the plume head: 3 surfacings), phase 2 the
 // 40 m worm with a ringed, toothy maw (pop 4 glowing gill sacs, dodge lunges + acid spit, it eats a plot every 20 s), phase 3 it
 // dives and charges the silo (ram it with a rover or the harvester, or torch it with the flamethrower, to stun it, then shoot
-// the open maw; v7.5.73: or shoot its plume head). Aim pays: gill sacs take x3, the open maw x4, the armoured body only chips. Win: 1,500 cr + 150 ⭐ + a Worm Tooth (Sister Nettle buys it in the Hydro Den for 800 cr); eaten plots regrow
+// the open maw; v7.5.74: or shoot its plume head). Aim pays: gill sacs take x3, the open maw x4, the armoured body only chips. Win: 1,500 cr + 150 ⭐ + a Worm Tooth (Sister Nettle buys it in the Hydro Den for 800 cr); eaten plots regrow
 // the next game day. Lose: it eats half the farm (never more) and goes back under.
 // Trigger: at most once per 3 in-game days at the farm (random), the story start after your 2nd harvest, or SSX.sandworm.spawn().
 // Never in the Rust Pit, in custody/jail, during fast travel or off Mars. Farms: SSX.farm (racks; ripe ones are cut via
@@ -367,10 +367,10 @@ function aimPoints() {
   if (f.phase === K.P.PLUMES && wp.plume && fight.pose === 'under') o.push({ x: wp.plume.x, y: wp.plume.y, z: wp.plume.z, kind: 'sandworm' });
   if (f.phase === K.P.SACS) for (const s of wp.sacs) if (s) o.push({ x: s.x, y: s.y, z: s.z, kind: 'sandworm' });
   if (f.phase === K.P.CHARGE && f.stun > 0 && wp.maw) o.push({ x: wp.maw.x, y: wp.maw.y, z: wp.maw.z, kind: 'sandworm' });
-  if (f.phase === K.P.CHARGE && !(f.stun > 0) && fight.charge) { const C = chargeHead(); o.push({ x: C.x, y: C.y, z: C.z, kind: 'sandworm' }); } // v7.5.73 plain guns can stun it
+  if (f.phase === K.P.CHARGE && !(f.stun > 0) && fight.charge) { const C = chargeHead(); o.push({ x: C.x, y: C.y, z: C.z, kind: 'sandworm' }); } // v7.5.74 plain guns can stun it
   return o;
 }
-// one bullet segment: true when the worm soaked it. v7.5.73 aim pays: gill sacs take x3, the open maw x4 (TUNE.crit), a shot on
+// one bullet segment: true when the worm soaked it. v7.5.74 aim pays: gill sacs take x3, the open maw x4 (TUNE.crit), a shot on
 // the charging plume head builds a stun, and the armoured body only chips (TUNE.chip) the nearest sac / the stunned maw
 const chargeHead = () => ({ x: fight.charge.x, y: ground(fight.charge.x, fight.charge.z) + 1.5, z: fight.charge.z });
 const hitLog = { weak: 0, body: 0, head: 0 };

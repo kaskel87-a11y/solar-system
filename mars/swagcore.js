@@ -1,16 +1,53 @@
-// Planum Swag (v7.5.68): pure shop rules for Slick's stall at Planum Australe. No DOM, no three.js.
+// Planum Swag (v7.5.68): pure shop rules for Slick's shop at Planum Australe. No DOM, no three.js.
 // Threads are snow outfits (mars/skinscore.js, venue 'planum'). Boards, balls, cartoon drugs and liquor,
-// plus a short ban / fine for insulting the stall. tests/test-icecap-unit.mjs covers the money and the ban.
-import { CX, SPOTS } from './icecapcore.js';
+// plus a short ban / fine for insulting the help. tests/test-icecap-unit.mjs covers the money, the ban,
+// and the open-west lobby footprint (five wall slabs, door gap, clear of the lane).
+import { SPOTS } from './icecapcore.js';
 import { BY_ID as SKIN } from './skinscore.js';
 
 export const SAVE_KEY = 'ssx.swag.v1';
 export const FINE = 180;
 export const BAN_MS = 90 * 1000; // real time. Long enough to notice, short enough to walk it off.
 export const STACK = 5;
-export const SPOT = { x: CX + 20, z: 950 };
+// Open-west lobby on the ice, just off the piste (|x-CX| < 22 ends at x = 62). Outer faces.
+// The mouth faces the landing pad. No header slab: the lintel is visual and above head height.
+export const SHELL = { x0: 62.4, x1: 74.4, z0: 945, z1: 955, t: 0.35 };
+export const DOOR = { z0: 948.4, z1: 951.6, h: 2.7 };
+export const SPOT = { x: 66.6, z: 950 };
 export const NEAR = 4.2;
 export const BENNY_NEAR = 4.5;
+
+const half = SHELL.t / 2;
+const midX = (SHELL.x0 + SHELL.x1) / 2;
+const midZ = (SHELL.z0 + SHELL.z1) / 2;
+const spanX = (SHELL.x1 - SHELL.x0) / 2;
+const spanZ = (SHELL.z1 - SHELL.z0) / 2;
+// Cached. slideBoard and the mesh both read this. Do not rebuild it per frame.
+export const SLABS = Object.freeze([
+  Object.freeze({ id: 'east', x: SHELL.x1 - half, z: midZ, hx: half, hz: spanZ }),
+  Object.freeze({ id: 'north', x: midX, z: SHELL.z1 - half, hx: spanX, hz: half }),
+  Object.freeze({ id: 'south', x: midX, z: SHELL.z0 + half, hx: spanX, hz: half }),
+  Object.freeze({ id: 'west-s', x: SHELL.x0 + half, z: (SHELL.z0 + DOOR.z0) / 2, hx: half, hz: (DOOR.z0 - SHELL.z0) / 2 }),
+  Object.freeze({ id: 'west-n', x: SHELL.x0 + half, z: (DOOR.z1 + SHELL.z1) / 2, hx: half, hz: (SHELL.z1 - DOOR.z1) / 2 })
+]);
+export const slabs = () => SLABS;
+// Push a circle out of the five wall slabs. Null when it was already clear. One object only on a hit.
+export function slideBoard(x, z, r = 0.45) {
+  const rad = r > 0 ? r : 0.45;
+  let hit = false;
+  for (let n = 0; n < 2; n++) {
+    for (let i = 0; i < SLABS.length; i++) {
+      const s = SLABS[i], dx = x - s.x, dz = z - s.z, ex = s.hx + rad, ez = s.hz + rad;
+      const adx = dx < 0 ? -dx : dx, adz = dz < 0 ? -dz : dz;
+      if (adx < ex && adz < ez) {
+        hit = true;
+        if (ex - adx < ez - adz) x = s.x + (dx < 0 ? -ex : ex);
+        else z = s.z + (dz < 0 ? -ez : ez);
+      }
+    }
+  }
+  return hit ? { x, z } : null;
+}
 
 const thread = id => {
   const k = SKIN[id];

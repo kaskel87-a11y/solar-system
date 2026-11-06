@@ -74,7 +74,7 @@ These were still listed as "to come" or left unchecked. The code and `git log` s
 - [x] **Rags-to-Riches mode** (Steve, PR #13, Oct 25): ☰ → New Game: Rags to Riches. Broke start, properties, raids. `modes/rags.js`.
 - [x] **Director / free-roam** (Steve, PR #17, Oct 25): ☰ → Director. Dust storm, time of day, freeze / time scale, and no cops (wanted stays 0). `modes/director.js`.
 - [x] **Mars dust storms** as weather, not only the Director toggle (Steve, PR #50, v7.5.5).
-- [x] **Owned-business beams** (v7.5.51), **Red Line showroom dome** (v7.5.64), **Velvet Airlock expansion + Ines arc** (v7.5.57), **Planum Australe ice cap** snowboarding and snow bowling (v7.5.55), **farm + outlaw grow op and the sandworm** (v7.5.54), **Slick's stall / Yeti suit** (v7.5.68–v7.5.70), **red sky beam over Red Static Gulch** (v7.5.71).
+- [x] **Owned-business beams** (v7.5.51), **Red Line showroom dome** (v7.5.64), **Velvet Airlock expansion + Ines arc** (v7.5.57), **Planum Australe ice cap** snowboarding and snow bowling (v7.5.55), **farm + outlaw grow op and the sandworm** (v7.5.54), **Slick's stall / Yeti suit** (v7.5.68–v7.5.70), **Slick's open-west shop lobby** (v7.5.73), **red sky beam over Red Static Gulch** (v7.5.71).
 
 ## v8: realistic visuals
 - [ ] Integrate the look-dev materials, lighting and post-processing, with quality tiers (low / med / high). Medium is the iPhone default at 60 fps.

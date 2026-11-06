@@ -289,7 +289,7 @@ function copNear() {
   return best;
 }
 // spot bribes work during jobs (a cop is a cop); scripted chases and stops skip quests, duels, heists and interiors
-// v7.5.73 no ordinary ColSec at Red Static Gulch (SSX.copFree, mars/nocops.js): no stops or spot bribes there
+// v7.5.74 no ordinary ColSec at Red Static Gulch (SSX.copFree, mars/nocops.js): no stops or spot bribes there
 const inGulch = () => { try { const f = window.SSX?.copFree, i = info(); return typeof f === 'function' && !!i && !!f(i.x, i.z); } catch (e) { return false; } };
 function busy(stop) { const g = game(); try { return !!(inGulch() || g?.isDown?.() || window.SSX?.heist?.active || world()?.inDuel || world()?.inside || (stop && (g?.debug?.quest?.() || g?.info?.combat))); } catch (e) { return false; } }
 function tick() {

@@ -22,7 +22,7 @@ const PRECACHE = [
   ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
   ...['mars/gulchbeam', 'mars/gulchbeamcore'].map(n => `${n}.js${q}`), // v7.5.71 glowing red beam over Red Static Gulch
   `mars/icecap.js${q}`, `mars/icecapcore.js${q}`, // ❄️ Planum Australe ice cap: snowboarding + snow bowling
-  `mars/swag.js${q}`, `mars/swagcore.js${q}`, // 🛍️ Slick's swag stall at Planum: threads, boards, balls, chems, ban / fine
+  `mars/swag.js${q}`, `mars/swagcore.js${q}`, // 🛍️ Slick's shop at Planum: threads, boards, balls, chems, ban / fine
   `mars/hostage.js${q}`, `mars/hostagecore.js${q}`, // 🪢 hostage: haul a rival lieutenant to the ice cap
   ...['help/stuck', 'help/stuckcore', 'help/foes'].map(n => `${n}.js${q}`), // Stuck? on the mission card + red ◆ over mission foes
   ...['activities/deadends', 'activities/mark', 'activities/markdata', 'activities/pitseries', 'mars/heisttip', 'mars/heisttipcore', 'mars/villa', 'mars/villacore', 'mars/npcslots', 'mars/npcslotscore', 'mars/barcontact', 'mars/barcontactcore'].map(n => `${n}.js${q}`), // runner dead ends, Vale mark, Pit series, first heist + villa + npc slots + bar contact
@@ -68,14 +68,14 @@ const PRECACHE = [
   'vendor/three/build/three.module.min.js',
   `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
   `mars/harvest.js${q}`, `mars/harvestcore.js${q}`, // hands-on harvest: sickle, silo, harvester (SSX.harvest)
-  `mars/sandworm.js${q}`, `mars/sandwormcore.js${q}`, // the sandworm fight at the farm (SSX.sandworm; v7.5.73 weak-point crits)
+  `mars/sandworm.js${q}`, `mars/sandwormcore.js${q}`, // the sandworm fight at the farm (SSX.sandworm; v7.5.74 weak-point crits)
   `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)
   `mars/farm2.js${q}`, `mars/farm2core.js${q}`, // Red Static Gulch grow op (SSX.farm2)
   `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
   `mars/missionheat.js${q}`, // v7.5.11 police ease off on missions (SSX.missionHeat)
-  `mars/nocops.js${q}`, `mars/nocopscore.js${q}`, // v7.5.73 no ordinary ColSec at Red Static Gulch (SSX.copFree)
+  `mars/nocops.js${q}`, `mars/nocopscore.js${q}`, // v7.5.74 no ordinary ColSec at Red Static Gulch (SSX.copFree)
   `perfgov.js${q}`, `hud/hudslim.js${q}`, `copbounty.js${q}`, `hud/cardfit.js${q}`, `hud/keys.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)

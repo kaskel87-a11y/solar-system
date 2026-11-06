@@ -83,7 +83,7 @@ function start(opts = {}) {
   const pos = resolvePos(opts.pos);
   if (!pos) return { ok: false, why: 'Raid needs pos {x,z} or an [x,z] Ares Junction offset.' };
   const kind = KIND[opts.attackers] ? opts.attackers : 'gang';
-  // v7.5.73 no ordinary ColSec at Red Static Gulch (SSX.copFree, mars/nocops.js): a ColSec raid there only runs when a scripted gulch raid asks by name
+  // v7.5.74 no ordinary ColSec at Red Static Gulch (SSX.copFree, mars/nocops.js): a ColSec raid there only runs when a scripted gulch raid asks by name
   if (kind === 'colsec') { let held = false; try { const f = window.SSX?.copFree; held = typeof f === 'function' && !!f(pos.x, pos.z) && !(f.scriptedOk ? f.scriptedOk(opts) : opts.scripted === 'gulch'); } catch (e) { held = false; } if (held) { try { window.SSX.copFree.note?.('raid'); } catch (e) { /* */ } return { ok: false, why: 'ColSec stays out of Red Static Gulch.' }; } }
   let plan = Array.isArray(opts.waves) ? opts.waves.map(w => ({ count: Math.max(1, Math.round(w?.count ?? w ?? 3)) })) : null;
   if (!plan) { const n = Math.max(1, Math.min(6, Math.round(opts.waves || 2))); plan = Array.from({ length: n }, (_, i) => ({ count: 3 + i * 2 })); }

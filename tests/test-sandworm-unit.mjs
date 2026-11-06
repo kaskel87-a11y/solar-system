@@ -18,7 +18,7 @@ ok('plume surfaces', K.hitPlume(f, 1) === true && f.surf === 1 && f.plumeHp === 
 K.hitPlume(f, 2); K.hitPlume(f, 2);
 ok('phase 2', f.phase === K.P.SACS && f.surf === 3 && Math.abs(K.health(f) - 0.8) < 1e-9, f);
 ok('no plume hits in 2', K.hitPlume(f, 5) === false && f.surf === 3);
-// phase 2: four sacs, TUNE.sacHp each (v7.5.73: damage, crit-scaled by the caller)
+// phase 2: four sacs, TUNE.sacHp each (v7.5.74: damage, crit-scaled by the caller)
 ok('sac hit', K.hitSac(f, 0, 2) === 'hit' && f.sacs[0] === K.TUNE.sacHp - 2);
 ok('sac pop', K.hitSac(f, 0, K.TUNE.sacHp) === 'pop' && K.sacsLeft(f) === 3);
 ok('popped sac ignores', K.hitSac(f, 0, 1) === null);
@@ -32,7 +32,7 @@ ok('flame builds', K.flameOn(f, 0.6) === false && K.flameOn(f, 0.7) === true && 
 f.stun = 0; ok('ram stuns', K.ram(f, -9) === true && f.stun > 0);
 ok('maw hits', K.hitMaw(f, 2) === 'hit' && f.maw === K.TUNE.mawHp - 2);
 ok('win', K.hitMaw(f, 99) === 'win' && f.over === 'win' && K.health(f) === 0);
-// v7.5.73 crits: a rifle bolt (1.1) pops a sac in 2 hits, the maw goes in 5, 4 head shots stun; the body only chips
+// v7.5.74 crits: a rifle bolt (1.1) pops a sac in 2 hits, the maw goes in 5, 4 head shots stun; the body only chips
 const rifle = { dmg: 1.1 }, rail = { dmg: 8 };
 ok('crit sac', Math.ceil(K.TUNE.sacHp / K.critDmg(rifle, 'sac') - 1e-9) === 2 && K.critDmg(rail, 'sac') >= K.TUNE.sacHp, K.critDmg(rifle, 'sac'));
 ok('crit maw', Math.ceil(K.TUNE.mawHp / K.critDmg(rifle, 'maw') - 1e-9) === 5 && K.critDmg(rail, 'maw') >= K.TUNE.mawHp);
@@ -44,7 +44,7 @@ ok('chip maw', K.chip(h, 1) === 'hit' && h.maw === K.TUNE.mawHp - 1);
 h = K.newFight(6); h.phase = K.P.SACS; ok('chip sac', K.chip(h, 1, 2) === 'hit' && h.sacs[2] === K.TUNE.sacHp - 1 && K.chip(h, 1, 9) === 'hit' && h.sacs[0] === K.TUNE.sacHp - 1);
 ok('chip plumes', K.chip(K.newFight(6), 1) === null);
 
-// v7.5.73 shots to kill, accurate vs careless, through the same rules on a fixed timeline: a rifle (1.1 dmg, 0.13 s),
+// v7.5.74 shots to kill, accurate vs careless, through the same rules on a fixed timeline: a rifle (1.1 dmg, 0.13 s),
 // a plume moves, sacs + the open maw are small, the silo charge is TUNE.chargeFrom / chargeSpeed away; it eats a plot every
 // TUNE.eatEveryS in phase 2 and one at the silo. aimer.p = chance a shot hits the weak point you aim at, aimer.body = it hits armour
 function sim(aimer, seed = 7, nPlots = 6) {

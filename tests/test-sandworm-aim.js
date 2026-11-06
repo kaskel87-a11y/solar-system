@@ -1,4 +1,4 @@
-// v7.5.73 sandworm: aim pays. Real bullet segments through world.hitWorld with a rifle bolt (dmg 1.1, the Plasma blaster):
+// v7.5.74 sandworm: aim pays. Real bullet segments through world.hitWorld with a rifle bolt (dmg 1.1, the Plasma blaster):
 // shots-to-kill for accurate fire (gill sacs x3, a shot on the charging plume head stuns, the open maw x4) vs careless fire
 // on the armoured body (a small chip). All three phases, the silo charge, Tully's lines and the 1,500 cr + 150 ⭐ + Worm Tooth
 // payout stay. Shots: a direct sac hit, the head-shot stun, the kill.

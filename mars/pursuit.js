@@ -64,7 +64,7 @@ const mobile = () => !!(isTouch() || window.innerWidth < 700);
 const ease = () => { try { const f = window.SSX?.policeEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
 const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
 function tierOf(n) { const m = mobile(); return { stars: n, rovers: ezN(CP.pursuitRovers(n, m)), spotlights: n >= 3, roadblocks: ezN(n >= 4 ? 2 : 0), swat: ezN(n >= 5 ? (m ? 1 : 2) : 0) }; }
-// v7.5.73 no ordinary ColSec at Red Static Gulch: the shared bounds check is window.SSX.copFree (mars/nocops.js); guarded
+// v7.5.74 no ordinary ColSec at Red Static Gulch: the shared bounds check is window.SSX.copFree (mars/nocops.js); guarded
 const copFree = (x, z) => { try { const f = window.SSX?.copFree; return typeof f === 'function' && !!f(x, z); } catch (e) { return false; } };
 const copOut = (x, z, pad) => { try { const q = window.SSX?.copFree?.out?.(x, z, pad); return q && fin(q.x) && fin(q.z) ? q : null; } catch (e) { return null; } };
 const copNote = k => { try { window.SSX?.copFree?.note?.(k); } catch (e) { /* */ } };
@@ -125,7 +125,7 @@ function spawnUnit(kind, at = null) {
   else { const back = P.driving ? P.yaw : Math.random() * 6.28, a = back + (Math.random() - 0.5) * 1.4, d = 85 + Math.random() * 15; x = P.x + Math.sin(a) * d; z = P.z + Math.cos(a) * d; }
   try { const f = world()?.freeSpot?.(x, z, 2); if (f && fin(f.x) && fin(f.z)) { x = f.x; z = f.z; } } catch (e) { /* keep */ }
   if (!fin(x) || !fin(z)) return null;
-  if (copFree(P.x, P.z)) { copNote('pursuitSpawn'); return null; } // v7.5.73 no dispatch to the gulch
+  if (copFree(P.x, P.z)) { copNote('pursuitSpawn'); return null; } // v7.5.74 no dispatch to the gulch
   { const q = copOut(x, z, 6); if (q) { x = q.x; z = q.z; } }
   const v = buildVehicle('buggy', true), g = v.group;
   if (kind === 'swat') { g.add(mesh(A.box, A.armor, 0, 1.15, 0, 1.95, 0.75, 3.3), mesh(A.box, A.stripe, 0, 1.56, 0, 1.97, 0.08, 3.32), mesh(A.box, A.armor, 0, 0.75, -1.75, 2.0, 0.5, 0.25)); g.scale.setScalar(1.2); }
@@ -229,7 +229,7 @@ function tick(dt, tc) {
   if (stars !== lastStars) onStars(stars, lastStars, P); lastStars = stars;
   if (floatHold && T.car) { floatHold.t -= dt; if (floatHold.t <= 0) floatHold = null; else { const gy = groundAt(T.car.x, T.car.z); T.car.y = gy + floatHold.h; T.car.vy = 0; T.car.air = true; } }
   if (stars <= 0 || down) { if (units.length) clearUnits(); if (blocks.length) syncBlocks(0); syncCones(false, [], P, dt); boxT = 0; hideT = 0; search = null; seenNow = false; marks(null); renderHud(P); return; }
-  // v7.5.73 in Red Static Gulch: no rovers, SWAT, roadblocks or spotlights, and the search clock holds (stars stay as they were)
+  // v7.5.74 in Red Static Gulch: no rovers, SWAT, roadblocks or spotlights, and the search clock holds (stars stay as they were)
   inGulch = copFree(P.x, P.z);
   if (inGulch) { if (units.length) clearUnits(); if (blocks.length) syncBlocks(0); syncCones(false, [], P, dt); boxT = 0; hideT = 0; seenNow = false; copNote('pursuit'); marks(P); renderHud(P); return; }
   // dispatch
@@ -287,7 +287,7 @@ function stepUnit(u, dt, P, stars, safe, pit) {
   let nx = u.x - Math.sin(u.yaw) * u.speed * dt, nz = u.z - Math.cos(u.yaw) * u.speed * dt;
   try { const c = world()?.collide?.(nx, nz, 1.8); if (c && fin(c.x) && fin(c.z)) { nx = c.x; nz = c.z; u.speed *= 0.6; } } catch (e) { /* no collide */ }
   if (!fin(nx) || !fin(nz)) { nx = u.x; nz = u.z; u.speed = 0; }
-  { const q = copOut(nx, nz, 2); if (q) { nx = q.x; nz = q.z; u.speed *= 0.5; copNote('keepOut'); } } // v7.5.73 never into the gulch
+  { const q = copOut(nx, nz, 2); if (q) { nx = q.x; nz = q.z; u.speed *= 0.5; copNote('keepOut'); } } // v7.5.74 never into the gulch
   u.x = nx; u.z = nz; const gy = groundAt(u.x, u.z); u.y = fin(gy) ? gy : u.y; if (!fin(u.yaw)) u.yaw = 0; if (!fin(u.speed)) u.speed = 0;
   // stuck or left behind: re-dispatch
   if (u.chk > 6) { const moved = Math.hypot(u.x - u.lastX, u.z - u.lastZ); u.stuck = moved < 2 && d > 12 ? u.stuck + 1 : 0; u.lastX = u.x; u.lastZ = u.z; u.chk = 0; }
@@ -437,7 +437,7 @@ const API = {
   searching: () => (search && heat() > 0 ? { x: search.x, z: search.z, r: search.r, left: Math.max(0, search.left), total: search.total } : null),
   hideouts: () => sites.hide.map(h => ({ ...h })), sprays: () => sites.spray.map(s => ({ ...s, price: heat() > 0 ? sprayPrice() : 40 })), plate: () => S.plate,
   roadblocks: () => blocks.map(b => ({ id: b.id, x: b.x, z: b.z })), lose: how => lose(how), on, inPit: () => { const P = me(); return !!P && inPit(P.x, P.z); },
-  stats: () => JSON.parse(JSON.stringify(stats)), gulch: () => inGulch, // v7.5.73 true while ColSec is held out of Red Static Gulch
+  stats: () => JSON.parse(JSON.stringify(stats)), gulch: () => inGulch, // v7.5.74 true while ColSec is held out of Red Static Gulch
   spike, addHeat: (amount, reason) => spike(amount, reason), spikes: () => spikes.map(r => ({ ...r })),
   debug: {
     setHeat(n) { try { world()?.setWanted?.(clamp(n | 0, 0, 5), 'debug'); } catch (e) { return false; } return heat(); },
