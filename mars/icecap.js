@@ -12,7 +12,7 @@
 //     or ← → aim, ↑ ↓ power, Shift+← → spin, Space / Enter roll. 3 frames. Pins 10 cr, head-pin hit +300, strike +500, three
 //     first-ball strikes = "Perfect Cold" +2,000 cr +200★. A hit sends him into a cartoon ragdoll tumble; after the game
 //     he limps off cursing and is back for more later (repeat target).
-//  🛍️ v7.5.68 Slick's swag stall, off the arrival pad: snow threads, boards you keep, bowling balls,
+//  🛍️ v7.5.68 Slick's shop, off the arrival pad: snow threads, boards you keep, bowling balls,
 //     cartoon liquor and crater dust. Owning a board skips the rental. Insult Slick and you are banned
 //     for 90 s, or you pay the fine. Benny still rents a board if you have not bought one.
 // Hooks: one <script> line in index.html (+ import map), one sw.js precache line, one guarded SSX_GROUND hook in surface.js
@@ -55,7 +55,7 @@ const S = { mode: 'foot', rented: false, run: null, board: null, rival: null, ri
 let G = null, parts = null;
 
 function onMars(tc) { const st = app()?.state; return !!st?.onSurface && !st.transitioning && tc?.name === 'Mars'; }
-function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: Planum X, Slick\u2019s swag stall, snow bowling' }; }
+function place() { return { x: C.SPOTS.arrive.x, z: C.SPOTS.arrive.z, name: 'Planum Australe · Frostbite Benny\u2019s lane', sub: 'Ice cap: Planum X, Slick\u2019s shop, snow bowling' }; }
 
 // ---------- 3D ----------
 const shared = new Set();
@@ -254,13 +254,13 @@ function hasOwnBoard() { return !!tryv(() => window.SSX?.swag?.hasBoard?.(), fal
 function canRide() { return S.rented || hasOwnBoard(); }
 function rent() { if (S.rented || hasOwnBoard()) return res(false, hasOwnBoard() ? 'You own a board. No rental.' : 'You already have a board.'); if (!spend(C.RENT)) return res(false, `💸 The board is ${C.RENT} cr. You have ${fmt(credits())}.`); S.rented = true; toast(`🏂 Board rented (−${C.RENT} cr). Benny: \u201c${C.LINES.bennyRent.split('. ').slice(1).join('. ')}\u201d`, 3600); emit('rent'); return res(true, 'rented'); }
 function lift() {
-  if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s swag stall.'); const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.');
+  if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s shop.'); const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.');
   fadeBlink(); const p = tc.player, s = C.SPOTS.start; p.x = s.x; p.z = s.z; p.y = tc.height(s.x, s.z) + EYE; p.vy = 0; p.yaw = Math.PI; p.faceYaw = Math.PI;
   tryv(() => surf()?.debugMove?.(s.x, s.z, Math.PI));
   boardOn(true); S.run = { t: 0, count: 2.2, stars: 0, cr: 0, tricks: 0, air: 0, pts: 0, done: false }; S.combo = { mult: 1, left: 0 }; S.parkTold = false; save.runs++; persist(); toast('🚡 Top of the run. Straight down races. Left is Planum X: pipe, jumps, rails. 3 · 2 · 1 …', 3200); emit('lift'); return res(true, 'lift');
 }
 function boardOn(timed = false) {
-  const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.'); if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s swag stall.'); if (tc.car) return res(false, 'Get out of the ride first.');
+  const tc = S.lastTc; if (!tc?.player) return res(false, 'Not on Mars.'); if (!canRide()) return res(false, 'Rent a board from Benny, or buy one at Slick\u2019s shop.'); if (tc.car) return res(false, 'Get out of the ride first.');
   const p = tc.player; S.board = C.freshBoard(p.x, p.z, Number.isFinite(p.yaw) ? p.yaw : Math.PI); S.board.y = tc.height(p.x, p.z); if (!timed) { S.run = null; S.freePts = 0; } S.combo = { mult: 1, left: 0 }; S.mode = 'board'; S.camPos = null;
   if (!timed) toast(`🏂 Free ride. ${isTouch() ? 'Stick' : 'A / D'} carve, hold forward to haul. Jump ollies. In the air hold Jump: forward mute, back method, left stalefish, right melon. Land a rail to grind. Stars pay on a timed run (🚡 lift).`, 4600); emit('board', { on: true }); return res(true, 'on');
 }
@@ -354,7 +354,15 @@ function rideTick(dt, tc) {
   const steps = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / steps, ground = (x, z) => tc.height(x, z);
   let tricked = false;
   const ride = tryv(() => window.SSX?.swag?.ride?.(), null);
-  for (let i = 0; i < steps; i++) { const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0, ride }, h, ground); if (ev) { landed(ev); tricked = true; } }
+  for (let i = 0; i < steps; i++) {
+    const ev = C.boardStep(b, { ...inp, jump: inp.jump && i === 0, ride }, h, ground); if (ev) { landed(ev); tricked = true; }
+    // Shop walls. boardStep only samples height, so a rider would pass through the lobby.
+    // Same five rectangles as the walking solids, applied before the player position write below.
+    if (b.y < ground(b.x, b.z) + 9) {
+      const sl = tryv(() => window.SSX?.swag?.slide?.(b.x, b.z, 0.45), null);
+      if (sl) { b.x = sl.x; b.z = sl.z; if (!b.air) b.y = ground(b.x, b.z); if (b.v > 5) b.v = 5; }
+    }
+  }
   if (!tricked) S.combo = C.nextCombo(S.combo, dt, false);
   if (!S.parkTold && C.parkOpen(b.x, b.z) > 0.72 && b.x > C.CX + 20) { S.parkTold = true; toast('PLANUM X. Jumps and rails on this lane, superpipe further left. Hold Jump + stick to grab. Land the rail to grind.', 4200); }
   if (run && !run.done && run.count <= 0) { run.t += dt; if (b.z >= C.Z_BOT) finishRun(); else if (run.t >= C.RUN_SECS) { run.done = true; toast('⏱ Time! 90 seconds up. Run over (keep riding for fun).', 3000); emit('runend', { ok: false }); } }
@@ -589,7 +597,7 @@ function hookMenu() {
   try { reg({ id: 'rmIcecap', label: '❄️ Planum Australe', onTap: menuTap }); menuHooked = true; } catch (e) { /* */ }
 }
 function menuTap() {
-  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Slick's swag stall is by the landing. Frostbite Benny rents boards (${C.RENT} cr) if you don't own one, and runs an illegal bowling lane on the ice. Left of the race line is Planum X: superpipe, jumps, rails.`];
+  const ft = window.SSX?.fastTravel, p = place(), bits = [`Mars south polar ice cap, ~${Math.round(Math.hypot(p.x, p.z) / 10) * 10} m south of the pad. Slick's shop is by the landing. Frostbite Benny rents boards (${C.RENT} cr) if you don't own one, and runs an illegal bowling lane on the ice. Left of the race line is Planum X: superpipe, jumps, rails.`];
   if (save.bestRun) bits.push(`Best run ${C.fmtTime(save.bestRun)}.`); if (save.bestPts) bits.push(`Best Planum X ${fmt(save.bestPts)} pts.`); if (save.games) bits.push(`Best game ${save.best}.`);
   const opts = []; if (ft?.travel) opts.push({ id: 'ft', label: `🚀 Fast travel · ${ft.fee ?? 25} cr` }); opts.push({ id: 'wp', label: '📍 Set waypoint' }, { id: 'no', label: 'Close' });
   choice(`❄️ ${bits.join(' ')}`, opts).then(id => { if (id === 'ft') tryv(() => ft.travel('icecap')); else if (id === 'wp') { const ok = tryv(() => window.SSX?.hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Planum Australe' })); toast(ok === null ? '📍 Head south from the colony.' : '📍 Waypoint set: Planum Australe.', 2400); } });
