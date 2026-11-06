@@ -64,7 +64,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(1900); await G(() => { window.SSX.sandworm.debug.hitPlume(2); }); await sleep(1900); await G(() => { window.SSX.sandworm.debug.hitPlume(2); window.SSX.sandworm.debug.hold(); });
     ok('phase2', await wait(() => window.SSX.sandworm.status().phase === 2, 5000)); await sleep(1200); await fr(6);
     ok('sacsUp', await G(() => window.SSX.sandworm.debug.weak().sacs.filter(Boolean).length), await G(() => window.SSX.sandworm.debug.weak().sacs.filter(Boolean).length === 4));
-    // 3) a sac: three real hits pop it
+    // 3) a sac: a heavy real hit pops it (v7.5.73 weak-point crit)
     ok('sacPop', [await shoot('sacs', 10, 0), await shoot('sacs', 10, 0), await shoot('sacs', 10, 0)], (await St()).sacs[0] === 0);
     ok('bodySoaks', await G(() => { const W = window.SSX.sandworm.debug.weak(), s = W.segs[W.segs.length - 3]; return window.__app.surface.world.hitWorld({ x: s.x - 5, y: s.y, z: s.z }, { x: s.x + 5, y: s.y, z: s.z }, { dmg: 10 }); }));
     // 4) it eats: a ripe rack is cut (crop gone), a growing one chewed down
@@ -78,11 +78,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.sandworm.debug.lunge()); await sleep(2600);
     ok('hurt', await G(() => window.__wev.filter(t => t === 'hurt').length), await G(() => window.__wev.includes('hurt')));
     // 6) pop the rest -> phase 3: it charges the silo; a stun (ram/flame) opens the maw
-    await G(() => { for (const i of [1, 2, 3]) window.SSX.sandworm.debug.hitSac(i, 3); }); 
+    await G(() => { for (const i of [1, 2, 3]) window.SSX.sandworm.debug.hitSac(i); }); 
     ok('phase3', await wait(() => window.SSX.sandworm.status().phase === 3 && !!window.SSX.sandworm.debug.charge(), 4000));
     const ch0 = await G(() => window.SSX.sandworm.debug.charge()); await sleep(1000); const ch1 = await G(() => window.SSX.sandworm.debug.charge());
     ok('charging', { ch0, ch1 }, await G(([a, b]) => { const f = window.SSX.sandworm.debug.farms()[0]; return Math.hypot(b.x - f.silo.x, b.z - f.silo.z) < Math.hypot(a.x - f.silo.x, a.z - f.silo.z); }, [ch0, ch1]));
-    ok('mawShut', await shoot('maw', 50), (await St()).maw === 8);
+    ok('mawShut', await shoot('maw', 50), (await St()).maw === await G(() => window.SSX.sandworm.TUNE.mawHp));
     await G(() => { const f = window.SSX.sandworm.debug.farms()[0], c = window.SSX.sandworm.debug.charge(); window.__app.surface.debugMove(c.x, c.z + 14, 0); window.SSX.sandworm.debug.stun('ram'); });
     await fr(6); await sleep(600); await shot('stunned');
     s = await St(); ok('stunned', { stun: s.stun, cap: s.caption }, s.stun > 0 && /mouth/.test(s.caption));

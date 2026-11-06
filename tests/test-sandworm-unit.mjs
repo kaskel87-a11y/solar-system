@@ -18,20 +18,62 @@ ok('plume surfaces', K.hitPlume(f, 1) === true && f.surf === 1 && f.plumeHp === 
 K.hitPlume(f, 2); K.hitPlume(f, 2);
 ok('phase 2', f.phase === K.P.SACS && f.surf === 3 && Math.abs(K.health(f) - 0.8) < 1e-9, f);
 ok('no plume hits in 2', K.hitPlume(f, 5) === false && f.surf === 3);
-// phase 2: four sacs, 3 hits each
-ok('sac hit', K.hitSac(f, 0, 1) === 'hit' && f.sacs[0] === 2);
-ok('sac pop', K.hitSac(f, 0, 2) === 'pop' && K.sacsLeft(f) === 3);
+// phase 2: four sacs, TUNE.sacHp each (v7.5.74: damage, crit-scaled by the caller)
+ok('sac hit', K.hitSac(f, 0, 2) === 'hit' && f.sacs[0] === K.TUNE.sacHp - 2);
+ok('sac pop', K.hitSac(f, 0, K.TUNE.sacHp) === 'pop' && K.sacsLeft(f) === 3);
 ok('popped sac ignores', K.hitSac(f, 0, 1) === null);
-K.hitSac(f, 1, 3); K.hitSac(f, 2, 3);
-ok('maw shut in 2', K.hitMaw(f, 9) === null);
-ok('last sac', K.hitSac(f, 3, 3) === 'phase' && f.phase === K.P.CHARGE && Math.abs(K.health(f) - 0.3) < 1e-9);
+K.hitSac(f, 1, 99); K.hitSac(f, 2, 99);
+ok('maw shut in 2', K.hitMaw(f, 99) === null && K.hitHead(f, 99) === false);
+ok('last sac', K.hitSac(f, 3, 99) === 'phase' && f.phase === K.P.CHARGE && Math.abs(K.health(f) - 0.3) < 1e-9);
 // phase 3: maw only while stunned; slow ram doesn't count; flame needs time
 ok('maw needs stun', K.hitMaw(f, 1) === null);
 ok('slow ram', K.ram(f, 3) === false && f.stun === 0);
 ok('flame builds', K.flameOn(f, 0.6) === false && K.flameOn(f, 0.7) === true && f.stun === K.TUNE.stunS);
 f.stun = 0; ok('ram stuns', K.ram(f, -9) === true && f.stun > 0);
-ok('maw hits', K.hitMaw(f, 2) === 'hit' && f.maw === K.TUNE.mawHits - 2);
+ok('maw hits', K.hitMaw(f, 2) === 'hit' && f.maw === K.TUNE.mawHp - 2);
 ok('win', K.hitMaw(f, 99) === 'win' && f.over === 'win' && K.health(f) === 0);
+// v7.5.74 crits: a rifle bolt (1.1) pops a sac in 2 hits, the maw goes in 5, 4 head shots stun; the body only chips
+const rifle = { dmg: 1.1 }, rail = { dmg: 8 };
+ok('crit sac', Math.ceil(K.TUNE.sacHp / K.critDmg(rifle, 'sac') - 1e-9) === 2 && K.critDmg(rail, 'sac') >= K.TUNE.sacHp, K.critDmg(rifle, 'sac'));
+ok('crit maw', Math.ceil(K.TUNE.mawHp / K.critDmg(rifle, 'maw') - 1e-9) === 5 && K.critDmg(rail, 'maw') >= K.TUNE.mawHp);
+ok('chip small', K.chipDmg(rifle) * 10 < K.critDmg(rifle, 'sac') && K.dmgOf(null) === 1 && K.dmgOf({ dmg: 999 }) === K.TUNE.maxDmg && K.dmgOf({ dmg: 0.01 }) === K.TUNE.minDmg);
+let h = K.newFight(6); h.phase = K.P.CHARGE;
+ok('head stun', [0, 1, 2].every(() => K.hitHead(h, 1.1) === false) && K.hitHead(h, 1.1) === true && h.stun === K.TUNE.stunS && h.head === 0, h);
+ok('head no-op stunned', K.hitHead(h, 9) === false);
+ok('chip maw', K.chip(h, 1) === 'hit' && h.maw === K.TUNE.mawHp - 1);
+h = K.newFight(6); h.phase = K.P.SACS; ok('chip sac', K.chip(h, 1, 2) === 'hit' && h.sacs[2] === K.TUNE.sacHp - 1 && K.chip(h, 1, 9) === 'hit' && h.sacs[0] === K.TUNE.sacHp - 1);
+ok('chip plumes', K.chip(K.newFight(6), 1) === null);
+
+// v7.5.74 shots to kill, accurate vs careless, through the same rules on a fixed timeline: a rifle (1.1 dmg, 0.13 s),
+// a plume moves, sacs + the open maw are small, the silo charge is TUNE.chargeFrom / chargeSpeed away; it eats a plot every
+// TUNE.eatEveryS in phase 2 and one at the silo. aimer.p = chance a shot hits the weak point you aim at, aimer.body = it hits armour
+function sim(aimer, seed = 7, nPlots = 6) {
+  let x = seed >>> 0; const rnd = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const W = { dmg: 1.1 }, cd = 0.13, f = K.newFight(nPlots); let t = 0, shots = 0, charge = 0, eatT = K.TUNE.eatEveryS, gap = 0;
+  const T = K.TUNE, maxT = 400;
+  while (!f.over && t < maxT) {
+    if (gap > 0) { gap -= cd; t += cd; continue; } // animations (breach, dive)
+    if (f.phase === K.P.PLUMES) { f.autoT -= cd; if (f.autoT <= 0) { K.surface(f); K.ate(f); gap = 1.6; } }
+    if (f.phase === K.P.SACS) { eatT -= cd; if (eatT <= 0) { eatT = T.eatEveryS; K.ate(f); gap = 1.6; if (f.over) break; continue; } }
+    if (f.phase === K.P.CHARGE && !(f.stun > 0)) { charge += cd; if (charge >= T.chargeFrom / T.chargeSpeed) { charge = 0; K.ate(f); gap = 1; if (f.over) break; continue; } }
+    if (f.phase === K.P.CHARGE && f.stun > 0) { f.stun -= cd; if (f.stun <= 0) { f.stun = 0; charge = 0; } }
+    shots++; t += cd; const r = rnd();
+    const weak = r < aimer.p, body = !weak && r < aimer.p + aimer.body;
+    const ph = f.phase;
+    if (ph === K.P.PLUMES) { if (weak) { if (K.hitPlume(f, 1)) gap = 1.6; } }
+    else if (ph === K.P.SACS) { const i = f.sacs.findIndex(h => h > 0); if (weak) { if (K.hitSac(f, i, K.critDmg(W, 'sac')) === 'phase') { gap = 0.8; charge = 0; } } else if (body) { if (K.chip(f, K.chipDmg(W), i) === 'phase') { gap = 0.8; charge = 0; } } }
+    else if (f.stun > 0) { if (weak) K.hitMaw(f, K.critDmg(W, 'maw')); else if (body) K.chip(f, K.chipDmg(W)); }
+    else if (weak) K.hitHead(f, K.dmgOf(W));
+  }
+  return { shots, t: Math.round(t * 10) / 10, over: f.over || 'timeout', eaten: f.eaten };
+}
+const acc = [1, 2, 3, 4, 5].map(sd => sim({ p: 0.8, body: 0.15 }, sd)), rand = [1, 2, 3, 4, 5].map(sd => sim({ p: 0.12, body: 0.5 }, sd));
+const avg = a => a.reduce((s, r) => s + r.shots, 0) / a.length, avgT = a => a.reduce((s, r) => s + r.t, 0) / a.length;
+console.log('shots-to-kill  accurate:', acc.map(r => `${r.shots} shots/${r.t}s/${r.over}`).join(' · '));
+console.log('shots-to-kill  careless:', rand.map(r => `${r.shots} shots/${r.t}s/${r.over}`).join(' · '));
+ok('accurate wins fast', acc.every(r => r.over === 'win' && r.t < 45) && avg(acc) <= 40, acc);
+ok('careless is slow', avgT(rand) > 2 * avgT(acc) && avg(rand) > 4 * avg(acc), { acc: avg(acc), rand: avg(rand), accT: avgT(acc), randT: avgT(rand) });
+
 // losing: it eats up to the cap then gives up
 let g = K.newFight(4);
 ok('ate', K.ate(g) === 'ate' && K.ate(g) === 'lose' && g.over === 'lose' && g.eaten === 2);

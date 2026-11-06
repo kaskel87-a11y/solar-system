@@ -2,7 +2,7 @@
 // /workspace/story/worm-mission.md: Tully radios in, phase 1 dust plumes (shoot or tap the plume head: 3 surfacings), phase 2 the
 // 40 m worm with a ringed, toothy maw (pop 4 glowing gill sacs, dodge lunges + acid spit, it eats a plot every 20 s), phase 3 it
 // dives and charges the silo (ram it with a rover or the harvester, or torch it with the flamethrower, to stun it, then shoot
-// the open maw). Win: 1,500 cr + 150 ⭐ + a Worm Tooth (Sister Nettle buys it in the Hydro Den for 800 cr); eaten plots regrow
+// the open maw; v7.5.74: or shoot its plume head). Aim pays: gill sacs take x3, the open maw x4, the armoured body only chips. Win: 1,500 cr + 150 ⭐ + a Worm Tooth (Sister Nettle buys it in the Hydro Den for 800 cr); eaten plots regrow
 // the next game day. Lose: it eats half the farm (never more) and goes back under.
 // Trigger: at most once per 3 in-game days at the farm (random), the story start after your 2nd harvest, or SSX.sandworm.spawn().
 // Never in the Rust Pit, in custody/jail, during fast travel or off Mars. Farms: SSX.farm (racks; ripe ones are cut via
@@ -188,7 +188,7 @@ function spawn(o = {}) {
     if (!fm) return { ok: false, why: 'farm', msg: 'Go to your farm first.' };
     if (!o.anywhere && d2(p, fm.c) > K.TUNE.atFarmR) return { ok: false, why: 'far', msg: 'Go to your farm first.' };
     if (!fm.plots.length) return { ok: false, why: 'empty', msg: 'Nothing planted for it to eat.' };
-    build(); S.stats.spawns++; S.lastDay = day(); save();
+    build(); S.stats.spawns++; S.lastDay = day(); save(); hitLog.weak = hitLog.body = hitLog.head = 0;
     const f = K.newFight(Math.max(fm.total, fm.plots.length));
     fight = { f, farm: fm.id, c: fm.c, silo: fm.silo, eatenKeys: new Set(), t: 0, plume: { a: rng() * TAU, x: fm.c.x, z: fm.c.z }, base: null, pose: 'under', poseT: 0,
       lunge: null, dive: 0, breach: 0, charge: null, deathT: 0, why: o.why || 'spawn', hitT: 0 };
@@ -284,7 +284,7 @@ function startSacs() { const F = fight; const q = K.pickPlot(edible(), F.eatenKe
 function breachAt(at) { const F = fight; F.base = { x: at.x, z: at.z }; F.pose = 'breach'; F.poseT = 1.6; burst(at.x, ground(at.x, at.z), at.z, 26, 0xb07850, 7, 7); shake = 0.7; rumble(1.2, 0.8); }
 function spotNear(q) { const F = fight; const a = Math.atan2(q.z - F.c.z, q.x - F.c.x); return { x: q.x + Math.cos(a) * 2, z: q.z + Math.sin(a) * 2 }; }
 function newCharge() { const F = fight; const a = rng() * TAU; F.charge = { x: F.silo.x + Math.cos(a) * K.TUNE.chargeFrom, z: F.silo.z + Math.sin(a) * K.TUNE.chargeFrom }; F.base = { x: F.charge.x, z: F.charge.z }; rumble(2.5, 1); say('It dove! It\u2019s charging the silo!', 3); }
-function onStun(how) { const F = fight; F.base = { x: F.charge.x, z: F.charge.z }; burst(F.base.x, ground(F.base.x, F.base.z) + 1, F.base.z, 30, how === 'flame' ? 0xff7a1a : 0xb07850, 8, 7); shake = 1; rumble(1.4, 1); say(how === 'ram' ? 'Rammed! Shoot the open mouth!' : 'Torched! Shoot the open mouth!', 3); emit('stun', { how }); }
+function onStun(how) { const F = fight; F.base = { x: F.charge.x, z: F.charge.z }; burst(F.base.x, ground(F.base.x, F.base.z) + 1, F.base.z, 30, how === 'flame' ? 0xff7a1a : 0xb07850, 8, 7); shake = 1; rumble(1.4, 1); say(how === 'ram' ? 'Rammed! Shoot the open mouth!' : how === 'shot' ? 'Got it in the head! Shoot the open mouth!' : 'Torched! Shoot the open mouth!', 3); emit('stun', { how }); }
 function flameAt(C, tc) {
   let st = null; try { st = window.SSX?.flame?.state?.(); } catch (e) { st = null; } if (!st?.firing) return false;
   const p = me(); if (!p || d2(p, C) > K.TUNE.flameR) return false;
@@ -331,7 +331,7 @@ function poseWorm(base, height, pg, reach = 0, at = null, stunned = false) {
     const s = segs[7 + i] || segs[SEG - 1], side = i % 2 ? 1 : -1, r = s.scale.x;
     const x = s.position.x + -fz * side * (r + 0.4), z = s.position.z + fx * side * (r + 0.4), y = s.position.y + 0.3;
     const on = f.phase === K.P.SACS && f.sacs[i] > 0; sacMesh[i].visible = on; sacMesh[i].position.set(x, y, z);
-    const pulse = 1 + 0.15 * Math.sin(F_T() * 5 + i); sacMesh[i].scale.setScalar(pulse * (0.6 + 0.4 * f.sacs[i] / K.TUNE.sacHits));
+    const pulse = 1 + 0.15 * Math.sin(F_T() * 5 + i); sacMesh[i].scale.setScalar(pulse * (0.6 + 0.4 * f.sacs[i] / K.TUNE.sacHp));
     wp.sacs.push(on ? { x, y, z, r: 1.1, i } : null);
   }
 }
@@ -367,19 +367,31 @@ function aimPoints() {
   if (f.phase === K.P.PLUMES && wp.plume && fight.pose === 'under') o.push({ x: wp.plume.x, y: wp.plume.y, z: wp.plume.z, kind: 'sandworm' });
   if (f.phase === K.P.SACS) for (const s of wp.sacs) if (s) o.push({ x: s.x, y: s.y, z: s.z, kind: 'sandworm' });
   if (f.phase === K.P.CHARGE && f.stun > 0 && wp.maw) o.push({ x: wp.maw.x, y: wp.maw.y, z: wp.maw.z, kind: 'sandworm' });
+  if (f.phase === K.P.CHARGE && !(f.stun > 0) && fight.charge) { const C = chargeHead(); o.push({ x: C.x, y: C.y, z: C.z, kind: 'sandworm' }); } // v7.5.74 plain guns can stun it
   return o;
 }
-// one bullet segment: true when the worm soaked it
+// one bullet segment: true when the worm soaked it. v7.5.74 aim pays: gill sacs take x3, the open maw x4 (TUNE.crit), a shot on
+// the charging plume head builds a stun, and the armoured body only chips (TUNE.chip) the nearest sac / the stunned maw
+const chargeHead = () => ({ x: fight.charge.x, y: ground(fight.charge.x, fight.charge.z) + 1.5, z: fight.charge.z });
+const hitLog = { weak: 0, body: 0, head: 0 };
 function onBullet(p0, p1, b) {
   const f = fight.f, n = K.hitsOf(b);
   if (f.phase === K.P.PLUMES) { const P = plumeHead(); if (P && K.segHit(p0, p1, P, P.r) >= 0) { hitPlumeNow(n); return true; } }
-  if (f.phase === K.P.SACS) for (const s of wp.sacs) if (s && K.segHit(p0, p1, s, s.r) >= 0) { hitSacNow(s.i, n, s); return true; }
+  if (f.phase === K.P.SACS) for (const s of wp.sacs) if (s && K.segHit(p0, p1, s, s.r) >= 0) { hitLog.weak++; hitSacNow(s.i, K.critDmg(b, 'sac'), s, true); return true; }
   if (f.phase === K.P.CHARGE) {
-    if (f.stun > 0 && wp.maw && K.segHit(p0, p1, wp.maw, 2.1) >= 0) { hitMawNow(n); return true; }
-    if (!(f.stun > 0) && b?.flame && fight.charge) { const C = { x: fight.charge.x, y: ground(fight.charge.x, fight.charge.z) + 1.5, z: fight.charge.z }; if (K.segHit(p0, p1, C, 2.5) >= 0) { if (K.flameOn(f, 0.25)) onStun('flame'); return true; } }
+    if (f.stun > 0 && wp.maw && K.segHit(p0, p1, wp.maw, 2.1) >= 0) { hitLog.weak++; hitMawNow(K.critDmg(b, 'maw'), true); return true; }
+    if (!(f.stun > 0) && fight.charge) { const C = chargeHead(); if (K.segHit(p0, p1, C, 2.5) >= 0) {
+      if (b?.flame) { if (K.flameOn(f, 0.25)) onStun('flame'); return true; }
+      hitLog.head++; burst(C.x, C.y + 0.6, C.z, 4, 0xd8a070, 4, 4, 0.7); if (K.hitHead(f, K.dmgOf(b))) onStun('shot'); refreshUi(); return true; } }
   }
-  // the armoured body soaks shots (sparks, no damage)
-  if (head?.visible && wp.segs.length) for (const s of wp.segs) if (K.segHit(p0, p1, s, s.r) >= 0) { burst(s.x, s.y + s.r * 0.5, s.z, 2, 0xffe08a, 3, 2, 0.5); return true; }
+  // the armoured body: sparks and a small chip
+  if (head?.visible && wp.segs.length) for (const s of wp.segs) if (K.segHit(p0, p1, s, s.r) >= 0) {
+    burst(s.x, s.y + s.r * 0.5, s.z, 2, 0xffe08a, 3, 2, 0.5); hitLog.body++;
+    let near = -1, nd = Infinity; for (const q of wp.sacs) if (q) { const d = Math.hypot(q.x - s.x, q.y - s.y, q.z - s.z); if (d < nd) { nd = d; near = q.i; } }
+    if (near < 0 && f.phase === K.P.SACS) near = f.sacs.findIndex(h => h > 0);
+    const r = K.chip(f, K.chipDmg(b), near);
+    if (r === 'pop' || r === 'phase') hitSacNow(near, 0, wp.sacs[near], false, r); else if (r === 'win') end('win');
+    refreshUi(); return true; }
   return false;
 }
 function hitPlumeNow(n = 1) {
@@ -387,15 +399,17 @@ function hitPlumeNow(n = 1) {
   if (K.hitPlume(F.f, n)) { breachAt(F.plume); say(F.f.phase === K.P.SACS ? 'It\u2019s coming up for real!' : `It surfaced! (${F.f.surf}/${K.TUNE.surfacings})`, 2.5); emit('surface', { n: F.f.surf }); }
   refreshUi(); return true;
 }
-function hitSacNow(i, n = 1, s) {
-  const r = K.hitSac(fight.f, i, n); if (!r) return false; const at = s || wp.sacs[i];
-  if (at) burst(at.x, at.y, at.z, r === 'hit' ? 6 : 26, r === 'hit' ? 0xffc23a : 0x9cff3a, r === 'hit' ? 3 : 7, 4, r === 'hit' ? 0.6 : 1.1);
+function hitSacNow(i, n = 1, s, crit = false, done = null) {
+  const r = done || K.hitSac(fight.f, i, n); if (!r) return false; const at = s || wp.sacs[i];
+  if (at) burst(at.x, at.y, at.z, r === 'hit' ? (crit ? 12 : 6) : 26, r === 'hit' ? 0xffc23a : 0x9cff3a, r === 'hit' ? (crit ? 5 : 3) : 7, 4, r === 'hit' ? 0.6 : 1.1);
+  if (crit && r === 'hit') say('Direct hit! Gill sac’s splitting!', 1.2);
   if (r !== 'hit') { shake = 0.6; say(r === 'phase' ? 'All sacs popped! It\u2019s diving!' : `Sac popped! ${K.sacsLeft(fight.f)} left.`, 2.5); emit('sac', { i, left: K.sacsLeft(fight.f) }); }
   if (r === 'phase') { fight.charge = null; fight.dive = 0; fight.lunge = null; globs.forEach(g => { g.on = false; g.m.visible = false; }); }
   refreshUi(); return true;
 }
-function hitMawNow(n = 1) {
-  const r = K.hitMaw(fight.f, n); if (!r) return false; const m = wp.maw; if (m) burst(m.x, m.y, m.z, 8, 0xc0302a, 5, 4, 0.8);
+function hitMawNow(n = 1, crit = false) {
+  const r = K.hitMaw(fight.f, n); if (!r) return false; const m = wp.maw; if (m) burst(m.x, m.y, m.z, crit ? 16 : 8, 0xc0302a, crit ? 7 : 5, 4, crit ? 1 : 0.8);
+  if (crit && r === 'hit') { shake = Math.max(shake, 0.4); say('Right down its throat!', 1.2); }
   if (r === 'win') end('win'); refreshUi(); return true;
 }
 
@@ -491,8 +505,8 @@ function tick(dt, tc) {
 // ---------- public API ----------
 function status() {
   const f = fight?.f;
-  return { active: !!fight && !fight.done, farm: fight?.farm || null, phase: f?.phase || 0, health: f ? Math.round(K.health(f) * 100) / 100 : null, surf: f?.surf ?? null, sacs: f ? f.sacs.slice() : null,
-    stun: f ? Math.round(f.stun * 10) / 10 : 0, maw: f?.maw ?? null, eaten: f?.eaten ?? 0, cap: f?.cap ?? null, over: f?.over || null, done: fight?.done || null,
+  return { active: !!fight && !fight.done, farm: fight?.farm || null, phase: f?.phase || 0, health: f ? Math.round(K.health(f) * 100) / 100 : null, surf: f?.surf ?? null, sacs: f ? f.sacs.map(h => Math.round(h * 100) / 100) : null,
+    stun: f ? Math.round(f.stun * 10) / 10 : 0, maw: f ? Math.round(f.maw * 100) / 100 : null, head: f ? Math.round((f.head || 0) * 100) / 100 : 0, hits: { ...hitLog }, eaten: f?.eaten ?? 0, cap: f?.cap ?? null, over: f?.over || null, done: fight?.done || null,
     teeth: S.teeth, lastDay: S.lastDay, harvests: S.harvests, story: S.story, pending: S.eaten.map(e => ({ farm: e.farm, kind: e.kind, day: e.day })), stats: { ...S.stats },
     blocked: blocked(), saveErr, aim: fight && !fight.done ? aimPoints() : [], caption: capEl?.classList.contains('on') ? capEl.textContent : '', act: actBtn?.classList.contains('on') ? actBtn.textContent : '' };
 }
@@ -504,7 +518,8 @@ const api = {
     reset() { AG.reset(); if (fight) { fight = null; if (root) root.visible = false; } chewed.clear(); S = K.fresh(); save(); lineT = 0; refreshUi(true); return status(); },
     state: () => JSON.parse(JSON.stringify(S)), ag: () => AG.reset(), rng(v) { rng = typeof v === 'function' ? v : (v == null ? Math.random : () => +v); return true; },
     noRandom(v = true) { noRandom = v !== false; return noRandom; }, weak: () => JSON.parse(JSON.stringify(wp)),
-    hitPlume: (n = 1) => !!fight && hitPlumeNow(n), hitSac: (i, n = 1) => !!fight && hitSacNow(i, n), hitMaw: (n = 1) => !!fight && hitMawNow(n),
+    hitPlume: (n = 1) => !!fight && hitPlumeNow(n), hitSac: (i, n = K.TUNE.sacHp) => !!fight && hitSacNow(i, n), hitMaw: (n = K.TUNE.mawHp) => !!fight && hitMawNow(n),
+    chargeHead: () => (fight?.charge && !fight.done ? chargeHead() : null), hitLog: () => ({ ...hitLog }),
     stun: (how = 'ram') => { if (!fight || fight.f.phase !== K.P.CHARGE) return false; if (!fight.charge) newCharge(); K.stun(fight.f); onStun(how); return true; },
     phase(n) { if (!fight) return false; const f = fight.f; if (n >= 2 && f.phase === 1) { f.surf = K.TUNE.surfacings; f.phase = 2; fight.pose = 'under'; startSacs(); } if (n >= 3 && f.phase === 2) { f.sacs = f.sacs.map(() => 0); f.phase = 3; fight.charge = null; } return status(); },
     eat: () => (fight ? !!eatNext(fight.base || fight.plume) : false), lunge() { if (fight?.f.phase === 2) fight.f.lungeT = 0; return !!fight; }, spit() { if (fight?.f.phase === 2) fight.f.spitT = 0; return !!fight; },
