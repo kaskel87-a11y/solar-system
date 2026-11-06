@@ -139,6 +139,19 @@ ok('perfectCool', C.perfectPay(0, 1e12).full && !C.perfectPay(1e12, 1e12 + 60000
 // v7.5.68 Planum Swag: buy threads / boards / balls / chems, an owned board skips rent, insult bans, a fine clears it.
 ok('swagSpot', W.clearOfLane() && W.SPOT.z < C.FOUL && Math.hypot(W.SPOT.x - C.SPOTS.arrive.x, W.SPOT.z - C.SPOTS.arrive.z) < 24, W.SPOT);
 {
+  const S = W.SHELL, slabs = W.SLABS, west = slabs.filter(s => s.id.startsWith('west'));
+  const overlap = (a, b) => a.x - a.hx < b.x1 && a.x + a.hx > b.x0 && a.z - a.hz < b.z1 && a.z + a.hz > b.z0;
+  ok('fiveSlabs', slabs.length === 5 && west.length === 2 && slabs.some(s => s.id === 'east') && slabs.some(s => s.id === 'north') && slabs.some(s => s.id === 'south') && !slabs.some(s => /header|door/.test(s.id)));
+  ok('shellApproved', S.x0 === 62.4 && S.x1 === 74.4 && S.z0 === 945 && S.z1 === 955);
+  ok('westPastPiste', west.every(s => s.x - s.hx >= 62.4 - 1e-9) && Math.min(...west.map(s => s.x - s.hx)) > 62);
+  ok('doorGapWalker', W.DOOR.z1 - W.DOOR.z0 >= 3.2 - 1e-9 && W.slideBoard(63, 950, 0.45) === null && W.slideBoard(66.6, 950, 0.45) === null && W.slideBoard(63, W.DOOR.z0 + 0.5, 0.45) === null);
+  ok('jambBlocks', !!W.slideBoard(west[0].x, west[0].z, 0.45) && !!W.slideBoard(west[1].x, west[1].z, 0.45));
+  const hut = { x0: 51.5, x1: 56.5, z0: 960, z1: 964 }, gate = { x0: 31, x1: 49, z0: 959.2, z1: 960.8 }, lift = { x0: 12, x1: 16, z0: 940, z1: 964 };
+  ok('clearOfNeighbours', slabs.every(s => !overlap(s, hut) && !overlap(s, gate) && !overlap(s, lift)) && W.slideBoard(52, 950, 0.5) === null);
+  const pushed = W.slideBoard(west[0].x, west[0].z, 0.45);
+  ok('slidePushesOut', pushed && (Math.abs(pushed.x - west[0].x) > west[0].hx || Math.abs(pushed.z - west[0].z) > west[0].hz));
+}
+{
   const s0 = W.fresh();
   ok('rentUntilYouOwn', W.needsRent(s0, false) && !W.needsRent(s0, true) && !W.hasBoard(s0));
   const broke = W.buy(s0, 'dustrunner', 10, 0);
