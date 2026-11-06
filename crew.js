@@ -23,13 +23,14 @@ const emp = () => { const E = SSX()?.empire; return E && typeof E.launder === 'f
 const fronts = () => { try { return emp()?.fronts?.() || []; } catch (e) { return []; } };
 const frontRate = id => fronts().find(f => f.id === id)?.rate || 0;
 const roster = id => C.ROSTER.find(r => r.id === id);
+const meetBonus = () => { try { return SSX()?.crimebreak?.payBonus?.() || 0; } catch (e) { return 0; } };
 const fmtT = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`; };
 
 // ---------- the clock ----------
 function pump() {
   const now = S.now(); let changed = false;
   for (const m of D.crew) {
-    const done = C.step(m, now, S.rng, frontRate); if (!done.length) continue; changed = true;
+    const done = C.step(m, now, S.rng, frontRate, meetBonus()); if (!done.length) continue; changed = true;
     const r = roster(m.id), last = done[done.length - 1];
     toast(last.bust ? `🚨 ${r.name} got picked up by ColSec. Bail him out or wait ${C.HOLD_MIN} min (☰ → 👥 Crew).` : `👥 ${r.name}: ${C.JOBS[last.job].name} done. Collect in ☰ → 👥 Crew.`, 3600);
   }
@@ -99,7 +100,7 @@ function memberHtml(m, now, fr) {
   let line = st === 'held' ? `🚨 In holding · out in ${fmtT(m.held - now)}` : st === 'full' ? `⏸️ Waiting for you: ${m.bank.length} jobs done` : st === 'working' ? `${J.icon} ${J.name} · ${fmtT(m.at + J.min * 60000 - now)} left` : '💤 Idle';
   const bar = st === 'working' ? `<div class="bar"><i style="width:${Math.round(C.progress(m, now) * 100)}%"></i></div>` : '';
   const bank = m.bank.length ? (() => { let cr = 0, xp = 0, bu = 0; for (const b of m.bank) { cr += b.cr; xp += b.xp; bu += b.bust ? 1 : 0; } return `<div>📦 ${m.bank.length}/${C.BANK} done: ${cr} cr · ${xp} ⭐${bu ? ` · 🚨 ${bu} bust` : ''}</div>`; })() : '';
-  const jobs = C.ORDER.map(k => { const q = C.JOBS[k], ok = C.canAssign(m, k, fr), cash = C.jobCash(k, m.lv, q.front ? (fr.slice().sort((a, b) => b.rate - a.rate)[0]?.rate || 0) : 0);
+  const jobs = C.ORDER.map(k => { const q = C.JOBS[k], ok = C.canAssign(m, k, fr), cash = C.jobCash(k, m.lv, q.front ? (fr.slice().sort((a, b) => b.rate - a.rate)[0]?.rate || 0) : 0, meetBonus());
     return `<button data-a="job" data-id="${m.id}" data-job="${k}" ${!ok.ok || st === 'held' || m.job === k ? 'disabled' : ''} title="${esc(q.blurb)}">${q.icon} ${q.name} · ${q.min}m · ${cash} cr${m.lv < q.tier ? ` · 🔒 Lv${q.tier}` : ''}</button>`; }).join('');
   let btns = ''; if (m.bank.length) btns += `<button data-a="collect" data-id="${m.id}">💵 Collect</button>`;
   if (st === 'held') { const b = m.bank.slice().reverse().find(x => x.bust)?.bail || 200; btns += `<button data-a="bail" data-id="${m.id}" ${credits() < b ? 'disabled' : ''}>🔓 Bail ${b} cr</button>`; }

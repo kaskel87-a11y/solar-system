@@ -29,12 +29,12 @@ export const JOBS = {
 export const ORDER = ['hustle', 'lift', 'boost', 'front', 'score'];
 export const LEVELS = [null, null, { cr: 2500, xp: 500 }, { cr: 6000, xp: 1500 }]; // cost to reach level 2 / 3 (cr + spendable ⭐)
 export const MAXLV = 3, HOLD_MIN = 20, BAIL = 0.4;
-export const payMul = lv => 1 + 0.1 * (Math.max(1, lv) - 1);
+export const payMul = (lv, bonus = 0) => 1 + 0.1 * (Math.max(1, lv) - 1) + Math.max(0, Math.min(0.25, +bonus || 0)); // bonus = crime-break payoff buff (0..0.25)
 export const bustOf = (job, lv) => Math.max(0.02, (JOBS[job]?.bust || 0) - 0.02 * (Math.max(1, lv) - JOBS[job].tier));
 export const slotsFor = stars => SLOTS.filter(s => (+stars || 0) >= s).length;
 export const nextSlot = stars => SLOTS.find(s => (+stars || 0) < s) ?? null;
 // a front job's cash: 12 game hours of that front's average takings (frontRate = empirecore.avgRate(kind)), 600 if unknown
-export const jobCash = (job, lv, frontRate = 0) => Math.round((JOBS[job].front ? (frontRate > 0 ? frontRate * 12 : 600) : JOBS[job].cr) * payMul(lv));
+export const jobCash = (job, lv, frontRate = 0, bonus = 0) => Math.round((JOBS[job].front ? (frontRate > 0 ? frontRate * 12 : 600) : JOBS[job].cr) * payMul(lv, bonus));
 
 export function fresh() { return { v: VERSION, crew: [], stats: { jobs: 0, busts: 0, cr: 0, xp: 0, bail: 0 }, met: [] }; }
 const n0 = v => (Number.isFinite(+v) && +v > 0 ? +v : 0);
@@ -61,14 +61,14 @@ export function canAssign(m, job, fronts = []) {
 export function assign(m, job, now, front = null) { m.job = job; m.at = now; m.front = JOBS[job]?.front ? front : null; return m; }
 export const busy = (m, now) => m.held > now ? 'held' : m.bank.length >= BANK ? 'full' : m.job ? 'working' : 'idle';
 // advance one member to `now`: finish as many whole jobs as fit (bank cap, holding). rng() -> [0,1). frontRate(id) -> cr/h
-export function step(m, now, rng = Math.random, frontRate = () => 0) {
+export function step(m, now, rng = Math.random, frontRate = () => 0, bonus = 0) {
   const done = [];
   for (let guard = 0; guard < 50 && m.job; guard++) {
     if (m.held > now) break; if (m.held && m.held <= now) { m.at = Math.max(m.at, m.held); m.held = 0; }
     if (m.bank.length >= BANK) { m.at = now; break; } // waits for you: no free jobs while the bank is full
     const J = JOBS[m.job], end = m.at + J.min * 60000; if (end > now) break;
-    const cr = jobCash(m.job, m.lv, frontRate(m.front)), bust = rng() < bustOf(m.job, m.lv);
-    const r = { job: m.job, cr: bust ? 0 : cr, xp: bust ? 0 : Math.round(J.xp * payMul(m.lv)), bust, bail: bust ? Math.round(cr * BAIL / 10) * 10 : 0, front: m.front };
+    const cr = jobCash(m.job, m.lv, frontRate(m.front), bonus), bust = rng() < bustOf(m.job, m.lv);
+    const r = { job: m.job, cr: bust ? 0 : cr, xp: bust ? 0 : Math.round(J.xp * payMul(m.lv, bonus)), bust, bail: bust ? Math.round(cr * BAIL / 10) * 10 : 0, front: m.front };
     m.bank.push(r); done.push(r); m.at = end; if (bust) { m.held = end + HOLD_MIN * 60000; break; }
   }
   return done;
