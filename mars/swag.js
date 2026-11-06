@@ -1,7 +1,8 @@
-// Planum Swag (v7.5.68). Slick's stall on the ice beside Frostbite Benny: snow threads (the wardrobe),
+// Planum Swag (v7.5.68). Slick's shop on the ice beside Frostbite Benny: an open-west lobby in the
+// Velvet Airlock palette (three walls, roof, framed mouth, counter, neon). Snow threads (the wardrobe),
 // boards you keep, bowling balls, cartoon liquor and crater drugs, and a short ban if you insult the help.
 // Owning a board skips Benny's 50 cr rental. The rental stays for anyone who has not bought one.
-// Phone: one stall, two people, a sign, no per-frame allocation. Effects are one CSS veil, no blur.
+// Phone: one building, two people, no PointLights, no GLBs, no per-frame allocation. Effects are one CSS veil.
 // Pure rules: ./swagcore.js.  window.SSX.swag  window.__swag
 import * as THREE from 'three';
 import * as W from './swagcore.js';
@@ -77,7 +78,7 @@ function ui() {
   if (panel) return;
   const stl = document.createElement('style'); stl.textContent = css; document.head.appendChild(stl);
   panel = document.createElement('div'); panel.id = 'swagPanel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Planum Swag');
-  panel.innerHTML = `<div class="hd"><div class="t">🛍️ Planum Swag<small>Slick's stall · threads, boards, trouble</small></div><div class="cr"></div><button type="button" data-a="x" aria-label="Close">✕</button></div><div class="ban" hidden></div><div class="list"></div><div id="swagAsk" hidden></div><div class="foot"></div>`;
+  panel.innerHTML = `<div class="hd"><div class="t">🛍️ Planum Swag<small>Slick's shop · threads, boards, trouble</small></div><div class="cr"></div><button type="button" data-a="x" aria-label="Close">✕</button></div><div class="ban" hidden></div><div class="list"></div><div id="swagAsk" hidden></div><div class="foot"></div>`;
   document.body.appendChild(panel);
   chip = document.createElement('div'); chip.id = 'swagChip'; chip.setAttribute('role', 'status'); document.body.appendChild(chip);
   veil = document.createElement('div'); veil.id = 'swagVeil'; document.body.appendChild(veil);
@@ -178,24 +179,103 @@ function fine(avoid) {
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.72, ...o });
 function box(g, w, h, d, m, x, y, z) { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; }
-function buildStall(tc) {
-  const g = new THREE.Group(); g.name = 'planum-swag'; const y0 = tc.height(W.SPOT.x, W.SPOT.z);
-  g.position.set(W.SPOT.x, y0, W.SPOT.z); g.rotation.y = -Math.PI / 2; // sign faces the landing pad (world -x)
-  const wood = M(0x6a4a32), black = M(0x111111), cloth = M(0xc45a28);
-  box(g, 5.2, 2.6, 0.18, wood, 0, 1.5, 1.15); box(g, 5.6, 0.16, 2.4, cloth, 0, 2.95, 0.2);
-  box(g, 4.4, 0.9, 0.7, black, 0, 0.45, -0.55);
-  const signMat = new THREE.MeshBasicMaterial({ map: canvasTex(512, 128, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); x.strokeStyle = '#fff'; x.lineWidth = 10; x.strokeRect(8, 8, w - 16, h - 16); x.fillStyle = '#fff'; x.font = '900 54px system-ui,sans-serif'; x.textAlign = 'center'; x.fillText("SLICK'S SWAG", w / 2, 62); x.font = '700 22px system-ui,sans-serif'; x.fillText('threads · boards · balls · trouble', w / 2, 100); }) });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.15), signMat); sign.position.set(0, 3.55, 1.08); g.add(sign);
-  const signBack = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.15), signMat); signBack.position.set(0, 3.55, 1.02); signBack.rotation.y = Math.PI; g.add(signBack);
+// The ice rises about 3 m from the west mouth to the east wall. Walls are vertical, buried
+// a metre into the snow at their centre so the ends still meet the slope. The roof is level,
+// 4.6 m above the high (east) side. Collision stays the five slabs in swagcore (no header).
+function buildShop(tc) {
+  const g = new THREE.Group(); g.name = 'planum-swag';
+  const S = W.SHELL, D = W.DOOR, H = tc.height.bind(tc);
+  const midX = (S.x0 + S.x1) / 2, midZ = (S.z0 + S.z1) / 2, doorZ = (D.z0 + D.z1) / 2;
+  const yEast = H(S.x1 - 0.4, midZ), yWest = H(S.x0 + 0.5, doorZ);
+  const roofY = yEast + 4.65, doorTop = yWest + D.h;
+  // No PointLight (the club interior borrows lights[0]). Emissive keeps the purple readable on the ice.
+  const wallM = M(0x6a3478, { roughness: 0.82, emissive: 0x4a1848, emissiveIntensity: 0.72 });
+  const velvet = M(0x8a2048, { roughness: 0.9, emissive: 0x5a1030, emissiveIntensity: 0.55 });
+  const black = M(0x1a1020, { roughness: 0.55, emissive: 0x140810, emissiveIntensity: 0.4 });
+  const chrome = M(0xc0c4cc, { metalness: 0.9, roughness: 0.22, emissive: 0x404448, emissiveIntensity: 0.25 });
+  const topM = M(0xc43a78, { roughness: 0.32, emissive: 0xff3cc8, emissiveIntensity: 0.35 });
+  const pink = new THREE.MeshBasicMaterial({ color: 0xff3cc8 });
+  const roofM = M(0x140810, { roughness: 1, emissive: 0x1a0814, emissiveIntensity: 0.5 });
+  const bury = 1.05;
+  const raise = (x, z, sx, sz, mat, top) => { const gy = H(x, z), y0 = gy - bury, h = Math.max(0.4, top - y0); return box(g, sx, h, sz, mat, x, y0 + h / 2, z); };
+  // north / south in two runs so a 12 m wall does not float off the slope
+  for (const [x, sx] of [[(S.x0 + midX) / 2, midX - S.x0], [(midX + S.x1) / 2, S.x1 - midX]]) {
+    raise(x, S.z1 - S.t / 2, sx, S.t, wallM, roofY);
+    raise(x, S.z0 + S.t / 2, sx, S.t, wallM, roofY);
+  }
+  raise(S.x1 - S.t / 2, midZ, S.t, S.z1 - S.z0, wallM, roofY);
+  for (const s of W.SLABS) if (s.id.startsWith('west')) raise(s.x, s.z, s.hx * 2, s.hz * 2, wallM, roofY);
+  if (roofY > doorTop + 0.2) box(g, S.t, roofY - doorTop, D.z1 - D.z0, wallM, S.x0 + S.t / 2, (doorTop + roofY) / 2, doorZ);
+  const fx = S.x0 + S.t + 0.04;
+  box(g, 0.08, D.h, 0.08, pink, fx, yWest + D.h / 2, D.z0);
+  box(g, 0.08, D.h, 0.08, pink, fx, yWest + D.h / 2, D.z1);
+  box(g, 0.08, 0.08, (D.z1 - D.z0) + 0.16, pink, fx, doorTop, doorZ);
+  const leaf = box(g, 0.08, 2.45, 1.45, M(0x161018, { metalness: 0.4, roughness: 0.45 }), S.x0 + 1.15, yWest + 1.22, D.z0 - 0.2);
+  leaf.rotation.y = 0.55;
+  box(g, (S.x1 - S.x0) + 0.7, 0.18, (S.z1 - S.z0) + 0.7, roofM, midX, roofY + 0.08, midZ);
+  const run = box(g, 8.4, 0.035, 2.15, velvet, midX + 0.3, (yWest + yEast) / 2 + 0.04, midZ);
+  run.rotation.z = -Math.atan2(yEast - yWest, (S.x1 - S.x0) - 1);
+  const cX = S.x1 - S.t - 0.95, cY = H(cX, midZ);
+  box(g, 0.72, 1.05, 4.4, black, cX, cY + 0.52, midZ);
+  box(g, 0.86, 0.06, 4.6, topM, cX - 0.04, cY + 1.08, midZ);
+  box(g, 0.04, 0.05, 4.5, chrome, cX - 0.42, cY + 1.02, midZ);
+  box(g, 7.2, 0.045, 0.05, pink, midX, roofY - 0.28, midZ);
+  box(g, 0.06, 0.035, D.z1 - D.z0, pink, S.x0 + 0.7, yWest + 0.03, doorZ);
   const decks = [0xc45a28, 0x141416, 0x2a1848], stripes = [0xf2e6c8, 0x3cf0ff, 0xff4ad4];
-  for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.05, 1.15), M(decks[i])); b.position.set(-1.3 + i * 0.7, 1.15, -0.5); b.rotation.z = 0.15; g.add(b); const s = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.16), M(stripes[i])); s.position.copy(b.position); s.position.y += 0.03; g.add(s); }
-  for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), M([0x6a8a4a, 0x1a1a1c, 0xc81e1e][i])); b.position.set(1.15, 1.05, -0.85 + i * 0.38); g.add(b); }
+  for (let i = 0; i < 3; i++) {
+    const x = midX - 1.2 + i * 0.85, z = S.z1 - S.t - 0.45, y = H(x, z) + 1.15;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.05, 1.15), M(decks[i])); b.position.set(x, y, z); b.rotation.x = -0.35; g.add(b);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.16), M(stripes[i])); stripe.position.copy(b.position); stripe.position.y += 0.03; stripe.rotation.x = b.rotation.x; g.add(stripe);
+  }
+  for (let i = 0; i < 3; i++) {
+    const x = cX - 0.35, z = midZ - 0.9 + i * 0.7;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), M([0x6a8a4a, 0x1a1a1c, 0xc81e1e][i]));
+    b.position.set(x, H(x, z) + 1.28, z); g.add(b);
+  }
+  const signMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, map: canvasTex(512, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#0c0610'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#ff3cc8'; ctx.lineWidth = 10; ctx.strokeRect(8, 8, w - 16, h - 16);
+    ctx.fillStyle = '#ff3cc8'; ctx.font = '900 52px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText("SLICK'S SWAG", w / 2, 62);
+    ctx.fillStyle = '#fff'; ctx.font = '700 20px system-ui,sans-serif'; ctx.fillText('threads · boards · trouble', w / 2, 100);
+  }) });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.35), signMat);
+  sign.position.set(S.x0 + 1.6, roofY + 1.15, midZ); sign.rotation.y = -Math.PI / 2; g.add(sign);
+  box(g, 0.12, 1.35, 0.12, black, S.x0 + 1.6, roofY + 0.55, midZ - 2.45);
+  box(g, 0.12, 1.35, 0.12, black, S.x0 + 1.6, roofY + 0.55, midZ + 2.45);
+  const lintel = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 0.42), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, map: canvasTex(512, 72, (ctx, w, h) => {
+    ctx.fillStyle = '#0c0610'; ctx.fillRect(0, 0, w, h); ctx.fillStyle = '#ff3cc8'; ctx.font = '700 36px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('threads · boards · trouble', w / 2, h / 2);
+  }) }));
+  lintel.position.set(fx + 0.02, doorTop + 0.38, doorZ); lintel.rotation.y = -Math.PI / 2; g.add(lintel);
   slick = buildHuman({ top: 0xf2f2f2, bottom: 0x1a1a1a, skin: 0xc8946a, hair: 0x111111, hairStyle: 'bun', shades: true, bulk: 1.05, accent: 0xff4ad4 });
-  slick.group.position.set(-0.2, 0, 0.15); slick.group.rotation.y = Math.PI; g.add(slick.group);
+  const sx = S.x1 - S.t - 0.2;
+  slick.group.name = 'swag-slick'; slick.group.userData.human = true;
+  slick.group.position.set(sx, H(sx, midZ), midZ); slick.group.rotation.y = Math.PI / 2; g.add(slick.group);
   pebble = buildHuman({ top: 0x3a4250, bottom: 0x2a241c, skin: 0xd0a080, hair: 0x4a3020, hairStyle: 'cap', bulk: 0.95 });
-  pebble.group.position.set(1.7, 0, -1.35); pebble.group.rotation.y = 0.6; g.add(pebble.group);
+  const px = midX + 0.4, pz = midZ - 2.15;
+  pebble.group.name = 'swag-pebble'; pebble.group.userData.human = true;
+  pebble.group.position.set(px, H(px, pz), pz); pebble.group.rotation.y = Math.PI + 0.5; g.add(pebble.group);
   tc.scene.add(g); stall = g; stallScene = tc.scene;
-  tryv(() => window.SSX?.minimap?.addMarks?.('swag', [{ x: W.SPOT.x, z: W.SPOT.z, color: '#ffffff', r: 3, label: 'Swag' }]));
+  tryv(() => window.SSX?.minimap?.addMarks?.('swag', [{ x: W.SPOT.x, z: W.SPOT.z, color: '#ff3cc8', r: 3, label: 'Swag' }]));
+}
+let solidOff = [];
+function clearSolids() { for (const fn of solidOff) tryv(fn); solidOff = []; }
+function wallsUp() {
+  const w = surf()?.world, s = W.SLABS[0];
+  if (!w?.collide || !w.colony || !s) return false;
+  return !!tryv(() => w.collide(s.x, s.z, 0.15));
+}
+function ensureSolids() {
+  const w = surf()?.world;
+  if (!w?.addSolid || !w.colony) return false;
+  if (wallsUp()) return true;
+  clearSolids();
+  const next = [];
+  for (const s of W.SLABS) {
+    const rm = w.addSolid({ x: s.x, z: s.z, h: 12, box: [s.hx, s.hz], zone: 'planum-swag', nocam: false, r: Math.max(s.hx, s.hz) });
+    if (typeof rm !== 'function') { for (const fn of next) tryv(fn); return false; }
+    next.push(rm);
+  }
+  solidOff = next;
+  return true;
 }
 function idle(h, t, arm) { if (!h) return; h.hips.rotation.set(0, 0, 0); h.torso.rotation.set(0, 0, Math.sin(t) * 0.04); h.head.rotation.set(0, Math.sin(t * 0.6) * 0.4, 0); h.arms[0].rotation.set(0, 0, 0); h.arms[1].rotation.set(arm, 0, 0); for (const l of h.legs) l.rotation.set(0, 0, 0); }
 
@@ -204,7 +284,7 @@ function paintChip(force) {
   if (!chip) return;
   const t = now(), ban = W.banned(st, t), fx = W.fxView(st, t);
   const bowling = document.body.classList.contains('icecapBowling');
-  const text = ban ? `🚫 BANNED ${W.fmtLeft(W.banLeft(st, t))} · pay ${W.FINE} cr at the stall` : fx ? `${fx.chip} · ${W.fmtLeft(fx.left)}` : '';
+  const text = ban ? `🚫 BANNED ${W.fmtLeft(W.banLeft(st, t))} · pay ${W.FINE} cr at the shop` : fx ? `${fx.chip} · ${W.fmtLeft(fx.left)}` : '';
   const key = `${text}|${fx?.kind || ''}|${bowling}|${open}`;
   if (!force && key === chipKey) return; chipKey = key;
   chip.classList.toggle('on', !!text && !open && !bowling);
@@ -217,8 +297,10 @@ function tick(dt, tc) {
   simT += dt; syncThreads();
   const mars = tc?.name === 'Mars' && tc.scene && nearZone(tc.player?.x || 0, tc.player?.z || 0, 80);
   if (!mars) { if (stall) stall.visible = false; if (open) show(false); paintChip(false); return; }
-  if (!stall || stallScene !== tc.scene) { stall = null; buildStall(tc); }
+  if (stall && stallScene && stallScene !== tc.scene) { tryv(() => stallScene.remove(stall)); stall = null; clearSolids(); }
+  if (!stall || stallScene !== tc.scene) { stall = null; buildShop(tc); }
   stall.visible = true;
+  if (!wallsUp()) ensureSolids();
   idle(slick, simT * 1.3, 0.35); idle(pebble, simT * 1.1 + 1, 0.9 + Math.sin(simT) * 0.15);
   if (open && !nearStall(tc)) show(false);
   else if (open) render();
@@ -235,6 +317,7 @@ const api = {
   hasBoard: () => W.hasBoard(st), needsRent: rented => W.needsRent(st, rented),
   boardLook: () => W.boardLook(st), ballLook: () => W.ballLook(st), ride: () => W.rideOf(st), ball: () => W.bowlOf(st),
   prompt: () => W.prompt(st, now()), spot: () => ({ ...W.SPOT, near: W.NEAR }),
+  slide: (x, z, r) => W.slideBoard(x, z, r), slabs: () => W.SLABS, shell: () => W.SHELL,
   state: () => ({ ...W.norm(st), credits: credits(), banned: W.banned(st, now()), left: W.banLeft(st, now()) })
 };
 window.__swag = { core: W, api, log: () => log.slice(), open: () => show(true), render };
