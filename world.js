@@ -523,7 +523,7 @@ export function createWorld(ctx) {
     if (nearRoad && traffic.length < max && Math.random() < dt * 1.5) {
       const ahead = (Math.random() < 0.5 ? 1 : -1) * (70 + Math.random() * 60), dir = Math.random() < 0.5 ? 1 : -1, p = roadAt(projS + ahead);
       if (!inCore(p.x, p.z) && Math.hypot(p.x - player.x, p.z - player.z) > 55) {
-        const kinds = (T.kinds || ['buggy', 'hauler', 'hoverbike']).filter(k => VEHICLES[k]), cop = Math.random() < (T.cop_chance ?? 0.15), kind = cop ? 'buggy' : kinds[Math.floor(Math.random() * kinds.length)] || 'buggy';
+        const kinds = (T.kinds || ['buggy', 'hauler', 'hoverbike']).filter(k => VEHICLES[k]), cop = Math.random() < (T.cop_chance ?? 0.15) && !copFree(p.x, p.z), kind = cop ? 'buggy' : kinds[Math.floor(Math.random() * kinds.length)] || 'buggy';
         const v = buildVehicle(kind, cop), spec = VEHICLES[kind], o = { ...v, kind, spec, x: p.x, z: p.z, yaw: 0, y: height(p.x, p.z) + (spec.hover || 0), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0, stolen: true, parked: false, zone: 'highway',
           traffic: { s: p.s, dir, lane: 2.4, vmax: kind === 'hauler' ? (T.hauler_speed || 9) : (T.civilian_speed || 14) * (0.85 + Math.random() * 0.4), cop, wreck: 0 } };
         scene.add(v.group); vehicles.push(o); traffic.push(o);
@@ -534,7 +534,8 @@ export function createWorld(ctx) {
       if (v === st.car && st.driving) { traffic.splice(traffic.indexOf(v), 1); delete v.traffic; continue; } // carjacked
       const dP = Math.hypot(v.x - player.x, v.z - player.z);
       if (dP > 210 || inCore(v.x, v.z) || (!HW.closed && (t.s <= 1 || t.s >= HW.len - 1))) { despawnCar(v); continue; }
-      if (t.cop && CP.trafficCopsJoin(wanted) && dP < 50) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
+      if (t.cop && copFree(v.x, v.z)) { despawnCar(v); copNote('traffic'); continue; } // v7.5.73 cruisers turn off before the gulch
+      if (t.cop && CP.trafficCopsJoin(wanted) && dP < 50 && !copFree(player.x, player.z)) { despawnCar(v); const s = spawnSecurity('buggy', { x: v.x, z: v.z }); s.yaw = v.yaw; s.speed = Math.abs(t.v || 0); onEvent('siren', { traffic: true }); continue; }
       if (t.wreck > 0) { t.wreck -= dt; t.v = 0; v.speed = 0; v.group.position.set(v.x, v.y, v.z); continue; }
       const p = roadAt(t.s), fx = p.fx * t.dir, fz = p.fz * t.dir;
       // brake for anything in the lane ahead: you, your car, other traffic
@@ -569,7 +570,7 @@ export function createWorld(ctx) {
       } else if (/helios/i.test(c.faction)) {
         if (wanted > 0) { ok = false; msg = 'Helios gate: private security locks the lane. Guns out.'; g.hostiles?.(['guard', 'guard'], c.x + 5, c.z - 5, { faction: 'Helios Private' }); }
         else msg = g.flag('helios_guest') ? 'Helios gate: "Welcome back." The boom lifts.' : 'Helios gate: they log your plate and let you through. Cameras follow you in.';
-      } else {
+      } else if (copFree(c.x, c.z)) { copNote('checkpoint'); continue; } else {
         if (wanted > 0) { ok = false; msg = `${c.name || 'ColSec checkpoint'}: your face lights up the scanner.`; setWanted(Math.min(5, wanted + 1), 'ran a ColSec checkpoint'); }
         else if ((c.wanted_scan || 1) >= 2 && pv > 24) { if (g.spend(25)) msg = `${c.name}: speed trap. 25 cr fine, auto-debited.`; else { ok = false; msg = `${c.name}: speeding and broke. They flag you.`; crime(1, 'speeding through a checkpoint'); } }
         else if (/inspection|east/i.test(c.id + c.name) && g.flag('contraband')) { ok = false; msg = `${c.name}: the sniffer pings your cargo. Contraband!`; crime(2, 'contraband at inspection'); }
@@ -621,6 +622,12 @@ export function createWorld(ctx) {
   const footK = () => { const E = ease(); return E < 1 && !ctx.st().driving ? (1 + E) / 2 : 1; };
   const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
   let easeCarry = 0;
+  // v7.5.73 no ordinary ColSec at Red Static Gulch: SSX.copFree(x, z) (mars/nocops.js) is the one shared bounds check. Inside it no dispatch,
+  // patrol units turn back and never enter, traffic cruisers stay out, no shots, no bust, and the evade timer holds (your stars stay as they were)
+  const copFree = (x, z) => { try { const f = globalThis.SSX?.copFree; return typeof f === 'function' && !!f(x, z); } catch (e) { return false; } };
+  const copOut = (o, pad) => { try { const q = globalThis.SSX?.copFree?.out?.(o.x, o.z, pad); if (q && Number.isFinite(q.x) && Number.isFinite(q.z)) { o.x = q.x; o.z = q.z; return true; } } catch (e) { /* */ } return false; };
+  const copNote = k => { try { globalThis.SSX?.copFree?.note?.(k); } catch (e) { /* */ } };
+  let gulchHold = false;
   const distC = () => { if (!C) return 1e9; const h = sites.length ? hubAt(player.x, player.z) : null; return h ? h.d : Math.hypot(player.x - cx, player.z - cz); }; // v7.5: distance to the nearest hub (colony or district)
   function setWanted(n, why) {
     if (n > wanted && why && why !== 'debug') { const E = ease(); if (E < 1) { const k = (n - wanted) * E + easeCarry, add = Math.floor(k + 1e-9); easeCarry = k - add; n = wanted + (wanted === 0 ? Math.max(1, add) : add); if (wanted === 0 && add < 1) easeCarry = 0; } else easeCarry = 0; } // mission ease: half the heat gain
@@ -644,6 +651,7 @@ export function createWorld(ctx) {
     const st = ctx.st(), h = sites.length ? hubAt(player.x, player.z) : { site: { x: cx, z: cz }, d: distC() }, far = h.d > 120, a = Math.random() * 6.28, foot = kind === 'officer' || kind === 'heavy';
     let sx = far ? player.x + Math.cos(a) * (foot ? 55 : 90) : h.site.x + Math.cos(a) * 20, sz = far ? player.z + Math.sin(a) * (foot ? 55 : 90) : h.site.z + Math.sin(a) * 20;
     if (at) { sx = at.x; sz = at.z; }
+    { const q = { x: sx, z: sz }; if (copFree(q.x, q.z) && copOut(q, 6)) { sx = q.x; sz = q.z; copNote('spawnOut'); } } // v7.5.73 never spawn inside the gulch
     if (foot) { const q = freeSpot(sx, sz, 0.6); sx = q.x; sz = q.z; }
     let o;
     if (kind === 'drone' || kind === 'gunship') {
@@ -666,7 +674,7 @@ export function createWorld(ctx) {
   // fire while SSX.fight.inPit() (cage + 12 m apron, or a live bout); rounds already in the air do no damage there
   let pitHold = false;
   function secShoot(s, dmg) {
-    if (pitHold) return;
+    if (pitHold || gulchHold) return;
     const from = new THREE.Vector3(s.x, s.y + (s.kind === 'drone' || s.kind === 'gunship' ? 0 : 1.6), s.z), st = ctx.st(), ty = st.driving ? st.car.y + 1.2 : player.y - 0.4;
     const to = new THREE.Vector3(player.x + (Math.random() - 0.5) * 2.5, ty, player.z + (Math.random() - 0.5) * 2.5);
     const m = new THREE.Mesh(R.bolt, R.boltM); m.position.copy(from); m.lookAt(to); scene.add(m);
@@ -693,8 +701,9 @@ export function createWorld(ctx) {
   function updateSecurity(dt) {
     const st = ctx.st(), game = ctx.game(), down = game.isDown();
     try { pitHold = !!globalThis.SSX?.fight?.inPit?.(); } catch (e) { pitHold = false; }
+    gulchHold = copFree(player.x, player.z); if (gulchHold && wanted > 0) copNote('dispatch');
     // how many units the current heat calls for
-    if (wanted > 0 && !down) {
+    if (wanted > 0 && !down && !gulchHold) {
       respawnCd -= dt;
       const wantD0 = Math.min(caps.drones, wanted >= 1 ? Math.ceil(wanted / 2) + (wanted >= 4 ? 1 : 0) : 0), wantD = Math.max(wantD0 ? 1 : 0, ezN(wantD0)), wantB = ezN(wanted >= 2 ? Math.min(caps.buggies, wanted - 1) : 0);
       // v7.5: officers on foot from 2★ (+1 backup for 25 s after an officer goes down), armoured heavies at 4-5★, a gunship at 5★
@@ -714,7 +723,7 @@ export function createWorld(ctx) {
     for (const s of [...security]) {
       s.phase += dt; const dx = tx - s.x, dz = tz - s.z, d = Math.hypot(dx, dz) || 0.01;
       if (s.group.userData.bar) { const f = Math.sin(s.phase * 14) > 0; s.group.userData.bar[0].visible = f; s.group.userData.bar[1].visible = !f; }
-      if (wanted === 0 || down) { // head home and vanish
+      if (wanted === 0 || down || gulchHold) { // head home and vanish (v7.5.73: also while you're in the gulch; the stars stay)
         s.y += dt * 4; s.x -= dx / d * dt * 10; s.z -= dz / d * dt * 10; if (d > 140) { recall(s); continue; }
       } else if (s.foot) { footStep(s, dt, d, dx, dz, tx, tz);
         if (d > 230) { recall(s); continue; }
@@ -741,14 +750,15 @@ export function createWorld(ctx) {
         if (!inside && wanted >= 3 && !s.deployed && d < 26 && s.speed < 10 && security.filter(q => q.foot).length < caps.officers + caps.heavies) { s.deployed = true; for (let k = 0; k < (isMobile ? 1 : 2); k++) spawnSecurity('officer', { x: s.x + Math.cos(s.yaw) * (k ? -2.2 : 2.2), z: s.z - Math.sin(s.yaw) * (k ? -2.2 : 2.2) }); onEvent('backup', { deploy: true }); }
         if (d > 260) { recall(s); continue; } // left behind
       }
+      if (copFree(s.x, s.z) && copOut(s, 2)) copNote('keepOut'); // v7.5.73 a unit never enters the gulch
       s.group.position.set(s.x, s.y, s.z); if (s.kind === 'drone' || s.kind === 'gunship') s.group.rotation.y += dt;
       nearest = Math.min(nearest, d);
       if (d < (s.kind === 'drone' ? 7 : 7.5) && (!st.driving || pv < 2.5)) close = true;
     }
     // guards join in on foot
-    for (const p of people) if (p.kind === 'guard' && p.on !== false && !p.stun && wanted > 0 && !down) { const d = Math.hypot(tx - p.x, tz - p.z); nearest = Math.min(nearest, d); if (d < 4 && (!st.driving || pv < 2.5)) close = true; }
+    for (const p of people) if (p.kind === 'guard' && p.on !== false && !p.stun && wanted > 0 && !down && !gulchHold) { const d = Math.hypot(tx - p.x, tz - p.z); nearest = Math.min(nearest, d); if (d < 4 && (!st.driving || pv < 2.5)) close = true; }
     // busted: they get hands on you (on foot or boxed in while stopped)
-    if (wanted > 0 && !down) {
+    if (wanted > 0 && !down && !gulchHold) { // v7.5.73: in the gulch the bust and evade timers both hold
       if (inside) close = false; // they can't see you in here
       if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
@@ -762,7 +772,7 @@ export function createWorld(ctx) {
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);
       const p = s.m.position, ty = st.driving ? st.car.y + 1.2 : player.y - 0.6;
-      if (!inside && !pitHold && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
+      if (!inside && !pitHold && !gulchHold && Math.hypot(p.x - tx, p.z - tz) < (st.driving ? 2.4 : 1.0) && Math.abs(p.y - ty) < 1.6) { game.hurtPlayer(s.dmg, { x: p.x - s.v.x, z: p.z - s.v.z, security: true }); s.life = 0; }
       if (p.y < height(p.x, p.z) || s.life <= 0) { scene.remove(s.m); shots.splice(shots.indexOf(s), 1); }
     }
   }
@@ -786,7 +796,7 @@ export function createWorld(ctx) {
       }
       if (car && d < 9 && pv > 5) { p.flee = 1.2; p.fx = -dx / d; p.fz = -dz / d; if (d < 2.8 && pv > 9) { p.stun = 8; onEvent('thud', {}); if (p.kind === 'colonist') civHits++; ctx.game().gore?.(p.x, height(p.x, p.z) + 1, p.z, { n: 1 }); if (witnessed(p.x, p.z)) crime(1, 'hit-and-run'); continue; } }
       if (p.flee > 0) { p.flee -= dt; gx = p.x + p.fx * 5; gz = p.z + p.fz * 5; sp = 6; }
-      else if (p.kind === 'guard' && wanted > 0 && !ctx.game().isDown() && d < 60) { gx = player.x; gz = player.z; sp = d > 3 ? 5.5 * footK() : 0;
+      else if (p.kind === 'guard' && wanted > 0 && !ctx.game().isDown() && d < 60 && !copFree(player.x, player.z)) { gx = player.x; gz = player.z; sp = d > 3 ? 5.5 * footK() : 0;
         p.cd -= dt * ease(); if (wanted >= 2 && d < 30 && d > 3 && p.cd <= 0) { p.cd = 1.4; secShoot({ x: p.x, y: height(p.x, p.z) - 0.2, z: p.z, kind: 'guard' }, 5 + wanted); } }
       else if (p.kind === 'contact') { gx = p.home.x + Math.sin(p.phase * 0.3) * 1.2; gz = p.home.z; sp = 0.6; if (d < 6) { p.yaw = Math.atan2(-dx, -dz); } }
       else if (p.pts) {
