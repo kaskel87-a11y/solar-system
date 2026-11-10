@@ -90,7 +90,7 @@ function pss() { let sum = 0; for (const d of fs.readdirSync('/proc')) { if (!/^
     // club
     await app(() => { const cd = window.__app.surface.world.doorList().find(d => d.kind === 'club'); window.__app.surface.debugPlace(cd.x, cd.z + 0.4, Math.PI); });
     await sleep(400); await app(() => window.__app.surface.enterBuilding()); await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000);
-    await app(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip?.(); window.__app.surface.debugInside(7.6, -4.4, 0); });
+    await app(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip?.(); window.__app.surface.debugInside(-29.4, -5.2, 0); });
     await sleep(6000); await app(() => window.__app.surface.debugInside(0, 2, Math.PI)); await sleep(4000);
     await app(() => window.__app.surface.leaveBuilding()); await sleep(1500);
     if (Date.now() - t0 > DUR) break;
