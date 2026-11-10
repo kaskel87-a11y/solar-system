@@ -60,7 +60,7 @@ body.hudx .hxCtxOff{display:none!important}
 #hxCtxNext{position:fixed;z-index:13;display:none;min-height:44px;min-width:48px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.1 system-ui,sans-serif;touch-action:manipulation;padding:0 4px}
 body.surface:not(.indoors):not(.cinematic) #hxCtxNext.show{display:block}
 body:has(#roverMenu.show) :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hxMapOpen :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hidehud #hxCtxNext,body.danger-standoff #hxCtxNext{display:none!important}
-body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF):not([style*="display: none"]))){display:none!important} body.hxFold #ssxDock > :not(#dockRcn,#dockSmg,#dockSmgF){display:none!important} /* v7.5.5: on-the-spot actions (Raccoon buy/pick, smuggling pickup/drop) stay as a button on the spot, not in ☰ */
+body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF,#dockSb):not([style*="display: none"]))){display:none!important} body.hxFold #ssxDock > :not(#dockRcn,#dockSmg,#dockSmgF,#dockSb){display:none!important} /* v7.5.5: on-the-spot actions (Raccoon buy/pick, smuggling pickup, Cinder Vault job) stay as a button on the spot, not in ☰ */
 @media (orientation:portrait){body.hudx #stackR{max-height:calc(25vh - 62px - var(--sat))} body.hudx #stackR:has(> #radio[style*="block"]:not(.mini)){max-height:44vh}}
 /* v7.6 ▤ More (phones): the dock items that aren't already in ☰ live here, left side under the minimap, clear of FIRE/Pet/Jump/Run/joystick */
 #hxMore{display:none;position:fixed;z-index:9;left:calc(10px + var(--sal,0px));top:calc(196px + var(--sat,0px));min-width:44px;min-height:44px;padding:0 12px;border-radius:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.55);font:700 13px/1 system-ui,sans-serif;touch-action:manipulation}
@@ -282,7 +282,7 @@ function updCtx() {
     ctxNext.style.right = land ? `${r + Math.round(pr.width || 120) + 8}px` : `${r}px`; ctxNext.style.bottom = land ? `${b}px` : `${b + Math.round(pr.height || 52) + 6}px`; }
 }
 const touch = () => document.body.classList.contains('touch') || matchMedia('(pointer:coarse)').matches;
-const CTX_DOCK = ['dockRcn', 'dockSmg', 'dockSmgF']; // contextual dock actions: never folded into ☰
+const CTX_DOCK = ['dockRcn', 'dockSmg', 'dockSmgF', 'dockSb']; // contextual dock actions: never folded into ☰
 function updDock() {
   document.body.classList.toggle('hxFold', touch());
   const dock = document.getElementById('ssxDock'), menu = document.getElementById('roverMenu'); if (!dock || !menu) return;

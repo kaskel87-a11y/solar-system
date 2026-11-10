@@ -61,6 +61,10 @@ All add-ons import core modules with the **same `?v=` string as the core** (curr
 - `SSX.contraband`: Marsmania's contraband economy and barter (mars/contraband.js, mars/barter.json).
 
 
+## v7.5.82: Cinder Vault (`SSX.spacebank`)
+Orbital bank job. Not a surface `registerMission` (those steps are ground metres). Stages emit `spacebank:start|intel|scout|hire|crew|dock|dial|vault|alarm|paid` on `SSX.on` and as window events of the same name.
+`start()`, `hire(id)`, `lockCrew()`, `abort()`, `open()`. `state` is the live run. The dial is `SSX.heist.safeCrack` (hacker ease goes through `tipSafeOpts`). An alarm in orbit is queued and applied on the next Mars landing with `SSX.heist.alarm` when no surface heist is running. `SSX.crew` ids `vee`/`dex`, `soren`, `mags` cover drill, hack and wheel for free. `SSX.crimebreak.payBonus()` raises the cut. Rules: `spacebankcore.js`.
+
 ## Importing core modules (v7.5.2+)
 Import first-party modules with **plain relative paths, never a `?v=` query**: `import * as world from '../world.js'`, or the alias `import { registerMission } from 'ssx/game'`.
 `index.html` holds an import map that sends every module URL (and its `ssx/<path>` alias) to `<path>.js?v=<release>`, so each module loads exactly once.
