@@ -46,7 +46,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('interior58x32', `${b.w}x${b.d} x ${b.x0}..${b.x1} z ${b.z0}..${b.z1}`, b.w === 58 && b.d === 32 && b.x0 === -33 && b.x1 === 25 && b.z1 === 24 /* Velvet expansion: east wing */);
     ok('spawnLabelLeave', await wait(() => /Leave/.test(document.getElementById('driveBtn').textContent), 3000));
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); });
-    ok('showSpot', await at(6.55, -5.3, 'Private show 150'));
+    ok('showSpot', await at(6.55, -5.3, 'Private dance 500'));
     ok('barSpot', await at(-8.1, 1.5, 'Bar'), undefined);
     ok('slotsSpot', await G(() => (window.__app.surface.world.inside, true)));
     // collisions: the west partition blocks walking from the bar straight into the card room

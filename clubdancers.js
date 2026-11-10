@@ -49,6 +49,7 @@ function load(name) {
       for (const o of meshes) { // custom glTF attributes arrive as _cell/_gm
         const g = o.geometry; if (g.attributes._cell) { g.setAttribute('aCell', g.attributes._cell); g.deleteAttribute('_cell'); g.setAttribute('aGm', g.attributes._gm); g.deleteAttribute('_gm'); }
       }
+      enlargeDancerBust(gltf, name === 'dancer_danny' ? DANNY_BUST_SCALE : BUST_SCALE); // clothed bust, once per cached GLB
       if (HIGH) await Promise.all(meshes.flatMap(o => [ // desktop tier only; the 512 maps stay on failure
         tex(`${name}_${o.material.alphaTest ? 'hair' : 'skin'}_hd.webp`).then(t => { o.material.map?.dispose(); o.material.map = t; }, () => {}),
         o.material.alphaTest ? null : tex(`${name}_nrm_hd.webp`).then(t => { t.colorSpace = THREE.NoColorSpace; o.material.normalMap = t; o.material.normalScale.set(0.7, 0.7); }, () => {})
@@ -80,12 +81,21 @@ export const programKeepers = () => [...keepers.keys()];
 // outfits: garment ids are baked per vertex (tools/dancers.mjs GID); a dancer's index buffer keeps only her outfit
 const GID = { 'SSX bikini top': 1, 'SSX bikini bottom': 2, 'SSX string top': 3, 'SSX string bottom': 4, 'SSX coverup': 5, 'SSX crop top': 6, 'SSX shorts': 7, 'SSX cardigan': 8, ring: 9, 'SSX straps': 10 };
 // Danny's base layer is the white string bikini, so it stays on under the crop top and shorts (no skin holes).
+// Danny only ever wears the string mini bikini (the smallest garment that still covers). Colour is a tint, not another outfit.
+// Crop, shorts, cardigan and the open cover-up are not in her rotation.
+const MINI = ['SSX string top', 'SSX string bottom', 'SSX straps'];
 const OUTFITS = {
-  bikini: ['SSX bikini top', 'SSX bikini bottom'],
-  aqua: ['SSX string top', 'SSX string bottom', 'SSX straps'], // Danny's main stage look: aqua crochet/eyelet triangle string bikini, strappy sides (white string geometry, eyelet texture)
-  string: ['SSX string top', 'SSX string bottom', 'ring', 'SSX coverup'], // alternate stage look: white string bikini + ring, open crochet cover-up
-  crop: ['SSX crop top', 'SSX shorts', 'SSX cardigan'] // private dance: pink ribbed two-piece (+ cardigan)
+  bikini: ['SSX bikini top', 'SSX bikini bottom'], // Rhea / Kiara
+  aqua: MINI, // aqua eyelet string bikini
+  white: MINI,
+  black: MINI
 };
+export const DANNY_BIKINIS = ['aqua', 'white', 'black'];
+export const BIKINI_TINT = { aqua: 0xffffff, white: 0xf4f4f4, black: 0x141414 };
+/** Any leftover crop/cover-up/string request for Danny becomes a mini bikini. */
+export function dannyBikini(outfit) {
+  return DANNY_BIKINIS.includes(outfit) ? outfit : 'white';
+}
 /** Danny's display name: the ONE place it is set (nameplate/sign, spots, captions, contacts and toasts all read it). */
 export const DANNY_NAME = 'Danny Alvarez';
 // saves from v7.5.4/v7.5.5 stored her under an old stage name: move that contact (and her texts) to DANNY_NAME once
@@ -101,6 +111,121 @@ export const DANCERS = {
   rhea: { file: 'dancer_rhea', name: 'Rhea', sheen: 0.18 },
   kiara: { file: 'dancer_kiara', name: 'Kiara', sheen: 0.18 }
 };
+// Clothed bust enlarge. Rhea/Kiara land near 1.5× cup depth. Danny is a step larger than that (still the string bikini, which is inflated with the skin).
+export const BUST_SCALE = 1.7;
+export const DANNY_BUST_SCALE = 2.45;
+const TOP_GIDS = new Set([1, 3, 6, 10]); // SSX bikini/string/crop tops + straps
+function smooth01(e0, e1, x) { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+/** Bust mound depth (skin max-z minus sternum) for left/right cups; used by tests. */
+export function measureBustDepth(geometry) {
+  const pos = geometry.attributes.position, gm = geometry.attributes.aGm || geometry.attributes._gm;
+  if (!pos || !gm) return null;
+  let y0 = 1e9, y1 = -1e9, hasTop = false;
+  for (let i = 0; i < pos.count; i++) {
+    if (!TOP_GIDS.has(Math.round(gm.getX(i)))) continue;
+    hasTop = true; const y = pos.getY(i); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  if (!hasTop) return null;
+  // Cup band (skip underbust straps / upper collarbone) so sternum baseline stays stable.
+  const yCup0 = y0 + (y1 - y0) * 0.12, yCup1 = y0 + (y1 - y0) * 0.78;
+  let sternum = -1e9, L = -1e9, R = -1e9, topL = -1e9, topR = -1e9, topN = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i)), x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < yCup0 || y > yCup1) continue;
+    if (id === 0) {
+      if (Math.abs(x) < 0.03) sternum = Math.max(sternum, z);
+      if (x < -0.05 && x > -0.2) L = Math.max(L, z);
+      if (x > 0.05 && x < 0.2) R = Math.max(R, z);
+    } else if (TOP_GIDS.has(id)) {
+      topN++;
+      if (x < -0.05 && x > -0.2) topL = Math.max(topL, z);
+      if (x > 0.05 && x < 0.2) topR = Math.max(topR, z);
+    }
+  }
+  if (sternum < -1e8) return null;
+  return { depthL: L - sternum, depthR: R - sternum, depth: ((L + R) * 0.5 - sternum), sternumZ: sternum, y0, y1, topN, topCovers: topL >= L - 1e-4 && topR >= R - 1e-4 };
+}
+function findBreastCenters(pos, gm) {
+  let y0 = 1e9, y1 = -1e9, hasTop = false;
+  for (let i = 0; i < pos.count; i++) {
+    if (!TOP_GIDS.has(Math.round(gm.getX(i)))) continue;
+    hasTop = true; const y = pos.getY(i); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  if (!hasTop) return null;
+  const yCup0 = y0 + (y1 - y0) * 0.12, yCup1 = y0 + (y1 - y0) * 0.78;
+  let sternum = -1e9;
+  const apex = { '-1': null, '1': null };
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i)); if (id !== 0 && !TOP_GIDS.has(id)) continue;
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < yCup0 || y > yCup1) continue;
+    if (Math.abs(x) < 0.03) sternum = Math.max(sternum, z);
+    for (const side of [-1, 1]) {
+      if (x * side < 0.05 || x * side > 0.2) continue;
+      // prefer skin apexes; tops fill in when a prim has no skin (Danny's string-top layer)
+      const cur = apex[side];
+      const skin = id === 0;
+      if (!cur || (skin && !cur.skin) || (skin === cur.skin && z > cur.z)) apex[side] = { x, y, z, skin };
+    }
+  }
+  if (sternum < -1e8 || !apex['-1'] || !apex['1']) return null;
+  // Cup anchors on the chest wall under each breast; midline (|x| small) is left alone.
+  return {
+    y0, y1, sternum,
+    C: [
+      { x: apex['-1'].x * 0.78, y: apex['-1'].y, z: sternum },
+      { x: apex['1'].x * 0.78, y: apex['1'].y, z: sternum }
+    ]
+  };
+}
+/** Scale skin + top-garment cup depth/width ~scale. Idempotent via geometry.userData.ssxBustScale. */
+export function inflateBustGeometry(geometry, scale = BUST_SCALE, shared = null) {
+  if (geometry.userData.ssxBustScale) return geometry.userData.ssxBustScale;
+  const pos = geometry.attributes.position, gm = geometry.attributes.aGm || geometry.attributes._gm;
+  if (!pos || !gm) return null;
+  const info = shared || findBreastCenters(pos, gm);
+  if (!info) return null;
+  const { C, y0, y1, sternum } = info;
+  const R = 0.15, R0 = 0.03;
+  for (let i = 0; i < pos.count; i++) {
+    const id = Math.round(gm.getX(i));
+    if (id !== 0 && !TOP_GIDS.has(id)) continue;
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (y < y0 - 0.05 || y > y1 + 0.08) continue;
+    if (Math.abs(x) < 0.035) continue; // keep cleavage / sternum fixed
+    let best = null, bestD = R;
+    for (const c of C) {
+      if ((c.x < 0) !== (x < 0)) continue;
+      const d = Math.hypot(x - c.x, y - c.y, z - c.z);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (!best) continue;
+    let w = 1 - smooth01(R0, R, bestD);
+    if (z < sternum - 0.005) w *= 0.15; // don't inflate the back of the ribcage
+    if (w <= 1e-4) continue;
+    // Depth grows off the sternum plane; width grows off the cup anchor — both ~scale at the apex.
+    const k = 1 + (scale - 1) * w;
+    const nx = best.x + (x - best.x) * k;
+    const ny = best.y + (y - best.y) * (1 + (scale - 1) * w * 0.35);
+    const nz = z <= sternum ? z : sternum + (z - sternum) * k;
+    pos.setXYZ(i, nx, ny, nz);
+  }
+  pos.needsUpdate = true;
+  geometry.boundingSphere = null; geometry.computeBoundingSphere?.();
+  geometry.userData.ssxBustScale = scale;
+  return scale;
+}
+function enlargeDancerBust(gltf, scale = BUST_SCALE) {
+  const meshes = []; gltf.scene.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o); });
+  let shared = null;
+  for (const o of meshes) {
+    const gm = o.geometry.attributes.aGm || o.geometry.attributes._gm; if (!gm) continue;
+    shared = findBreastCenters(o.geometry.attributes.position, gm); if (shared) break;
+  }
+  if (!shared) return;
+  for (const o of meshes) inflateBustGeometry(o.geometry, scale, shared);
+}
+
 // per-dancer material: one shader program per tier and primitive kind (custom cache key); per-dancer values are uniforms
 const RIM_A = new THREE.Color(0x40e0ff), RIM_B = new THREE.Color(0xff3cc8);
 // shader-only lighting per dancer (shared by her two materials): directions are world space, turned into view space per draw
@@ -116,7 +241,7 @@ function setLook(lu, look) {
   lu.u.uKeyC.value.set(L.keyCol).multiplyScalar(L.keyInt); lu.u.uRimC.value.set(L.rimCol).multiplyScalar(L.rimInt); lu.u.uFill.value.set(L.fill).multiplyScalar(L.fillInt);
   lu.u.uScene.value = L.scene; lu.u.uNeutral.value = L.neutral;
 }
-function dancerMaterial(src, auxTex, { alt = null, sheen = 0.18, lu, crown = { value: new THREE.Vector3() } } = {}) {
+function dancerMaterial(src, auxTex, { alt = null, sheen = 0.18, lu, crown = { value: new THREE.Vector3() }, tint = 0xffffff } = {}) {
   const phys = HIGH && !src.alphaTest; let m;
   if (phys) { // skin: sheen + wrap-lit diffuse; garments in this primitive get the (mild) sheen too
     m = new THREE.MeshPhysicalMaterial(); THREE.MeshStandardMaterial.prototype.copy.call(m, src); m.defines = { STANDARD: '', PHYSICAL: '' };
@@ -124,7 +249,7 @@ function dancerMaterial(src, auxTex, { alt = null, sheen = 0.18, lu, crown = { v
   } else m = src.clone();
   if (HIGH) m.defines = { ...(m.defines || {}), SSX_HIGH: '' };
   if (HIGH && src.alphaTest) m.alphaToCoverage = true; // desktop (MSAA): soft strand / lash / brow edges instead of hard alpha-test stairs
-  const u = { uAux: { value: auxTex }, uAlt: { value: new THREE.Vector4(...(alt || [0, 0, -1, 0])) }, uRimA: { value: RIM_A }, uRimB: { value: RIM_B },
+  const u = { uAux: { value: auxTex }, uAlt: { value: new THREE.Vector4(...(alt || [0, 0, -1, 0])) }, uFit: { value: new THREE.Color(tint) }, uRimA: { value: RIM_A }, uRimB: { value: RIM_B },
     uRim: { value: HIGH ? 0.35 : 0.25 }, uHairSheen: { value: sheen }, uPoreH: { value: 0.00005 }, uCrownV: crown, ...lu.u };
   m.userData.u = u;
   m.onBeforeCompile = (sh) => {
@@ -136,7 +261,7 @@ function dancerMaterial(src, auxTex, { alt = null, sheen = 0.18, lu, crown = { v
         'float ssxV = floor(aGm.x + 0.5); if ((ssxV > 0.5 && ssxV < 7.5) || ssxV == 10.0 || ssxV == 14.0) { vec4 ssxMv = mvPosition; ssxMv.xyz -= normalize(ssxMv.xyz) * (ssxV == 14.0 ? 0.003 : 0.004); gl_Position = projectionMatrix * ssxMv; }');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D uAux; uniform vec4 uAlt; uniform vec3 uRimA; uniform vec3 uRimB; uniform float uRim; uniform float uHairSheen; uniform float uPoreH; uniform vec3 uCrownV;
-uniform vec3 uKeyV; uniform vec3 uKeyC; uniform vec3 uRimV; uniform vec3 uRimC; uniform vec3 uFill; uniform float uScene; uniform float uNeutral;
+uniform vec3 uKeyV; uniform vec3 uKeyC; uniform vec3 uRimV; uniform vec3 uRimC; uniform vec3 uFill; uniform float uScene; uniform float uNeutral; uniform vec3 uFit;
 vec3 ssxNeutral(vec3 lit, vec3 alb) { // the light that reached the surface, desaturated, back on the albedo
   vec3 irr = lit / max(alb, vec3(0.03)); return mix(irr, vec3(dot(irr, vec3(0.2126, 0.7152, 0.0722))), uNeutral) * alb; }
 varying vec4 vCell; varying vec4 vGm; float ssxA = 0.0;
@@ -178,6 +303,7 @@ float ssxPore = 0.5;`)
   if (ssxCell.z < 0.0) sampledDiffuseColor = texture2D(map, vMapUv);
   else sampledDiffuseColor = textureGrad(uAux, ssxCell.xy + fract(vMapUv) * ssxCell.zw, dFdx(vMapUv) * ssxCell.zw, dFdy(vMapUv) * ssxCell.zw);
   diffuseColor *= sampledDiffuseColor;
+  if (ssxg == 3.0 || ssxg == 4.0 || ssxg == 10.0) diffuseColor.rgb *= uFit; // mini-bikini colour (geometry unchanged)
   if (ssxg == 11.0) { // hair cards -> strands: per-strand and per-clump tone, ragged per-strand tips (alpha-tested)
     float hf = saturate(1.5 - fwidth(vMapUv.x) * 900.0); // strand detail fades out where a strand gets thinner than ~1 px
     ssxHv = mix(0.5, ssxH(floor(vMapUv.x * 900.0)), hf); ssxHc = mix(0.5, ssxH(floor(vMapUv.x * 140.0 + ssxH(floor(vMapUv.y * 9.0)) * 0.6) + 31.0), saturate(hf + 0.4));
@@ -265,11 +391,11 @@ function blob() {
 // textures in the reveal frame, 117 ms on a phone). They stay built in the hidden room; only a stage dancer whose look
 // changes for the next visit (Danny's alternate every third visit) is rebuilt, in idle time while you're outside.
 const live = new Set(); let hooked = false, stageVisits = 0;
-const stageLook = () => (stageVisits % 3 === 2) ? 'string' : 'aqua';
+const stageLook = () => DANNY_BIKINIS[stageVisits % DANNY_BIKINIS.length];
 const idle = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
 function hook() {
   if (hooked || !window.SSX?.on) return; hooked = true;
-  window.SSX.on('game:indoor', e => { if (e?.on) return; stageVisits++;
+  window.SSX.on('game:indoor', e => { if (e?.on) return; stageVisits++; resetTouchStrikes();
     for (const st of [...live]) if (st.stage && st.look !== stageLook()) { st.release(); idle(() => { if (st.released && !st.disposed && !window.__app?.surface?.info?.inside) st.start(); }); } });
 }
 
@@ -309,7 +435,9 @@ function aimArm(B, side, up, fore, w = 1) {
 }
 // build one model from the cached GLB (outfit index buffer, dancer materials, mixer)
 function buildModel(gltf, auxTex, D, look, lu) {
+  if (D.file === 'dancer_danny') look = dannyBikini(look);
   const show = new Set([0, ...(OUTFITS[look] || OUTFITS.bikini).map(n => GID[n])]);
+  const tint = D.file === 'dancer_danny' ? (BIKINI_TINT[look] ?? 0xffffff) : 0xffffff;
   const m = cloneSkinned(gltf.scene); const B = {}, mats = []; m.traverse(o => { if (o.isBone) B[o.name] = o; });
   const need = ['Hips', 'Spine1', 'Neck', 'Head', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'];
   if (need.some(n => !B[n])) return null;
@@ -319,13 +447,13 @@ function buildModel(gltf, auxTex, D, look, lu) {
     B.Head.getWorldPosition(crown.value); crown.value.y += 0.17; crown.value.applyMatrix4(cam.matrixWorldInverse); }; // hair strand origin
   m.traverse(o => {
     if (!o.isMesh) return; o.userData.ssxDancer = true; o.frustumCulled = !HIGH; if (!HIGH) o.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.7); // v7.5.12 phones: skip a dancer that's off screen (generous sphere: limbs, lifts) o.castShadow = false; o.onBeforeRender = onBR;
-    o.material = dancerMaterial(o.material, auxTex, { alt: look === 'aqua' ? gltf.scene.userData.ssx?.eyelet : null, sheen: D.sheen, lu, crown }); mats.push(o.material); if (o.isSkinnedMesh) skel = o.skeleton;
+    o.material = dancerMaterial(o.material, auxTex, { alt: look === 'aqua' ? gltf.scene.userData.ssx?.eyelet : null, tint, sheen: D.sheen, lu, crown }); mats.push(o.material); if (o.isSkinnedMesh) skel = o.skeleton;
     // own index buffer with just this outfit's triangles; vertex attributes stay shared with the cached GLB
     const g0 = o.geometry, gm = g0.attributes.aGm, src = g0.index.array, keep = [], cd = [];
     for (let i = 0; i < src.length; i += 3) { const id = Math.round(gm.getX(src[i])); if (id >= 11 || show.has(id)) (id === GID['SSX cardigan'] ? cd : keep).push(src[i], src[i + 1], src[i + 2]); }
     const g = new THREE.BufferGeometry(); for (const n in g0.attributes) g.setAttribute(n, g0.attributes[n]);
     const all = keep.concat(cd); g.setIndex(new THREE.BufferAttribute(gm.count > 65535 ? new Uint32Array(all) : new Uint16Array(all), 1));
-    g.boundingSphere = g0.boundingSphere; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
+    g.boundingSphere = g0.boundingSphere; if (g0.userData.ssxBustScale) g.userData.ssxBustScale = g0.userData.ssxBustScale; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
   });
   m.rotation.y = Math.PI; m.scale.setScalar(1.04); // the model faces +Z; rigs and seats face -Z
   const mixer = new THREE.AnimationMixer(m), acts = {};
@@ -342,7 +470,7 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
   const blocky = (on) => p.group.traverse(o => { if (o.isMesh && !o.userData.ssxDancer) o.visible = on; });
   let look = outfit;
   st.start = () => {
-    // Danny's stage outfit: the aqua crochet bikini, with the white string bikini + cover-up as the alternate every third visit
+    // Danny's stage outfit: aqua, white, or black string mini bikini (never the pink crop or a cover-up)
     if (outfit === 'stage') look = stageLook(); st.stage = outfit === 'stage';
     st.look = look; st.released = false; hook(); const f = st.file = load(D.file);
     f.p.then(({ gltf, aux: auxTex }) => {
@@ -513,3 +641,45 @@ export function spawn({ dancer = 'danny', outfit = 'aqua', look = null } = {}) {
   live.add(entry); // leaving the club frees it too
   return h;
 }
+
+// Hands on a dancer, per visit (resets when you leave the club). 1 slap, 2 a fine, 3 Tiny and a short door ban.
+export const TOUCH_FEE = 100;
+export const TOUCH_BAN_MS = 20000;
+let touchN = 0, banUntil = 0;
+export const touchStrikes = () => touchN;
+export const resetTouchStrikes = () => { touchN = 0; };
+export const touchBanLeft = (now = Date.now()) => Math.max(0, banUntil - now);
+export function banMsg(now = Date.now()) {
+  const left = touchBanLeft(now);
+  return left > 0 ? `Brick: Hands off the girls. Door’s shut for ${Math.ceil(left / 1000)}s.` : '';
+}
+/** @returns {{ n: 1|2|3, fee: number, kick: boolean }} */
+export function clubTouch() {
+  touchN += 1;
+  if (touchN >= 3) { touchN = 0; banUntil = Date.now() + TOUCH_BAN_MS; return { n: 3, fee: 0, kick: true }; }
+  if (touchN === 2) return { n: 2, fee: TOUCH_FEE, kick: false };
+  return { n: 1, fee: 0, kick: false };
+}
+export function touchLine(n = touchN) {
+  if (n === 1) return `Slapped · next touch is ${TOUCH_FEE} cr`;
+  if (n === 2) return `${TOUCH_FEE} cr paid · one more and Tiny throws you out`;
+  return 'Hands off · 3 strikes';
+}
+// Her hand snaps to the seated player's face, his head jolts, a white flash. Non-contact swing: she doesn't stay there.
+export function slapDancer(h, booth) {
+  if (!h?.pose) return;
+  const p = new THREE.Vector3(0.12, 1.4, 1.22);
+  try { booth?.g?.localToWorld(p); } catch (e) { /* booth frame */ }
+  h.pose({ R: p, lean: 0.2 });
+  h.play?.(/idle/i, 0.05);
+  const head = booth?.player?.head;
+  if (head) head.rotation.z = -0.7;
+  let flash = document.getElementById('touchFlash');
+  if (!flash && typeof document !== 'undefined') {
+    const css = document.createElement('style'); css.textContent = '#touchFlash{position:fixed;inset:0;z-index:70;pointer-events:none;background:#fff;opacity:0}#touchFlash.on{opacity:.5}';
+    document.head.appendChild(css); flash = document.createElement('div'); flash.id = 'touchFlash'; document.body.appendChild(flash);
+  }
+  if (flash) { flash.classList.add('on'); setTimeout(() => flash.classList.remove('on'), 180); }
+  setTimeout(() => { try { h.pose({}); if (head) head.rotation.z = 0; } catch (e) { /* show already over */ } }, 650);
+}
+try { queueMicrotask(() => { if (typeof window !== 'undefined' && window.SSX) window.SSX.dancers = { banMsg, touchStrikes, resetTouchStrikes, clubTouch, touchLine, TOUCH_FEE, TOUCH_BAN_MS }; }); } catch (e) {}

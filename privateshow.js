@@ -5,11 +5,12 @@
 // Hooks: interiors.js calls addBooth(api, ...) while building the club; index.html calls privateShow(...) once and
 // routes the 'show' hotspot to show.offer(spot). Phone buttons use window.__onTap (one finger per button on iOS).
 import * as THREE from 'three';
-import { spawn, DANNY_NAME } from './clubdancers.js';
+import { spawn, DANNY_NAME, DANNY_BIKINIS, clubTouch, slapDancer, touchLine, TOUCH_FEE } from './clubdancers.js';
 import * as VD from './mars/velvetdealcore.js'; // v7.5.26 pay in product (or product + cr, or Ines's comp); the show itself is unchanged
 const DF = DANNY_NAME.split(' ')[0]; // first name for captions; the full display name lives in clubdancers.js (DANNY_NAME)
 
-export const SHOW_PRICE = 150, LAP_PRICE = 250, TIP = 20, TIPS_FOR_NUMBER = 3, SHOW_SEC = 34, LAP_SEC = 26, TIP_SEC = 6;
+// Both the private dance and the lap are 500 cr for 60s, plus one free 10s encore. Tips stay 20 cr / 6s.
+export const SHOW_PRICE = 500, LAP_PRICE = 500, TIP = 20, TIPS_FOR_NUMBER = 3, SHOW_SEC = 60, LAP_SEC = 60, TIP_SEC = 6, ENCORE_SEC = 10;
 const NUMBER = '555-0142'; // 555-01xx: reserved for fiction
 const booths = new Set();
 // Velvet expansion: 25% off for the club's owner (mars/velvetarc.js); the offer labels stay the list price for everyone else
@@ -69,7 +70,9 @@ const LINES = {
   touch: [DF + ': Ah-ah.', 'TINY: That’s the one rule, genius.'],
   out: 'Tiny carries you down the back stairs and drops you on the street. Your pride stays upstairs.',
   lap: [DF + ': Hands on the armrests. I’ll know if they move.', DF + ': Close enough to feel the bass. Not close enough to touch.', DF + ': Look all you want. That’s the whole game.', DF + ': Don’t move. I’m working.', DF + ': You’re holding your breath. Cute.'],
-  end: ['The song fades. ' + DF + ' blows you a kiss from the doorway. “Same booth next time, spacer.”', 'The lights come up. ' + DF + ' pulls her cover-up on and winks. “Don’t fall in love. It’s bad for business.”'],
+  end: ['The song fades. ' + DF + ' blows you a kiss from the doorway. “Same booth next time, spacer.”', 'The lights come up. ' + DF + ' stays in the bikini and winks. “Don’t fall in love. It’s bad for business.”'],
+  slap: DF + ': Hands. I said hands.',
+  fee: DF + ': That’s ' + TOUCH_FEE + ' cr. Tiny is watching.',
 };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const CSS = `
@@ -81,17 +84,20 @@ const CSS = `
 .pshowBtn.on,.pshowBtn:active{background:#fff;color:#000} .pshowBtn.alt{background:#fff;color:#000}
 #pshow{position:fixed;left:0;right:0;bottom:0;z-index:54;display:none;flex-direction:column;align-items:center;gap:8px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
 #pshow .cap{max-width:560px;min-height:2.8em;padding:6px 12px;border-radius:8px;background:rgba(0,0,0,.72);color:#fff;font:italic 15px/1.4 system-ui,sans-serif;text-align:center;text-shadow:0 1px 2px #000}
-#pshow .cap:empty{visibility:hidden} #pshow .r{display:flex;gap:8px;width:100%;max-width:420px;pointer-events:auto} #pshow .hint{color:#bbb;font:11px system-ui,sans-serif}
+#pshow .cap:empty{visibility:hidden} #pshow .warn{color:#ffd6f0;font:600 12px/1.3 system-ui,sans-serif;text-align:center}
+#pshow .r{display:flex;flex-wrap:wrap;gap:8px;width:100%;max-width:420px;pointer-events:auto} #pshow .hint{color:#bbb;font:11px system-ui,sans-serif}
+#pshowOffer .deal{margin-top:8px;font:600 12.5px/1.35 system-ui,sans-serif}
 body.touch #pshow .hint{display:none}
+@media (orientation:landscape) and (max-height:500px){#pshowOffer .w{max-height:calc(100vh - 12px);padding:10px}#pshow{gap:4px}.pshowBtn{min-height:44px;font-size:14px}}
 body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibility:hidden!important}
 `;
 // opts: { surface, toast, onTap, fx, hud }
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private show, upstairs. One song, my booth, my rules: costume stays on, your hands stay on the chair.”</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private show · 150 cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance · 250 cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
+  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, upstairs. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
-  ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>';
+  ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="warn" id="pshowStrike">Hands off \u00b7 3 strikes</div><div class="r"><button class="pshowBtn" id="pshowEncore" type="button">Encore included, 1 left</button></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">Y encore \u00b7 T tip \u00b7 E touch \u00b7 Esc leave</div>';
   document.body.append(offerEl, ui);
   const $ = id => document.getElementById(id), cap = $('pshowCap'), fade = () => document.getElementById('fadeBlack');
   let S = null, capT = 0, unreg = null;
@@ -101,7 +107,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
 
   function offer(spot) {
     if (S) return; if (document.pointerLockElement) document.exitPointerLock();
-    { const own = ownerPrice(SHOW_PRICE) !== SHOW_PRICE, tag = own ? ' (owner)' : ''; $('pshowYes').textContent = 'Private show \u00b7 ' + ownerPrice(SHOW_PRICE) + ' cr' + tag; $('pshowLap').textContent = 'Lap dance \u00b7 ' + ownerPrice(LAP_PRICE) + ' cr' + tag; }
+    { const showP = ownerPrice(SHOW_PRICE), lapP = ownerPrice(LAP_PRICE), own = showP !== SHOW_PRICE, tag = own ? ' (owner)' : ''; $('pshowYes').textContent = 'Private dance \u00b7 ' + showP + ' cr' + tag; $('pshowLap').textContent = 'Lap dance \u00b7 ' + lapP + ' cr' + tag; $('pshowDeal').textContent = (own ? showP + ' cr (owner)' : showP + ' cr') + ' \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included'; }
     prodRow(); offerEl.style.display = 'flex';
   }
   // v7.5.26: product payment (mars/velvetdealcore.js). Buttons are rebuilt per offer and bound with onTap (window.__onTap).
@@ -132,16 +138,16 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast(DF + ': Your loss, sugar.', 2000); });
   const buy = (mode) => {
     offerEl.style.display = 'none'; const price = ownerPrice(mode === 'lap' ? LAP_PRICE : SHOW_PRICE);
-    if (!surface.game.spend(price)) { toast(DF + ': ' + (mode === 'lap' ? 'The chair dance is ' + LAP_PRICE : 'Upstairs is ' + SHOW_PRICE) + '. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
+    if (!surface.game.spend(price)) { toast(DF + ': ' + (mode === 'lap' ? 'The chair dance is ' : 'A private dance is ') + price + '. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
     fx.cash?.(); hud(); start(mode);
   };
   onTap($('pshowYes'), () => buy('show')); onTap($('pshowLap'), () => buy('lap'));
-  onTap($('pshowTip'), () => tip()); onTap($('pshowTouch'), () => touch()); onTap($('pshowLeave'), () => end('leave'));
+  onTap($('pshowEncore'), () => encore()); onTap($('pshowTip'), () => tip()); onTap($('pshowTouch'), () => touch()); onTap($('pshowLeave'), () => end('leave'));
   const onKey = e => {
     if (!S) return;
     if (e.code === 'KeyT' || e.code === 'KeyE' || e.code === 'Escape' || e.code.startsWith('Key') || e.code.startsWith('Arrow') || e.code === 'Space') { e.stopImmediatePropagation(); e.preventDefault(); }
     if (e.repeat) return;
-    if (e.code === 'KeyT') tip(); else if (e.code === 'KeyE') touch(); else if (e.code === 'Escape') end('leave');
+    if (e.code === 'KeyY') encore(); else if (e.code === 'KeyT') tip(); else if (e.code === 'KeyE') touch(); else if (e.code === 'Escape') end('leave');
   };
   window.addEventListener('keydown', onKey, true);
 
@@ -150,10 +156,12 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
   function start(mode = 'show') {
     const b = boothNow(); if (!b) { toast(DF + ': The booth’s being cleaned. Rain check.', 2400); return; }
     const visits = +(localStorage.getItem('ssx.dannyShows') || 0); localStorage.setItem('ssx.dannyShows', visits + 1);
-    const outfit = ['aqua', 'crop', 'string'][visits % 3]; // aqua crochet, pink ribbed, white string + cover-up
+    const outfit = DANNY_BIKINIS[visits % DANNY_BIKINIS.length]; // aqua, white, or black mini bikini. Never the pink crop.
     const h = spawn({ dancer: 'danny', outfit, look: { key: [0.35, 0.8, 1.0], keyCol: 0xffeee4, keyInt: 2.1, rim: [-0.3, 0.4, -1.0], rimCol: 0xff3cc8, rimInt: 1.25, fill: 0xd0d4e8, fillInt: 0.45, scene: 0.12 } });
     h.group.position.set(0, 0, 0.1); b.g.add(h.group);
-    S = { b, h, mode, lt: 0, beat: null, t: 0, left: mode === 'lap' ? LAP_SEC : SHOW_SEC, tips: 0, shot: 0, shotT: 0, z: 0.1, hidden: [], ending: false, fovSaved: null, pl: null, last: 0, ln: 0 };
+    S = { b, h, mode, lt: 0, beat: null, t: 0, left: mode === 'lap' ? LAP_SEC : SHOW_SEC, budget: mode === 'lap' ? LAP_SEC : SHOW_SEC, tips: 0, encore: 0, shot: 0, shotT: 0, z: 0.1, hidden: [], ending: false, fovSaved: null, pl: null, last: 0, ln: 0 };
+    const eb = $('pshowEncore'); if (eb) { eb.disabled = false; eb.textContent = 'Encore included, 1 left'; }
+    const st = $('pshowStrike'); if (st) st.textContent = touchLine();
     h.ready.then(() => { if (S?.h === h) h.play(/salsa/i, 0); });
     const f = fade(); f.textContent = ''; f.classList.add('on');
     setTimeout(() => { if (!S) return; b.g.visible = true; for (const c of b.api.g.children) if (c !== b.g && c.visible) { c.visible = false; S.hidden.push(c); }
@@ -271,6 +279,13 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     _p.copy(_cp); _l.copy(_cl); b.g.localToWorld(_p); b.g.localToWorld(_l); cam.position.copy(_p); S.camLocal = _cp.clone(); cam.lookAt(_l); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   }
 
+  function encore() {
+    if (!S || S.ending || S.encore) return false;
+    S.encore = 1; S.left += ENCORE_SEC;
+    const b = $('pshowEncore'); if (b) { b.disabled = true; b.textContent = 'Encore used'; }
+    say(DF + ': Encore’s on the house. One more verse.', 4);
+    return true;
+  }
   function tip() {
     if (!S || S.ending) return;
     if (!surface.game.spend(TIP)) { say(pick(LINES.broke)); fx.dry?.(); return; }
@@ -280,12 +295,23 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
       say(LINES.number + ' 📱 ' + DANNY_NAME + ' added to your contacts.', 5); window.SSX?.emit?.('contact:add', { name: DANNY_NAME, number: NUMBER });
     } else say(pick(LINES.tip));
   }
-  function touch() {
+  function paintStrike() { const el = $('pshowStrike'); if (el) el.textContent = touchLine(); }
+  function kickOut() {
     if (!S || S.ending) return; S.ending = true; S.h.play(/idle/i, 0.35); S.h.pose({}); S.h.armsIdle(true);
-    say(LINES.touch[0], 1.2); setTimeout(() => say(LINES.touch[1], 2), 900);
-    setTimeout(() => { const f = fade(); f.textContent = ''; f.classList.add('on'); setTimeout(() => { f.textContent = LINES.out; }, 600); }, 2000);
-    setTimeout(() => { stop(); surface.leaveBuilding?.(); }, 4200);
-    setTimeout(() => { fade().classList.remove('on'); hud(); }, 6200);
+    say(LINES.touch[1], 2);
+    setTimeout(() => { const f = fade(); f.textContent = ''; f.classList.add('on'); setTimeout(() => { f.textContent = LINES.out; }, 600); }, 900);
+    setTimeout(() => { stop(); surface.leaveBuilding?.(); }, 3200);
+    setTimeout(() => { fade().classList.remove('on'); hud(); }, 5200);
+  }
+  function touch() {
+    if (!S || S.ending) return;
+    const hit = clubTouch(); paintStrike();
+    if (hit.n === 1) { slapDancer(S.h, S.b); say(LINES.slap, 2.4); return; }
+    if (hit.n === 2) {
+      if (!surface.game.spend(TOUCH_FEE)) { say(DF + ': ' + TOUCH_FEE + ' cr on the screen. Pay it or the next one is Tiny.', 2.6); return; }
+      fx.cash?.(); hud(); slapDancer(S.h, S.b); say(LINES.fee + ' −' + TOUCH_FEE + ' cr', 2.6); return;
+    }
+    kickOut();
   }
   function end(why) {
     if (!S || S.ending) return; S.ending = true; const S0tips = S.tips;
@@ -302,7 +328,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     document.body.classList.remove('pshow', 'cinebars'); ui.style.display = 'none'; cap.textContent = '';
     S = null;
   }
-  const api = { offer, start, tip, touch, end, debugView: v => { if (S) S.dbg = v || null; }, lapBeat: n => { if (S?.mode !== 'lap') return false; const i = LAP.findIndex(r => r[0] === n); if (i < 0) return false; S.bi = i; S.bt = 0; S.beat = LAP[i]; return true; }, get active() { return !!S; }, get state() { return S ? { mode: S.mode, beat: S.beat?.[0] || null, t: S.t, left: S.left, tips: S.tips, shot: S.shot, popX: S.h.popX, popN: S.h.popN, herZ: S.h.group.position.z, herX: S.h.group.position.x, ready: !!S.h.md, stats: S.h.stats(), camInBooth: !!S.camLocal && Math.abs(S.camLocal.x) < S.b.W / 2 && Math.abs(S.camLocal.z) < S.b.D / 2 + 0.6 && S.camLocal.y > 0 && S.camLocal.y < S.b.H } : null }, hasNumber };
+  const api = { offer, start, tip, encore, touch, end, debugView: v => { if (S) S.dbg = v || null; }, lapBeat: n => { if (S?.mode !== 'lap') return false; const i = LAP.findIndex(r => r[0] === n); if (i < 0) return false; S.bi = i; S.bt = 0; S.beat = LAP[i]; return true; }, get active() { return !!S; }, get state() { return S ? { mode: S.mode, beat: S.beat?.[0] || null, t: S.t, left: S.left, budget: S.budget, tips: S.tips, encore: S.encore, encoreLeft: S.encore ? 0 : 1, shot: S.shot, popX: S.h.popX, popN: S.h.popN, herZ: S.h.group.position.z, herX: S.h.group.position.x, ready: !!S.h.md, stats: S.h.stats(), camInBooth: !!S.camLocal && Math.abs(S.camLocal.x) < S.b.W / 2 && Math.abs(S.camLocal.z) < S.b.D / 2 + 0.6 && S.camLocal.y > 0 && S.camLocal.y < S.b.H } : null }, hasNumber };
   window.__pshow = api; // tests / modding (SSX.privateShow once the modding API exists)
   queueMicrotask(() => { if (window.SSX) window.SSX.privateShow = api; });
   return api;

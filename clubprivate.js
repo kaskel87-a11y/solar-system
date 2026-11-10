@@ -6,7 +6,7 @@
 // Hooks (both guarded, so a failure here never breaks the club): interiors.js calls addDancerSpots(api, ...) while
 // building the club; index.html calls clubPrivate(...) once and routes the 'privdance' hotspot to cp.offer(spot).
 import * as THREE from 'three';
-import { spawn } from './clubdancers.js';
+import { spawn, clubTouch, slapDancer, touchLine, TOUCH_FEE } from './clubdancers.js';
 
 export const PRICE = 120, TIP = 20, TIP_SEC = 6, SONG_SEC = 28;
 // original fictional stage names (adult performers in a fictional Mars club)
@@ -48,6 +48,8 @@ body.cpNear #driveBtn{background:#000!important;color:#fff!important;border:1.5p
 #cpShow .cap{max-width:560px;min-height:2.8em;padding:6px 12px;border-radius:8px;background:rgba(0,0,0,.72);color:#fff;font:italic 15px/1.4 system-ui,sans-serif;text-align:center;text-shadow:0 1px 2px #000}
 #cpShow .cap:empty{visibility:hidden} #cpShow .r{display:flex;gap:8px;width:100%;max-width:420px;pointer-events:auto} #cpShow .hint{color:#bbb;font:11px system-ui,sans-serif}
 body.touch #cpShow .hint{display:none}
+#cpShow .warn{color:#ffd6f0;font:600 12px/1.3 system-ui,sans-serif;text-align:center}
+@media (orientation:landscape) and (max-height:500px){#cpOffer .w{max-height:calc(100vh - 12px);padding:10px}#cpShow{gap:4px}.cpBtn{min-height:44px;font-size:14px}}
 `;
 // opts: { surface, toast, onTap, fx, hud }
 export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
@@ -55,7 +57,7 @@ export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.
   const offerEl = document.createElement('div'); offerEl.id = 'cpOffer'; offerEl.setAttribute('role', 'dialog');
   offerEl.innerHTML = `<div class="w"><h3 id="cpName"></h3><div id="cpPitch"></div><div class="r"><button class="cpBtn" id="cpYes">Private dance · ${PRICE} cr</button><button class="cpBtn" id="cpNo">Not now</button></div></div>`;
   const ui = document.createElement('div'); ui.id = 'cpShow';
-  ui.innerHTML = `<div class="cap" id="cpCap"></div><div class="r"><button class="cpBtn" id="cpTip">💸 Tip ${TIP}</button><button class="cpBtn" id="cpTouch">✋ Touch</button><button class="cpBtn" id="cpLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>`;
+  ui.innerHTML = `<div class="cap" id="cpCap"></div><div class="warn" id="cpStrike">Hands off · 3 strikes</div><div class="r"><button class="cpBtn" id="cpTip">💸 Tip ${TIP}</button><button class="cpBtn" id="cpTouch">✋ Touch</button><button class="cpBtn" id="cpLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>`;
   document.body.append(offerEl, ui);
   const $ = id => document.getElementById(id), cap = $('cpCap'), fade = () => document.getElementById('fadeBlack');
   let S = null, capT = 0, unreg = null, pending = null;
@@ -116,7 +118,7 @@ export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.
         let lit = false; c.traverse(x => { if (x.isLight) lit = true; });
         if (path.has(c) || lit) hideOut(c); else { c.visible = false; S.hidden.push(c); } } };
       hideOut(root);
-      document.body.classList.add('pshow', 'cinebars', 'cpshow'); ui.style.display = 'flex'; say(line(G, G.open), 4); f.classList.remove('on'); }, 650);
+      document.body.classList.add('pshow', 'cinebars', 'cpshow'); ui.style.display = 'flex'; paintStrike(); say(line(G, G.open), 4); f.classList.remove('on'); }, 650);
     unreg = surface.registerTick?.(tick) || null;
     return true;
   }
@@ -155,12 +157,23 @@ export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (!surface.game.spend(TIP)) { say(line(S.G, `Tips are ${TIP}, sugar. Your wallet says no.`)); fx.dry?.(); return false; }
     fx.cash?.(); S.tips++; S.left += TIP_SEC; hud(); say(line(S.G, S.G.tip)); return true;
   }
-  function touch() {
+  function paintStrike() { const el = $('cpStrike'); if (el) el.textContent = touchLine(); }
+  function kickOut() {
     if (!S || S.ending) return; S.ending = true; S.h.play(/idle/i, 0.35); S.h.armsIdle(true);
-    say(line(S.G, 'Ah-ah.'), 1.2); setTimeout(() => say('TINY: That’s the one rule, genius.', 2), 900);
-    setTimeout(() => { const f = fade(); f.textContent = ''; f.classList.add('on'); setTimeout(() => { f.textContent = 'Tiny carries you down the back stairs and drops you on the street. Your pride stays upstairs.'; }, 600); }, 2000);
-    setTimeout(() => { stop(); surface.leaveBuilding?.(); }, 4200);
-    setTimeout(() => { fade().classList.remove('on'); hud(); }, 6200);
+    say('TINY: That’s the one rule, genius.', 2);
+    setTimeout(() => { const f = fade(); f.textContent = ''; f.classList.add('on'); setTimeout(() => { f.textContent = 'Tiny carries you down the back stairs and drops you on the street. Your pride stays upstairs.'; }, 600); }, 900);
+    setTimeout(() => { stop(); surface.leaveBuilding?.(); }, 3200);
+    setTimeout(() => { fade().classList.remove('on'); hud(); }, 5200);
+  }
+  function touch() {
+    if (!S || S.ending) return;
+    const hit = clubTouch(); paintStrike();
+    if (hit.n === 1) { slapDancer(S.h, S.b); say(line(S.G, 'Hands. I said hands.'), 2.4); return; }
+    if (hit.n === 2) {
+      if (!surface.game.spend(TOUCH_FEE)) { say(line(S.G, TOUCH_FEE + ' cr on the screen. Pay it or the next one is Tiny.'), 2.6); return; }
+      fx.cash?.(); hud(); slapDancer(S.h, S.b); say(line(S.G, 'That’s ' + TOUCH_FEE + ' cr. Tiny is watching.') + ' −' + TOUCH_FEE + ' cr', 2.6); return;
+    }
+    kickOut();
   }
   function end(why) {
     if (!S || S.ending) return; S.ending = true; const G = S.G;
