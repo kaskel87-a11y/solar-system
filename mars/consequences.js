@@ -458,6 +458,7 @@ function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry
 // ---------- UI ----------
 const css = `
 #cqScreen{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.72);pointer-events:none}
+#cqScreen .ssx-x{pointer-events:auto;position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));width:44px;height:44px;min-width:44px;min-height:44px;border-radius:10px;border:1px solid #fff;background:#000;color:#fff;font:700 22px/40px system-ui,sans-serif;touch-action:manipulation}
 #cqScreen.on{display:flex}#cqScreen b{font:900 clamp(54px,14vw,132px)/1 Impact,'Arial Black',system-ui,sans-serif;letter-spacing:.06em;-webkit-text-stroke:3px #fff;text-shadow:0 0 18px #000,4px 4px 0 #000}
 #cqScreen small{margin-top:14px;color:#fff;font:800 20px/1.2 system-ui,sans-serif;text-shadow:0 2px 6px #000}
 #cqPanel{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
@@ -475,7 +476,8 @@ let screenEl, panel, pBody, pMsg, hud, hudTx, hudBtn, dockBtn, screenT = 0;
 function tap(el, fn) { let last = 0; const g = e => { const n = performance.now(); if (e?.type === 'click' && n - last < 700) return; if (e?.type === 'pointerup') last = n; fn(e); }; (window.__onTap || ((x, f) => x.addEventListener('click', f)))(el, g); }
 function ui() {
   if (panel) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-  screenEl = document.createElement('div'); screenEl.id = 'cqScreen'; screenEl.setAttribute('aria-live', 'assertive'); screenEl.innerHTML = '<b></b><small></small>'; document.body.appendChild(screenEl);
+  screenEl = document.createElement('div'); screenEl.id = 'cqScreen'; screenEl.setAttribute('aria-live', 'assertive'); screenEl.innerHTML = '<b></b><small></small><button type="button" class="ssx-x" aria-label="Close">✕</button>'; document.body.appendChild(screenEl);
+  const xb = screenEl.querySelector('button'); xb.addEventListener('click', () => { screenEl.classList.remove('on'); screenEl.dataset.until = ''; });
   panel = document.createElement('div'); panel.id = 'cqPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Legal"><div id="cqBody"></div><div class="msg" id="cqMsg"></div></div>'; document.body.appendChild(panel);
   pBody = panel.querySelector('#cqBody'); pMsg = panel.querySelector('#cqMsg');
   hud = document.createElement('div'); hud.id = 'cqHud'; hud.innerHTML = '<span class="tx"></span><button id="cqHudBtn" type="button">Options</button>'; document.body.appendChild(hud);
@@ -491,7 +493,7 @@ function dockAttach() {
     tap(dockBtn, () => panel.classList.contains('show') ? closePanel() : showPanel(custody?.inCell ? 'booking' : 'legal')); return true; };
   if (attach()) return; try { const mo = new MutationObserver(() => { if (attach()) mo.disconnect(); }); mo.observe(document.body, { childList: true }); } catch (e) { /* no dock */ }
 }
-function screen(big, small, col, ms = 2300) { if (!screenEl) return; screenEl.querySelector('b').textContent = big; screenEl.querySelector('b').style.color = col; screenEl.querySelector('small').textContent = small || ''; screenEl.classList.add('on'); clearTimeout(screenT); screenT = setTimeout(() => screenEl.classList.remove('on'), ms); }
+function screen(big, small, col, ms = 2300) { if (!screenEl) return; screenEl.querySelector('b').textContent = big; screenEl.querySelector('b').style.color = col; screenEl.querySelector('small').textContent = small || ''; screenEl.classList.add('on'); screenEl.dataset.until = String(performance.now() + ms); clearTimeout(screenT); screenT = setTimeout(() => screenEl.classList.remove('on'), ms); }
 const fmtH = h => { const m = Math.round(((h % 24) + 24) % 24 * 60) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 let pMode = null, pData = null;
 function showPanel(mode, data) {

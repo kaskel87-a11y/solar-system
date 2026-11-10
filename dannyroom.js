@@ -38,7 +38,7 @@ body.danny-special #surfHud,body.danny-special #joy,body.danny-special #surfBtns
   overlay = document.createElement('div');
   overlay.id = 'dannySpecial';
   overlay.setAttribute('role', 'dialog');
-  overlay.innerHTML = '<video id="dannyVid" playsinline webkit-playsinline preload="metadata" controls></video><button type="button" id="dannyVidClose">Close</button>';
+  overlay.innerHTML = '<video id="dannyVid" playsinline webkit-playsinline preload="metadata" controls></video><button type="button" id="dannyVidClose" aria-label="Close">✕</button>';
   document.body.appendChild(overlay);
   vid = overlay.querySelector('video');
   vid.playsInline = true;

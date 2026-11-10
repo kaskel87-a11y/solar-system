@@ -77,7 +77,8 @@ const LINES = {
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const CSS = `
 #pshowOffer{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
-#pshowOffer .w{max-width:340px;margin:16px;padding:16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
+#pshowOffer .w{position:relative;max-width:340px;margin:16px;padding:52px 16px 16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
+#pshowOffer .x{position:absolute;top:6px;right:6px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border-radius:10px;border:1.5px solid #fff;background:#000;color:#fff;font:700 22px/42px system-ui,sans-serif;touch-action:manipulation}
 #pshowOffer .w{max-height:calc(100vh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch} #pshowOffer .ph{margin-top:8px;color:#bbb;font-size:12px} #pshowOffer .ph:empty,#pshowProd:empty{display:none}
 #pshowOffer h3{margin:0 0 6px;font-size:17px} #pshowOffer .r{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px} #pshowOffer .r .pshowBtn{flex:1 1 40%}
 .pshowBtn{flex:1;min-height:46px;border-radius:10px;border:1.5px solid #fff;background:#000;color:#fff;font:600 15px system-ui,sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -95,7 +96,7 @@ body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibi
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, my room. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
+  offerEl.innerHTML = '<div class="w"><button type="button" class="x" id="pshowX" aria-label="Close">✕</button><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, my room. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
   ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="warn" id="pshowStrike">Hands off \u00b7 3 strikes</div><div class="r"><button class="pshowBtn" id="pshowEncore" type="button">Encore included, 1 left</button></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">Y encore \u00b7 T tip \u00b7 E touch \u00b7 Esc leave</div>';
   document.body.append(offerEl, ui);
@@ -136,6 +137,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     fx.cash?.(); hud(); start(mode);
   }
   onTap($('pshowNo'), () => { offerEl.style.display = 'none'; toast(DF + ': Your loss, sugar.', 2000); });
+  onTap($('pshowX'), () => { offerEl.style.display = 'none'; });
   const buy = (mode) => {
     offerEl.style.display = 'none'; const price = ownerPrice(mode === 'lap' ? LAP_PRICE : SHOW_PRICE);
     if (!surface.game.spend(price)) { toast(DF + ': ' + (mode === 'lap' ? 'The chair dance is ' : 'A private dance is ') + price + '. Come back when you’re liquid.', 2600); fx.dry?.(); return; }

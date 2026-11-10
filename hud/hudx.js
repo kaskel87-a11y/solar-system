@@ -48,7 +48,8 @@ body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!impo
 #hxJob .hxQw{margin-left:auto;flex:none;display:flex;align-items:center;gap:2px;color:#9fe8ff;font-weight:800} #hxJob .hxQw:empty{display:none} #hxJob .hxQw .ar{width:15px;height:15px;display:block} #hxJob .hxQw .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
 #hxQuit{display:none;flex:none;min-width:44px;min-height:44px;padding:2px 3px;border-radius:9px;background:#000;color:#fff;border:2px solid #fff;font:800 10px/1.1 system-ui,sans-serif;touch-action:manipulation;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 #hxQuit.on{display:flex} #hxQuit .i{font-size:16px;line-height:18px}
-#hxWay{display:none;pointer-events:none;align-items:center;gap:6px;padding:3px 9px 3px 4px;border-radius:10px;background:rgba(0,0,0,.78);border:1px solid #38e1ff;color:#fff;font:700 .74rem system-ui,sans-serif;max-width:100%}
+#hxWay{display:none;pointer-events:none;align-items:center;gap:6px;padding:3px 4px 3px 4px;border-radius:10px;background:rgba(0,0,0,.78);border:1px solid #38e1ff;color:#fff;font:700 .74rem system-ui,sans-serif;max-width:100%}
+#hxWay .ssx-x{position:static;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;pointer-events:auto;line-height:42px}
 #hxWay.on{display:flex} body.indoors #hxWay{display:none!important}
 #hxWay .ar{width:26px;height:26px;flex:none;display:block;transition:transform .15s linear}
 #hxWay .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
@@ -168,17 +169,23 @@ export function drawMini(o) {
 }
 
 // ---------- ➤ waypoint chip, context button, dock fold ----------
-let way, ctxNext, ctxPick = 0, lastT = 0;
+let way, waySnooze = '', ctxNext, ctxPick = 0, lastT = 0;
 const ARROW = '<svg class="ar" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 L21 21 L12 16 L3 21 Z"/></svg>';
 function dirWord(a) { const d = ((a * 180 / Math.PI) % 360 + 540) % 360 - 180, A = Math.abs(d); return A < 22 ? 'ahead' : A > 150 ? 'behind you' : A < 70 ? (d > 0 ? 'ahead, right' : 'ahead, left') : A < 115 ? (d > 0 ? 'to your right' : 'to your left') : (d > 0 ? 'behind, right' : 'behind, left'); }
 function districtName(x, z) { try { const ds = mapData()?.world?.districts || []; let best = null, bd = Infinity; for (const d of ds) { const dd = Math.hypot((d.x ?? d.cx) - x, (d.z ?? d.cz) - z) - (d.r || 0); if (dd < bd) { bd = dd; best = d; } } return best && bd < 60 ? best.name : ''; } catch (e) { return ''; } }
+function wayKey(ob) { return ob ? `${ob.kind}:${Math.round(ob.x)}:${Math.round(ob.z)}` : ''; }
 function updWay(md) {
-  if (!way) { way = document.createElement('div'); way.id = 'hxWay'; way.setAttribute('aria-live', 'off'); way.innerHTML = `${ARROW}<span class="t"></span>`; }
+  if (!way) {
+    way = document.createElement('div'); way.id = 'hxWay'; way.setAttribute('aria-live', 'off'); way.innerHTML = `${ARROW}<span class="t"></span><button type="button" class="ssx-x" aria-label="Close">✕</button>`;
+    onTap(way.querySelector('.ssx-x'), () => { waySnooze = way.dataset.k || '1'; way.classList.remove('on'); });
+  }
   const stack = document.getElementById('stackR'), qt = document.getElementById('questTrack');
   const anchor = card && card.parentNode === stack ? card : qt && qt.parentNode === stack ? qt : null;
   if (stack && (way.parentNode !== stack || (anchor && way.previousElementSibling !== anchor))) anchor ? anchor.after(way) : stack.prepend(way);
   const ob = app()?.state?.onSurface ? objective(md) : null, qw = qt?.style.display === 'block' ? qt.querySelector('.hxQw') : null;
+  const wk = wayKey(ob); if (wk && waySnooze && wk !== waySnooze) waySnooze = '';
   if (!ob) { way.classList.remove('on'); if (qw && qw.innerHTML) { qw.innerHTML = ''; qw.dataset.v = ''; } return; }
+  way.dataset.k = wk;
   const dx = ob.x - md.x, dz = ob.z - md.z, cy = Math.cos(md.yaw), sy = Math.sin(md.yaw), sx = dx * cy - dz * sy, sz = dx * sy + dz * cy, ang = Math.atan2(sx, -sz), d = Math.hypot(dx, dz);
   // a mission: the arrow + distance ride in the 📜 card's title row (no extra chip); a running job / turf fight: in its card line
   const jw = (ob.kind === 'job' || ob.kind === 'turf') && jobKind === ob.kind ? card?.querySelector('#hxJob.on .hxQw') : null;
@@ -196,6 +203,7 @@ function updWay(md) {
   const dn = districtName(ob.x, ob.z), lab = ob.kind === 'quest' ? '' : ` · ${ob.label}`;
   const txt = `<b>${fmtD(d)}</b> <span class="d">${d < 12 ? 'you are here' : dirWord(ang)}</span>${esc(lab)}${dn ? ` · ${esc(dn)}` : ''}`;
   const t = way.querySelector('.t'); if (t.dataset.v !== txt) { t.dataset.v = txt; t.innerHTML = txt; }
+  if (waySnooze === wk) { way.classList.remove('on'); return; }
   way.classList.add('on'); way.dataset.kind = ob.kind;
 }
 // ---------- one mission card: 📜 quest + running job / turf fight + one 🏳️ quit ----------

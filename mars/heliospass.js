@@ -27,7 +27,8 @@ function hereAJ() {
 
 const CSS = `#hpassPanel { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); }
 #hpassPanel.on { display: flex; }
-#hpassPanel .box { background: #0b0b0e; color: #fff; border: 1px solid #fff; border-radius: 16px; padding: 16px; width: min(360px, 92vw); font: 15px system-ui, sans-serif; }
+#hpassPanel .box { position: relative; background: #0b0b0e; color: #fff; border: 1px solid #fff; border-radius: 16px; padding: 52px 16px 16px; width: min(360px, 92vw); font: 15px system-ui, sans-serif; }
+#hpassPanel .hx { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; }
 #hpassPanel h3 { margin: 0 0 6px; font-size: 1.05rem; } #hpassPanel p { margin: 0 0 12px; opacity: 0.85; font-size: 0.86rem; line-height: 1.35; }
 #hpassPanel button { display: block; width: 100%; min-height: 48px; margin: 8px 0 0; border-radius: 12px; background: #000; color: #fff; border: 1px solid #fff; font-weight: 800; font-size: 0.95rem; touch-action: manipulation; }
 #hpassPanel button:disabled { opacity: 0.4; }
@@ -49,7 +50,7 @@ export function offer(who = 'Porter', force = false) {
   if (!force && now() - lastOffer < H.OFFER_COOL_S * 1000) return { ok: false, why: 'cool' };
   lastOffer = now();
   const el = ensure(), opts = H.options(stash(), credits(), wanted());
-  el.innerHTML = `<div class="box"><h3>\u{1F3F0} ${who === 'Porter' ? 'Porter, Helios gate' : 'ColSec at the Helios gate'}</h3>
+  el.innerHTML = `<div class="box"><button type="button" class="hx" data-x="1" aria-label="Close">✕</button><h3>\u{1F3F0} ${who === 'Porter' ? 'Porter, Helios gate' : 'ColSec at the Helios gate'}</h3>
     <p>${who === 'Porter' ? '"Residents and guests only." He lowers his voice. "Guests can be arranged."' : '"Plate\u2019s flagged. Could un-flag it."'} One pass: you get in once and get one job inside: the Halvorsen Villa (\u2630 Heists). Price: ${H.priceLine()}.</p>
     ${opts.map((o, i) => `<button type="button" data-i="${i}">${o.label}</button>`).join('') || `<p>You\u2019re not holding enough (${H.priceLine()}).</p>`}
     <button type="button" data-x="1">Walk away</button></div>`;

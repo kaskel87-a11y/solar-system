@@ -55,7 +55,7 @@ const CSS = `
 #obLine .ob-d i{display:block;font-style:normal;font-size:17px;line-height:1;margin-bottom:2px}
 #obLine button{flex:none;font:700 12px/1 system-ui,sans-serif;color:#e8f6ff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:8px;
  min-height:32px;padding:0 9px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
-#obLine .ob-x{min-width:32px;padding:0;font-size:14px;color:#9fb3c8}
+#obLine .ob-x{min-width:44px;min-height:44px;width:44px;height:44px;padding:0;font-size:20px;line-height:42px;color:#fff;background:#000;border-color:rgba(255,255,255,.75)}
 #obLine.ob-done{border-color:rgba(74,222,128,.7)}
 #obLine.ob-space{position:fixed;z-index:9;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 16px));max-width:none;margin:0}
 #obCodex{position:fixed;inset:0;z-index:70;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55)}

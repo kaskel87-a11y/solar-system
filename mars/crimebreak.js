@@ -43,7 +43,8 @@ function show(r) {
 // ---------- panel ----------
 const CSS = `#cbGulch{position:fixed;inset:0;z-index:58;display:none;align-items:flex-end;justify-content:center;background:transparent;pointer-events:none}
 #cbGulch.on{display:flex}
-#cbGulch .wrap{pointer-events:auto;width:min(96vw,440px);max-height:min(62vh,calc(100vh - 180px - env(safe-area-inset-bottom)));margin:0 8px calc(150px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:0;font:14px/1.35 system-ui,sans-serif;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+#cbGulch .wrap{position:relative;pointer-events:auto;width:min(96vw,440px);max-height:min(62vh,calc(100vh - 180px - env(safe-area-inset-bottom)));margin:0 8px calc(150px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:0;font:14px/1.35 system-ui,sans-serif;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+#cbGulch .x{position:absolute;top:6px;right:6px;z-index:3;width:44px;height:44px;min-width:44px;min-height:44px;flex:none;padding:0;line-height:40px}
 #cbGulch .sheet{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 8px}
 #cbGulch .foot{flex:none;display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 12px;background:#000;border-top:2px solid #fff}
 #cbGulch .foot:empty{display:none}
@@ -61,7 +62,7 @@ const CSS = `#cbGulch{position:fixed;inset:0;z-index:58;display:none;align-items
 function ensureUi() {
   if (S.ui || typeof document === 'undefined') return S.ui;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-  const panel = document.createElement('div'); panel.id = 'cbGulch'; panel.innerHTML = '<div class="wrap"><div class="sheet"></div><div class="foot"></div></div>'; document.body.appendChild(panel);
+  const panel = document.createElement('div'); panel.id = 'cbGulch'; panel.innerHTML = '<div class="wrap"><button type="button" class="x" data-a="close" aria-label="Close">✕</button><div class="sheet"></div><div class="foot"></div></div>'; document.body.appendChild(panel);
   panelTap(panel, e => { const b = e.target?.closest?.('button'); if (b && !b.disabled) act(b.dataset); });
   const wrap = panel.firstChild;
   S.ui = { panel, wrap, sheet: wrap.firstChild, foot: wrap.lastChild }; return S.ui;

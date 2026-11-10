@@ -40,7 +40,8 @@ export function addDancerSpots(api, { booth = null, dancers = [] } = {}) {
 const CSS = `
 body.cpNear #driveBtn{background:#000!important;color:#fff!important;border:1.5px solid #fff!important;padding:2px 4px!important;line-height:1.15!important;overflow:hidden}
 #cpOffer{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
-#cpOffer .w{max-width:340px;margin:16px;padding:16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
+#cpOffer .w{position:relative;max-width:340px;margin:16px;padding:52px 16px 16px;border-radius:14px;background:#000;color:#fff;border:1px solid #fff;font:14px/1.4 system-ui,sans-serif}
+#cpOffer .x{position:absolute;top:6px;right:6px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border-radius:10px;border:1.5px solid #fff;background:#000;color:#fff;font:700 22px/42px system-ui,sans-serif;touch-action:manipulation}
 #cpOffer h3{margin:0 0 6px;font-size:17px} #cpOffer .r{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
 .cpBtn{flex:1;min-height:46px;border-radius:10px;border:1.5px solid #fff;background:#000;color:#fff;font:600 15px system-ui,sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .cpBtn:active{background:#fff;color:#000}
@@ -55,7 +56,7 @@ body.touch #cpShow .hint{display:none}
 export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'cpOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = `<div class="w"><h3 id="cpName"></h3><div id="cpPitch"></div><div class="r"><button class="cpBtn" id="cpYes">Private dance · ${PRICE} cr</button><button class="cpBtn" id="cpNo">Not now</button></div></div>`;
+  offerEl.innerHTML = `<div class="w"><button type="button" class="x" id="cpX" aria-label="Close">✕</button><h3 id="cpName"></h3><div id="cpPitch"></div><div class="r"><button class="cpBtn" id="cpYes">Private dance · ${PRICE} cr</button><button class="cpBtn" id="cpNo">Not now</button></div></div>`;
   const ui = document.createElement('div'); ui.id = 'cpShow';
   ui.innerHTML = `<div class="cap" id="cpCap"></div><div class="warn" id="cpStrike">Hands off · 3 strikes</div><div class="r"><button class="cpBtn" id="cpTip">💸 Tip ${TIP}</button><button class="cpBtn" id="cpTouch">✋ Touch</button><button class="cpBtn" id="cpLeave">Leave</button></div><div class="hint">T tip · E touch · Esc leave</div>`;
   document.body.append(offerEl, ui);
@@ -75,6 +76,7 @@ export function clubPrivate({ surface, toast = () => {}, onTap = (el, fn) => el.
     pending = id; $('cpName').textContent = '💃 ' + G.name; $('cpPitch').textContent = G.offer; offerEl.style.display = 'flex';
   }
   onTap($('cpNo'), () => { offerEl.style.display = 'none'; const G = GIRLS[pending]; if (G) toast(line(G, 'Your loss, sugar.'), 2000); pending = null; });
+  onTap($('cpX'), () => { offerEl.style.display = 'none'; pending = null; });
   onTap($('cpYes'), () => buy());
   function buy(id = pending) {
     offerEl.style.display = 'none'; pending = null; const G = GIRLS[id]; if (!G || S || dannyBusy()) return false;
