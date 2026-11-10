@@ -16,6 +16,7 @@ import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette t
 import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
 import { addVelvetWing } from './velvetwing.js'; // Velvet expansion: the east wing (Dome Lounge, high-roller table, Ines's office) where the small dome used to be
 import { addBarCounter } from './bar.js'; // v7.6 space-liquor counter (sell your bottles / drinks) at the north end of the club bar
+import { EX_COST, EX_STARS } from './mars/crimebreakcore.js'; // same 100 cr → 10 ⭐ rate as the gulch exchange; the till calls that exchange
 
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
 const B = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
@@ -466,6 +467,24 @@ export const INTERIORS = {
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
+      // v7.5.78 star till at the south end of the bar (clear of drinks at z 1.5 and Nova at z -1.9).
+      // The rate is crimebreak's exchange: SSX.crimebreak.exchange() spends EX_COST and grants EX_STARS. No second rate.
+      {
+        const zx = -w / 2 + 2.9, zz = 5.0;
+        box(zx - 0.55, 1.05, zz, 0.42, 0.28, 0.34, mat(0xc8a227, { metalness: 0.75, roughness: 0.28 }));
+        box(zx - 0.55, 1.22, zz, 0.16, 0.06, 0.16, mat(0xffd040, { basic: true }));
+        api.sign(`${EX_COST} CR → ${EX_STARS} STARS`, 0xffd040, zx - 0.15, 2.15, zz, Math.PI / 2, 2.4, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
+        api.spot({ id: 'velvet-exchange', x: zx, z: zz, r: 1.15, act: 'velvet', label: '⭐ Exchange', run() {
+          const ex = window.SSX?.crimebreak?.exchange;
+          if (typeof ex !== 'function') { try { window.__app?.toast?.('The till is locked.', 2200); } catch (e) { /* */ } return { ok: false }; }
+          return ex();
+        } });
+        const exSpot = api.spots[api.spots.length - 1];
+        Object.defineProperty(exSpot, 'label', { enumerable: true, configurable: true, get() {
+          const c = window.SSX?.crimebreak;
+          return c ? `⭐ ${c.EX_COST} cr → ${c.EX_STARS} ⭐` : '⭐ Exchange';
+        } });
+      }
       // v7.5.36 the slots moved to the gaming floor (addSlotBank, below)
       // v7.5.33 the bigger club: a wall behind the bar (west wing = card room), the old south wall kept as two pieces either
       // side of a 6 m arch (slots keep their backdrop) and the south lobby down to the new door at (-11, 24)

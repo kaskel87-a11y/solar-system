@@ -166,6 +166,8 @@ ok(/class="sheet"/.test(ui) && /class="foot"/.test(ui) && /S\.ui\.foot\.innerHTM
 ok(/max-height:450px/.test(ui) && /margin-bottom:calc\(100px/.test(ui), 'short landscape (iPhone ~393 tall) gives the sheet the leftover height and keeps the footer on screen');
 ok(/panelTap\(/.test(ui) && /CB\.buy\(id, qty\)/.test(ui) && /shop\.buy\(id\)/.test(ui), 'panelTap, contraband.buy, starshop.buy');
 ok(/C\.marketGate\(atGulch\(\)\)/.test(ui) && /shopGuard\.run\('exchange'/.test(ui), 'gulch gate and exchange guard');
+const club = readFileSync(new URL('../interiors.js', import.meta.url), 'utf8');
+ok(/id: 'velvet-exchange'/.test(club) && /crimebreak\?\.exchange/.test(club) && !/velvet-exchange[\s\S]{0,400}spend\(/.test(club), 'Velvet till calls crimebreak.exchange and does not spend on its own');
 ok(!/\.sell\(/.test(ui) && !/stars\?\.refund|starshop\?\.debug\?\.reset/.test(ui), 'no selling and no star-wallet reset');
 
 console.log(fail ? `${fail} FAILED` : 'all ok');
