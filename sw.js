@@ -40,6 +40,7 @@ const PRECACHE = [
   `nozoom.js${q}`, // v7.5.44 iOS zoom lock
   `mars/gravity.js${q}`, `mars/gravitycore.js${q}`, // Pumpkin: gravity modes for Mars vehicles
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
+  `spacebank.js${q}`, `spacebankcore.js${q}`, // v7.5.82 Cinder Vault orbital bank job (SSX.spacebank)
   `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, // fast travel on Mars (Pumpkin)
   `mars/skins.js${q}`, `mars/skinscore.js${q}`, // Mars player skins (Pumpkin)
   `mars/jetpack.js${q}`, `mars/jetpackcore.js${q}`, // Mars jetpack (Pumpkin)

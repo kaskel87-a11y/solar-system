@@ -66,6 +66,14 @@ Core hook: `world.js` `setWanted` calls `SSX.heatFilter(from, to, why)` when it'
 - Radio messages you didn't ask for arrive as a one-line pill (tap to read), and on portrait phones the pill replaces the toast, so the centre of the screen stays clear.
 - Fixed: the Mars story pack loaded a second copy of the game module.
 
+## v7.5.82: Cinder Vault (the orbital bank)
+Not the First Junction Trust. This one is in orbit over Mars.
+- **Find it:** ☰ → **🏦 Space bank**, or walk up to **Nix Calder** at the Ares spaceport. The panel sets a waypoint. On a phone, standing on Nix shows **🏦 JOB** (it still works with a thumb on the stick).
+- **The job:** take off, skim three buoys (cameras watch the lane; a full paint queues wanted stars), hire a drill, a hacker and a wheel, or fly it with nobody. A specialist you already hired under ☰ Crew covers that role for free. A crime-break sit-down bumps the cut.
+- **The vault:** hold the ship in the gold ring, then pulse **DRILL** (a steady hold trips the heat). The dial is `SSX.heist.safeCrack`. Crack it and cutters launch.
+- **Getaway:** roll to break a lock and dive back toward Mars. You get paid when you reach the well or lose them. A hot run still pays; the stars are waiting when you land.
+- Phone: one narrow chip on the left, 44px buttons, middle of the screen stays clear.
+
 ## v7.5: the Mars city
 Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Districts** to hop between them (lose your wanted stars first).
 
