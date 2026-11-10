@@ -12,6 +12,12 @@ const CATALOG = [
   { id: 'rifle', kind: 'gun', label: 'Longwatch AR-7', wants: [{ item: 'voidhoney', qty: 2 }, { item: 'lowg', qty: 2 }], cash: 640, ammo: 48 },
   { id: 'rail', kind: 'gun', label: 'Halcyon coil lance (rare)', wants: [{ item: 'voidhoney', qty: 4 }, { item: 'glowdust', qty: 4 }], cash: 2400, ammo: 3, noFavor: true },
   { id: 'bat', kind: 'melee', label: 'Slugger bat', wants: [{ item: 'lowg', qty: 1 }], cash: 90 },
+  // v7.5.77 street iron (also on the gun-shop full list). Cash is before the 1.6 markup.
+  { id: 'ash', kind: 'gun', label: 'Ash .38 pocket pistol', wants: [{ item: 'glowdust', qty: 1 }], cash: 120, ammo: 21 },
+  { id: 'sawed', kind: 'gun', label: 'Back-alley sawed-off', wants: [{ item: 'redstatic', qty: 1 }], cash: 160, ammo: 8 },
+  { id: 'stutter', kind: 'gun', label: 'Stutter machine pistol', wants: [{ item: 'glowdust', qty: 2 }], cash: 240, ammo: 66 },
+  { id: 'longnine', kind: 'gun', label: 'Long Nine carbine', wants: [{ item: 'lowg', qty: 2 }], cash: 400, ammo: 24 },
+  { id: 'crater', kind: 'gun', label: 'Crater gun', wants: [{ item: 'voidhoney', qty: 1 }, { item: 'lowg', qty: 1 }], cash: 700, ammo: 6 },
   { id: 'ammo:light:std', kind: 'ammo', label: 'Light rounds ×40', wants: [{ item: 'glowdust', qty: 1 }], cash: 60, n: 40 },
   { id: 'ammo:light:hollow', kind: 'ammo', label: 'Hollow-point light ×30', wants: [{ item: 'redstatic', qty: 1 }], cash: 110, n: 30 },
   { id: 'ammo:light:ap', kind: 'ammo', label: 'AP light ×30', wants: [{ item: 'lowg', qty: 1 }], cash: 130, n: 30 },

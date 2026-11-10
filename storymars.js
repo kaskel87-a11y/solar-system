@@ -101,23 +101,23 @@ const STEPS = {
     { type: 'build', gates: 6, prop: 'ramp', text: 'Build a track: 6+ gates and a ramp (\u2630 \u2192 Race \u2192 Build)' },
     { type: 'runtrack', text: 'Run your own track once' }] },
   'ines-01-door': { steps: [
-    { type: 'goto', at: DOOR, r: 5, text: 'Get to the Velvet Airlock' },
-    { type: 'defeat', at: [-30, -22], wave: ['goon', 'goon', 'goon'], text: 'Help Brick clear the door' },
-    { type: 'enter', building: 'Velvet Airlock', text: 'Go inside to the VIP room' }] },
+    { type: 'goto', at: DOOR, r: 5, text: 'Follow the beam to the Velvet Airlock door' },
+    { type: 'defeat', at: [-30, -22], wave: ['goon', 'goon', 'goon'], text: 'Fight the thugs at the door. Beam marks them' },
+    { type: 'enter', building: 'Velvet Airlock', text: 'Go in the Velvet Airlock, to the VIP room' }] },
   'ines-02-pour': { steps: [
-    { type: 'enter', building: 'Velvet Airlock', text: 'Talk to the bartender' },
-    { type: 'tail', path: [[-28, -22], [-8, -48], [-58, -54], [-64, -16], [-46, -9]], speed: 5, text: 'Tail the supply hauler. Not too close.' },
-    { type: 'goto', at: [-50, -24], r: 4, vehicle: 'stolen', text: 'Steal the tainted hauler' },
-    { type: 'goto', a: 120, d: 300, r: 12, vehicle: 'stolen', text: 'Dump it in the canyon' }] },
+    { type: 'enter', building: 'Velvet Airlock', text: 'Go in the Velvet and talk to the bartender' },
+    { type: 'tail', at: [-28, -22], path: [[-28, -22], [-8, -48], [-58, -54], [-64, -16], [-46, -9]], speed: 5, text: 'Follow the supply hauler. The beam is on it. Stay back' },
+    { type: 'goto', at: [-50, -24], r: 4, vehicle: 'stolen', text: 'Steal a ride, then follow the beam to the hauler' },
+    { type: 'goto', a: 120, d: 300, r: 12, vehicle: 'stolen', text: 'Drive the stolen ride to the canyon beam' }] },
   'ines-03-guest': { steps: [
-    { type: 'enter', building: 'Velvet Airlock', text: 'Collect the accountant in VIP' },
-    { type: 'escort2', at: [-38, 10], r: 7, wave: ['goon', 'goon', 'sdrone'], text: 'Walk him to the pad' },
-    { type: 'take', text: 'Fly him out (the shuttle\u2019s on the pad)' }] },
+    { type: 'enter', building: 'Velvet Airlock', text: 'Go in the Velvet. Pick up the accountant in VIP' },
+    { type: 'escort2', at: [-38, 10], r: 7, wave: ['goon', 'goon', 'sdrone'], text: 'Walk the accountant to the beam at the pad' },
+    { type: 'take', at: [-38, 10], text: 'Get in a street ride at the pad. Your rover does not count' }] },
   'ines-04-lastcall': { note: 'Combat can\u2019t happen indoors in v7.4, so you hold the club door from outside.', steps: [
-    { type: 'enter', building: 'Velvet Airlock', text: 'Get inside before the lockdown' },
-    { type: 'hold', at: [-30, -22], r: 14, seconds: 90, wave: ['goon', 'goon', 'goon', 'enforcer'], text: 'Step out and defend the club door' },
-    { type: 'defeat', at: [-30, -20], wave: ['enforcer'], text: 'Take down Mr. Sable\u2019s enforcer' },
-    { type: 'choice', id: 'nephew', fromPack: true, text: 'The enforcer begs. Decide.' }] },
+    { type: 'enter', building: 'Velvet Airlock', text: 'Go in the Velvet before the lockdown' },
+    { type: 'hold', at: [-30, -22], r: 14, seconds: 90, wave: ['goon', 'goon', 'goon', 'enforcer'], text: 'Step outside and hold the door. Stay in the beam' },
+    { type: 'defeat', at: [-30, -20], wave: ['enforcer'], text: 'Fight Sable\u2019s enforcer. The beam is on him' },
+    { type: 'choice', at: DOOR, id: 'nephew', fromPack: true, text: 'The enforcer begs. Choose on the card' }] },
   'rusk-02-sweep': { steps: [
     { type: 'goto', at: [-262, -64], r: 14, text: 'Ride out to the Saltblood stash in Red Tape Flats' },
     { type: 'defeat', at: [-262, -64], wave: ['goon', 'goon', 'goon', 'goon', 'enforcer'], text: 'Win the firefight' },
@@ -276,7 +276,10 @@ function tick(app, dt) {
   if (!q || !def?.storymars) { if (S.key) { cleanup(app); S.key = null; } return; }
   const s = def.steps[q.step]; if (!s) return;
   const key = `${q.id}:${q.step}`;
-  if (key !== S.key) { S.key = key; startStep(app, g, q, s); }
+  if (key !== S.key) {
+    const prev = S.key; S.key = key; startStep(app, g, q, s);
+    if (def.contact === 'Ines') { const line = s.text || ''; app.toast?.(prev ? `Step done. Next: ${line}` : line, prev ? 3600 : 3200); }
+  }
   if (s.only && !chose(g, q.id, s.only)) return nextStep(g);
   const info = app.surface.info, world = app.surface.world, tg = g.debug.target(), inside = !!world.inside;
   const near = tg ? Math.hypot(tg.x - info.x, tg.z - info.z) : 1e9, wanted = world.wanted || 0;
@@ -304,7 +307,7 @@ function tick(app, dt) {
       if (d < 0.6) { T.i++; if (T.i >= T.pts.length) { app.toast?.('📦 The hauler parks at the depot. Meridian crates. Interesting.', 3000); cleanup(app); return nextStep(g); } }
       const pd = Math.hypot(gp.x - info.x, gp.z - info.z);
       S.seen = pd < 7 ? S.seen + dt : Math.max(0, S.seen - dt); S.lost = pd > 55 ? S.lost + dt : 0;
-      setText(s, pd < 7 ? '(too close!)' : pd > 45 ? '(losing him)' : `(${Math.round(pd)} m)`);
+      setText(s, pd < 7 ? '(too close, fall back)' : pd > 45 ? '(losing him, the beam is on the hauler)' : `(${Math.round(pd)} m)`);
       if (S.seen > 3) return failJob(app, g, 'The driver made you. Trail\u2019s cold.');
       if (S.lost > 6) return failJob(app, g, 'You lost the hauler. Trail\u2019s cold.');
       return;
@@ -319,7 +322,7 @@ function tick(app, dt) {
       if (!E.spawned && g.info.aliensOn) { S.t += dt; if (S.t > 3) { E.spawned = true; s.wave.forEach((t, k) => spawnNear(g, t, 22 + k * 3, k * 2.1)); app.toast?.('🔫 Saltblood spotted him. Keep him moving.', 2400); } }
       const threats = hostiles(g).filter(a => Math.hypot(a.x - E.x, a.z - E.z) < 30).length;
       E.hp -= threats * 2.2 * dt; if (E.hp <= 0) return failJob(app, g, 'The accountant took one in the head. So did the lead.');
-      setText(s, `(accountant ${Math.max(0, Math.round(E.hp))}%)`);
+      setText(s, `(he is at ${Math.max(0, Math.round(E.hp))}%, walk to the beam)`);
       if (near < (tg.r || 7) && Math.hypot(tg.x - E.x, tg.z - E.z) < (tg.r || 7) + 3) { app.toast?.('🧳 He\u2019s at the pad, sweating through his suit.', 2400); nextStep(g); }
       return;
     }

@@ -307,11 +307,16 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const group = new THREE.Group();
     group.add(new THREE.Mesh(geo, terrainMat));
 
-    // Rocks (instanced, shared geometry)
+    // Rocks (instanced, shared geometry).
+    // v7.5.77: Mars driving wastes were too rocky. Drop every other candidate (the odd indexes). Their positions
+    // are hashed from the index, so the ones that stay are still scattered, not a cleared patch. Districts, the
+    // Beltway, snow and the showroom still wipe rocks through rockClear. Meteorites, the Perseverance rover and
+    // other landmark meshes are not this scatter.
     const nR = cfg.rocksPerChunk;
     const rocks = new THREE.InstancedMesh(rockGeo, rockMat, nR);
     let placed = 0; const blk = [];
     for (let r = 0; r < nR; r++) {
+      if (name === 'Mars' && (r & 1)) continue;
       const hx = hash2(ix * 131 + r, iz * 71 - r, cfg.seed + 5), hz = hash2(ix * 17 - r, iz * 191 + r, cfg.seed + 6), hs = hash2(ix + r * 7, iz - r * 3, cfg.seed + 7);
       const x = ox + hx * CHUNK, z = oz + hz * CHUNK; const y = height(x, z);
       if (cfg.water !== undefined && y < cfg.water + 0.3) continue;

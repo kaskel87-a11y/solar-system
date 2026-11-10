@@ -52,6 +52,30 @@ function sealed(game, key, id) {
   return { id, name: 'Sealed crate', desc: '', price: 0, owned: false, equipped: false, ok: false, why: n ? `Buy out the shop (${n} left)` : 'Restocking', afford: false, kind: 'locked', venues: [key] };
 }
 function shopItem(game, id) { const r = resolve(id); if (!r) return null; return r.it ? state(game, r.key, r.it, r.slot ? id : null) : r.slot ? sealed(game, r.key, id) : null; }
+// v7.5.77 street iron: si:<shop>:<id>, on the full list from day one. Not a restock tier.
+function streetResolve(id) {
+  const m = /^si:([a-z_]+):(.+)$/.exec(id || ''); if (!m) return null;
+  const it = TC.streetFor(m[1]).find(x => x.id === m[2]); if (!it) return null;
+  return { key: m[1], it };
+}
+function streetRow(game, key, it) {
+  const P = game.progress, own = owns(game, it), a = A();
+  const equipped = own && P.equip.weapon === cores()[it.a];
+  return { id: `si:${key}:${it.id}`, name: it.name, desc: equipped ? 'Equipped' : (it.desc || ''), price: it.price, owned: own, equipped, ok: !!a && !own, why: a ? '' : 'Back room\u2019s locked', afford: P.credits >= it.price, kind: 'weapon', group: 'Weapons', venues: [key] };
+}
+function buyStreet(game, id) {
+  const r = streetResolve(id); if (!r) return { ok: false, msg: 'Not for sale.' };
+  const it = r.it, P = game.progress, a = A(), own = owns(game, it);
+  if (!a) return { ok: false, msg: 'Back room\u2019s locked.' };
+  if (own) { a.equip(it.a); return { ok: true, msg: `${it.name} in hand.`, equip: true }; }
+  if (P.credits < it.price) return { ok: false, msg: `Short ${it.price - P.credits} credits.` };
+  P.credits -= it.price;
+  const got = a.give(it.a, it.ammo || 0);
+  if (!got?.ok) { P.credits += it.price; return got || { ok: false, msg: 'Not for sale.' }; }
+  a.equip(it.a); game.save();
+  try { game.onEvent?.('bought', { id, name: it.name }); } catch (e) { /* */ }
+  return { ok: true, msg: `${it.name}: yours, and it\u2019s in your hands.` };
+}
 function buy(game, id) {
   const r = resolve(id); if (!r) return { ok: false, msg: 'Not for sale.' };
   const T = TC.TIER_SHOPS[r.key];
@@ -91,8 +115,12 @@ function check(game = G0, loud = false) {
 function patch(game) {
   if (!game || game.__shopTiers) return; game.__shopTiers = true; G0 = game;
   orig = { shopList: game.shopList, shopItem: game.shopItem, buy: game.buy };
-  game.shopItem = id => (typeof id === 'string' && id.startsWith('st:')) ? shopItem(game, id) : orig.shopItem.call(game, id);
+  game.shopItem = id => {
+    if (typeof id === 'string' && id.startsWith('si:')) { const s = streetResolve(id); return s ? streetRow(game, s.key, s.it) : null; }
+    return (typeof id === 'string' && id.startsWith('st:')) ? shopItem(game, id) : orig.shopItem.call(game, id);
+  };
   game.buy = id => {
+    if (typeof id === 'string' && id.startsWith('si:')) return buyStreet(game, id);
     if (typeof id === 'string' && id.startsWith('st:')) return buy(game, id);
     const r = orig.buy.call(game, id); if (r?.ok) { try { check(game, true); } catch (e) { console.warn('shoptiers', e); } } return r;
   };
@@ -100,7 +128,8 @@ function patch(game) {
     const r = orig.shopList.call(game, venue, all), key = typeof venue === 'string' ? venue.replace(/^ms:/, '') : null;
     if (!key || !TC.TIER_SHOPS[key]) return r;
     const t = tierOf(key), extra = TC.unlockedItems(key, t).sort((a, b) => b.tier - a.tier).map(it => state(game, key, it)); // newest tier on top
-    return { ...r, items: [...extra, ...(r.items || [])], tier: t, tierMax: TC.maxTier(key), tierLabel: TC.tierLabel(key, t), title: TC.TIER_SHOPS[key].name };
+    const street = TC.streetFor(key).map(it => streetRow(game, key, it));
+    return { ...r, items: [...extra, ...street, ...(r.items || [])], tier: t, tierMax: TC.maxTier(key), tierLabel: TC.tierLabel(key, t), title: TC.TIER_SHOPS[key].name };
   };
   setTimeout(() => { try { check(game); } catch (e) { console.warn('shoptiers', e); } }, 4000);
 }

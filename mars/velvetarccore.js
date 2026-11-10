@@ -14,7 +14,7 @@ export const CHASE = { close: 9, hold: 3 };
 
 export function fresh() {
   return { v: 1, owned: false, ownedAt: 0, ending: null, till: 0, frac: 0, days: 0, lastHour: null, collected: 0, takeTotal: 0,
-    safe: {}, ledgerGone: false, paidSable: false, pitWins: 0, pitLosses: 0, hinted: false };
+    safe: {}, ledgerGone: false, paidSable: false, pitWins: 0, pitLosses: 0, hinted: false, briefed: false };
 }
 export function load(raw) {
   let s = null; try { s = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { s = null; }

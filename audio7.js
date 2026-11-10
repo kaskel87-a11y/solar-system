@@ -122,6 +122,12 @@ const _free = (...n) => () => { for (const x of n) { try { x.disconnect(); } cat
   const fx = {
     squelch(big) { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, big ? 0.9 : 0.4, big ? 0.5 : 0.3, 500, 1.5); osc(a, a.destination, 'sawtooth', big ? 90 : 160, t, big ? 0.7 : 0.3, 0.14, 35); if (big) osc(a, a.destination, 'square', 60, t + 0.1, 1.0, 0.1, 25); },
     shotgun() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.35, 0.55, 900, 0.5, 'lowpass'); osc(a, a.destination, 'sine', 110, t, 0.3, 0.35, 40); },
+    // v7.5.77 street iron: each gun a different crack, all one-shots so a fast trigger stays cheap on a phone
+    pistol() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'square', 920, t, 0.04, 0.05, 280); osc(a, a.destination, 'sine', 180, t, 0.07, 0.12, 70); },
+    sawed() { const a = getCtx(); if (!a) return; const t = a.currentTime; hiss(a, a.destination, t, 0.28, 0.7, 500, 0.35, 'lowpass'); osc(a, a.destination, 'sine', 70, t, 0.22, 0.5, 32); },
+    stutter() { const a = getCtx(); if (!a) return; osc(a, a.destination, 'square', 1400, a.currentTime, 0.025, 0.035, 500); },
+    carbine() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'square', 640, t, 0.06, 0.07, 220); osc(a, a.destination, 'sine', 140, t, 0.12, 0.16, 55); },
+    crater() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sine', 70, t, 0.45, 0.55, 28); hiss(a, a.destination, t, 0.4, 0.4, 350, 0.4, 'lowpass'); osc(a, a.destination, 'square', 90, t, 0.12, 0.1, 40); },
     screech() { const a = getCtx(); if (!a) return; const t = a.currentTime; osc(a, a.destination, 'sawtooth', 1400, t, 0.35, 0.05, 600); hiss(a, a.destination, t, 0.3, 0.12, 3500, 4); },
     slash() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.18, 0.3, 2500, 1.2); },
     spit() { const a = getCtx(); if (!a) return; hiss(a, a.destination, a.currentTime, 0.2, 0.15, 1200, 2); },

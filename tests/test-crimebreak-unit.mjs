@@ -162,8 +162,12 @@ ok(/\.spend\(100\)/.test(ui) && /\.reward\(10,\s*0\)/.test(ui), 'panel charges w
 ok(!/progress\.xp\s*[-+]?=/.test(ui), 'panel does not write xp itself');
 ok(ui.includes('100 cr → 10 ⭐'), 'button label shows the rate');
 ok(/panel\.id = 'cbGulch'/.test(ui) && !/panel\.id = 'cbPanel'/.test(ui), 'crime break does not reuse contraband #cbPanel');
+ok(/class="sheet"/.test(ui) && /class="foot"/.test(ui) && /S\.ui\.foot\.innerHTML/.test(ui), 'exchange, crew and close sit in a footer under a scrolling sheet');
+ok(/max-height:450px/.test(ui) && /margin-bottom:calc\(100px/.test(ui), 'short landscape (iPhone ~393 tall) gives the sheet the leftover height and keeps the footer on screen');
 ok(/panelTap\(/.test(ui) && /CB\.buy\(id, qty\)/.test(ui) && /shop\.buy\(id\)/.test(ui), 'panelTap, contraband.buy, starshop.buy');
 ok(/C\.marketGate\(atGulch\(\)\)/.test(ui) && /shopGuard\.run\('exchange'/.test(ui), 'gulch gate and exchange guard');
+const club = readFileSync(new URL('../interiors.js', import.meta.url), 'utf8');
+ok(/id: 'velvet-exchange'/.test(club) && /crimebreak\?\.exchange/.test(club) && !/velvet-exchange[\s\S]{0,400}spend\(/.test(club), 'Velvet till calls crimebreak.exchange and does not spend on its own');
 ok(!/\.sell\(/.test(ui) && !/stars\?\.refund|starshop\?\.debug\?\.reset/.test(ui), 'no selling and no star-wallet reset');
 
 console.log(fail ? `${fail} FAILED` : 'all ok');

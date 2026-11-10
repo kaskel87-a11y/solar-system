@@ -7,6 +7,9 @@ ok('tier 1 = nothing new', TC.unlockedItems('guns', 1).length === 0);
 ok('tier 2 items', TC.tierItems('guns', 2).length >= 3 && TC.unlockedItems('guns', 2).length === TC.tierItems('guns', 2).length);
 ok('prices rise', TC.tierItems('guns', 5).reduce((a, b) => Math.max(a, b.price), 0) > TC.tierItems('guns', 2).reduce((a, b) => Math.max(a, b.price), 0));
 ok('helios marks up', TC.priceOf('ms_guns_hel', { price: 1000 }) > TC.priceOf('ms_guns_rtf', { price: 1000 }));
+ok('street iron on gun counters only', TC.streetFor('guns').length === 5 && TC.streetFor('ms_guns_rtf').length === 5 && TC.streetFor('ms_clothes_oly').length === 0 && TC.streetFor('depot').length === 0);
+ok('street ids', ['ash', 'sawed', 'stutter', 'longnine', 'crater'].every(id => TC.streetFor('guns').some(it => it.a === id && it.price > 0)));
+ok('helios marks street iron up', TC.streetFor('ms_guns_hel')[0].price >= TC.streetFor('ms_guns_rtf')[0].price);
 const ids = new Set(); let dup = false; for (const k of ['guns', 'ms_clothes_oly', 'depot']) for (let t = 2; t <= TC.maxTier(k); t++) for (const it of TC.tierItems(k, t)) { if (ids.has(k + it.id)) dup = true; ids.add(k + it.id); }
 ok('unique ids', !dup);
 ok('needs base bought out', TC.nextTier('guns', 1, false, () => true) === 1);
