@@ -7,8 +7,8 @@
 // the performers. v7.4/v7.5.4 adds adults-only (18+ gate) paid dances: costumes stay on, hands off, the upstairs
 // fades to black, and Danny's private show (privateshow.js) is a non-explicit teasing routine in a booth.
 import * as THREE from 'three';
-import { dress, DANNY_NAME } from './clubdancers.js';
-import { addBooth, SHOW_PRICE } from './privateshow.js'; // v7.5.4 Danny's upstairs VIP booth
+import { dress } from './clubdancers.js';
+import { addDannyRoom } from './dannyroom.js'; // v7.5.79 Danny's room is off the back door, not in Ines's VIP room
 import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from the other stage dancers (same booth)
 import { addSlotBank } from './slotfloor.js'; // v7.5.36 slot bank + Olympus Mega on the Velvet gaming floor (was addSlotMachines in the old south-west corner)
 import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
@@ -440,20 +440,10 @@ export const INTERIORS = {
       box(X1 - 2.0, 0.5, -4.3, 0.08, 0.12, 0.08, mat(0xffd040, { basic: true }));
       api.person({ top: 0x2a0a18, bottom: 0x2a0a18, shoes: 0x0a0a0a, hair: 0xe8e8f0, hairStyle: 'bun', skin: 0xd8a888, accent: 0xffd040 }, X1 - 0.75, -4.6, Math.PI / 2, (p, t) => { sitPose(p); p.arms[1].rotation.x = 1.1 + Math.sin(t * 0.7) * 0.15; p.head.rotation.y = Math.sin(t * 0.3) * 0.3; });
       api.person({ top: 0x22222a, bottom: 0x22222a, hair: 0x3a2a1a, hairStyle: 'short', skin: 0xb07a54, shades: true, bulk: 1.2 }, X1 - 0.5, Z0 + 0.5, Math.PI * 0.75, (p, t) => guard(p, t));
-      // v7.4 private dance: a little round stage with its own pole and a club chair facing it. Paid dances are one song, costumed, hands off.
-      const PX = X0 + 1.6, PZ = -6.6;
-      box(PX, 0.12, PZ, 1.5, 0.24, 1.5, black); box(PX, 0.26, PZ, 1.3, 0.04, 1.3, mat(0xffd040, { basic: true })); box(PX, (0.24 + api.h) / 2, PZ, 0.06, api.h - 0.24, 0.06, chrome); api.col(PX, PZ, 0.8, 0.8);
-      box(PX, 0.25, PZ + 2.1, 0.8, 0.5, 0.8, velvet); box(PX, 0.75, PZ + 2.45, 0.8, 0.6, 0.15, velvet);
-      let privT = 0; const prvLook = { top: 0x1a1a2a, bottom: 0x1a1a2a, shoes: 0xc0c4cc, hair: 0x2a0a3a, hairStyle: 'long', skin: 0xc8946c, accent: 0xff3cc8, glow: 0xa040ff };
-      const prv = api.person(prvLook, PX, PZ, 0, (p, t, k, y, dt = 0.016) => { if (privT > 0) { privT -= dt; poleDance(p, t, 3, PX, PZ, 0.24); } else { idle(p, t, 2); p.group.position.set(PX + 0.45, 0.24, PZ + 0.3); p.group.rotation.y = 0.3; p.arms[0].rotation.z = 2.4; } });
-      dress(api, prv, { dancer: 'danny', outfit: 'white', k: 3 }); // mini bikini only; the pink crop and cardigan are gone
-      api.sign(DANNY_NAME.toUpperCase(), 0xff7eb8, X0 + 0.12, 3.0, PZ, Math.PI / 2, 2.2, { w: 512, h: 96, font: 'bold 60px system-ui, sans-serif' });
-      api.privateDance = (sec = 9) => { privT = sec; return sec; };
-      api.spot({ id: 'private', x: PX, z: PZ + 1.5, r: 0.9, label: '💃 Dance · 50 cr', act: 'private', who: DANNY_NAME });
-      // v7.5.4 private show: talk to Danny for her upstairs booth (privateshow.js; adults only, costumed, hands off)
-      const booth = addBooth(api, { x: PX, z: PZ, sit: sitPose });
-      try { addDancerSpots?.(api, { booth, dancers: [{ id: 'rhea', x: poles[0][0], z: -4.0 }, { id: 'kiara', x: poles[2][0], z: -4.0 }] }); } catch (e) { console.warn('clubprivate spots', e); } // v7.6 (clubprivate.js)
-      api.spot({ id: 'show', x: PX - 1.05, z: PZ + 1.3, r: 0.6, label: `💋 ${DANNY_NAME.split(' ')[0]} · Private dance ${SHOW_PRICE}`, act: 'show', who: DANNY_NAME });
+      // v7.5.79 Danny's booth, 50 cr dance and private show are in her own room (dannyroom.js), reached from the back door.
+      let dannyBooth = null;
+      try { dannyBooth = addDannyRoom(api, { sit: sitPose, idle, poleDance }); } catch (e) { console.warn('danny room', e); }
+      try { addDancerSpots?.(api, { booth: dannyBooth, dancers: [{ id: 'rhea', x: poles[0][0], z: -4.0 }, { id: 'kiara', x: poles[2][0], z: -4.0 }] }); } catch (e) { console.warn('clubprivate spots', e); } // v7.6 (clubprivate.js)
       // v7.4 upstairs: a door in the back wall and its host. Adults only; the game fades to black and never shows or describes anything.
       const UX = X1 - 1.6;
       box(UX, 1.3, Z0 + 0.08, 1.4, 2.6, 0.08, mat(0x3a0a20, { roughness: 0.6 })); box(UX, 2.66, Z0 + 0.1, 1.5, 0.08, 0.08, mat(0xffd040, { basic: true }));

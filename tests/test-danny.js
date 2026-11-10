@@ -43,8 +43,8 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000)); await sleep(500);
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); });
     // the stage dancers still load and dance (regression for the 50 cr dance next to her)
-    await G(() => window.__app.surface.debugInside(7.6, -4.4, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
-    await G(() => window.__app.surface.debugInside(6.55, -5.3, 0));
+    await G(() => window.__app.surface.debugInside(-29.4, -5.2, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
+    await G(() => window.__app.surface.debugInside(-28.4, -6.35, 0));
     ok('showLabel', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent), 4000), undefined);
     R.showLabel = await G(() => document.getElementById('driveBtn').textContent);
     await act(); ok('adultGate', await wait(() => getComputedStyle(document.getElementById('adultGate')).display === 'flex', 3000));

@@ -68,7 +68,7 @@ const LINES = {
   broke: [DF + ': Tips are twenty, sugar. Your wallet says no.'],
   number: DF + ' leans in, close but not touching: “Fine. You earned it.”',
   touch: [DF + ': Ah-ah.', 'TINY: That’s the one rule, genius.'],
-  out: 'Tiny carries you down the back stairs and drops you on the street. Your pride stays upstairs.',
+  out: 'Tiny walks you out of the room and drops you on the street. Your pride stays with Danny.',
   lap: [DF + ': Hands on the armrests. I’ll know if they move.', DF + ': Close enough to feel the bass. Not close enough to touch.', DF + ': Look all you want. That’s the whole game.', DF + ': Don’t move. I’m working.', DF + ': You’re holding your breath. Cute.'],
   end: ['The song fades. ' + DF + ' blows you a kiss from the doorway. “Same booth next time, spacer.”', 'The lights come up. ' + DF + ' stays in the bikini and winks. “Don’t fall in love. It’s bad for business.”'],
   slap: DF + ': Hands. I said hands.',
@@ -95,7 +95,7 @@ body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibi
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, upstairs. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
+  offerEl.innerHTML = '<div class="w"><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, my room. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
   ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="warn" id="pshowStrike">Hands off \u00b7 3 strikes</div><div class="r"><button class="pshowBtn" id="pshowEncore" type="button">Encore included, 1 left</button></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">Y encore \u00b7 T tip \u00b7 E touch \u00b7 Esc leave</div>';
   document.body.append(offerEl, ui);

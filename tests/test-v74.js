@@ -101,7 +101,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.__app.surface.debugInside(0, 1.5, 0)); await sleep(1200); await page.screenshot({ path: `${out}v74-${tag}-club-stage.png` });
     ok('gateRemembered', await G(() => localStorage.getItem('ssx.adult') === '1'));
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); });
-    await G(() => window.__app.surface.debugInside(7.6, -4.4, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
+    await G(() => window.__app.surface.debugInside(-29.4, -5.2, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
     const c1 = await G(() => window.__app.game.progress.credits);
     await act(); ok('privateDance', await wait(c => window.__app.game.progress.credits === c - 50 && document.body.classList.contains('cinebars'), 4000, c1));
     await sleep(1500); await page.screenshot({ path: `${out}v74-${tag}-club-vip.png` });
