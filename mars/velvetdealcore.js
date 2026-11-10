@@ -10,14 +10,15 @@ export const DISTRICT = 'red-tape-flats';      // the district barter.json files
 export const AT = [-30, -36];                  // AJ-relative, same as barter.json
 
 // ---------- 1) Danny takes product ----------
-// Credit prices live in privateshow.js (SHOW_PRICE 150, LAP_PRICE 250). Product prices, priced near Flats street value
-// (glow-dust ~71 cr, red static ~128, low-g ~45, void honey ~270 there) so it's a fair swap, not free money.
+// Credit prices live in privateshow.js (SHOW_PRICE = LAP_PRICE = 500). Baskets track Flats street value
+// (glow-dust ~71, red static ~128, low-g ~45, void honey ~270): 7×71=497, 4×128=512, 11×45=495, 2×270=540.
+// Same basket for both modes. Split is 3 glow-dust (~213) + 285 cr ≈ 498.
 export const PRODUCT_ORDER = ['glowdust', 'redstatic', 'lowg', 'voidhoney'];
 export const DANNY_PRODUCT = {
-  show: { glowdust: 2, redstatic: 1, lowg: 3, voidhoney: 1 },
-  lap: { glowdust: 3, redstatic: 2, lowg: 5, voidhoney: 1 },
+  show: { glowdust: 7, redstatic: 4, lowg: 11, voidhoney: 2 },
+  lap: { glowdust: 7, redstatic: 4, lowg: 11, voidhoney: 2 },
 };
-export const SPLIT = { show: { item: 'glowdust', qty: 1, cr: 75 }, lap: { item: 'glowdust', qty: 2, cr: 100 } }; // product + cash
+export const SPLIT = { show: { item: 'glowdust', qty: 3, cr: 285 }, lap: { item: 'glowdust', qty: 3, cr: 285 } }; // product + cash
 export const ICON = { glowdust: '🔵', redstatic: '⚡', lowg: '🎈', voidhoney: '🍯' };
 export const NAME = { glowdust: 'Glow-dust', redstatic: 'Red Static', lowg: 'Low-G', voidhoney: 'Void Honey' };
 
@@ -25,10 +26,11 @@ export const NAME = { glowdust: 'Glow-dust', redstatic: 'Red Static', lowg: 'Low
 // -> [{ kind:'product'|'split'|'comp', item?, qty?, cr, label }] (only the ones you can pay right now; best first)
 export function payOptions(mode, stash = {}, credits = 0, comps = 0) {
   const m = DANNY_PRODUCT[mode] ? mode : 'show', out = [], have = id => Math.max(0, Math.floor(+stash?.[id] || 0));
-  if (comps > 0) out.push({ kind: 'comp', cr: 0, label: (m === 'lap' ? 'Lap dance' : 'Private show') + ' · on Ines' });
+  const title = m === 'lap' ? 'Lap dance' : 'Private dance';
+  if (comps > 0) out.push({ kind: 'comp', cr: 0, label: title + ' · on Ines' });
   const p = PRODUCT_ORDER.find(id => have(id) >= DANNY_PRODUCT[m][id]);
-  if (p) out.push({ kind: 'product', item: p, qty: DANNY_PRODUCT[m][p], cr: 0, label: `${m === 'lap' ? 'Lap dance' : 'Private show'} · ${DANNY_PRODUCT[m][p]} ${ICON[p]} ${NAME[p]}` });
-  const s = SPLIT[m]; if (have(s.item) >= s.qty && credits >= s.cr && p !== s.item) out.push({ kind: 'split', item: s.item, qty: s.qty, cr: s.cr, label: `${m === 'lap' ? 'Lap dance' : 'Private show'} · ${s.qty} ${ICON[s.item]} + ${s.cr} cr` });
+  if (p) out.push({ kind: 'product', item: p, qty: DANNY_PRODUCT[m][p], cr: 0, label: `${title} · ${DANNY_PRODUCT[m][p]} ${ICON[p]} ${NAME[p]}` });
+  const s = SPLIT[m]; if (have(s.item) >= s.qty && credits >= s.cr && p !== s.item) out.push({ kind: 'split', item: s.item, qty: s.qty, cr: s.cr, label: `${title} · ${s.qty} ${ICON[s.item]} + ${s.cr} cr` });
   return out;
 }
 // one line for the offer card when you hold nothing she takes

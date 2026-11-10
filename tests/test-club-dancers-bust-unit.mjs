@@ -7,8 +7,9 @@ const src = readFileSync(new URL('../clubdancers.js', import.meta.url), 'utf8');
 let fails = 0;
 const ok = (n, c) => { if (!c) { fails++; console.log('FAIL', n); } else console.log('ok  ', n); };
 
-ok('BUST_SCALE is 1.7', /export const BUST_SCALE = 1\.7/.test(src));
-ok('enlarge runs once on GLB load', /enlargeDancerBust\(gltf\)/.test(src));
+ok('BUST_SCALE is 1.7 and Danny is larger', /export const BUST_SCALE = 1\.7/.test(src) && /export const DANNY_BUST_SCALE = 2\.45/.test(src));
+ok('danny wears only mini bikinis', /export const DANNY_BIKINIS = \['aqua', 'white', 'black'\]/.test(src) && !/crop: \[/.test(src) && !/coverup'\]/.test(src));
+ok('enlarge runs once on GLB load', /enlargeDancerBust\(gltf,/.test(src));
 ok('skin + tops only (coverage)', /TOP_GIDS = new Set\(\[1, 3, 6, 10\]\)/.test(src));
 ok('idempotent via userData.ssxBustScale', /userData\.ssxBustScale/.test(src));
 ok('exports measure + inflate for tests', /export function measureBustDepth/.test(src) && /export function inflateBustGeometry/.test(src));
@@ -20,7 +21,7 @@ writeFileSync('/tmp/bust-unit/node_modules/three/package.json', JSON.stringify({
 }));
 for (const p of ['build', 'addons']) {
   const t = `/tmp/bust-unit/node_modules/three/${p}`;
-  if (!existsSync(t)) symlinkSync(`/workspace/solar-system-steve-dancers/vendor/three/${p}`, t);
+  if (!existsSync(t)) symlinkSync(new URL(`../vendor/three/${p}`, import.meta.url).pathname, t);
 }
 
 const start = src.indexOf('export const BUST_SCALE');

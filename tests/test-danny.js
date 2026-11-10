@@ -37,7 +37,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000)); await sleep(800);
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
-    await G(() => { const P = window.__app.game.progress; P.credits = 1000; window.__app.game.save(); window.__app.surface.world.setWanted(0); });
+    await G(() => { const P = window.__app.game.progress; P.credits = 3000; window.__app.game.save(); window.__app.surface.world.setWanted(0); });
     const cd = await G(() => window.__app.surface.world.doorList().find(d => d.kind === 'club'));
     await G(([x, z]) => window.__app.surface.debugPlace(x, z + 0.4, Math.PI), [cd.x, cd.z]); await sleep(300);
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000)); await sleep(500);
@@ -45,14 +45,14 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     // the stage dancers still load and dance (regression for the 50 cr dance next to her)
     await G(() => window.__app.surface.debugInside(7.6, -4.4, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
     await G(() => window.__app.surface.debugInside(6.55, -5.3, 0));
-    ok('showLabel', await wait(() => /Private show 150/.test(document.getElementById('driveBtn').textContent), 4000), undefined);
+    ok('showLabel', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent), 4000), undefined);
     R.showLabel = await G(() => document.getElementById('driveBtn').textContent);
     await act(); ok('adultGate', await wait(() => getComputedStyle(document.getElementById('adultGate')).display === 'flex', 3000));
     await tapSel('#adultYes'); ok('offerPanel', await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000));
     const ob = await center('#pshowYes'); ok('offerBtn44', `${Math.round(ob.w)}x${Math.round(ob.h)} top=${ob.top}`, ob.h >= 44 && ob.top === 'pshowYes');
     ok('offerBW', await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); return c.backgroundColor + ' / ' + c.color; }), await G(() => { const c = getComputedStyle(document.getElementById('pshowNo')); const el = document.getElementById('pshowNo'); return (c.backgroundColor === 'rgb(0, 0, 0)' && c.color === 'rgb(255, 255, 255)') || (el.matches(':active') && c.backgroundColor === 'rgb(255, 255, 255)'); })); // the press state inverts (a tap on the 18+ gate can leave :active on the button under the finger)
     const c0 = await G(() => window.__app.game.progress.credits);
-    await tapSel('#pshowYes'); ok('paid150', await wait(c => window.__app.game.progress.credits === c - 150, 4000, c0));
+    await tapSel('#pshowYes'); ok('paid500', await wait(c => window.__app.game.progress.credits === c - 500, 4000, c0));
     ok('showActive', await wait(() => window.__pshow.active && window.__pshow.state.ready && document.body.classList.contains('pshow'), 20000));
     await sleep(1500);
     ok('camInBooth', await G(() => window.__pshow.state.camInBooth));
@@ -78,7 +78,11 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await G(() => window.__pshow.debugView(null)); await sleep(300);
     const pop = await G(() => ({ x: +window.__pshow.state.popX.toFixed(2), n: +window.__pshow.state.popN.toFixed(2) }));
     ok('noPops', `crossfade ${pop.x} rad/s vs steady ${pop.n}`, pop.x > 0 && pop.x <= Math.max(pop.n * 1.25, 9));
-    // hands off: touching gets you thrown out
+    // hands: slap, then 100 cr, then Tiny on the third touch
+    if (desk) await page.keyboard.press('KeyE'); else await tapSel('#pshowTouch');
+    ok('slapped', await wait(() => /Hands/.test(document.getElementById('pshowCap').textContent) && window.__pshow.active, 3000));
+    if (desk) await page.keyboard.press('KeyE'); else await tapSel('#pshowTouch');
+    ok('touchFee', await wait(() => /100 cr/.test(document.getElementById('pshowCap').textContent), 3000));
     if (desk) await page.keyboard.press('KeyE'); else await tapSel('#pshowTouch');
     ok('bouncer', await wait(() => /TINY/.test(document.getElementById('pshowCap').textContent), 3000));
     ok('fadeToBlack', await wait(() => document.getElementById('fadeBlack').classList.contains('on'), 4000));
@@ -104,7 +108,7 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await act(); await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000);
     const lb = await center('#pshowLap'); ok('lapBtn44', `${Math.round(lb.w)}x${Math.round(lb.h)} top=${lb.top}`, lb.h >= 44 && lb.top === 'pshowLap');
     const c2 = await G(() => window.__app.game.progress.credits); await tapSel('#pshowLap');
-    ok('paid250', await wait(c => window.__app.game.progress.credits === c - 250, 4000, c2));
+    ok('paid500lap', await wait(c => window.__app.game.progress.credits === c - 500, 4000, c2));
     ok('lapActive', await wait(() => window.__pshow.active && window.__pshow.state.ready && window.__pshow.state.mode === 'lap', 20000));
     // distance check while the routine runs: her feet stay clear of the chair front (z 0.95) and of the player's knees
     let minGap = 9, beats = new Set(); const t0 = Date.now();

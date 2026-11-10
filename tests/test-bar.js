@@ -140,7 +140,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => { window.__app.game.progress.credits = 1000; window.__app.game.save(); window.__app.surface.debugInside(-31.4, 12.3, Math.PI / 2); });
     ok('slotsPrompt', await wait(() => /🎰 Play/.test(document.getElementById('driveBtn').textContent) && !document.body.classList.contains('barNear'), 4000));
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); });
-    ok('dannyLabel', await wait(() => /Private show 150/.test(document.getElementById('driveBtn').textContent), 4000));
+    ok('dannyLabel', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent), 4000));
     await sleep(500); await act(); ok('dannyOffer', await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000));
     await tapSel('#pshowNo').catch(() => G(() => document.getElementById('pshowNo')?.click()));
     ok('stats', JSON.stringify(await G(() => window.__bar.stats)));

@@ -126,10 +126,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await sleep(900); await shot('mega-marquee');
     // 6) Danny's own flow untouched (her 150 show from the VIP room)
     await G(() => { localStorage.setItem('ssx.adult', '1'); window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); });
-    ok('dannyLabel', await wait(() => /Private show 150/.test(document.getElementById('driveBtn').textContent) && !document.body.classList.contains('slNear'), 4000));
+    ok('dannyLabel', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent) && !document.body.classList.contains('slNear'), 4000));
     await act(); ok('dannyOffer', await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000));
     const c3 = await credits(); await tapSel('#pshowYes');
-    ok('dannyPaid150', await wait(c => window.__app.game.progress.credits === c - 150, 4000, c3));
+    ok('dannyPaid500', await wait(c => window.__app.game.progress.credits === c - 500, 4000, c3));
     ok('dannyShow', await wait(() => window.__pshow.active && window.__pshow.state.ready && !window.__slots.isOpen, 20000));
     await sleep(1000); if (desk) await page.keyboard.press('Escape'); else await tapSel('#pshowLeave');
     ok('dannyLeave', await wait(() => !window.__pshow.active && !document.getElementById('fadeBlack').classList.contains('on'), 6000));

@@ -1096,6 +1096,7 @@ export function createWorld(ctx) {
     const ownClub = door.kind === 'club' && (() => { try { return !!globalThis.SSX?.velvetArc?.owned?.(); } catch (e) { return false; } })(); // Velvet expansion you own the Velvet (mars/velvetarc.js)
     if (ownClub && wanted > 0 && wanted < 3) { try { globalThis.__app?.toast?.('Brick: Boss. In, quick. They don’t raid your house.', 2600); } catch (e) { /* no HUD */ } }
     else if (door.kind === 'club' && wanted > 0) return { ok: false, msg: 'Brick: Not tonight. You’ve got security crawling up your ass. Lose them first.' };
+    if (door.kind === 'club') { let ban = ''; try { ban = globalThis.SSX?.dancers?.banMsg?.() || ''; } catch (e) { ban = ''; } if (ban) return { ok: false, msg: ban }; }
     if (door.kind === 'mansion') { const live = cams.filter(c => !(c.cased > time) && Math.hypot(c.x - door.x, c.z - door.z) < 30); if (live.length && !ctx.game().flag('guest:' + door.name)) alarm(2, door, `broke into ${door.name}`); } // case the cameras first or it's loud
     if (wanted >= 3 && door.kind !== 'security') return { ok: false, msg: `${door.name}: shutters down. Nobody opens a door for a ${wanted}★ fugitive.` };
     let paid = 0;
