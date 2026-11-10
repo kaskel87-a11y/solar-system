@@ -1004,9 +1004,9 @@ export function createGame(ctx) {
     }
     if (wpn.beam) { const bm = new THREE.Mesh(A.beamGeo, A.mBolt[wpn.color].clone()); bm.position.copy(from); bm.lookAt(from.clone().add(dir0)); bm.scale.set(2.2, 2.2, wpn.speed * wpn.life); scene.add(bm); fxs.push({ mesh: bm, life: 0.28, max: 0.28, kind: 'beam' }); }
     if (wpn.heat) { W.heat = Math.min(100, W.heat + wpn.heat * (wpn === WEAPONS.rifle && hasUp('heatsink') ? 0.65 : 1)); if (W.heat >= 100) { W.over = true; onEvent('overheat', {}); } }
-    W.flash = 0.06; W.recoil = wpn.pellets ? 1.6 : 1;
+    W.flash = wpn.flash || 0.06; W.recoil = wpn.recoilKick ?? (wpn.pellets ? 1.6 : 1);
     P.stats.shots++;
-    onEvent('zap', { heavy: !!(wpn.twin || wpn.quad), smg: wpn === WEAPONS.smg, launcher: wpn === WEAPONS.launcher, shotgun: !!wpn.pellets && !wpn.flame, rover: !!useTurret, rail: !!wpn.rail, rocket: !!wpn.rocket, torch: !!wpn.flame, tier: wpn.tier || 0 });
+    onEvent('zap', { heavy: !!(wpn.twin || wpn.quad), smg: wpn === WEAPONS.smg, launcher: wpn === WEAPONS.launcher, shotgun: !!wpn.pellets && !wpn.flame, rover: !!useTurret, rail: !!wpn.rail, rocket: !!wpn.rocket, torch: !!wpn.flame, tier: wpn.tier || 0, voice: wpn.voice || '' });
     return true;
   }
   // cycle blaster -> shotgun -> machete (whatever you own)

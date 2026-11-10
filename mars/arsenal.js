@@ -80,7 +80,19 @@ export const ARS = {
     base: { name: 'Hellhound', cd: 0.6, dmg: 1.45, pellets: 10, spread: 0.07, speed: 95, color: 0xff5020, size: 0.8, life: 0.45 } },
   skullsplitter: { core: 'ar_skullsplitter', name: 'Skullsplitter warhammer', icon: '🔨', kind: 'melee', mult: 5.5, knockMult: 3.0, mods: [], tier: 5, base: { name: 'Skullsplitter', cd: 0.62, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   // v7.5.31: the Grin Reaper's brass bulb horn (mars/honk.js gives it on first wear, honks + scares on every swing): a weak bonk
-  horn: { core: 'ar_horn', name: 'Brass bulb horn', icon: '📯', kind: 'melee', mult: 0.35, knockMult: 0.6, mods: [], base: { name: 'Brass bulb horn', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } }
+  horn: { core: 'ar_horn', name: 'Brass bulb horn', icon: '📯', kind: 'melee', mult: 0.35, knockMult: 0.6, mods: [], base: { name: 'Brass bulb horn', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  // v7.5.77 street iron: on the gun-counter list and at Bore from the start (not behind a buy-out). Same fire path,
+  // same wheel, same phone FIRE button. Each one is a different cadence from the Kestrel, the Breacher and the Viper.
+  ash: { core: 'ar_ash', name: 'Ash .38 pocket pistol', icon: '🔫', kind: 'gun', cal: 'light', mag: 7, reload: 0.9, recoil: 0.022, bloom: 0.008, bloomMax: 0.04, knock: 0.22, mods: ['suppressor'],
+    base: { name: 'Ash .38', cd: 0.14, dmg: 1.15, speed: 160, color: 0xfff4b0, size: 0.4, life: 0.5, spread: 0.008, voice: 'pistol', recoilKick: 0.5, flash: 0.04 } },
+  sawed: { core: 'ar_sawed', name: 'Back-alley sawed-off', icon: '💥', kind: 'gun', cal: 'shell', mag: 2, reload: 1.25, recoil: 0.14, bloom: 0.03, bloomMax: 0.06, knock: 0.85, mods: [],
+    base: { name: 'Sawed-off', cd: 0.9, dmg: 1.7, pellets: 6, spread: 0.2, speed: 68, color: 0xff7020, size: 0.95, life: 0.26, voice: 'sawed', recoilKick: 2.1, flash: 0.14 } },
+  stutter: { core: 'ar_stutter', name: 'Stutter machine pistol', icon: '🔫', kind: 'gun', cal: 'light', mag: 22, reload: 1.3, recoil: 0.01, bloom: 0.01, bloomMax: 0.12, knock: 0.1, mods: ['suppressor', 'extmag'],
+    base: { name: 'Stutter', cd: 0.042, dmg: 0.4, speed: 135, color: 0xffe24a, size: 0.38, life: 0.4, spread: 0.05, voice: 'stutter', recoilKick: 0.3, flash: 0.03 } },
+  longnine: { core: 'ar_longnine', name: 'Long Nine carbine', icon: '🎯', kind: 'gun', cal: 'heavy', mag: 8, reload: 1.65, recoil: 0.05, bloom: 0.003, bloomMax: 0.025, knock: 0.75, mods: ['scope', 'suppressor'],
+    base: { name: 'Long Nine', cd: 0.4, dmg: 3.6, speed: 220, color: 0xffd090, size: 0.72, life: 1.05, spread: 0.001, voice: 'carbine', recoilKick: 1.15, flash: 0.07 } },
+  crater: { core: 'ar_crater', name: 'Crater gun', icon: '💣', kind: 'gun', cal: 'heavy', mag: 1, reload: 2.15, recoil: 0.18, bloom: 0.006, bloomMax: 0.02, knock: 2.5, mods: [],
+    base: { name: 'Crater gun', cd: 1.3, dmg: 12, speed: 90, color: 0xff3810, size: 2.0, life: 0.65, spread: 0.002, voice: 'crater', recoilKick: 2.4, flash: 0.18 } }
 };
 const CORE_EXTRA = [['blaster', 'rifle', '🔫', 'Plasma blaster', u => true], ['railrifle', 'railrifle', '⚡', 'Rail rifle', u => u.includes('weapon:railrifle')], ['launcher', 'launcher', '💣', 'Frag launcher', u => u.includes('weapon:launcher')],
   ['blade', 'blade', '🗡️', 'Vibro-machete', u => u.includes('melee:blade')], ['cleaver', 'cleaver', '🪓', 'Thermal cleaver', u => u.includes('melee:cleaver')]];

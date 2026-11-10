@@ -1632,7 +1632,7 @@
       else if (type === 'melee') { if (ev.hit) { ev.cane && au7.fx.thwack ? au7.fx.thwack() : ev.blade ? au7.fx.blade() : au7.fx.punch(); sfxLog.push(ev.cane ? 'thwack' : ev.blade ? 'blade' : 'punch'); } else au7.fx.whoosh(); }
       else if (type === 'meleeHit') { /* world folk: sound comes from the melee event */ }
       else if (type === 'rare') { chime(); rewardPop(ev.fiction ? '☣️ SPECIMEN' : '💎 RARE FIND', ev.name, ev.fact, `+${ev.xp} XP · ${ev.count} rare finds collected`, 7000); }
-      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.emp) { sfxLog.push('emp'); au7.fx.emp(); } else if (ev.rail) { sfxLog.push('rail'); au7.fx.rail(); } else if (ev.rocket) { sfxLog.push('rocket'); au7.fx.rocket(); } else if (ev.torch) { if (now - lastTorch > 110) { lastTorch = now; sfxLog.push('torch'); au7.fx.torch(); } } else if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }
+      else if (type === 'zap') { const now = performance.now(); if (now - lastZap > 60) { lastZap = now; if (ev.voice && au7.fx[ev.voice]) { sfxLog.push(ev.voice); au7.fx[ev.voice](); } else if (ev.emp) { sfxLog.push('emp'); au7.fx.emp(); } else if (ev.rail) { sfxLog.push('rail'); au7.fx.rail(); } else if (ev.rocket) { sfxLog.push('rocket'); au7.fx.rocket(); } else if (ev.torch) { if (now - lastTorch > 110) { lastTorch = now; sfxLog.push('torch'); au7.fx.torch(); } } else if (ev.shotgun) { sfxLog.push('shotgun'); au7.fx.shotgun(); } else ev.heavy ? plasma() : zap(); } }
       else if (type === 'boom') { au7.fx.boom(); sfxLog.push('boom'); }
       else if (type === 'poof') { au7.fx.squelch(ev.boss); sfxLog.push('squelch'); if (ev.boss) toast('👑 Queen down. Burn the nest before anything else hatches.', 3500); }
       else if (type === 'hurt') { hurtSnd(); hurtEl.style.transition = 'none'; hurtEl.style.opacity = ev.hp < 40 ? 1 : 0.7; clearTimeout(hurtTimer); hurtTimer = setTimeout(() => { hurtEl.style.transition = 'opacity 0.5s'; hurtEl.style.opacity = 0; }, 90); }
@@ -2012,7 +2012,9 @@
       let qh = here ? '' : '<p style="opacity:.8">Land on a world to start its quests.</p>';
       for (const w of worlds) {
         const list = G.questList(w); if (!list.length) continue;
-        qh += `<h3>${esc(w)} · ${list.filter(q => q.done).length}/${list.length}</h3>` + list.map(q => {
+        let head = '';
+        if (w === 'Mars') { try { head = window.SSX?.velvetArc?.logHtml?.() || ''; } catch (e) { head = ''; } }
+        qh += `<h3>${esc(w)} · ${list.filter(q => q.done).length}/${list.length}</h3>` + head + list.map(q => {
           const btn = w !== here ? '' : q.active ? `<button class="btn" data-abandon="${q.id}">✖ Abandon</button>` : `<button class="btn" data-accept="${q.id}">${q.done ? '🔁 Replay' : '▶ Start'}</button>`;
           const need = q.needsAliens && !P.settings.aliens ? ' · 🕊 boss is skipped in peaceful mode' : '';
           return `<div class="item${q.done ? ' done' : ''}${q.active ? ' active' : ''}"><b>${q.done ? '✅ ' : ''}${esc(q.title)}</b>${q.fiction ? '<small class="ficm"> · fictional</small>' : ''}<br><small>${q.steps} steps${q.limit ? ` · ⏱ ${q.limit} s` : ''} · +${q.reward.xp} XP${q.reward.badge ? ' · 🏅 ' + esc(q.reward.badge) : ''}${need}</small>${btn ? `<div class="row">${btn}</div>` : ''}</div>`;
@@ -2021,6 +2023,12 @@
       const tq = document.getElementById('tabQuests'); tq.innerHTML = qh;
       tq.querySelectorAll('[data-accept]').forEach(b => tapOf(b).fn = () => { G.accept(b.dataset.accept); logPanel.style.display = 'none'; updateSurfHud(true); });
       tq.querySelectorAll('[data-abandon]').forEach(b => tapOf(b).fn = () => { G.abandon(); renderLogTabs(); updateSurfHud(true); });
+      tq.querySelectorAll('[data-varc]').forEach(b => tapOf(b).fn = () => {
+        const A = window.SSX?.velvetArc; if (!A) return;
+        if (b.dataset.varc === 'wp') A.waypoint?.();
+        else if (b.dataset.varc === 'go') { const r = A.startNext?.(); if (r?.ok) logPanel.style.display = 'none'; }
+        updateSurfHud(true);
+      });
       // rewards
       const r = gi;
       const rareTotal = Object.values(P.rare || {}).reduce((n, a) => n + a.length, 0);

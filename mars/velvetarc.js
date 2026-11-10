@@ -115,7 +115,7 @@ function gate() { // re-register mission 1 without the lock once Ines would talk
   const g = game(), bottles = (() => { try { return X().velvetDeal?.state?.()?.bottles | 0; } catch (e) { return 0; } })(), stars = g?.progress?.xp || 0;
   const open = VA.unlocked(bottles, stars), q = MISSIONS[0], want = open ? [] : [LOCKED];
   if (q.requires.length !== want.length) { q.requires = want; GM.registerMission(q); }
-  if (open && !S.hinted && g && !g.progress.quests?.[IDS[0]]?.everDone) { S.hinted = true; save(); radio('Ines: You\u2019ve been good for my bar. Come see me in the VIP room. I\u2019ve got a real job.', 'Ines'); }
+  if (open && !S.hinted && g && !g.progress.quests?.[IDS[0]]?.everDone) { S.hinted = true; save(); radio('Ines: You\u2019ve been good for my bar. Come see me in the VIP room. Five jobs, and the Velvet is yours.', 'Ines'); try { offerBeam(); } catch (e) { /* */ } }
   return open;
 }
 
@@ -204,7 +204,7 @@ function pickSheet(g, q, s, key) {
 }
 function tick(app, dt) {
   const g = app.game || app.surface?.game; if (!g?.debug) return;
-  if (performance.now() - (R.gateT || 0) > 1000) { R.gateT = performance.now(); try { gate(); } catch (e) { /* */ } try { hookAll(app); } catch (e) { console.warn('velvetarc hooks', e); } }
+  if (performance.now() - (R.gateT || 0) > 1000) { R.gateT = performance.now(); try { gate(); } catch (e) { /* */ } try { hookAll(app); } catch (e) { console.warn('velvetarc hooks', e); } if (app.state?.onSurface) { try { maybeBrief(app); } catch (e) { /* */ } } }
   if (!app.state?.onSurface) return;
   const q = g.debug.quest(), def = q && mine(q.id);
   if (R.qid && (!q || q.id !== R.qid)) { const p = R.qid; R.qid = null; R.key = null; questEnded(app, g, p); }
@@ -324,6 +324,20 @@ const gameOpen = () => { try { return !!(window.__slots?.isOpen || window.__club
 const H = { spend: null, raids: null, barkT: 0, wasInside: false };
 function hookAll(app) {
   const g = app.surface?.game || app.game;
+  if (g && typeof g.talk === 'function' && !g.talk.__varc) { // first talk with Ines says what she is for, without eating the job offer on the radio
+    const orig = g.talk;
+    const wrapped = function (contact) {
+      const r = orig.apply(this, arguments);
+      try {
+        if (contact === 'Ines' && !S.owned && !S.briefed) {
+          S.briefed = true; save();
+          setTimeout(() => toast('Ines: Thorne owns this club. ' + VA.unlockHint(bottlesNow(), starsNow()) + ' Five jobs after that, and the Velvet is yours. \u2630 \u2192 \ud83c\udf78 The Velvet.', 4200), 700);
+        }
+      } catch (e) { /* */ }
+      return r;
+    };
+    wrapped.__varc = true; g.talk = wrapped;
+  }
   if (g && typeof g.spend === 'function' && !g.spend.__varc) { // wager tap: only while you own it, inside the club, with a game open
     const orig = g.spend; const wrapped = function (n) { const ok = orig.apply(this, arguments); try { if (ok && S.owned && n > 0 && inClub() && gameOpen()) { VA.addTake(S, n); save(); } } catch (e) { /* */ } return ok; };
     wrapped.__varc = true; g.spend = wrapped;
@@ -374,6 +388,88 @@ function handoverSpot() {
   setTimeout(() => say('Your buyout\u2019s dead, Marcus. Everybody here just watched you steal from them.'), 2200);
   setTimeout(() => { toast('\ud83d\udcac Thorne: "Fine. We do it the old way. Outside."', 3200); const y = questStep(); if (y?.q.id === x.q.id && y.q.step === x.q.step) nextStep(x.g); }, 4800);
 }
+// ---------- find the arc: Collin asked what Ines is for. The five jobs already end in the deed. This only points at them. ----------
+const escH = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function bottlesNow() { try { return X().velvetDeal?.state?.()?.bottles | 0; } catch (e) { return 0; } }
+function starsNow() { return game()?.progress?.xp || 0; }
+function chain() {
+  const qs = game()?.progress?.quests || {};
+  const steps = IDS.map(id => ({ id, title: mine(id)?.title || id, done: !!qs[id]?.everDone }));
+  const next = steps.find(s => !s.done) || null;
+  return { steps, done: steps.filter(s => s.done).length, total: IDS.length, next, active: game()?.info?.quest?.id || null, unlocked: VA.unlocked(bottlesNow(), starsNow()), owned: !!S.owned };
+}
+function clubPoint() {
+  try {
+    const w = APP()?.surface?.world;
+    const d = w?.doorFor?.('club') || w?.doorFor?.(CLUB);
+    if (d && Number.isFinite(d.x) && Number.isFinite(d.z)) return { x: d.x, z: d.z };
+    const c = w?.colonyAt?.([-30, -34]);
+    if (c && Number.isFinite(c.x)) return { x: c.x, z: c.z };
+  } catch (e) { /* */ }
+  return null;
+}
+function waypoint(quiet) {
+  const g = game(), qid = g?.info?.quest?.id;
+  if (qid && IDS.includes(qid)) {
+    const wp = g.waypoint?.();
+    if (wp && Number.isFinite(wp.x)) { try { X().hudx?.setWaypoint?.({ x: wp.x, z: wp.z, label: mine(qid)?.title || 'Ines' }, true); } catch (e) { /* */ } if (!quiet) toast('Follow the beam. That job ends with the Velvet in your name.', 2800); return true; }
+  }
+  const p = clubPoint();
+  if (!p) { if (!quiet) toast('Land on Mars. Ines is at the Velvet Airlock in Ares Junction.'); return false; }
+  try { X().hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Ines \u00b7 take the Velvet' }, !!quiet); } catch (e) { /* */ }
+  return true;
+}
+function offerBeam() { if (game()?.info?.quest) return false; return waypoint(true); }
+function maybeBrief(app) {
+  if (S.briefed || S.owned) return;
+  const w = app.surface?.world, i = app.surface?.info;
+  if (!i || i.name !== 'Mars') return;
+  const inside = w?.inside?.kind === 'club';
+  let near = false; try { const d = w?.doorFor?.('club'); near = !!(d && Number.isFinite(d.x) && Math.hypot(i.x - d.x, i.z - d.z) < 22); } catch (e) { near = false; }
+  if (!inside && !near) return;
+  S.briefed = true; save();
+  toast('Ines: Thorne owns this club and skims it dry. Sell me ten bottles, or make 3,000 stars. Five jobs after that, and the Velvet is yours. \u2630 \u2192 \ud83c\udf78 The Velvet.', 4800);
+  offerBeam();
+}
+function startNext() {
+  const g = game();
+  if (!g?.accept) { toast('Land on Mars first.'); return { ok: false }; }
+  if (S.owned) { toast('The Velvet is already yours. Collect the till at Ines\u2019s desk.'); return { ok: false, owned: true }; }
+  const c = chain();
+  if (!c.unlocked) { openGuide(); return { ok: false, locked: true }; }
+  if (!c.next) { toast('Every job is done.'); return { ok: false }; }
+  if (APP()?.surface?.info?.name !== 'Mars') { toast('Ines: Mars jobs. On Mars.'); return { ok: false }; }
+  if (c.active === c.next.id) { waypoint(false); return { ok: true, already: true }; }
+  const ok = !!g.accept(c.next.id);
+  if (ok) waypoint(true);
+  return { ok, id: c.next.id };
+}
+function openGuide() {
+  const c = chain(), b = bottlesNow();
+  const rows = c.steps.map(s => (s.done ? '\u2713 ' : '\u00b7 ') + s.title).join('  ');
+  const text = c.owned
+    ? 'The Velvet Airlock is yours. Ines manages it. The till is at her desk in the east wing: 8% of the floor, plus 400 cr a day, 1 star per 10 cr. The dark green beam marks the club. Upstairs is free, and ColSec leaves the place alone. ' + rows
+    : 'Ines runs the back bar. Marcus Thorne owns the club and skims it. Five jobs from her put the deed in your name: a cut of the tables, a daily till, Ines as manager, and the dark green business beam. ' + (c.unlocked ? 'She will talk business in the VIP room.' : VA.unlockHint(b, starsNow())) + ' Jobs ' + c.done + '/' + c.total + (c.next ? '. Next: ' + c.next.title + '.' : '.') + ' ' + rows;
+  const buttons = [{ id: 'wp', label: '\ud83d\udccd Beam to Ines', on: () => { waypoint(false); return false; } }];
+  if (!c.owned && c.unlocked && c.next) buttons.unshift({ id: 'go', label: (c.active === c.next.id ? '\ud83d\udccd You are on ' : '\u25b6 Start ') + c.next.title, on: () => { const r = startNext(); if (!r?.ok) return false; closeSheet(); } });
+  openSheet('Take over the Velvet Airlock', text, buttons);
+}
+function logHtml() {
+  const c = chain();
+  const rows = c.steps.map(s => `${s.done ? '\u2705' : '\u00b7'} ${escH(s.title)}`).join('<br>');
+  let lead, btns;
+  if (c.owned) {
+    lead = 'You own it. Ines manages the floor. Collect the till at her desk. The dark green beam marks the club.';
+    btns = '<button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam to the Velvet</button>';
+  } else if (!c.unlocked) {
+    lead = `Ines runs the back bar. Thorne owns the club. ${escH(VA.unlockHint(bottlesNow(), starsNow()))} Then five jobs, and the deed is yours.`;
+    btns = '<button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam to Ines</button>';
+  } else {
+    lead = `Five jobs, then the Velvet is yours: a cut of the floor, a daily till, Ines as manager, dark green beam. Next: ${escH(c.next?.title || 'done')}.`;
+    btns = `<button type="button" class="btn" data-varc="go">\u25b6 ${c.active === c.next?.id ? 'On it' : 'Start ' + escH(c.next?.title || '')}</button><button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam</button>`;
+  }
+  return `<div class="item${c.owned ? ' done' : ''}" id="varcLog"><b>\ud83c\udfdb\ufe0f Take over the Velvet Airlock</b> <small>\u00b7 ${c.done}/${c.total}</small><br>${lead}<br><small>${rows}</small><div class="row">${btns}</div></div>`;
+}
 const api = {
   owned: () => !!S.owned, showMult: () => (S.owned ? VA.PERKS.showMult : 1), upstairsFree: () => !!S.owned && VA.PERKS.upstairsFree,
   state: () => ({ ...S, safe: { ...S.safe }, ids: IDS.slice(), unlocked: (() => { try { return gate(); } catch (e) { return false; } })() }),
@@ -384,7 +480,7 @@ const api = {
   deskLabel: () => `\ud83d\udcbc Ines \u00b7 manager \u00b7 collect ${Math.floor(S.till)} cr`, deskSpot,
   safeLabel: () => `\ud83d\udd12 Office safe (${VA.safeTotal(S)})`, safeSpot,
   onOwned: f => { if (typeof f === 'function') ownedListeners.push(f); },
-  missions: IDS.slice(),
+  missions: IDS.slice(), logHtml, waypoint, startNext, openGuide, progress: chain,
   get runner() { return { key: R.key, swipe: R.swipe.p || 0, tail: R.tail && { x: +R.tail.group.position.x.toFixed(1), z: +R.tail.group.position.z.toFixed(1), i: R.tail.i }, chase: R.chase && { t: R.chase.t || 0, i: R.chase.i }, boss: R.boss, pit: R.pit && { ...R.pit, seen: undefined }, sheet: sheetOpen() }; },
   debug: {
     reset() { S = VA.fresh(); save(); try { X().ownedbeams?.refresh?.(); } catch (e) { /* */ } }, own(ending = 'signed') { VA.own(S, ending); save(); emitOwned(); }, unown() { S.owned = false; save(); try { X().ownedbeams?.refresh?.(); } catch (e) { /* */ } },
@@ -397,6 +493,10 @@ const api = {
 // ---------- boot ----------
 export function initVelvetArc(app) {
   if (!app || app.__velvetArc) return; app.__velvetArc = true;
+  try {
+    if (!document.getElementById('varcCss')) { const css = document.createElement('style'); css.id = 'varcCss'; css.textContent = '#logPanel #varcLog .row button{min-height:48px;flex:1}'; document.head.appendChild(css); }
+    X().registerMenuItem?.({ id: 'rmVelvet', label: '\ud83c\udf78 The Velvet', onTap: () => openGuide() });
+  } catch (e) { console.warn('velvet guide', e); }
   let last = performance.now();
   setInterval(() => { const now = performance.now(), dt = Math.min(0.5, (now - last) / 1000); last = now; if (document.hidden) return; try { tick(app, dt); pitTick(app); } catch (e) { console.warn('velvetarc', e); } }, 100);
 }

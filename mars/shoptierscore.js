@@ -72,6 +72,20 @@ export const TIER_SHOPS = {
   depot: { name: 'Meridian Depot', tiers: DEPOT_TIERS, mult: 1, base: ['roverup', 'roverwpn', 'upgrade', 'paint', 'kit'] }
 };
 export const ONE_TIME = new Set(['gun', 'melee', 'mod', 'bandana', 'paint']);
+// v7.5.77: on the counter from day one (not a restock tier, so buying them out is not required to open the next crate).
+// Gun shops only. Prices go through priceOf so Helios still marks up and the Flats still discount.
+export const STREET = [
+  { id: 'ash', kind: 'gun', a: 'ash', ammo: 21, name: 'Ash .38 pocket pistol', price: 160, desc: 'Snub-nose. Seven light rounds, a fast tap, and a short crack. Comes with 21 rounds.' },
+  { id: 'sawed', kind: 'gun', a: 'sawed', ammo: 8, name: 'Back-alley sawed-off', price: 220, desc: 'Two shells, a wide ugly cone, then you break it open. Useless past a doorway. Comes with 8 shells.' },
+  { id: 'stutter', kind: 'gun', a: 'stutter', ammo: 66, name: 'Stutter machine pistol', price: 340, desc: 'Sprays light rounds until the barrel climbs. 22 in the stick. Comes with 66 rounds.' },
+  { id: 'longnine', kind: 'gun', a: 'longnine', ammo: 24, name: 'Long Nine carbine', price: 520, desc: 'Slow, heavy, and it goes where you point it. Eight rounds. Comes with 24.' },
+  { id: 'crater', kind: 'gun', a: 'crater', ammo: 6, name: 'Crater gun', price: 900, desc: 'One huge slug. The kick sits you down. Reload is the whole fight. Comes with 6 heavy rounds.' }
+];
+export function streetFor(key) {
+  const T = TIER_SHOPS[key];
+  if (!T?.base?.includes('weapon')) return [];
+  return STREET.map(it => ({ ...it, price: priceOf(key, it) }));
+}
 export const maxTier = key => 1 + (TIER_SHOPS[key]?.tiers.length || 0); // tier 1 = the shop's original stock
 export const priceOf = (key, it) => Math.round(it.price * (TIER_SHOPS[key]?.mult || 1) / 5) * 5;
 // every tier item the shop has rolled out so far (tier 2..t), newest last

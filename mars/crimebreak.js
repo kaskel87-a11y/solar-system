@@ -42,23 +42,29 @@ function show(r) {
 
 // ---------- panel ----------
 const CSS = `#cbGulch{position:fixed;inset:0;z-index:58;display:none;align-items:flex-end;justify-content:center;background:transparent;pointer-events:none}
-#cbGulch.on{display:flex}#cbGulch .wrap{pointer-events:auto;width:min(96vw,440px);max-height:min(62vh,calc(100vh - 180px - env(safe-area-inset-bottom)));overflow:auto;-webkit-overflow-scrolling:touch;margin:0 8px calc(150px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:12px;font:14px/1.35 system-ui,sans-serif;box-sizing:border-box}
+#cbGulch.on{display:flex}
+#cbGulch .wrap{pointer-events:auto;width:min(96vw,440px);max-height:min(62vh,calc(100vh - 180px - env(safe-area-inset-bottom)));margin:0 8px calc(150px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:0;font:14px/1.35 system-ui,sans-serif;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+#cbGulch .sheet{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 8px}
+#cbGulch .foot{flex:none;display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 12px;background:#000;border-top:2px solid #fff}
+#cbGulch .foot:empty{display:none}
 #cbGulch h2{margin:2px 0 6px;font-size:17px}#cbGulch q{display:block;font-style:italic;opacity:.9;margin:8px 0}
 #cbGulch .who{font-weight:800;opacity:.75;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 #cbGulch .note{margin:6px 0;padding:8px 10px;border:2px solid #fff;border-radius:10px;font-weight:700}
 #cbGulch .sub{margin:4px 0;font-size:13px}
 #cbGulch .sum,#cbGulch .wallet{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}#cbGulch .sum b,#cbGulch .wallet b{padding:4px 8px;border-radius:8px;border:1px solid #555;font-size:12px}
-#cbGulch .tabs,#cbGulch .btns,#cbGulch .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#cbGulch .tabs,#cbGulch .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #cbGulch button{min-height:48px;min-width:64px;flex:1 1 120px;padding:8px 10px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 14px/1.15 system-ui,sans-serif;touch-action:manipulation}
 #cbGulch button:disabled{opacity:.45}#cbGulch button.on{border-width:3px}
 #cbGulch .row{padding:8px 0;border-top:1px solid #444}#cbGulch .row b{font-size:15px}#cbGulch .row small{display:block;font-size:12px;margin-top:2px}
-#cbAct{display:none;background:#000!important;color:#fff!important;border:3px solid #fff!important;min-height:52px;padding:6px 14px;border-radius:14px;font:900 16px/1.15 system-ui,sans-serif}`;
+#cbAct{display:none;background:#000!important;color:#fff!important;border:3px solid #fff!important;min-height:52px;padding:6px 14px;border-radius:14px;font:900 16px/1.15 system-ui,sans-serif}
+@media (max-height:450px){#cbGulch .wrap{max-height:calc(100dvh - 108px - env(safe-area-inset-bottom));margin-bottom:calc(100px + env(safe-area-inset-bottom))}}`;
 function ensureUi() {
   if (S.ui || typeof document === 'undefined') return S.ui;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
-  const panel = document.createElement('div'); panel.id = 'cbGulch'; panel.innerHTML = '<div class="wrap"></div>'; document.body.appendChild(panel);
+  const panel = document.createElement('div'); panel.id = 'cbGulch'; panel.innerHTML = '<div class="wrap"><div class="sheet"></div><div class="foot"></div></div>'; document.body.appendChild(panel);
   panelTap(panel, e => { const b = e.target?.closest?.('button'); if (b && !b.disabled) act(b.dataset); });
-  S.ui = { panel, wrap: panel.firstChild }; return S.ui;
+  const wrap = panel.firstChild;
+  S.ui = { panel, wrap, sheet: wrap.firstChild, foot: wrap.lastChild }; return S.ui;
 }
 const panelOn = () => !!S.ui?.panel.classList.contains('on');
 function open(force = false) {
@@ -202,12 +208,12 @@ function tabs() {
   return `<div class="tabs">${b('meet', 'Sit-down')}${b('ex', 'Exchange')}${b('mkt', 'Market')}</div>`;
 }
 function exchangeBtns(extra = '') {
-  return `<p class="sub">${esc(EXPLAIN)}</p><div class="btns"><button type="button" data-a="exchange">100 cr → 10 ⭐</button>${extra}<button type="button" data-a="close">Close</button></div>`;
+  return `<button type="button" data-a="exchange">100 cr → 10 ⭐</button>${extra}<button type="button" data-a="close">Close</button>`;
 }
 function marketHtml(view) {
-  if (!view.ok) return `<h2>Market</h2><p>${esc(view.why || 'Market is at Red Static Gulch.')}</p><p class="sub">Walk to Red Static Gulch to buy. The exchange still works from this menu.</p><div class="btns"><button type="button" data-a="close">Close</button></div>`;
+  if (!view.ok) return `<h2>Market</h2><p>${esc(view.why || 'Market is at Red Static Gulch.')}</p><p class="sub">Walk to Red Static Gulch to buy. The exchange still works from this menu.</p>`;
   let html = `<h2>Market</h2><p class="sub">Red Static Gulch. Same stash as Blue. Full price before you buy. Carrying ${view.used}/${view.carry || 0}.</p>`;
-  if (!view.rows.length) return html + '<p>Stash isn’t loaded.</p><div class="btns"><button type="button" data-a="close">Close</button></div>';
+  if (!view.rows.length) return html + '<p>Stash isn’t loaded.</p>';
   for (const row of view.rows) {
     const fresh = row.fresh != null ? ` · ${Math.round(Number(row.fresh) * 100)}% fresh` : '';
     const starBit = row.starPrice != null ? ` · ⭐ ${row.starPrice} each` : '';
@@ -221,7 +227,13 @@ function marketHtml(view) {
     if (row.starPrice != null) html += `<button type="button" data-a="mstar" data-i="${esc(row.id)}">⭐ ${row.starPrice}</button>`;
     html += '</div></div>';
   }
-  return html + '<div class="btns"><button type="button" data-a="close">Close</button></div>';
+  return html;
+}
+function paint(body, foot) {
+  if (!S.ui?.sheet) return;
+  S.ui.sheet.innerHTML = body;
+  S.ui.foot.innerHTML = foot || '';
+  holdUntil = performance.now() + 320;
 }
 function render() {
   if (!S.ui) return;
@@ -231,37 +243,40 @@ function render() {
     let body = '';
     if (S.note) body += `<div class="note">${esc(S.note)}</div>`;
     body += '<h2>👥 Crime break</h2>';
+    let foot = '';
     if (L) {
       body += `<div class="who">${esc(L.who)}</div><q>“${esc(L.text)}”</q>`;
       const last = S.line >= lines.length - 1;
-      body += `<div class="btns"><button type="button" data-a="${last ? 'done' : 'next'}">${last ? '💵 Seal it' : 'Next'}</button></div>`;
+      foot = `<button type="button" data-a="${last ? 'done' : 'next'}">${last ? '💵 Seal it' : 'Next'}</button>`;
     }
-    S.ui.wrap.innerHTML = body; holdUntil = performance.now() + 320; return;
+    paint(body, foot); return;
   }
   let body = tabs();
   if (S.note) body += `<div class="note">${esc(S.note)}</div>`;
   body += '<h2>👥 Crime break</h2>' + walletLine();
   const tab = S.tab || 'meet';
-  if (tab === 'ex') body += '<h2>Exchange</h2>' + exchangeBtns();
-  else if (tab === 'mkt') body += marketHtml(marketView());
+  let foot = '';
+  if (tab === 'ex') { body += `<h2>Exchange</h2><p class="sub">${esc(EXPLAIN)}</p>`; foot = exchangeBtns(); }
+  else if (tab === 'mkt') { body += marketHtml(marketView()); foot = '<button type="button" data-a="close">Close</button>'; }
   else {
     const buff = C.buffPct(D), next = C.nextSol(D);
     body += `<div class="sum"><b>Meetings ${D.meets}</b><b>Crew pay +${buff}%</b>${next != null ? `<b>Next sol ${next}</b>` : '<b>Intro free</b>'}<b>⭐ ${C.STAR_PAY}</b></div>`;
     if (g.needCrew) {
-      body += '<p>Nobody on your crew yet. Hire someone first, then come back to the gulch for the sit-down. The exchange does not need a crew.</p>';
-      body += exchangeBtns('<button type="button" data-a="crew">👥 Open Crew</button>');
+      body += `<p>Nobody on your crew yet. Hire someone first, then come back to the gulch for the sit-down. The exchange does not need a crew.</p><p class="sub">${esc(EXPLAIN)}</p>`;
+      foot = exchangeBtns('<button type="button" data-a="crew">👥 Open Crew</button>');
     } else if (!g.ok) {
-      body += `<p>${esc(g.why || 'Not right now.')}</p>` + exchangeBtns();
+      body += `<p>${esc(g.why || 'Not right now.')}</p><p class="sub">${esc(EXPLAIN)}</p>`;
+      foot = exchangeBtns();
     } else {
       const cost = g.intro ? 'Free intro' : `${C.COST_CR} cr buy-in`;
       const ids = crewIds();
       body += `<p>Call your people to the gulch. Sit-down pays ${C.STAR_PAY} ⭐ and bumps crew job payoffs (+5%, cap +25%). ${esc(cost)}.</p>`;
       if (ids.length) body += `<p>Showing: ${esc(ids.map(id => ROSTER.find(r => r.id === id)?.name.split(' ')[0] || id).join(', '))}.</p>`;
-      body += `<p class="sub">${esc(EXPLAIN)}</p><div class="btns"><button type="button" data-a="start">👥 Call them in</button><button type="button" data-a="exchange">100 cr → 10 ⭐</button><button type="button" data-a="close">Close</button></div>`;
+      body += `<p class="sub">${esc(EXPLAIN)}</p>`;
+      foot = `<button type="button" data-a="start">👥 Call them in</button><button type="button" data-a="exchange">100 cr → 10 ⭐</button><button type="button" data-a="close">Close</button>`;
     }
   }
-  S.ui.wrap.innerHTML = body;
-  holdUntil = performance.now() + 320;
+  paint(body, foot);
 }
 
 // ---------- world: gather hired crew around the player at the gulch ----------
