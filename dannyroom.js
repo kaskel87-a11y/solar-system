@@ -1,6 +1,7 @@
-// v7.5.79 Danny's own room, off a back door on the north wall of the Velvet Airlock.
-// The booth, the 50 cr dance, the private show and the three-strike touch rule live here, not in Ines's VIP room.
-// The special is a paid video (assets/danny/special.mp4). A missing file gives the credits back.
+// v7.5.81 Danny's own room, off a back door on the north wall of the Velvet Airlock.
+// The booth, the private show and the three-strike touch rule live here, not in Ines's VIP room.
+// The 5,000 cr special is the first button on her price card and the action button in front of her.
+// A missing video (assets/danny/special.mp4) gives the credits back. The 50 cr pole dance is not on her menu.
 import { addBooth, SHOW_PRICE } from './privateshow.js';
 import { dress, DANNY_NAME } from './clubdancers.js';
 
@@ -15,12 +16,23 @@ export const DANNY_ROOM = {
   pole: { x: -29.4, z: -6.35 },
   dance: { x: -29.4, z: -5.2 },
   show: { x: -28.4, z: -6.35 },
-  special: { x: -30.4, z: -6.35 },
-  exit: { x: -27.6, z: -4.25 }
+  special: { x: -29.4, z: -6.35 },
+  exit: { x: -26.9, z: -4.15 }
 };
 
 const DF = DANNY_NAME.split(' ')[0];
 const hop = (x, z, yaw) => { try { window.__app?.surface?.debugInside?.(x, z, yaw); } catch (e) { /* not in a room */ } };
+// The price card, with Special on top. The 18+ gate runs once; after that the card is immediate.
+function showMenu() {
+  const open = () => { try { window.__pshow?.offer?.(); } catch (e) { /* card not ready */ } };
+  try {
+    if (localStorage.getItem('ssx.adult') === '1') { open(); return; }
+    const g = document.getElementById('adultGate');
+    if (!g) { open(); return; }
+    g.style.display = 'flex';
+    g._yes = () => { localStorage.setItem('ssx.adult', '1'); g.style.display = 'none'; open(); };
+  } catch (e) { open(); }
+}
 
 let overlay = null, vid = null, refunded = false, started = false;
 
@@ -97,15 +109,15 @@ export function addDannyRoom(api, poses = {}) {
   box(cx, H / 2, R.z1, rw, H, 0.16, wall); api.col(cx, R.z1, rw / 2, 0.12, 'wall');
   box(cx, 0.08, R.z0 + 0.12, rw - 0.4, 0.04, 0.04, pink);
   api.sign(DANNY_NAME.toUpperCase(), 0xff7eb8, cx, 3.1, R.z0 + 0.16, 0, 3.2, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
-  api.sign('SPECIAL SHOW · 5,000 CR', 0xffd040, R.x1 - 0.2, 2.2, cz, -Math.PI / 2, 2.6, { w: 512, h: 96, font: 'bold 42px system-ui, sans-serif' });
+  api.sign('SPECIAL · 5,000 CR', 0xffd040, R.x1 - 0.2, 2.2, cz, -Math.PI / 2, 2.6, { w: 512, h: 96, font: 'bold 42px system-ui, sans-serif' });
   // the back door, on the north wall of the main room (west of the stage), not a hole into this box
   const D = R.door;
   box(D.x, 1.35, -7.82, 1.7, 2.7, 0.08, mat(0x3a0a20, { roughness: 0.55 }));
   box(D.x - 0.85, 1.35, -7.7, 0.08, 2.7, 0.08, pink); box(D.x + 0.85, 1.35, -7.7, 0.08, 2.7, 0.08, pink); box(D.x, 2.72, -7.7, 1.86, 0.08, 0.08, gold);
   api.sign("DANNY'S ROOM", 0xff7eb8, D.x, 3.35, -7.68, 0, 2.8, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
-  api.spot({ id: 'danny-door', x: D.x, z: D.z, r: 1.25, act: 'danny', label: "🚪 Danny's room", run() { hop(R.land.x, R.land.z, R.land.yaw); } });
-  api.spot({ id: 'danny-back', x: R.exit.x, z: R.exit.z, r: 0.7, act: 'danny', label: '🚪 Back to the club', run() { hop(R.back.x, R.back.z, R.back.yaw); } });
-  // her stage: the 50 cr dance and the booth the private show / encore / three-strike rule use
+  api.spot({ id: 'danny-door', x: D.x, z: D.z, r: 1.25, act: 'danny', label: "🚪 Danny's room", run() { hop(R.land.x, R.land.z, R.land.yaw); showMenu(); } });
+  api.spot({ id: 'danny-back', x: R.exit.x, z: R.exit.z, r: 0.6, act: 'danny', label: '🚪 Back to the club', run() { hop(R.back.x, R.back.z, R.back.yaw); } });
+  // her stage: the booth (private dance, lap, encore, three-strike rule). No 50 cr option.
   const P = R.pole;
   box(P.x, 0.12, P.z, 1.4, 0.24, 1.4, black); box(P.x, 0.26, P.z, 1.2, 0.04, 1.2, gold); box(P.x, (0.24 + H) / 2, P.z, 0.06, H - 0.24, 0.06, chrome); api.col(P.x, P.z, 0.7, 0.7);
   box(P.x, 0.25, P.z + 1.15, 0.7, 0.45, 0.7, velvet); box(P.x, 0.7, P.z + 1.4, 0.7, 0.5, 0.12, velvet);
@@ -116,9 +128,10 @@ export function addDannyRoom(api, poses = {}) {
   });
   dress(api, prv, { dancer: 'danny', outfit: 'white', k: 3 });
   api.privateDance = (sec = 9) => { privT = sec; return sec; };
-  api.spot({ id: 'private', x: R.dance.x, z: R.dance.z, r: 0.7, label: '💃 Dance · 50 cr', act: 'private', who: DANNY_NAME });
+  api.sign('SPECIAL · 5,000 CR', 0xffd040, P.x, 2.05, P.z + 1.05, 0, 2.6, { w: 512, h: 96, font: 'bold 48px system-ui, sans-serif' });
   const booth = addBooth(api, { x: P.x, z: P.z, sit });
   api.spot({ id: 'show', x: R.show.x, z: R.show.z, r: 0.65, label: `💋 ${DF} · Private dance ${SHOW_PRICE}`, act: 'show', who: DANNY_NAME });
-  api.spot({ id: 'danny-special', x: R.special.x, z: R.special.z, r: 0.65, act: 'danny', adult: true, label: '🎬 Special 5000', who: DANNY_NAME, run() { return openSpecial(); } });
+  api.spot({ id: 'danny-special', x: P.x, z: P.z, r: 2.1, act: 'danny', adult: true, label: '🎬 Special · 5,000 cr', who: DANNY_NAME, run() { return openSpecial(); } });
   return booth;
 }
+if (typeof window !== 'undefined') { window.SSX = window.SSX || {}; window.SSX.dannyRoom = { openSpecial, SPECIAL_PRICE, showMenu }; }

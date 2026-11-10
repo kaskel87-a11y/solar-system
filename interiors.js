@@ -440,7 +440,7 @@ export const INTERIORS = {
       box(X1 - 2.0, 0.5, -4.3, 0.08, 0.12, 0.08, mat(0xffd040, { basic: true }));
       api.person({ top: 0x2a0a18, bottom: 0x2a0a18, shoes: 0x0a0a0a, hair: 0xe8e8f0, hairStyle: 'bun', skin: 0xd8a888, accent: 0xffd040 }, X1 - 0.75, -4.6, Math.PI / 2, (p, t) => { sitPose(p); p.arms[1].rotation.x = 1.1 + Math.sin(t * 0.7) * 0.15; p.head.rotation.y = Math.sin(t * 0.3) * 0.3; });
       api.person({ top: 0x22222a, bottom: 0x22222a, hair: 0x3a2a1a, hairStyle: 'short', skin: 0xb07a54, shades: true, bulk: 1.2 }, X1 - 0.5, Z0 + 0.5, Math.PI * 0.75, (p, t) => guard(p, t));
-      // v7.5.79 Danny's booth, 50 cr dance and private show are in her own room (dannyroom.js), reached from the back door.
+      // v7.5.81 Danny's booth and private show are in her own room (dannyroom.js). The 50 cr dance is not on her menu.
       let dannyBooth = null;
       try { dannyBooth = addDannyRoom(api, { sit: sitPose, idle, poleDance }); } catch (e) { console.warn('danny room', e); }
       try { addDancerSpots?.(api, { booth: dannyBooth, dancers: [{ id: 'rhea', x: poles[0][0], z: -4.0 }, { id: 'kiara', x: poles[2][0], z: -4.0 }] }); } catch (e) { console.warn('clubprivate spots', e); } // v7.6 (clubprivate.js)
