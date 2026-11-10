@@ -3,6 +3,7 @@
 # The Nov 10 deploys of 48e5c961 and cdd7ae96 uploaded a 583 MB github-pages
 # artifact and died in syncing_files. Almost all of that weight is screenshots.
 # The live game never requests these folders. vendor/three, textures, models,
+# No-op comment so a merge retries Pages after run 42740815886 failed to deploy.
 # assets, icons, data and the modules stay published.
 exclude:
   - .sass-cache/
