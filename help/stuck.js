@@ -25,7 +25,8 @@ const CSS = `
 #hxStuck{display:none;flex:none;align-self:flex-start;min-width:44px;min-height:44px;padding:2px 4px;border-radius:9px;background:#000;color:#fff;border:2px solid #fff;font:800 10px/1.1 system-ui,sans-serif;touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:transparent}
 #hxStuck.vis{display:block} #hxStuck.hot{border-color:#ffd400} body.hidehud #hxStuck,body.cinematic #hxStuck,body:has(#roverMenu.show) #hxStuck{display:none!important}
 #farmGuide #hxStuck{width:auto;height:44px;font:800 12px/1 system-ui,sans-serif;background:#000;color:#fff}
-#stuckPop{position:fixed;z-index:30;display:none;box-sizing:border-box;max-width:min(340px,calc(100vw - 16px));padding:10px 12px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:700 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.6);pointer-events:auto}
+#stuckPop{position:fixed;z-index:30;display:none;box-sizing:border-box;max-width:min(340px,calc(100vw - 16px));padding:52px 12px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:700 15px/1.35 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.6);pointer-events:auto}
+#stuckPop .x{position:absolute;top:6px;right:6px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;line-height:40px}
 #stuckPop.on{display:block} #stuckPop .t{margin:0 0 8px} #stuckPop .row{display:flex;flex-wrap:wrap;gap:6px}
 #stuckPop button{min-height:44px;padding:4px 12px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px/1.1 system-ui,sans-serif;touch-action:manipulation}
 #stuckPop button.ok{margin-left:auto} #stuckPop .why{display:block;color:#ffd400;font-size:12px;margin:-4px 0 8px}
@@ -111,8 +112,9 @@ export function open(why = 'tap') {
   const stillS = stallTick(stall, cur.key, clock), out = offerOut({ stillS, missing: cur.missing, unreachable: cur.unreachable }), A = actionsFor(cur.src);
   const text = hint(cur), skip = out && A.skip, quit = out && A.quit;
   const why2 = !out ? '' : cur.missing ? 'The target is missing.' : cur.unreachable ? 'The target is somewhere you can’t reach.' : `No progress for ${Math.floor(stillS / 60)} min.`;
-  pop.innerHTML = `<p class="t">${esc(text)}</p>${out && (skip || quit) ? `<span class="why">${esc(why2)} No penalty either way.</span>` : ''}<div class="row">${skip ? '<button type="button" class="skip">Skip this step</button>' : ''}${quit ? `<button type="button" class="quit">${esc(A.quitLabel)}</button>` : ''}<button type="button" class="ok">OK</button></div>`;
+  pop.innerHTML = `<button type="button" class="x" aria-label="Close">✕</button><p class="t">${esc(text)}</p>${out && (skip || quit) ? `<span class="why">${esc(why2)} No penalty either way.</span>` : ''}<div class="row">${skip ? '<button type="button" class="skip">Skip this step</button>' : ''}${quit ? `<button type="button" class="quit">${esc(A.quitLabel)}</button>` : ''}<button type="button" class="ok">OK</button></div>`;
   const b = s => pop.querySelector(s);
+  tapOn(b('.x'), () => close());
   tapOn(b('.ok'), () => close());
   if (skip) tapOn(b('.skip'), () => doSkip());
   if (quit) tapOn(b('.quit'), () => doQuit());
