@@ -1,0 +1,21 @@
+# GitHub Pages builds this repo with Jekyll (source: main /) and then
+# actions/deploy-pages copies the result. That copy has a 10 minute limit.
+# The Nov 10 deploys of 48e5c961 and cdd7ae96 uploaded a 583 MB github-pages
+# artifact and died in syncing_files. Almost all of that weight is screenshots.
+# The live game never requests these folders. vendor/three, textures, models,
+# assets, icons, data and the modules stay published.
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - shots
+  - tests
+  - docs
+  - tools
