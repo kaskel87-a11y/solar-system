@@ -21,7 +21,10 @@ ok('room is west of Ines', R.x1 < 6);
 for (const k of ['land', 'pole', 'dance', 'show', 'special', 'exit']) ok(k + ' is in her room', inside(R[k]));
 ok('back door is on the main-room north wall, west of the stage', R.door.x < -5 && R.door.x > -11 && R.door.z < -6 && R.door.z > -8);
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-ok('dance, show and special spots do not overlap', d(R.dance, R.show) > 0.7 + 0.65 && d(R.dance, R.special) > 0.7 + 0.65 && d(R.show, R.special) > 0.65 + 0.65 && d(R.exit, R.dance) > 0.7 + 0.7);
+ok('no 50 cr option on her menu', !/Dance · 50 cr/.test(room) && !/id: 'private'/.test(room));
+ok('special covers standing in front of her and misses the exit', d(R.pole, R.land) < 2.1 && d(R.pole, R.exit) > 2.1 + 0.6);
+ok('price card leads with Special', /id="pshowSpecial"/.test(src('privateshow.js')) && src('privateshow.js').indexOf('id="pshowSpecial"') < src('privateshow.js').indexOf('id="pshowYes"'));
+ok('other dancers keep their private dance', /label: 'Private dance'/.test(src('clubprivate.js')));
 
 ok('club builds her room and keeps her on stage', /addDannyRoom\(api/.test(ints) && /outfit: n === 'danny' \? 'stage' : 'bikini'/.test(ints));
 ok('VIP room no longer hosts her show', !/id: 'show'/.test(ints) && !/id: 'private'/.test(ints));

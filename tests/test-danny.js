@@ -42,8 +42,8 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await G(([x, z]) => window.__app.surface.debugPlace(x, z + 0.4, Math.PI), [cd.x, cd.z]); await sleep(300);
     await G(() => window.__app.surface.enterBuilding()); ok('inClub', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000)); await sleep(500);
     await G(() => { window.__app.game.setFlag?.('vip'); window.__app.surface.world.openVip(); });
-    // the stage dancers still load and dance (regression for the 50 cr dance next to her)
-    await G(() => window.__app.surface.debugInside(-29.4, -5.2, 0)); ok('privateLabel', await wait(() => /Dance · 50 cr/.test(document.getElementById('driveBtn').textContent), 4000));
+    // standing in front of her: the action button is the 5,000 cr special, not the old 50 cr dance
+    await G(() => window.__app.surface.debugInside(-29.4, -5.2, 0)); ok('privateLabel', await wait(() => /Special/.test(document.getElementById('driveBtn').textContent) && /5,000/.test(document.getElementById('driveBtn').textContent), 4000));
     await G(() => window.__app.surface.debugInside(-28.4, -6.35, 0));
     ok('showLabel', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent), 4000), undefined);
     R.showLabel = await G(() => document.getElementById('driveBtn').textContent);

@@ -89,14 +89,15 @@ const CSS = `
 #pshow .r{display:flex;flex-wrap:wrap;gap:8px;width:100%;max-width:420px;pointer-events:auto} #pshow .hint{color:#bbb;font:11px system-ui,sans-serif}
 #pshowOffer .deal{margin-top:8px;font:600 12.5px/1.35 system-ui,sans-serif}
 body.touch #pshow .hint{display:none}
-@media (orientation:landscape) and (max-height:500px){#pshowOffer .w{max-height:calc(100vh - 12px);padding:10px}#pshow{gap:4px}.pshowBtn{min-height:44px;font-size:14px}}
+#pshowSpecial{display:block;width:100%;box-sizing:border-box;min-height:52px;margin:8px 0 4px;font-size:18px;font-weight:800}
+@media (orientation:landscape) and (max-height:500px){#pshowOffer .w{max-height:calc(100vh - 12px);padding:48px 10px 10px}#pshow{gap:4px}.pshowBtn{min-height:44px;font-size:14px}#pshowSpecial{min-height:48px;font-size:16px}}
 body.pshow #surfHud,body.pshow #joy,body.pshow #toast,body.pshow #ssxDock{visibility:hidden!important}
 `;
 // opts: { surface, toast, onTap, fx, hud }
 export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {} } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const offerEl = document.createElement('div'); offerEl.id = 'pshowOffer'; offerEl.setAttribute('role', 'dialog');
-  offerEl.innerHTML = '<div class="w"><button type="button" class="x" id="pshowX" aria-label="Close">✕</button><h3>💋 ' + DANNY_NAME + '</h3><div>“Private dance, my room. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
+  offerEl.innerHTML = '<div class="w"><button type="button" class="x" id="pshowX" aria-label="Close">✕</button><h3>💋 ' + DANNY_NAME + '</h3><button type="button" class="pshowBtn alt" id="pshowSpecial">Special \u00b7 5,000 cr</button><div>“Private dance, my room. One minute, my booth, my rules: bikini stays on, your hands stay on the chair.”</div><div class="deal" id="pshowDeal">' + SHOW_PRICE + ' cr \u2022 ' + SHOW_SEC + '-sec private dance \u2022 1 encore included</div><div class="r"><button class="pshowBtn alt" id="pshowYes">Private dance \u00b7 ' + SHOW_PRICE + ' cr</button><button class="pshowBtn alt" id="pshowLap">Lap dance \u00b7 ' + LAP_PRICE + ' cr</button><button class="pshowBtn" id="pshowNo">Not now</button></div><div class="r" id="pshowProd"></div><div class="ph" id="pshowProdHint"></div></div>';
   const ui = document.createElement('div'); ui.id = 'pshow';
   ui.innerHTML = '<div class="cap" id="pshowCap"></div><div class="warn" id="pshowStrike">Hands off \u00b7 3 strikes</div><div class="r"><button class="pshowBtn" id="pshowEncore" type="button">Encore included, 1 left</button></div><div class="r"><button class="pshowBtn" id="pshowTip">💸 Tip 20</button><button class="pshowBtn" id="pshowTouch">✋ Touch</button><button class="pshowBtn" id="pshowLeave">Leave</button></div><div class="hint">Y encore \u00b7 T tip \u00b7 E touch \u00b7 Esc leave</div>';
   document.body.append(offerEl, ui);
@@ -143,6 +144,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (!surface.game.spend(price)) { toast(DF + ': ' + (mode === 'lap' ? 'The chair dance is ' : 'A private dance is ') + price + '. Come back when you’re liquid.', 2600); fx.dry?.(); return; }
     fx.cash?.(); hud(); start(mode);
   };
+  onTap($('pshowSpecial'), () => { offerEl.style.display = 'none'; try { window.SSX?.dannyRoom?.openSpecial?.(); } catch (e) { /* video module */ } });
   onTap($('pshowYes'), () => buy('show')); onTap($('pshowLap'), () => buy('lap'));
   onTap($('pshowEncore'), () => encore()); onTap($('pshowTip'), () => tip()); onTap($('pshowTouch'), () => touch()); onTap($('pshowLeave'), () => end('leave'));
   const onKey = e => {
