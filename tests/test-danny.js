@@ -102,10 +102,14 @@ function pss(rootPid) { // sum PSS (kB) over the browser's process tree (Linux)
     await page.screenshot({ path: `${out}danny-${tag}-texts.png` });
     ok('textsRead', await G(() => window.__texts.state.unread === 0));
     await tapSel('#ssxTextsClose'); ok('textsClosed', await wait(() => !document.getElementById('ssxTexts').classList.contains('show'), 2000));
-    // and back in: the club still works, a leave ends cleanly
-    await G(() => window.__app.surface.enterBuilding()); ok('reEnter', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000));
-    await G(() => { window.__app.surface.world.openVip(); window.__app.surface.debugInside(6.55, -5.3, 0); }); await wait(() => /Private show/.test(document.getElementById('driveBtn').textContent), 4000);
-    await act(); await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000);
+    // Tiny's ban is the third strike. The door stays shut; the lap below is a separate scene.
+    const refused = await G(() => window.__app.surface.enterBuilding());
+    ok('reEnter', refused?.ok === false && /Hands off/.test(refused?.msg || ''), JSON.stringify(refused));
+    await G(() => window.SSX.dancers.liftBan());
+    await G(() => window.__app.surface.enterBuilding()); ok('lapEnter', await wait(() => window.__app.surface.info.inside?.kind === 'club', 8000));
+    await G(() => { window.__app.surface.world.openVip(); window.__app.surface.debugInside(-28.4, -6.35, 0); });
+    ok('lapPrompt', await wait(() => /Private dance 500/.test(document.getElementById('driveBtn').textContent), 4000));
+    await act(); ok('lapOffer', await wait(() => getComputedStyle(document.getElementById('pshowOffer')).display === 'flex', 3000));
     const lb = await center('#pshowLap'); ok('lapBtn44', `${Math.round(lb.w)}x${Math.round(lb.h)} top=${lb.top}`, lb.h >= 44 && lb.top === 'pshowLap');
     const c2 = await G(() => window.__app.game.progress.credits); await tapSel('#pshowLap');
     ok('paid500lap', await wait(c => window.__app.game.progress.credits === c - 500, 4000, c2));

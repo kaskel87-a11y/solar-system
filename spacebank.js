@@ -55,6 +55,13 @@ function doRoll(dir = 1) {
 }
 
 function raiseHeat(n, why) {
+  // An orbital alarm waits for the next Mars landing. Pursuit's onMars flag only
+  // updates while the surface tick runs, so after a landing it stays true in
+  // space and spike() would accept the heat and skip this queue (Firefox did).
+  if (!onMars()) {
+    R.pending = queueWanted(R.pending, 0, n);
+    return 'pending';
+  }
   const p = SSX().pursuit;
   if (p) {
     const r = routeHeat(p, n, why);
@@ -474,7 +481,7 @@ function setup() {
 setup();
 
 const api = {
-  version: 'v7.5.82',
+  version: 'v7.5.83',
   get state() {
     const r = R.run;
     return {

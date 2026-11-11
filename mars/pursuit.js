@@ -413,10 +413,21 @@ function renderHud(P) {
 
 // ---------- spike (other modules raise heat through world.js, e.g. Beltway convoys / carjacking / tolls, PR #49) ----------
 let spikes = [];
+// onMars is written only inside the surface tick, so it stays true after you leave Mars.
+function onSurfaceNow() {
+  try {
+    const s = window.__app?.state;
+    if (s && 'onSurface' in s) {
+      const live = !!(s.onSurface && s.info?.name === 'Mars' && !s.transitioning);
+      onMars = live; return live;
+    }
+  } catch (e) { /* */ }
+  return onMars;
+}
 function spike(amount = 1, reason = 'spike') {
   const w = world(), P = me(), from = heat(), why = String(reason || 'spike').slice(0, 80);
   const n = Math.round(Number(amount));
-  if (!w || !onMars || !P || !Number.isFinite(n) || n <= 0) return { ok: false, why: 'off', stars: from };
+  if (!w || !onSurfaceNow() || !P || !Number.isFinite(n) || n <= 0) return { ok: false, why: 'off', stars: from };
   if (inPit(P.x, P.z)) return { ok: false, why: 'pit', stars: from };
   const to = clamp(from + n, 0, 5);
   if (to > from) { try { w.setWanted(to, why); } catch (e) { console.warn('pursuit spike', e); return { ok: false, why: 'error', stars: from }; } }

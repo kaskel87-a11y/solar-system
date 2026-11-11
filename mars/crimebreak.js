@@ -64,8 +64,10 @@ function ensureUi() {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const panel = document.createElement('div'); panel.id = 'cbGulch'; panel.innerHTML = '<div class="wrap"><button type="button" class="x" data-a="close" aria-label="Close">✕</button><div class="sheet"></div><div class="foot"></div></div>'; document.body.appendChild(panel);
   panelTap(panel, e => { const b = e.target?.closest?.('button'); if (b && !b.disabled) act(b.dataset); });
-  const wrap = panel.firstChild;
-  S.ui = { panel, wrap, sheet: wrap.firstChild, foot: wrap.lastChild }; return S.ui;
+  const wrap = panel.querySelector('.wrap');
+  // v7.5.80 put the ✕ first inside .wrap. firstChild is that button, so painting
+  // the sheet into it crammed the title and tabs into a narrow column.
+  S.ui = { panel, wrap, sheet: wrap.querySelector('.sheet'), foot: wrap.querySelector('.foot') }; return S.ui;
 }
 const panelOn = () => !!S.ui?.panel.classList.contains('on');
 function open(force = false) {

@@ -163,6 +163,7 @@ ok(!/progress\.xp\s*[-+]?=/.test(ui), 'panel does not write xp itself');
 ok(ui.includes('100 cr → 10 ⭐'), 'button label shows the rate');
 ok(/panel\.id = 'cbGulch'/.test(ui) && !/panel\.id = 'cbPanel'/.test(ui), 'crime break does not reuse contraband #cbPanel');
 ok(/class="sheet"/.test(ui) && /class="foot"/.test(ui) && /S\.ui\.foot\.innerHTML/.test(ui), 'exchange, crew and close sit in a footer under a scrolling sheet');
+ok(/querySelector\('\.sheet'\)/.test(ui) && /querySelector\('\.foot'\)/.test(ui) && !/sheet: wrap\.firstChild/.test(ui), 'the sheet is the .sheet node, not the close button that now leads .wrap');
 ok(/max-height:450px/.test(ui) && /margin-bottom:calc\(100px/.test(ui), 'short landscape (iPhone ~393 tall) gives the sheet the leftover height and keeps the footer on screen');
 ok(/panelTap\(/.test(ui) && /CB\.buy\(id, qty\)/.test(ui) && /shop\.buy\(id\)/.test(ui), 'panelTap, contraband.buy, starshop.buy');
 ok(/C\.marketGate\(atGulch\(\)\)/.test(ui) && /shopGuard\.run\('exchange'/.test(ui), 'gulch gate and exchange guard');
