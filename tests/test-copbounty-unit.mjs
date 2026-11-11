@@ -1,40 +1,41 @@
-// node tests/test-copbounty-unit.mjs: v7.5.12 cop bounty. A ColSec officer kill (on foot) pays a flat 500 cr + 100 ⭐ (Star Shop
-// balance), once per kill, not through payoutMult; drones / cruisers pay nothing; the wanted-heat gain on the kill is unchanged.
+// node tests/test-copbounty-unit.mjs: v7.5.87 cop kill. Tiered lifetime ⭐ (about 2, more for heavier units),
+// a per-chase cap, the 500 cr foot bounty, and a wanted bump. No-cops zones pay nothing.
 import { readFileSync } from 'fs';
-import { COP_BOUNTY, isCop, bountyFor, bountyText } from '../copbounty.js';
+import { COP_CASH, CHASE_CAP, starsFor, isCop, bountyFor, bountyText, takeKill } from '../copbounty.js';
 import * as SC from '../mars/starshopcore.js';
 let fails = 0; const ok = (k, c, v) => { if (!c) { fails++; console.log('FAIL', k, v ?? ''); } };
-ok('flat amounts', COP_BOUNTY.cr === 500 && COP_BOUNTY.stars === 100);
-ok('officer pays', JSON.stringify(bountyFor({ kind: 'officer', foot: true })) === '{"cr":500,"stars":100}');
-ok('heavy pays', bountyFor({ kind: 'heavy', foot: true })?.cr === 500);
-ok('drone / buggy pay nothing', bountyFor({ kind: 'drone' }) === null && bountyFor({ kind: 'cruiser', foot: false }) === null && !isCop(null));
-ok('toast text', bountyText(bountyFor({ foot: true })) === '+500 cr · +100 ⭐', bountyText(bountyFor({ foot: true })));
-// game.js copBounty: lift the method out of the source and run it against a stub gain()
+ok('tier stars', starsFor('drone') === 2 && starsFor('officer') === 3 && starsFor('heavy') === 4 && starsFor('gunship') === 5 && starsFor('swat') === 5);
+ok('foot cash stays', COP_CASH === 500 && bountyFor({ kind: 'officer', foot: true })?.cr === 500 && bountyFor({ kind: 'heavy', foot: true })?.stars === 4);
+ok('drone is not a foot cop', bountyFor({ kind: 'drone' }) === null && !isCop(null));
+ok('drone still pays stars', takeKill(0, 'drone').stars === 2 && takeKill(0, 'drone').cr === 0);
+const cap = takeKill(CHASE_CAP - 1, 'officer');
+ok('chase cap', CHASE_CAP === 12 && cap.stars === 1 && cap.capped && takeKill(CHASE_CAP, 'officer').stars === 0);
+ok('gulch pays nothing', takeKill(0, 'officer', { zone: true }).stars === 0 && takeKill(0, 'officer', { zone: true }).cr === 0);
+ok('toast', bountyText({ stars: 3, cr: 500 }, 2) === '+3⭐ · +500 cr · Wanted ★★');
 const gsrc = readFileSync(new URL('../game.js', import.meta.url), 'utf8');
 const line = gsrc.split('\n').find(l => /^\s*copBounty\(b\)/.test(l)); ok('game.copBounty exists', !!line);
 const P = { xp: 1000, credits: 50 }; let calls = 0;
 const gain = (xp, cr) => { calls++; P.xp += xp; P.credits += cr; };
 const G = new Function('gain', `return { ${line.trim().replace(/\/\/.*$/, '')} };`)(gain);
-globalThis.SSX = { economy: { payoutMult: () => 3, job: n => n * 3, boost: n => n * 3 } }; // must be ignored
+globalThis.SSX = { economy: { payoutMult: () => 3, job: n => n * 3, boost: n => n * 3 } };
 const spent = SC.fresh(); const bal0 = SC.balance ? SC.balance(spent, P.xp) : P.xp;
-const r = G.copBounty(bountyFor({ kind: 'officer', foot: true }));
-ok('paid flat', P.credits === 550 && r.cr === 500, P);
-ok('+100 stars', (SC.balance ? SC.balance(spent, P.xp) : P.xp) - bal0 === 100);
-ok('once per call', calls === 1);
-ok('null bounty pays nothing', G.copBounty(null) === null && calls === 1);
+const r = G.copBounty({ cr: 500, stars: 3 });
+ok('paid cash', P.credits === 550 && r.cr === 500, P);
+ok('+3 stars', (SC.balance ? SC.balance(spent, P.xp) : P.xp) - bal0 === 3);
+ok('stars without cash', G.copBounty({ cr: 0, stars: 2 })?.stars === 2 && P.xp === 1005);
+ok('null bounty pays nothing', G.copBounty(null) === null);
 ok('no payoutMult', !/payoutMult|economy/.test(line.replace(/\/\/.*$/, '')));
-// world.js: paid inside secKill after the unit is spliced out (so a second hit can't pay again); crime line unchanged
 const wsrc = readFileSync(new URL('../world.js', import.meta.url), 'utf8');
-const sk = wsrc.slice(wsrc.indexOf('function secKill('), wsrc.indexOf('function secKill(') + 1600);
-ok('spliced before pay', sk.indexOf('security.splice(i, 1)') > 0 && sk.indexOf('security.splice(i, 1)') < sk.indexOf('bountyFor(s)'));
-ok('heat unchanged', sk.includes("crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security')"));
-ok('toast wired', /ev\.bounty\.cr/.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
-// no #88 KO cash drop on a cop: economy.npcDown pays 0 for one, still pays a colonist
-globalThis.SSX = {}; let credited = 0;
+const sk = wsrc.slice(wsrc.indexOf('function secKill('), wsrc.indexOf('function secKill(') + 1800);
+ok('spliced before pay', sk.indexOf('security.splice(i, 1)') > 0 && sk.indexOf('security.splice(i, 1)') < sk.indexOf('takeKill('));
+ok('heat on the kill', sk.includes("setWanted(Math.min(5, (wanted | 0) + 1)"));
+ok('zone skips pay', sk.includes('copFree(player.x, player.z)'));
+ok('toast wired', /Wanted/.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')) && /ev\.bounty/.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')));
+globalThis.SSX = {};
 try { const E = await import('../economy.js'); const nd = E.npcDown;
   globalThis.__app = { game: { progress: { credits: 0 }, save() {} } };
   const cop = nd({ kind: 'officer', foot: true, x: 0, z: 0 }), cop2 = nd({ kind: 'officer', ssxCop: 1 }), heavy = nd({ kind: 'heavy', foot: true });
-  ok('no KO drop on cops', cop === 0 && cop2 === 0 && heavy === 0, { cop, cop2, heavy }); credited = 1;
+  ok('no KO drop on cops', cop === 0 && cop2 === 0 && heavy === 0, { cop, cop2, heavy });
 } catch (e) { ok('economy import', false, e.message); }
 ok('secKill marks the cop', sk.includes('s.ssxCop = 1; s.ssxDropDone = 1;'));
 console.log(fails ? `copbounty unit: ${fails} FAILED` : 'copbounty unit OK'); process.exit(fails ? 1 : 0);
