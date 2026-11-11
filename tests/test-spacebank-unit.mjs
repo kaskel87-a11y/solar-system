@@ -13,6 +13,17 @@ ok('onBuoy', C.nearBuoy(p, C.BUOYS[0]));
 ok('gatherOne', C.gather([], p).join(',') === 'cams');
 ok('gatherAll', C.gather(['cams', 'shift', 'timer'], [0, 0, 0]).length === 3);
 ok('missBuoy', !C.nearBuoy([0, 0, 0], C.BUOYS[0]));
+ok('nextBuoyNearest', C.nextBuoy([], [0, 0, 0]).id === 'cams' && C.nextBuoy(['cams'], [0, 16, 140]).id === 'timer' && C.nextBuoy(['cams', 'shift', 'timer'], [0, 0, 0]) === null);
+const ground = C.guide({ phase: 'scout', intel: [] }, null, true);
+ok('groundCard', ground.text === 'Take off and fly close to the 3 glowing buoys near Cinder Vault (0/3).' && ground.kind === 'takeoff');
+const sky = C.guide({ phase: 'scout', intel: ['cams'] }, [0, 16, 140], false);
+ok('skyCard', /Fly close to the 3 glowing buoys/.test(sky.text) && sky.kind === 'buoy' && sky.id === 'timer' && /\(1\/3\)/.test(sky.text));
+ok('dockCard', C.guide({ phase: 'vault', intel: ['cams', 'shift', 'timer'] }, [0, 6, 80], false).kind === 'dock');
+ok('marsCard', C.guide({ phase: 'getaway', intel: [] }, [0, 6, 40], false).kind === 'mars' && /arrow points at Mars/.test(C.guide({ phase: 'getaway', intel: [] }, null, false).text));
+const mid = C.edgePointer(0, 0, 375, 667), side = C.edgePointer(1.4, 0.1, 375, 667), top = C.edgePointer(0, 0.94, 375, 667);
+const outside = (p, W, H) => !(p.x > W * 0.25 && p.x < W * 0.75 && p.y > H * 0.25 && p.y < H * 0.75);
+ok('pointerOutOfMiddle', outside(mid, 375, 667) && outside(side, 375, 667) && outside(top, 375, 667) && top.y < 667 * 0.25);
+ok('range', C.fmtRange(840) === '840 m' && C.fmtRange(1600) === '1.6 km');
 
 const cam = C.CAMS[0], inside = cam.at.map((v, i) => v + C.norm(cam.rest)[i] * 10);
 ok('inCone', C.inCone(cam.at, C.norm(cam.rest), inside));

@@ -109,7 +109,7 @@ function start() {
   try { if (SSX().smuggle?.state?.run) return { ok: false, why: 'smuggle' }; } catch (e) { /* */ }
   R.run = C.newRun(); R.drill = C.freshDrill(); R.holdT = 0; R.holdBtn = false; R.sc = {}; R.scanning = null; R.lost = 0; R.locked = false;
   clearCut(); S.runs++; save(); emit('start');
-  toast(C.line('start', S.runs), 4600);
+  toast(C.guide(R.run, shipM(), !inSpace()).text, 5200);
   if (onMars() && !atNix()) waypoint(true);
   return { ok: true };
 }
@@ -190,6 +190,15 @@ async function beginCrack() {
 }
 
 // ---------- meshes (one group in the Mars frame, hidden until a job is live) ----------
+function glowMat(color, emissive) {
+  const m = new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 1.8, roughness: 0.4, metalness: 0.05, flatShading: true });
+  m.toneMapped = false; return m;
+}
+function beamMat(color) {
+  const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  m.toneMapped = false; return m;
+}
+const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();
 function build() {
   const scene = app()?.rocket?.parent; if (!scene || R.grp) return;
   const g = new THREE.Group(); g.name = 'cinderVault'; g.visible = false;
@@ -197,11 +206,18 @@ function build() {
   hull.position.set(...C.BANK.pos); hull.name = 'sbHull'; g.add(hull);
   const fin = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xc4552a, roughness: 0.6 }));
   fin.position.set(C.BANK.pos[0], C.BANK.pos[1] + 2.2, C.BANK.pos[2]); g.add(fin);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(C.BANK.dockR * 0.55, 0.12, 6, 40), new THREE.MeshBasicMaterial({ color: 0xffd040 }));
-  ring.position.set(...C.BANK.dock); ring.rotation.x = Math.PI / 2; ring.name = 'sbDock'; g.add(ring);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(C.BANK.dockR * 0.55, 0.18, 8, 48), new THREE.MeshBasicMaterial({ color: 0xffd040 }));
+  ring.position.set(...C.BANK.dock); ring.rotation.x = Math.PI / 2; ring.name = 'sbDock'; ring.material.toneMapped = false; g.add(ring); R.dock = ring;
+  const dockGeo = new THREE.CylinderGeometry(0.7, 1.25, 80, 10, 1, true); dockGeo.translate(0, 40, 0);
+  const dockBeam = new THREE.Mesh(dockGeo, beamMat(0xffd040));
+  dockBeam.position.set(...C.BANK.dock); dockBeam.name = 'sbDockBeam'; dockBeam.frustumCulled = false; dockBeam.visible = false; g.add(dockBeam); R.dockBeam = dockBeam;
   R.buoys = C.BUOYS.map(b => {
-    const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), new THREE.MeshStandardMaterial({ color: 0xd8d8d8, emissive: 0x222222, flatShading: true }));
-    m.position.set(...b.pos); m.name = 'sbBuoy:' + b.id; g.add(m); return m;
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(1.15), glowMat(0xfff1c2, 0xff8a00));
+    m.position.set(...b.pos); m.name = 'sbBuoy:' + b.id;
+    const beamGeo = new THREE.CylinderGeometry(0.55, 0.95, 72, 8, 1, true); beamGeo.translate(0, 36, 0);
+    const beam = new THREE.Mesh(beamGeo, beamMat(0xffb020)); beam.name = 'sbBeam'; beam.frustumCulled = false;
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 8), beamMat(0xffd060)); halo.name = 'sbHalo';
+    m.add(beam, halo); g.add(m); return m;
   });
   R.cones = C.CAMS.map((c, i) => {
     const h = C.SCAN.range, geo = new THREE.ConeGeometry(Math.tan(C.SCAN.half) * h, h, 20, 1, true); geo.translate(0, -h / 2, 0);
@@ -362,8 +378,96 @@ function tick(now) {
   ui();
 }
 
+function paintMarkers() {
+  if (!R.buoys) return;
+  const r = R.run, scout = r?.phase === 'scout', have = r?.intel || [];
+  const pulse = 0.5 + 0.5 * Math.sin(R.t * 3.4);
+  const cam = app()?.camera;
+  const widen = m => {
+    if (!cam) return 1;
+    m.getWorldPosition(_w);
+    return Math.max(1, Math.min(14, cam.position.distanceTo(_w) / 28));
+  };
+  R.buoys.forEach((m, i) => {
+    const logged = !scout || have.includes(C.BUOYS[i].id);
+    const beam = m.getObjectByName('sbBeam'), halo = m.getObjectByName('sbHalo');
+    if (logged) {
+      m.material.color.setHex(0x8ee0a8); m.material.emissive.setHex(0x146b38); m.material.emissiveIntensity = 0.4;
+      m.scale.setScalar(1);
+      if (beam) beam.visible = false;
+      if (halo) halo.visible = false;
+    } else {
+      m.material.color.setHex(0xfff3c4); m.material.emissive.setHex(0xff8a00); m.material.emissiveIntensity = 1.15 + pulse * 1.35;
+      m.scale.setScalar(1.2 + pulse * 0.35);
+      const s = widen(m);
+      if (beam) { beam.visible = true; beam.material.opacity = 0.28 + 0.32 * pulse; beam.scale.set(s, 1, s); }
+      if (halo) { halo.visible = true; halo.material.opacity = 0.16 + 0.22 * pulse; halo.scale.setScalar(s * (0.8 + 0.25 * pulse)); }
+    }
+  });
+  const dockOn = !!r && (r.phase === 'crew' || r.phase === 'vault');
+  if (R.dockBeam) {
+    R.dockBeam.visible = dockOn;
+    if (dockOn) { const s = widen(R.dockBeam); R.dockBeam.scale.set(s, 1, s); R.dockBeam.material.opacity = 0.42 + 0.48 * pulse; }
+  }
+  if (R.dock?.material) R.dock.material.color.setHex(dockOn ? (pulse > 0.5 ? 0xfff2a8 : 0xffc020) : 0xffd040);
+}
+function projectGuide(pos) {
+  const cam = app()?.camera; if (!cam || !R.mp) return null;
+  _w.set(R.mp[0] + pos[0], R.mp[1] + pos[1], R.mp[2] + pos[2]);
+  _fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
+  _to.copy(_w).sub(cam.position);
+  const behind = _to.dot(_fwd) <= 0;
+  _w.project(cam);
+  let x = _w.x, y = _w.y;
+  if (behind) { x = -x; y = -y; }
+  return { x, y, behind };
+}
+function shovePtr(el) {
+  const margin = 8, W = innerWidth, H = innerHeight;
+  const L = W * 0.25, Rg = W * 0.75, T = H * 0.25, B = H * 0.75, floor = H - 128;
+  const place = (x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
+  let x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+  let r = el.getBoundingClientRect();
+  if (r.left < margin) x += margin - r.left;
+  if (r.right > W - margin) x -= r.right - (W - margin);
+  if (r.top < 58) y += 58 - r.top;
+  if (r.bottom > floor) y -= r.bottom - floor;
+  place(x, y); r = el.getBoundingClientRect();
+  if (!(r.right > L && r.left < Rg && r.bottom > T && r.top < B)) return;
+  // Wider than the side gutter: sit in the top band so the whole pill stays on screen and out of the middle.
+  // Left side of the top band: the right side is the menu and Stop flying.
+  const ny = Math.max(58 + r.height / 2, T - 8 - r.height / 2);
+  const nx = margin + r.width / 2;
+  place(nx, ny);
+}
+function paintGuide() {
+  if (!ptr) return;
+  const r = R.run;
+  const g = r && r.phase !== 'done' && r.phase !== 'failed' ? C.guide(r, shipM(), !inSpace()) : null;
+  if (!g?.kind) { ptr.classList.remove('on'); R.guide = null; return; }
+  let nx = 0, ny = 0.94, dist = null;
+  if (g.pos && inSpace()) {
+    const pr = projectGuide(g.pos);
+    if (pr) { nx = pr.x; ny = pr.y; }
+    const p = shipM(); if (p) dist = C.dist(p, g.pos);
+  }
+  const spot = C.edgePointer(nx, ny, innerWidth, innerHeight);
+  const range = dist == null ? '' : C.fmtRange(dist);
+  const label = g.kind === 'takeoff' ? 'Take off' : (range || g.hint);
+  ptr.classList.add('on');
+  const sp = ptr.querySelector('span'); if (sp.textContent !== label) sp.textContent = label;
+  ptr.querySelector('i').style.transform = `rotate(${spot.ang}rad)`;
+  ptr.style.left = spot.x + 'px'; ptr.style.top = spot.y + 'px';
+  shovePtr(ptr);
+  const box = ptr.getBoundingClientRect();
+  R.guide = { kind: g.kind, id: g.id, label, dist: dist == null ? null : Math.round(dist), x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+}
+
 // ---------- UI: one narrow left chip in space (outside the middle 50%), a bottom sheet, one dock button on Nix ----------
-const CSS = `#sbChip{position:fixed;z-index:14;left:calc(8px + env(safe-area-inset-left));top:calc(168px + env(safe-area-inset-top));display:none;flex-direction:column;gap:4px;width:min(22vw,168px);box-sizing:border-box;padding:4px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:700 11px/1.15 system-ui,sans-serif;pointer-events:auto}
+// v7.5.84: an edge pointer (#sbPtr) aims at the next buoy, the gold ring, or Mars. It stays out of the middle.
+const CSS = `#sbPtr{position:fixed;z-index:20;display:none;align-items:center;gap:4px;min-height:44px;max-width:46vw;box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.15 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap}
+#sbPtr.on{display:flex}#sbPtr i{display:block;width:22px;font-style:normal;font-size:18px;line-height:22px;text-align:center}
+#sbChip{position:fixed;z-index:14;left:calc(8px + env(safe-area-inset-left));top:calc(168px + env(safe-area-inset-top));display:none;flex-direction:column;gap:4px;width:min(22vw,168px);box-sizing:border-box;padding:4px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:700 11px/1.15 system-ui,sans-serif;pointer-events:auto}
 #sbChip.on{display:flex}#sbChip .m{display:none;height:6px;border:1px solid #fff;border-radius:3px;overflow:hidden}#sbChip .m.on{display:block}#sbChip .m b{display:block;height:100%;width:0;background:#fff}
 #sbChip button{display:none;min-height:44px;min-width:44px;width:100%;padding:4px;border-radius:8px;background:#000;color:#fff;border:2px solid #fff;font:800 12px/1.1 system-ui,sans-serif;touch-action:none}
 #sbChip button.on{display:block}
@@ -371,11 +475,12 @@ const CSS = `#sbChip{position:fixed;z-index:14;left:calc(8px + env(safe-area-ins
 #sbPanel.on{display:flex}#sbPanel .wrap{width:min(96vw,440px);max-height:min(70vh,560px);overflow:auto;-webkit-overflow-scrolling:touch;margin:0 8px calc(12px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:12px;box-sizing:border-box;font:14px/1.35 system-ui,sans-serif}
 #sbPanel h2{margin:0 0 6px;font-size:17px}#sbPanel p{margin:6px 0}#sbPanel button{min-height:44px;min-width:44px;margin:4px 4px 0 0;padding:8px 10px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 14px/1.15 system-ui,sans-serif;touch-action:manipulation}
 #sbPanel button:disabled{opacity:.45}#dockSb{order:8}`;
-let dockBtn = null, chip = null, panel = null;
+let dockBtn = null, chip = null, panel = null, ptr = null;
 function panelOn() { return !!panel?.classList.contains('on'); }
 function ensureDom() {
   if (chip || typeof document === 'undefined') return;
   const st = document.createElement('style'); st.id = 'sbCss'; st.textContent = CSS; document.head.appendChild(st);
+  ptr = document.createElement('div'); ptr.id = 'sbPtr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<i>▲</i><span></span>'; document.body.appendChild(ptr);
   chip = document.createElement('div'); chip.id = 'sbChip'; chip.setAttribute('role', 'status');
   chip.innerHTML = '<span class="t"></span><span class="m"><b></b></span><button type="button" id="sbAct"></button>';
   document.body.appendChild(chip);
@@ -425,10 +530,10 @@ function renderPanel() {
       const tag = on ? 'Hired' : p.free ? 'Your crew · free' : `${p.cost} cr`;
       return `<p><b>${esc(role.title)}</b> · ${esc(role.name)}<br><small>${esc(role.blurb)}</small></p><button type="button" data-a="hire" data-id="${role.id}" ${on ? 'disabled' : ''}>${on ? '✓ ' : ''}${esc(role.title)} · ${tag}</button>`;
     }).join('');
-    w.innerHTML = `<h2>👥 Crew</h2><p>Buy who you need. A hand you already hired at ☰ Crew covers their role free. Crime-break sit-downs bump the cut.</p>${rows}<button type="button" data-a="lock">Lock the crew</button><button type="button" data-a="abort">Abort</button><button type="button" data-a="close">Close</button>`;
+    w.innerHTML = `<h2>👥 Crew</h2><p>Buy who you need, or skip them. A hand you already hired at ☰ Crew covers their role free. Then fly into the gold ring at Cinder Vault. The arrow points at it.</p>${rows}<button type="button" data-a="lock">Lock the crew</button><button type="button" data-a="abort">Abort</button><button type="button" data-a="close">Close</button>`;
     return;
   }
-  const phase = { scout: `Scout the buoys (${r.intel.length}/3).`, vault: 'Fly into the gold ring and hold still.', drill: 'Hold DRILL in pulses. A steady hold trips the heat.', crack: 'The dial is up.', getaway: 'Cutters are up. Roll the lock. Dive for Mars.' }[r.phase] || r.phase;
+  const phase = C.guide(r, shipM(), !inSpace())?.text || r.phase;
   w.innerHTML = `<h2>🏦 ${esc(C.BANK_NAME)}</h2><p>${esc(phase)}</p><button type="button" data-a="abort">Abort</button><button type="button" data-a="close">Close</button>`;
 }
 function openPanel() {
@@ -446,6 +551,8 @@ function onPanel(ds) {
   if (a === 'abort') return abort('bailed');
 }
 function ui() {
+  paintMarkers();
+  paintGuide();
   if (dockBtn) {
     const show = onMars() && !R.run && atNix();
     const k = show ? '1' : '0';
@@ -481,14 +588,14 @@ function setup() {
 setup();
 
 const api = {
-  version: 'v7.5.83',
+  version: 'v7.5.84',
   get state() {
     const r = R.run;
     return {
       run: r ? { phase: r.phase, intel: r.intel.slice(), crew: r.crew.slice(), alarm: !!r.alarm, loot: !!r.loot, hp: r.hp, retried: !!r.retried, dodges: r.dodges, heatSent: !!r.heatSent, lastCrack: r.lastCrack || null } : null,
       drill: R.drill ? { fill: +(+R.drill.fill).toFixed(3), heat: +(+R.drill.heat).toFixed(3), done: !!R.drill.done, hot: !!R.drill.hot } : null,
       scanning: R.scanning, scan: Object.fromEntries(Object.entries(R.sc).map(([k, v]) => [k, Math.round((v.v || 0) * 100) / 100])),
-      cutters: R.cut.length, locked: R.locked, pending: R.pending, atNix: atNix(), nix: nixWorld(), why: R.run ? 'run' : null, last: R.last, saved: { ...S }, t: R.t
+      cutters: R.cut.length, locked: R.locked, pending: R.pending, atNix: atNix(), nix: nixWorld(), guide: R.guide || null, why: R.run ? 'run' : null, last: R.last, saved: { ...S }, t: R.t
     };
   },
   start, abort, hire, lockCrew, pay, roll: doRoll, open: openPanel, close: closePanel,

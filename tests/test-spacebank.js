@@ -43,7 +43,7 @@ const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await sleep(600);
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
     await G(() => { window.__app.surface.world.setWanted(0); window.__app.game?.setAliens?.(false); window.__app.surface.game.progress.credits = 8000; try { window.SSX.onboard?.skip?.(); } catch (e) {} });
-    ok('version', await G(() => window.SSX.spacebank.version), (await G(() => window.SSX.spacebank.version)) === 'v7.5.83');
+    ok('version', await G(() => window.SSX.spacebank.version), (await G(() => window.SSX.spacebank.version)) === 'v7.5.84');
     // menu: the job is one tap from ☰
     await tap('#menuBtn');
     await wait(() => document.getElementById('roverMenu')?.classList.contains('show'), 8000);
@@ -70,11 +70,50 @@ const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
       ok('takeJob', await tap('#sbPanel button[data-a="go"]'));
     }
     ok('started', await wait(() => window.SSX.spacebank.state.run?.phase === 'scout', 8000));
+    await G(() => window.SSX.spacebank.open());
+    ok('marsCard', await G(() => /Take off and fly close to the 3 glowing buoys near Cinder Vault \(0\/3\)/.test(document.querySelector('#sbPanel p')?.textContent || '')));
+    await G(() => window.SSX.spacebank.close());
+    ok('marsPointer', await wait(() => {
+      const e = document.getElementById('sbPtr'); if (!e?.classList.contains('on')) return false;
+      const r = e.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+      const mid = r.left < W * 0.75 && W * 0.25 < r.right && r.top < H * 0.75 && H * 0.25 < r.bottom;
+      return !mid && /Take off/.test(e.textContent || '') && r.height >= 40;
+    }, 4000));
     ok('tookOff', await (async () => { await G(() => window.__app.takeOff()); return wait(() => { const s = window.__app.state; return s.flying && !s.onSurface && !s.transitioning; }, 30000); })());
+    await sleep(500);
+    const glow = await G(() => {
+      const m = window.__app.rocket?.parent?.getObjectByName('sbBuoy:cams');
+      const beam = m?.getObjectByName('sbBeam'), halo = m?.getObjectByName('sbHalo');
+      return { e: m?.material?.emissiveIntensity || 0, beam: !!beam?.visible, halo: !!halo?.visible, hex: m?.material?.emissive?.getHex?.() || 0 };
+    });
+    ok('buoyGlows', glow, glow.beam && glow.halo && glow.e > 1 && glow.hex === 0xff8a00);
+    ok('spacePointer', await wait(() => {
+      const e = document.getElementById('sbPtr'), r = e?.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+      if (!r) return false;
+      const mid = r.left < W * 0.75 && W * 0.25 < r.right && r.top < H * 0.75 && H * 0.25 < r.bottom;
+      const g = window.SSX.spacebank.state.guide;
+      return !!e?.classList.contains('on') && g?.kind === 'buoy' && !mid && /\d/.test(e.textContent || '') && g.dist > 0;
+    }, 8000));
+    await D('place', [[0, 12, 90], [14, 6, 108]]);
+    await sleep(700);
+    ok('pointerOnScreen', await wait(() => {
+      const e = document.getElementById('sbPtr'); if (!e) return false;
+      const r = e.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+      const mid = r.left < W * 0.75 && W * 0.25 < r.right && r.top < H * 0.75 && H * 0.25 < r.bottom;
+      const onScreen = r.left >= 0 && r.right <= W && r.top >= 0 && r.bottom <= H - 100;
+      const beam = window.__app.rocket?.parent?.getObjectByName('sbBuoy:cams')?.getObjectByName('sbBeam');
+      return onScreen && !mid && !!beam?.visible && /\d/.test(e.textContent || '') && window.SSX.spacebank.state.guide?.kind === 'buoy';
+    }, 8000));
+    await shot('buoy-pointer');
     await G(() => { window.__app.joy.x = 1; window.__app.joy.y = 0; }); await sleep(250);
     await G(() => { window.__app.joy.x = 0; window.__app.joy.y = 0; window.__app.touchBtns.boost = false; });
     await D('placeAtBuoy', ['cams']);
     ok('buoy', await wait(() => (window.SSX.spacebank.state.run?.intel || []).includes('cams'), 8000));
+    ok('loggedDims', await G(() => {
+      const root = window.__app.rocket?.parent;
+      const cams = root?.getObjectByName('sbBuoy:cams'), shift = root?.getObjectByName('sbBuoy:shift');
+      return !!cams && !cams.getObjectByName('sbBeam')?.visible && !!shift?.getObjectByName('sbBeam')?.visible && shift.material.emissive.getHex() === 0xff8a00;
+    }));
     await D('scoutAll');
     ok('crewPhase', await wait(() => window.SSX.spacebank.state.run?.phase === 'crew', 4000));
     const free = await G(() => { const c = window.SSX.crew, orig = c.state.bind(c); c.state = () => ({ crew: [{ id: 'vee' }] }); const p = window.SSX.spacebank.price('drill'); c.state = orig; return p; });
@@ -88,6 +127,7 @@ const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('paidHack', cr0 - cr1, cr0 - cr1 === 500);
     ok('lockCrew', await tap('#sbPanel button[data-a="lock"]'));
     ok('vaultPhase', await wait(() => window.SSX.spacebank.state.run?.phase === 'vault' && window.SSX.spacebank.state.run.crew.includes('hack'), 4000));
+    ok('dockPointer', await wait(() => window.SSX.spacebank.state.guide?.kind === 'dock' && /\d/.test(document.getElementById('sbPtr')?.textContent || ''), 4000));
     await D('placeAtDock');
     ok('docked', await wait(() => window.SSX.spacebank.state.run?.phase === 'drill', 8000));
     await sleep(300);
@@ -114,6 +154,7 @@ const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await G(() => { window.__sbCrack = null; const H = window.SSX.heist; window.__sbCrackOrig = H.safeCrack; H.safeCrack = o => { window.__sbCrack = o; return Promise.resolve({ success: true, ok: true, reason: 'cracked', time: 1, noise: 0, tier: o.tier, tumblers: 2 }); }; });
     await D('pulse');
     ok('cracked', await wait(() => window.SSX.spacebank.state.run?.phase === 'getaway' && window.SSX.spacebank.state.run.loot === true, 8000));
+    ok('marsPointerHome', await wait(() => window.SSX.spacebank.state.guide?.kind === 'mars' && /\d/.test(document.getElementById('sbPtr')?.textContent || ''), 4000));
     const crack = await G(() => window.__sbCrack);
     ok('usedSafeCrack', crack, crack && crack.tier === 'easy' && crack.time > 42 && crack.title === 'Cinder Vault');
     ok('cutters', await wait(() => window.SSX.spacebank.state.cutters >= 1, 4000), (await st()).cutters === (touch ? 1 : 2));
