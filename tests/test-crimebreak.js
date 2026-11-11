@@ -56,6 +56,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('ctxBtn', await wait(() => { const b = document.getElementById('cbAct'); return b && b.style.display !== 'none'; }, 6000));
     ok('ctxBW', await BW('#cbAct'), isBW(await BW('#cbAct')));
     await tapSel('#cbAct'); ok('panel', await wait(() => window.SSX.crimebreak.isOpen, 4000));
+    const sheetLay = await G(() => {
+      const sheet = document.querySelector('#cbGulch .sheet'), x = document.querySelector('#cbGulch .x'), h2 = document.querySelector('#cbGulch h2');
+      const sr = sheet?.getBoundingClientRect(), xr = x?.getBoundingClientRect();
+      return { sw: Math.round(sr?.width || 0), xw: Math.round(xr?.width || 0), titleInSheet: !!(h2 && sheet?.contains(h2) && !x?.contains(h2)) };
+    });
+    ok('sheetWide', sheetLay, sheetLay.sw >= 200 && sheetLay.xw <= 64 && sheetLay.titleInSheet);
     ok('startBW', await BW('#cbGulch button[data-a="start"]'), isBW(await BW('#cbGulch button[data-a="start"]')));
     await sleep(300); await shot('prompt');
 

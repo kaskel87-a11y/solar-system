@@ -2,14 +2,14 @@
 // cutter getaway, payout. Touch runs include a second finger while one holds the joystick.
 // BASE=http://127.0.0.1:8877/ BR=webkit DEV=393x852 SHOTS_DIR=/tmp/sb-shots node tests/test-spacebank.js
 // DEV=desktop uses 1280x800. BR=chromium|webkit.
-const { chromium, webkit, devices } = require('playwright');
+const { chromium, webkit, firefox, devices } = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8877/', BR = process.env.BR || 'chromium', DEV = process.env.DEV || 'desktop';
 const out = (process.env.SHOTS_DIR || require('path').join(__dirname, '..', 'shots')) + '/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
 (async () => {
   require('fs').mkdirSync(out, { recursive: true });
-  const browser = await (BR === 'webkit' ? webkit : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
+  const browser = await (BR === 'webkit' ? webkit : BR === 'firefox' ? firefox : chromium).launch({ args: BR === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
   const m = /^(\d+)x(\d+)$/.exec(DEV), { defaultBrowserType: _d, ...iph } = devices['iPhone 14'];
   const dev = DEV === 'desktop' ? { viewport: { width: 1280, height: 800 }, hasTouch: false } : { ...iph, viewport: { width: +m[1], height: +m[2] }, screen: { width: +m[1], height: +m[2] }, deviceScaleFactor: 2, hasTouch: true };
   const touch = DEV !== 'desktop';
@@ -43,7 +43,7 @@ const tag = `spacebank-${DEV}-${BR}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     await sleep(600);
     if (await G(() => getComputedStyle(document.getElementById('radio')).display !== 'none')) await G(() => document.getElementById('radioLater')?.click());
     await G(() => { window.__app.surface.world.setWanted(0); window.__app.game?.setAliens?.(false); window.__app.surface.game.progress.credits = 8000; try { window.SSX.onboard?.skip?.(); } catch (e) {} });
-    ok('version', await G(() => window.SSX.spacebank.version), (await G(() => window.SSX.spacebank.version)) === 'v7.5.82');
+    ok('version', await G(() => window.SSX.spacebank.version), (await G(() => window.SSX.spacebank.version)) === 'v7.5.83');
     // menu: the job is one tap from ☰
     await tap('#menuBtn');
     await wait(() => document.getElementById('roverMenu')?.classList.contains('show'), 8000);

@@ -648,6 +648,7 @@ export const TOUCH_BAN_MS = 20000;
 let touchN = 0, banUntil = 0;
 export const touchStrikes = () => touchN;
 export const resetTouchStrikes = () => { touchN = 0; };
+export const liftBan = () => { banUntil = 0; };
 export const touchBanLeft = (now = Date.now()) => Math.max(0, banUntil - now);
 export function banMsg(now = Date.now()) {
   const left = touchBanLeft(now);
@@ -682,4 +683,4 @@ export function slapDancer(h, booth) {
   if (flash) { flash.classList.add('on'); setTimeout(() => flash.classList.remove('on'), 180); }
   setTimeout(() => { try { h.pose({}); if (head) head.rotation.z = 0; } catch (e) { /* show already over */ } }, 650);
 }
-try { queueMicrotask(() => { if (typeof window !== 'undefined' && window.SSX) window.SSX.dancers = { banMsg, touchStrikes, resetTouchStrikes, clubTouch, touchLine, TOUCH_FEE, TOUCH_BAN_MS }; }); } catch (e) {}
+try { queueMicrotask(() => { if (typeof window !== 'undefined' && window.SSX) window.SSX.dancers = { banMsg, touchStrikes, resetTouchStrikes, liftBan, clubTouch, touchLine, TOUCH_FEE, TOUCH_BAN_MS }; }); } catch (e) {}

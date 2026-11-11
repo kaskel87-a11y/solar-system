@@ -52,6 +52,8 @@ function close(el) {
   ensureX(el);
 }
 function ensureX(el) {
+  // v7.5.83: #toast already has the 44px .ssx-x. The 24px .cfX was a second close button.
+  if (el.id === 'toast') { el.querySelector(':scope > .cfX')?.remove(); return; }
   if (el.querySelector(':scope > .cfX')) return;
   const x = document.createElement('button'); x.type = 'button'; x.className = 'cfX'; x.textContent = '\u2715'; x.setAttribute('aria-label', 'Close');
   const stop = e => { e.stopPropagation(); };
