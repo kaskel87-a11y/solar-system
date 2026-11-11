@@ -131,7 +131,7 @@ export function questHtml(q) {
   if (!q) return '';
   const p0 = plainStep(q.text, q.type), p = { ...p0, text: noKeys(p0.text), how: p0.how && noKeys(p0.how) }, key = `${q.title}|${String(q.text).replace(/\s*\([^)]*\d[^)]*\)\s*$/, '')}`, now = performance.now();
   if (key !== howKey) { howKey = key; howAt = now; }
-  const how = p.how && now - howAt < HOW_MS;
+  const how = p.how && (now - howAt < HOW_MS || p.type);
   return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx">${esc(p.text)}</span>${how ? `<span class="hxHow">${esc(p.how)}</span>` : ''}`;
 }
 
