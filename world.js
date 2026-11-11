@@ -613,7 +613,9 @@ export function createWorld(ctx) {
     const zone = copFree(player.x, player.z) || copFree(s.x, s.z);
     let bounty = null;
     if (!zone) {
-      setWanted(Math.min(5, (wanted | 0) + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
+      let raise = true;
+      try { if (typeof globalThis.SSX?.mobboss?.raiseHeat === 'function') raise = globalThis.SSX.mobboss.raiseHeat() !== false; } catch (e) { /* */ }
+      if (raise) setWanted(Math.min(5, (wanted | 0) + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
       const got = takeKill(chaseStars, s.kind);
       chaseStars = got.earned;
       bounty = { cr: got.cr, stars: got.stars, capped: got.capped };
