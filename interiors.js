@@ -15,6 +15,7 @@ import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the cl
 import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
 import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
 import { addVelvetWing } from './velvetwing.js'; // Velvet expansion: the east wing (Dome Lounge, high-roller table, Ines's office) where the small dome used to be
+import { addSnackBar } from './snackbar.js'; // snack counter on the empty floor west of Ines's office
 import { addBarCounter } from './bar.js'; // v7.6 space-liquor counter (sell your bottles / drinks) at the north end of the club bar
 import { EX_COST, EX_STARS } from './mars/crimebreakcore.js'; // same 100 cr → 10 ⭐ rate as the gulch exchange; the till calls that exchange
 
@@ -492,6 +493,7 @@ export const INTERIORS = {
         try { addClubFloor(api, { sit: sitPose, idle, human: buildHuman }); } catch (e) { console.warn('club floor', e); } // v7.5.35 3 waitresses on patrol + 6 baked spectators
       }
       try { addVelvetWing?.(api, { sit: sitPose, idle, guard, o, human: buildHuman }); } catch (e) { console.warn('velvet wing', e); } // Velvet expansion: east wing x 11..25 (the old east wall is now a partition, below)
+      try { addSnackBar(api, { sit: sitPose, idle }); } catch (e) { console.warn('snack bar', e); } // empty floor west of the office: counter, cook, EAT menu
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();

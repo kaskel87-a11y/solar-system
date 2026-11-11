@@ -869,6 +869,7 @@ export function createGame(ctx) {
     if (H.down > 0 || H.inv > 0 || ctx.st().intro > 0) return;
     const st = ctx.st();
     if (st.driving) dmg *= st.own ? (hasUp('roverarmor') ? 0.25 : 0.5) : 0.6; // hull soaks some
+    try { const m = globalThis.SSX?.snack?.mitigate?.(); if (m > 0 && m < 1) dmg *= m; } catch (e) { /* no snack buff */ } // Red Dust burger: hits hurt 25% less for 60s
     H.lastHit = time;
     const s = Math.min(H.shield, dmg); H.shield -= s; dmg -= s;
     H.hp = Math.max(0, H.hp - dmg);
@@ -1721,6 +1722,7 @@ export function createGame(ctx) {
     enter, exit, update, fire, melee, resupply, accept, useMedkit, switchWeapon, shopList, shopItem, buy, talk, spend, flag, setFlag, grantPerm, bribe, bribeCost, idleLine, ammoCap, registerMission,
     reward(xp = 0, cr = 0) { gain(xp, cr, true); save(); }, // v7.4 duel purses
     restore() { H.hp = H.max; H.shield = H.smax; H.down = 0; return H.hp; }, // v7.4 club upstairs: back on your feet
+    heal(n) { if (!(n > 0) || H.down > 0) return 0; const before = H.hp; H.hp = Math.min(H.max, H.hp + n); const got = H.hp - before; if (got > 0) save(); return Math.round(got); }, // snack bar and anything else that patches a wound without a medkit
     copBounty(b) { if (!b || (!(b.cr > 0) && !(b.stars > 0))) return null; gain(b.stars | 0, b.cr | 0, true); return { cr: b.cr | 0, stars: b.stars | 0 }; }, // v7.5.87 cop kill: tiered ⭐ (lifetime xp) plus the foot-officer cash bounty
     bonus(n, rolls = 1) { P.credits += n; P.xp += Math.round(n / 5); save(); return n; }, // v7.4 stunt bonus
     gore, hostiles, heistAt, crack, choose, crackable, humanCount: () => agents.reduce((n, a) => n + (a.T.human ? 1 : 0), 0),

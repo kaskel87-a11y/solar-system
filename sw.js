@@ -56,6 +56,7 @@ const PRECACHE = [
   `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
   `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
   `mars/velvetarc.js${q}`, `mars/velvetarccore.js${q}`, `velvetwing.js${q}`, // 🏛️ Velvet expansion: the east wing + Ines's arc, owning the club
+  `snackbar.js${q}`, `snackbarcore.js${q}`, // 🍗 Velvet snack bar on the empty floor west of Ines's office
   `clubpoker.js${q}`, // 🃏 Velvet Airlock Hold'em room (v7.5.33)
   `slotfloor.js${q}`, // 🎰 Velvet slot bank + Olympus Mega (v7.5.36)
   `clubfloor.js${q}`, // 🍸 Velvet cocktail waitresses + gamblers (v7.5.35)
