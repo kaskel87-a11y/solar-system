@@ -40,7 +40,11 @@
     'ssx.heliospass.v1', //  v7.5.33 Helios Heights guest pass (bribe: one entry + one heist)
     'ssx.crew.v1', // v7.5.42 crew (crewcore.js)
     'ssx.crimebreak.v1', // v7.5.76 gulch crime break (mars/crimebreakcore.js): meetings / last sol / crew-pay buff / exchange count
-    'ssx.velvetarc.v1' // Velvet expansion: Ines's arc + owning the Velvet Airlock (mars/velvetarccore.js)
+    'ssx.velvetarc.v1', // Velvet expansion: Ines's arc + owning the Velvet Airlock (mars/velvetarccore.js)
+    'ssx.spacebank.v1', // v7.5.82 Cinder Vault (spacebank.js)
+    'ssx.duckblind.v1', // v7.5.86 Duck Blind (duckblind.js)
+    'ssx.mobboss.v1', // v7.5.88 Mob Boss (mobboss.js)
+    'ssx.garagetheme.v1' // v7.5.91 lock-up looks, per garage (dealership.js)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];

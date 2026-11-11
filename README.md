@@ -4,6 +4,13 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.91: themed lock-ups
+Your lock-up next to Red Line Motors can wear a look: **Scrap bay** (240 cr), **Neon pit** (480 cr) or **High-roller** (1,400 cr). Each one changes the open bay around your car: the light color, the walls and floor, the props and the sign. Neon pulses, scrap flickers, high-roller shimmers. A look you already bought on that garage is free to put back. The yard lock-up is free.
+
+**On a phone:** walk up to the lock-up and tap **🔧 Garage**, then **🎨 Look**. Or tap ☰ → **🚗 Rides & meets** → **🎨 Restyle lock-up**. If you are not at the bay, follow the arrow on the edge of the screen. 1. Tap a look. 2. Tap Buy. 3. The bay changes, and it stays on this garage.
+
+Saved per garage in `localStorage` `ssx.garagetheme.v1` (not the progress save). `SSX.garage.themes()`, `SSX.garage.theme(id)`, `SSX.garage.buyTheme(themeId, garageId)`.
+
 ## Controls
 - **Desktop:** drag to orbit, scroll to zoom, click a planet. Flight: W/A/S/D or arrows move, mouse looks (click to lock the pointer, or drag), Q/E down/up, Space or Shift to boost, F or Esc to exit.
 - **Phone:** one finger orbits, pinch zooms, tap a planet. Flight: the left stick moves, drag anywhere else to steer, and you hold Up/Down/Boost.

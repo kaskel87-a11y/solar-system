@@ -93,7 +93,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 - [x] **Rover dealership and garage:** new rover models, plus customization (paint, wheels, lights, armor, weapons). **Oct 25, 2026 (PR #7)**, lot growth v7.5.45, partner buy-in v7.5.52, showroom dome v7.5.64.
 - [x] **Rags-to-Riches mode:** a fresh save starting broke, with side jobs. **Oct 25, 2026 (PR #13).** ☰ → 🧱 New Game: Rags to Riches. Starts at 25 cr, not a literal $0, with a crash pad in Red Tape Flats.
 - [x] **Car meets** to show off builds. **Oct 25, 2026 (PR #7):** night lot south of Ares Junction, 📸 Show off, drag races, circuit races.
-- [ ] **Themed garages:** the lock-ups are built, but a garage still has one look. A restyle (neon, scrap, high-roller) is still open.
+- [x] **Themed garages:** the lock-ups had one look. **v7.5.91:** restyle the Red Line lock-up as Scrap (240 cr), Neon (480 cr) or High-roller (1,400 cr). Each look changes the bay you stand in: light color, wall and floor, props and the sign, plus a pulse, a flicker, or a gold shimmer. Bought per garage and saved in `localStorage` key `ssx.garagetheme.v1`. Find it: walk up and tap **🔧 Garage**, then **🎨 Look**. Or ☰ → **🚗 Rides & meets** → **🎨 Restyle lock-up**. If you are not there, an on-screen arrow points at the bay. `tests/test-garagetheme.js`.
 - [x] **Director / free-roam mode.** **Oct 25, 2026 (PR #17).** ☰ → 🎬 Director.
   - weather, including dust storms;
   - time-of-day control;

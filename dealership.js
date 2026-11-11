@@ -6,6 +6,8 @@
 // - Fence: drive a stolen world car onto the lot and sell it for cr + ⭐ (heat cuts payout; 4+ ★ can bust).
 // - Garage: store up to MAX_RIDES rides; paint, body kits, wheels, underglow and engine/handling/brakes/boost upgrades
 //   that change the driving spec. The ride you pick becomes "your rover" (same thrusters, turret, Frankie, radio).
+// - Lock-up looks (v7.5.91): Scrap, Neon, High-roller. Bought with credits, saved per garage in localStorage
+//   (garagecore THEME_KEY). The open bay around the work spot changes: lights, walls, floor, props, sign.
 // - Car meets (carmeet.js): a timed night event with NPC cars, show-off rep and drag races run on race.js.
 // - Save: lives in the game's own progress save (ssx.progress.v1 → progress.garage), migrated by garagecore.migrateGarage.
 // Wiring (the only shared-code hooks): index.html imports DEALER_API and merges it into window.SSX; surface.js runs
@@ -117,7 +119,10 @@ function respray({ reason = '', price } = {}) {
 }
 export const GARAGE_API = { open: rideId => openGarageAnywhere(rideId), respray, get selected() { return sheet?.kind === 'garage' ? gSel : null; }, grantVehicle, grantUpgrade, grantPart, grant, get rides() { return garage().rides.map(r => ({ ...r })); }, get active() { return garage().active; }, get rep() { return garage().rep; },
   get partner() { return { ...partnerOf() }; }, buyPartner, collectPartner, fenceRide, get dome() { return { ...domeOf() }; }, buyDome, get maxRides() { return GC.maxRidesOf(garage()); },
-  upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])) };
+  upgrades: Object.keys(GC.UPGRADES), get shopUpgrades() { return shopGrantIds(); }, parts: Object.fromEntries(Object.entries(GC.COSMETIC_SLOTS).map(([k, t]) => [k, Object.keys(t)])),
+  themes: () => GC.themeList().map(t => ({ id: t.id, name: t.name, price: t.price, sign: t.sign, light: t.light, ambient: t.ambient, blurb: t.blurb })),
+  theme: (garageId = GC.LOCKUP_ID) => GC.themeIdOf(readThemes(), garageId),
+  buyTheme: (themeId, garageId = GC.LOCKUP_ID) => buyTheme(themeId, garageId) };
 export const DEALER_API = { registerDealerVehicle, dealerStock, configureDealer, garage: GARAGE_API };
 
 // ---------- save ----------
@@ -128,6 +133,8 @@ function garage() {
   return P.garage;
 }
 const save = () => app()?.game?.save?.();
+function readThemes() { try { return GC.parseThemes(localStorage.getItem(GC.THEME_KEY)); } catch (e) { return GC.freshThemes(); } }
+function writeThemes(s) { try { localStorage.setItem(GC.THEME_KEY, JSON.stringify(s)); } catch (e) { /* private mode */ } }
 const credits = () => app()?.game?.progress?.credits ?? 0;
 const spend = n => { const P = app()?.game?.progress; if (!P || P.credits < n) return false; P.credits -= n; return true; };
 const give = n => { const P = app()?.game?.progress; if (!P || !(n > 0)) return 0; P.credits = (P.credits | 0) + (n | 0); return n | 0; };
@@ -144,7 +151,7 @@ export function specOf(ride) { const base = VEHICLES[ride.kind] || VEHICLES.rove
 const rideName = r => (r.kind === 'rover' ? (r.gift ? 'Rover' : 'Your rover') : (VEHICLES[r.kind]?.name || r.kind)) + (r.noPlates ? ' (no plates)' : '');
 
 // ---------- world state ----------
-let C = null, planet = null, root = null, lot = null, last = 0, nav = null, ui = null, sheet = null, meet = null;
+let C = null, planet = null, root = null, lot = null, last = 0, nav = null, ui = null, sheet = null, meet = null, themeNav = false, themeCamHold = false, themePtr = false;
 const H = (x, z) => C ? C.height(x, z) : 0;
 const W = p => { const c = C?.world?.colony; return { x: (CFG.anchor === 'colony' ? c?.x || 0 : 0) + p[0], z: (CFG.anchor === 'colony' ? c?.z || 0 : 0) + p[1] }; };
 export const spots = () => ({ dealer: W(CFG.dealer), garage: W(CFG.garage), meet: W(CFG.meet), stripFrom: W(CFG.strip.from), stripTo: W(CFG.strip.to) });
@@ -208,15 +215,103 @@ function buildLot() {
   // --- garage: quonset lock-up with a roller door and a work bay in front ---
   const g = new THREE.Group(); g.position.set(S.garage.x, H(S.garage.x, S.garage.z), S.garage.z); g.rotation.y = CFG.yaw; root.add(g); lot.garage = g;
   g.add(put(a.half, a.mShut, 3.4, 4.2, 9, 0, 0, -5)); // quonset arch, 9 m deep
-  g.add(put(a.box, a.mDark, 6, 3.6, 0.2, 0, 1.8, -0.55)); // roller door
-  for (let i = 0; i < 6; i++) g.add(put(a.box, a.mSteel, 6, 0.05, 0.05, 0, 0.4 + i * 0.55, -0.42));
+  const door = new THREE.Group(); door.name = 'garage-door';
+  door.add(put(a.box, a.mDark, 6, 3.6, 0.2, 0, 1.8, -0.55)); // roller door
+  for (let i = 0; i < 6; i++) door.add(put(a.box, a.mSteel, 6, 0.05, 0.05, 0, 0.4 + i * 0.55, -0.42));
+  g.add(door); lot.door = door; lot.doorOpen = 0;
   g.add(put(a.box, a.mConc, 10, 0.3, 9, 0, -0.05, 4));
-  const gs = signMesh('LOCK-UPS · CUSTOM', 0x38e1ff, 7, 1.2); gs.position.set(0, 4.6, -0.4); g.add(gs);
   g.add(put(a.disc, a.mPool, 4.5, 1, 4.5, 0, 0.13, 4.2));
   lot.bay = new THREE.Group(); lot.bay.position.set(0, 0.1, 4.2); g.add(lot.bay);
+  lot.inside = new THREE.Group(); lot.inside.position.set(0, 1.5, 4.4); g.add(lot.inside); // camera aim for the themed bay
+  applyThemeVisual();
   // --- car meet lot + drag strip markers ---
   meet = meet || createMeet({ THREE, GC, ctx: () => C, root: () => root, spots, assets, signMesh, put, H, toast, garage, save, activeRide, specOf, tierOf, rideName, buildVehicle, decorate, isMobile, credits, spend, app, openSheet, closeSheet, sheetOpen: () => !!sheet, esc, statBars, cfg: () => CFG });
   meet.buildLot();
+}
+// themed bay around the work spot: open toward +z (the way you walk up). No real lights (they recompile materials).
+const THEME_MATS = {};
+function themeMats(theme) {
+  if (THEME_MATS[theme.id]) return THEME_MATS[theme.id];
+  const sh = m => { m.userData.shared = true; return m; };
+  const M = {
+    wall: sh(new THREE.MeshStandardMaterial({ color: theme.wall, emissive: theme.light, emissiveIntensity: theme.emissive, roughness: theme.rough, metalness: theme.metal })),
+    floor: sh(new THREE.MeshStandardMaterial({ color: theme.floor, emissive: theme.light, emissiveIntensity: theme.emissive * 0.45, roughness: theme.floorRough, metalness: theme.floorMetal })),
+    trim: sh(new THREE.MeshStandardMaterial({ color: theme.trim, roughness: 0.82, metalness: 0.25 })),
+    ceil: sh(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.92, metalness: 0.08 })),
+    light: sh(new THREE.MeshBasicMaterial({ color: theme.light, transparent: true, opacity: 1, toneMapped: false })),
+    light2: sh(new THREE.MeshBasicMaterial({ color: theme.light2, transparent: true, opacity: 1, toneMapped: false })),
+    pool: sh(new THREE.MeshBasicMaterial({ color: theme.light, transparent: true, opacity: theme.pool, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }))
+  };
+  THEME_MATS[theme.id] = M; return M;
+}
+function dropTheme() {
+  const t = lot?.theme; if (!t) return;
+  t.parent?.remove(t);
+  t.traverse(o => {
+    if (o.isMesh && o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    const m = o.material; if (m && !m.userData?.shared) { if (m.map && !m.map.userData?.shared) m.map.dispose(); m.dispose(); }
+  });
+  lot.theme = null;
+}
+function applyThemeVisual(id) {
+  if (!lot?.garage) return null;
+  const theme = GC.GARAGE_THEMES[id || GC.themeIdOf(readThemes(), GC.LOCKUP_ID)] || GC.GARAGE_THEMES.stock;
+  dropTheme();
+  const a = assets(), M = themeMats(theme), g = new THREE.Group(); g.name = 'gtheme'; g.userData.theme = theme.id; g.userData.sign = theme.sign;
+  const add = (mesh, name) => { mesh.name = name; mesh.raycast = () => {}; g.add(mesh); return mesh; };
+  add(put(a.box, M.floor, 8.2, 0.08, 7.6, 0, 0.1, 4.4), 'gtheme-floor');
+  add(put(a.box, M.wall, 0.16, 3.1, 7.6, -4.05, 1.6, 4.4), 'gtheme-wall');
+  add(put(a.box, M.wall, 0.16, 3.1, 7.6, 4.05, 1.6, 4.4), 'gtheme-wall');
+  add(put(a.box, M.wall, 8.2, 3.1, 0.16, 0, 1.6, 0.65), 'gtheme-wall');
+  add(put(a.box, M.ceil, 8.2, 0.1, 7.0, 0, 3.15, 4.2), 'gtheme-ceil');
+  add(put(a.box, M.light, 6.4, 0.08, 0.22, 0, 3.02, 3.0), 'gtheme-light');
+  add(put(a.box, M.light2, 6.4, 0.08, 0.22, 0, 3.02, 6.0), 'gtheme-light2');
+  add(put(a.box, M.light, 0.14, 3.05, 0.14, -4.05, 1.6, 8.05), 'gtheme-post');
+  add(put(a.box, M.light2, 0.14, 3.05, 0.14, 4.05, 1.6, 8.05), 'gtheme-post');
+  add(put(a.box, M.light, 8.2, 0.1, 0.12, 0, 3.18, 8.05), 'gtheme-fascia');
+  add(put(a.disc, M.pool, 2.6, 1, 2.6, 0, 0.18, 4.4), 'gtheme-pool');
+  theme.props.forEach((p, i) => {
+    const mesh = put(p.k === 'cyl' ? a.cyl : a.box, M[p.mat] || M.trim, p.sx, p.sy, p.sz, p.x, p.y, p.z);
+    if (p.rot) mesh.rotation.z = p.rot;
+    add(mesh, 'gtheme-prop');
+    mesh.userData.i = i;
+  });
+  const back = signMesh(theme.sign, theme.light, 4.4, 0.85); back.position.set(0, 2.35, 0.82); add(back, 'gtheme-sign');
+  const marquee = signMesh(theme.sign, theme.light, 7.2, 1.05); marquee.position.set(0, 3.7, 8.2); add(marquee, 'gtheme-marquee');
+  lot.garage.add(g); lot.theme = g;
+  return theme.id;
+}
+function tickTheme(dt) {
+  const g = lot?.theme; if (!g) return;
+  const theme = GC.GARAGE_THEMES[g.userData.theme]; const M = theme && THEME_MATS[theme.id];
+  if (theme && M) {
+    const time = performance.now() / 1000; let o = 1, p = theme.pool;
+    if (theme.ambient === 'pulse') { const s = 0.5 + 0.5 * Math.sin(time * 3.4); o = 0.45 + 0.55 * s; p = theme.pool * (0.65 + 0.35 * s); M.light2.opacity = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(time * 3.4 + 1.7)); }
+    else if (theme.ambient === 'flicker') { const n = Math.sin(time * 17.2) * Math.sin(time * 9.7 + 1.3); o = n > 0.15 ? 1 : 0.22; M.light2.opacity = o; }
+    else if (theme.ambient === 'shimmer') { const s = 0.5 + 0.5 * Math.sin(time * 1.15); o = 0.72 + 0.28 * s; p = theme.pool * (0.8 + 0.2 * s); M.light2.opacity = o; }
+    else M.light2.opacity = 1;
+    M.light.opacity = o; M.pool.opacity = p;
+  }
+  if (lot.door) {
+    const near = here() && (dist(meOf(), spots().garage) < 18 || sheet?.kind === 'garage' || themeCamHold);
+    const want = near ? 1 : 0;
+    lot.doorOpen += (want - lot.doorOpen) * Math.min(1, (dt || 0) * 3);
+    lot.door.position.y = lot.doorOpen * 3.3;
+  }
+}
+export function buyTheme(themeId, garageId = GC.LOCKUP_ID) {
+  const s = readThemes(), q = GC.quoteTheme(s, garageId, themeId, credits());
+  if (!q.ok) {
+    if (q.why === 'fitted') return { ok: false, why: q.why, msg: `🎨 ${q.name} is already on this garage.` };
+    if (q.why === 'funds') return { ok: false, why: q.why, price: q.price, need: q.need, msg: `💸 ${q.name} is ${q.price} cr. You’re ${q.need} short.` };
+    return { ok: false, why: q.why || 'no', msg: 'No such look.' };
+  }
+  if (q.price && !spend(q.price)) return { ok: false, why: 'funds', price: q.price, msg: 'Payment failed.' };
+  const next = GC.commitTheme(s, garageId, themeId); writeThemes(next); save();
+  if (garageId === GC.LOCKUP_ID) applyThemeVisual(themeId);
+  const where = garageId === GC.LOCKUP_ID ? 'this lock-up' : 'this garage';
+  const msg = q.price ? `🎨 ${q.name} is on ${where}. ${q.price} cr, and it stays.` : `🎨 ${q.name} is back on ${where}.`;
+  return { ok: true, theme: themeId, garage: garageId, price: q.price, msg };
 }
 // the lot in dealer-local metres (yaw-rotated with the group): centre, size, the two podium rows
 const LOT = { cx: -12, cz: 2, w: 50, d: 22, rowA: -1, rowB: 7.5, span: 46 }; // kept on the colony's flattened ground (it drops off south of z +13, rises east of x +6)
@@ -312,7 +407,7 @@ const CSS = `
 #dlrSheet .opt{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:6px 0}#dlrSheet .opt button{text-align:left;padding:4px 10px;line-height:1.15}#dlrSheet .opt small{display:block;font-weight:600;opacity:.75}
 #dlrSheet .bars{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-size:.74rem;margin:6px 0}#dlrSheet .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;position:relative}
 #dlrSheet .bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#38e1ff,#ff2a7a)}#dlrSheet .bar b{position:absolute;top:0;bottom:0;background:#ffd25a;opacity:.85}
-#dlrSheet .blurb{opacity:.8;font-size:.78rem;margin:4px 0}#dlrSheet .warn{color:#ffb020}#dlrSheet .tabs{display:flex;gap:4px;overflow-x:auto;margin:6px 0}#dlrSheet .tabs button{min-height:40px;padding:0 10px}
+#dlrSheet .blurb{opacity:.8;font-size:.78rem;margin:4px 0}#dlrSheet .warn{color:#ffb020}#dlrSheet .tabs{display:flex;gap:4px;overflow-x:auto;margin:6px 0}#dlrSheet .tabs button{min-height:44px;padding:0 10px}
 body.dlr-open #surfBtns, body.dlr-open #stackR{visibility:hidden}
 /* phone preview: leave more of the screen for the showroom car */
 #dlrSheet[data-kind=dealer]{max-height:46vh}
@@ -376,6 +471,7 @@ function updateCtx() {
   const me = meOf(), S = spots();
   // fence a stolen world ride on the lot (priority over open-dealer while you're still in it)
   if (wantFence()) return setCtx('💸 Fence ride', doFence);
+  if (themeNav && dist(me, S.garage) < 11) return setCtx('🎨 Restyle', () => { gTab = 'look'; themeNav = false; aimLockup(false); openGarage(); });
   const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
   if (dist(me, S.garage) < 11) return setCtx('🔧 Garage', () => openGarage());
@@ -446,7 +542,7 @@ function renderDealer() {
     `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
     <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${P.on && price < s.price ? ' · partner' : ''}${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
-    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button></div>
+    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button><button data-theme="1">🎨 Restyle</button></div>
     <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
     ${partnerBlock}
     ${domeBlock()}
@@ -586,7 +682,28 @@ let gSel = null, gTab = 'perf', bay = null;
 function openGarage() {
   if (!here()) return toast('🔧 Your lock-ups are on Mars, next to Red Line Motors.');
   const G = garage(); if (!gSel || !rideById(gSel)) gSel = G.active;
-  openSheet('garage', renderGarage, () => lot.bay); showBay();
+  openSheet('garage', renderGarage, () => (gTab === 'look' ? lot?.inside : lot?.bay) || null); showBay();
+}
+function pointAtLockup() {
+  if (!here()) return toast('🎨 Your lock-up is on Mars, next to Red Line Motors.');
+  const p = spots().garage; nav = { x: p.x, z: p.z, n: 'garage' }; themeNav = true;
+  toast('🎨 Follow the arrow to your lock-up. Then tap Restyle.', 3600);
+}
+function startRestyle() {
+  try { app()?.toggleMenu?.(false); } catch (e) { /* menu already shut */ }
+  if (!C || !app()?.state?.onSurface) return toast('🎨 Land on Mars first. Your lock-up is next to Red Line Motors.');
+  if (!here()) return toast('🎨 Your lock-up is on Mars, next to Red Line Motors, at Ares Junction.');
+  if (dist(meOf(), spots().garage) < 11) { gTab = 'look'; themeNav = false; aimLockup(false); openGarage(); return; }
+  closeSheet(true); pointAtLockup();
+}
+function aimLockup(on) {
+  const g = window.SSX?.guide; if (!g) return;
+  try {
+    if (!on) { if (themePtr) { g.clear?.('garagetheme'); themePtr = false; } return; }
+    const p = spots().garage;
+    g.aimGround?.({ id: 'garagetheme', x: p.x, z: p.z, label: 'Lock-up' });
+    themePtr = true;
+  } catch (e) { /* guide missing */ }
 }
 // SSX.garage.open(rideId?): the garage sheet from anywhere (Ben's base garage Customize button). No lock-up range check, no navTo.
 // The showroom camera and 3D bay only join in when you're actually at the lock-ups; elsewhere it's just the sheet.
@@ -594,7 +711,7 @@ function openGarageAnywhere(rideId) {
   const G = garage(), id = rideId === 'current' ? G.active : rideId;
   if (id != null && rideById(id)) gSel = id; else if (!gSel || !rideById(gSel)) gSel = G.active;
   gPrev = null; const atLot = here() && !!lot && dist(meOf(), spots().garage) < 40;
-  openSheet('garage', renderGarage, atLot ? () => lot.bay : null); if (atLot) showBay();
+  openSheet('garage', renderGarage, atLot ? () => (gTab === 'look' ? lot?.inside : lot?.bay) || null : null); if (atLot) showBay();
   return !!sheet && sheet.kind === 'garage';
 }
 function clearBay() { if (bay) { bay.group.parent?.remove(bay.group); disposeRoot(bay.group); bay = null; } }
@@ -604,13 +721,31 @@ function showBay() {
   if (!bay) { let v = null; try { v = r.kind === 'rover' ? buildRover() : buildVehicle(r.kind); } catch (e) { v = null; } if (!v) return; bay = { ...v, kind: r.kind }; v.group.rotation.y = 0.7; lot.bay.add(v.group); }
   decorate(bay, r, r.kind === 'rover' ? { paint: false, dims: { w: 3.0, len: 6.2, y: 1.8, roof: 2.8, tail: 3.05, nose: -3.2 } } : {});
 }
-const TABS = [['perf', '⚙️ Performance'], ['paint', '🎨 Paint'], ['kit', '🧱 Body'], ['wheels', '🛞 Wheels'], ['glow', '💡 Underglow'], ['rides', '🅿️ My rides']];
+const TABS = [['look', '🎨 Look'], ['perf', '⚙️ Performance'], ['paint', '🎨 Paint'], ['kit', '🧱 Body'], ['wheels', '🛞 Wheels'], ['glow', '💡 Underglow'], ['rides', '🅿️ My rides']];
+let lookPick = 'neon';
+function lookHTML() {
+  const s = readThemes(), fitted = GC.themeIdOf(s, GC.LOCKUP_ID), pick = GC.GARAGE_THEMES[lookPick] ? lookPick : 'neon';
+  const q = GC.quoteTheme(s, GC.LOCKUP_ID, pick, credits()), near = here() && dist(meOf(), spots().garage) < 16;
+  const steps = `<div class="blurb"><b>Restyle this lock-up</b><br>1. Tap a look.<br>2. Tap Buy. Credits pay for it. A look you already bought on this garage is free to put back.<br>3. The bay around your car changes. It stays on this garage.</div>`;
+  const away = near ? '' : `<div class="warn">You are not at the lock-up.</div><div class="row"><button data-showlock="1">📍 Take me there</button></div>`;
+  const picks = GC.themeList().map(t => {
+    const on = fitted === t.id;
+    const price = t.price ? `${t.price} cr` : 'Free';
+    return `<button data-look="${t.id}" class="${pick === t.id ? 'on' : ''}">${esc(t.name)}<small>${on ? 'On now' : price}</small></button>`;
+  }).join('');
+  let buy;
+  if (q.why === 'fitted') buy = `<button disabled>On this garage</button>`;
+  else if (q.why === 'funds') buy = `<button disabled>Need ${q.need} more cr</button>`;
+  else buy = `<button class="go" data-buylook="${pick}">${q.price ? `Buy ${esc(q.name)} · ${q.price} cr` : `Put on ${esc(q.name)}`}</button>`;
+  return steps + away + `<div class="opt">${picks}</div><div class="blurb">${esc(GC.GARAGE_THEMES[pick].blurb)}</div><div class="row">${buy}</div>`;
+}
 function renderGarage() {
   const G = garage(), r = rideById(gSel) || activeRide(), tier = tierOf(r), spec = specOf(r), stock = r.kind === 'rover';
   const tabs = TABS.filter(([k]) => !(stock && (k === 'paint' || k === 'kit')));
   if (!tabs.some(([k]) => k === gTab)) gTab = 'perf';
   let body = '';
-  if (gTab === 'perf') {
+  if (gTab === 'look') body = lookHTML();
+  else if (gTab === 'perf') {
     body = `<div class="opt">${Object.entries(GC.UPGRADES).map(([k, u]) => { const lv = r.up[k] | 0, next = lv + 1, p = GC.upgradePrice(k, next, tier);
             return `<button data-up="${k}" class="${gPrev === k ? 'on' : ''}" ${!p || credits() < p ? 'disabled' : ''}>${u.icon} ${u.name} ${'▮'.repeat(lv)}${'▯'.repeat(GC.MAX_LVL - lv)}<small>${!p ? 'MAXED' : gPrev === k ? `Tap again: buy Lv ${next} · ${p} cr` : `Lv ${next} · ${p} cr`}</small></button>`; }).join('')}</div>`;
     const pv = gPrev && GC.upgradePrice(gPrev, (r.up[gPrev] | 0) + 1, tier) ? specOf({ ...r, up: { ...r.up, [gPrev]: (r.up[gPrev] | 0) + 1 } }) : null;
@@ -623,15 +758,21 @@ function renderGarage() {
     if (stock) body += '';
   }
   const act = G.active === r.id;
+  const tabRow = `<div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" class="${gTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  if (gTab === 'look') return head('🎨 Lock-up look', wallet()) + tabRow + body;
   return head('🔧 Lock-ups', wallet()) +
     `<div class="chips">${G.rides.map(x => `<button data-gsel="${esc(x.id)}" class="${x.id === r.id ? 'on' : ''}">${G.active === x.id ? '🔑 ' : ''}${esc(rideName(x))}</button>`).join('')}</div>
     <b>${esc(rideName(r))}</b> · Class ${'★'.repeat(tier)} · show rep ${GC.repScore(r, tier)}${stock ? '<div class="sub">Stock rover paint and the Roadster body live at Meridian Depot.</div>' : ''}
-    <div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" class="${gTab === k ? 'on' : ''}">${n}</button>`).join('')}</div>${body}
+    ${tabRow}${body}
     <div class="row"><button class="go" data-drive="${esc(r.id)}" ${act ? 'disabled' : ''}>${act ? '🔑 Your ride' : '🚗 Drive this'}</button>${r.id !== 'stock' ? `<button data-sell="${esc(r.id)}">💸 Sell · ${GC.tradeIn(r, listingOf(r.kind))} cr</button>` : ''}</div>`;
 }
 let gPrev = null;
 handlers.gsel = id => { gSel = id; gPrev = null; showBay(); rerender(); };
 handlers.tab = t => { gTab = t; rerender(); };
+handlers.look = id => { if (GC.GARAGE_THEMES[id]) lookPick = id; rerender(); };
+handlers.buylook = id => { const r = buyTheme(id, GC.LOCKUP_ID); toast(r.msg, 2800); rerender(); };
+handlers.showlock = () => { closeSheet(true); pointAtLockup(); };
+handlers.theme = () => startRestyle();
 handlers.up = (k, b) => { if (gPrev !== k) { gPrev = k; rerender(); return; } const r = upgrade(gSel, k); toast(r.msg, 2400); gPrev = null; rerender(); };
 handlers.cos = v => { const [slot, id] = v.split(':'); const r = customise(gSel, slot, id); if (!r.ok) toast(r.msg, 2400); showBay(); rerender(); };
 handlers.drive = id => { const r = setActive(id); toast(r.msg, 2600); if (r.ok) closeSheet(); };
@@ -669,13 +810,14 @@ function renderHub() {
   const G = garage(), r = activeRide(), h = GC.colonyHour(Date.now(), G.clock), mins = GC.minsToMeet(Date.now(), G.clock), shared = typeof window.SSX?.time?.isNight === 'function';
   const on = meet?.debug ? meet.debug.on : GC.isMeetHour(h); // follows SSX.time.isNight() when Steve's day/night cycle is in
   const mine = `<div class="row"><button data-myrides="1">🅿️ My rides · ${G.rides.length}</button></div>`;
-  if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>` + mine;
+  const themeRow = `<div class="row"><button data-theme="1">🎨 Restyle lock-up</button></div><div class="sub">Scrap, Neon, or High-roller. Follow the arrow if you are not at the bay yet.</div>`;
+  if (!here()) return head('🚗 Rides & meets', wallet()) + `<div class="blurb">Red Line Motors, your lock-ups and the night car meets are on <b>Mars</b>, at Ares Junction. Your ride: <b>${esc(rideName(r))}</b>.</div>` + themeRow + mine;
   const me = meOf(), S = spots(), dd = n => Math.round(dist(me, S[n]));
   return head('🚗 Rides & meets', wallet()) +
     `<div>Your ride: <b>${esc(rideName(r))}</b> · ${G.rides.length}/${GC.maxRidesOf(G)} in the garage · drags ${G.wins}/${G.races} won</div>${statBars(r.kind === 'rover' ? specOf(r) : specOf(r))}
     <div>${shared ? (on ? '🌙 <b style="color:#3cff8a">Car meet is ON</b> (till dawn)' : '☀️ Car meets start at nightfall') : `🕘 Colony time <b>${GC.fmtHour(h)}</b> · ${on ? '<b style="color:#3cff8a">Car meet is ON</b> (till 03:00)' : `next meet at 21:00 (${Math.ceil(mins)} min)`}`}</div>
     <div class="row"><button data-nav="dealer">📍 Dealer · ${dd('dealer')} m</button><button data-nav="garage">📍 Garage · ${dd('garage')} m</button><button data-nav="meet">📍 Meet · ${dd('meet')} m</button></div>
-    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on || shared ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>` + mine;
+    <div class="row">${dd('dealer') < 40 ? '<button data-open="dealer">🚗 Open dealer</button>' : ''}${dd('garage') < 40 ? '<button data-open="garage">🔧 Open garage</button>' : ''}${on || shared ? '' : '<button data-wait="1">⏩ Kill time till dark</button>'}</div>` + themeRow + mine;
 }
 handlers.nav = n => { closeSheet(true); navTo(n); };
 // live fix: My rides (myrides.js). The list is also the garage's 🅿️ tab; from the hub it opens on its own.
@@ -690,7 +832,7 @@ function navTo(n) { if (!here()) return; const p = spots()[n]; nav = { x: p.x, z
 const patched = new WeakSet();
 function patchGame(game) {
   if (!game || patched.has(game)) return; patched.add(game);
-  const orig = game.mapGate; game.mapGate = () => { const o = orig ? orig.call(game) : null; if (o) return o; return nav ? { x: nav.x, z: nav.z } : null; };
+  const orig = game.mapGate; game.mapGate = () => { if (themeNav && nav) return { x: nav.x, z: nav.z }; const o = orig ? orig.call(game) : null; if (o) return o; return nav ? { x: nav.x, z: nav.z } : null; };
 }
 
 // ---------- My rides (myrides.js): owned rides stay parked in the world, Deliver / Show on map ----------
@@ -714,14 +856,19 @@ export function dealerTick(dt, ctx) {
   ensureUI(); patchGame(ctx.game); syncRockClear();
   syncRover(dt); MR.tick(dt); tickPartnerIncome();
   if (!here()) { const mr = sheet ? null : MR.ctxAction(); setCtx(mr?.label || null, mr?.act); return; }
-  if (nav && dist(meOf(), nav) < 14) nav = null;
+  if (themeNav && here()) { const p = spots().garage; nav = { x: p.x, z: p.z, n: 'garage' }; }
+  else if (nav && dist(meOf(), nav) < 14) nav = null;
   // turntables + showroom camera (selected podium spins a bit faster under the lights)
   const me = meOf(), S = spots(), focusing = sheet?.kind === 'dealer' && !!dSel;
   if (lot && dist(me, S.dealer) < 90) for (const p of lot.podiums) if (p.v && p.g.visible) p.v.group.rotation.y += dt * (focusing && p.kind === dSel ? 0.55 : 0.35);
   if (bay) bay.group.rotation.y += dt * 0.25;
   meet?.tick(dt, me);
   clearRocks(dt);
-  if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
+  tickTheme(dt);
+  const showPtr = themeNav && here() && !sheet && dist(meOf(), spots().garage) >= 12;
+  aimLockup(showPtr);
+  if ((themeCamHold || (sheet?.kind === 'garage' && gTab === 'look')) && lot?.inside) frameThemeCam();
+  else if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
   tickShowFX(dt);
   const nowMs = performance.now();
   // fence arms from position, so the button has to follow on the same frame it changes (a 200 ms poll was leaving Exit (E) up under the glass)
@@ -808,6 +955,15 @@ function tickShowFX(dt) {
   mats.pillar.opacity = 0.2 + (strobeOn(t, 3, bpm) ? 0.22 : 0.05);
   ring.rotation.z += dt * 0.45;
 }
+function frameThemeCam() {
+  if (!lot?.inside || !C?.camera) return;
+  lot.inside.getWorldPosition(tv);
+  const cam = C.camera, land = innerWidth > innerHeight;
+  const R = land ? 11 : 13.5, a = CFG.yaw + 0.1;
+  const y = Math.max(tv.y + 3.4, H(tv.x + Math.sin(a) * R, tv.z + Math.cos(a) * R) + 1.6);
+  cam.position.set(tv.x + Math.sin(a) * R, y, tv.z + Math.cos(a) * R);
+  cam.lookAt(tv.x, tv.y + (land ? 0.8 : 0.35), tv.z);
+}
 function showroomCam(obj, dt) {
   // dealer focus: tighter orbit so the selected car fills the free window above / beside the sheet
   obj.getWorldPosition(tv); camA += dt * 0.35; const cam = C.camera, land = innerWidth > innerHeight, dealer = sheet?.kind === 'dealer';
@@ -836,6 +992,27 @@ window.__dealer = {
   get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
   buy, buyPartner, buyDome, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  buyTheme, pointAtLockup, startRestyle,
+  get theme() {
+    const id = GC.themeIdOf(readThemes(), GC.LOCKUP_ID), t = GC.GARAGE_THEMES[id], M = THEME_MATS[id];
+    const hex = name => { let h = null; lot?.theme?.traverse(o => { if (h == null && o.name === name && o.material?.color) h = o.material.color.getHex(); }); return h; };
+    return { id, sign: t.sign, ambient: t.ambient, light: t.light, wall: t.wall, floor: t.floor, props: t.props.length,
+      built: lot?.theme?.userData?.theme || null, seenWall: hex('gtheme-wall'), seenFloor: hex('gtheme-floor'), seenLight: hex('gtheme-light'),
+      lightOpacity: M ? +M.light.opacity.toFixed(3) : null, door: lot ? +((lot.doorOpen || 0).toFixed(2)) : null,
+      save: readThemes(), nav: !!themeNav };
+  },
+  holdThemeCam(on) { themeCamHold = !!on; return themeCamHold; },
+  // WPE WebKit in software GL dies on real mouse/touch/pointer input while the canvas is up.
+  // Tests call this to run the same button handler a tap would. It does not synthesise an event.
+  press(sel) {
+    const el = typeof document !== 'undefined' && typeof sel === 'string' ? document.querySelector(sel) : null;
+    if (!el) return false;
+    if (el.id === 'rmRides') { try { app()?.toggleMenu?.(false); } catch (e) { /* */ } openHub(); return true; }
+    if (el.id === 'dlrCtxBtn') { if (!ui?.act) return false; ui.act(); return true; }
+    const b = el.closest?.('button') || el;
+    if (b.closest?.('#dlrSheet')) { if (b.disabled) return false; onSheetTap(b); return true; }
+    return false;
+  },
   get partner() { return { ...partnerOf() }; },
   get dome() { return { ...domeOf(), built: !!lot?.dome, visible: !!lot?.dome?.visible, apron: lot?.apron ? lot.apron.visible : null }; }, applyDome,
   get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, get showroom() { return { on: !!showFX?.G.visible, kind: dSel || null, sheet: sheet?.kind || null }; }, noteBought, rebuildPodiums, applyDealerFocus,

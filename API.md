@@ -61,6 +61,17 @@ All add-ons import core modules with the **same `?v=` string as the core** (curr
 - `SSX.contraband`: Marsmania's contraband economy and barter (mars/contraband.js, mars/barter.json).
 
 
+## v7.5.91: themed lock-ups (`SSX.garage`)
+Looks for the Red Line lock-up (`redline`) and any other garage id you pass. Credits only. Saved in `localStorage` `ssx.garagetheme.v1`, per garage, separate from `progress.garage`.
+
+| call | what it does |
+| --- | --- |
+| `SSX.garage.themes()` | `[{ id, name, price, sign, light, ambient, blurb }]` for scrap, neon, highroller, stock |
+| `SSX.garage.theme(garageId?)` | fitted look id (`stock` when none). Default id is `redline` |
+| `SSX.garage.buyTheme(themeId, garageId?)` | pay (or refit a look already bought on that garage) and, for `redline`, rebuild the bay |
+
+A look you already own on that garage costs 0. `stock` clears the fitted id. Prices: scrap 240, neon 480, high-roller 1400.
+
 ## v7.5.82: Cinder Vault (`SSX.spacebank`)
 Orbital bank job. Not a surface `registerMission` (those steps are ground metres). Stages emit `spacebank:start|intel|scout|hire|crew|dock|dial|vault|alarm|paid` on `SSX.on` and as window events of the same name.
 `start()`, `hire(id)`, `lockCrew()`, `abort()`, `open()`. `state` is the live run. The dial is `SSX.heist.safeCrack` (hacker ease goes through `tipSafeOpts`). An alarm in orbit is queued and applied on the next Mars landing with `SSX.heist.alarm` when no surface heist is running. `SSX.crew` ids `vee`/`dex`, `soren`, `mags` cover drill, hack and wheel for free. `SSX.crimebreak.payBonus()` raises the cut. Rules: `spacebankcore.js`.
