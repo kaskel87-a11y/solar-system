@@ -323,3 +323,105 @@ export function domeCheck(g, offerId, { cr = 0, stars = 0 } = {}) {
 }
 // is a dealer-local point (lx, lz) under the dome? (centre = the lot centre)
 export function underDome(lx, lz, cx = -12, cz = 2) { const a = (lx - cx) / DOME.rx, b = (lz - cz) / DOME.rz; return a * a + b * b <= 1; }
+
+// ---------- themed lock-ups (v7.5.91) ----------
+// A look is bought with credits and stored per garage id in localStorage (THEME_KEY), not in the progress save.
+// The Red Line lock-up is LOCKUP_ID. Any other id (a second bay, a test garage) keeps its own look and its own purchases.
+// Prices sit with the rest of the garage economy: scrap is an underglow, neon is a body kit, high-roller is less than a mid-tier car.
+export const THEME_KEY = 'ssx.garagetheme.v1';
+export const LOCKUP_ID = 'redline';
+export const GARAGE_THEMES = {
+  stock: {
+    id: 'stock', name: 'Yard lock-up', price: 0, sign: 'LOCK-UPS', ambient: 'steady',
+    light: 0xc8d0d8, light2: 0x9aa0a8, wall: 0x3a3d44, floor: 0x4a4e55, trim: 0x2c2e34,
+    rough: 0.75, metal: 0.35, floorRough: 0.9, floorMetal: 0.05, emissive: 0.04, pool: 0.08,
+    blurb: 'Bare steel and one work lamp. The bay you started with.',
+    props: [
+      { k: 'box', x: -3.2, y: 0.62, z: 1.6, sx: 0.9, sy: 1.0, sz: 0.6, mat: 'trim' },
+      { k: 'box', x: 3.3, y: 1.3, z: 2.0, sx: 0.12, sy: 2.4, sz: 0.12, mat: 'light' }
+    ]
+  },
+  scrap: {
+    id: 'scrap', name: 'Scrap bay', price: 240, sign: 'SCRAP BAY', ambient: 'flicker',
+    light: 0xff6a1a, light2: 0xc45520, wall: 0x6a3a24, floor: 0x2a241e, trim: 0x4a3428,
+    rough: 0.95, metal: 0.08, floorRough: 0.98, floorMetal: 0.02, emissive: 0.22, pool: 0.22,
+    blurb: 'Rust plate, oil drums, and a lamp that can’t sit still.',
+    props: [
+      { k: 'cyl', x: -3.1, y: 0.67, z: 1.5, sx: 0.45, sy: 1.1, sz: 0.45, mat: 'trim' },
+      { k: 'cyl', x: -2.2, y: 0.45, z: 2.4, sx: 0.42, sy: 0.9, sz: 0.42, mat: 'wall', rot: 1.15 },
+      { k: 'box', x: 3.1, y: 0.52, z: 1.6, sx: 1.2, sy: 0.8, sz: 0.9, mat: 'trim' },
+      { k: 'box', x: 3.45, y: 2.1, z: 4.4, sx: 0.06, sy: 1.8, sz: 0.06, mat: 'trim' }
+    ]
+  },
+  neon: {
+    id: 'neon', name: 'Neon pit', price: 480, sign: 'NEON PIT', ambient: 'pulse',
+    light: 0xff2ad4, light2: 0x22e0ff, wall: 0x140818, floor: 0x07070c, trim: 0x2a1030,
+    rough: 0.35, metal: 0.45, floorRough: 0.12, floorMetal: 0.75, emissive: 0.45, pool: 0.45,
+    blurb: 'Magenta and cyan tubes. The floor looks wet. The sign does not sleep.',
+    props: [
+      { k: 'box', x: -3.2, y: 0.72, z: 1.4, sx: 0.7, sy: 1.2, sz: 0.5, mat: 'light' },
+      { k: 'box', x: 3.2, y: 0.72, z: 1.4, sx: 0.7, sy: 1.2, sz: 0.5, mat: 'light2' },
+      { k: 'box', x: -3.75, y: 0.4, z: 4.4, sx: 0.08, sy: 0.08, sz: 6.2, mat: 'light' },
+      { k: 'box', x: 3.75, y: 0.4, z: 4.4, sx: 0.08, sy: 0.08, sz: 6.2, mat: 'light2' }
+    ]
+  },
+  highroller: {
+    id: 'highroller', name: 'High-roller', price: 1400, sign: 'HIGH ROLLER', ambient: 'shimmer',
+    light: 0xe0b44a, light2: 0xfff0c4, wall: 0x140e0c, floor: 0x1c1612, trim: 0x3a2a16,
+    rough: 0.4, metal: 0.55, floorRough: 0.18, floorMetal: 0.82, emissive: 0.28, pool: 0.3,
+    blurb: 'Black stone, gold trim, and a plaque for people who pay cash.',
+    props: [
+      { k: 'cyl', x: -2.6, y: 0.67, z: 7.55, sx: 0.09, sy: 1.1, sz: 0.09, mat: 'light' },
+      { k: 'cyl', x: 2.6, y: 0.67, z: 7.55, sx: 0.09, sy: 1.1, sz: 0.09, mat: 'light' },
+      { k: 'box', x: 0, y: 0.95, z: 7.55, sx: 5.2, sy: 0.05, sz: 0.05, mat: 'light' },
+      { k: 'box', x: 3.15, y: 0.64, z: 2.2, sx: 1.1, sy: 1.05, sz: 1.6, mat: 'wall' },
+      { k: 'box', x: 0, y: 1.15, z: 0.82, sx: 5.2, sy: 0.06, sz: 0.06, mat: 'light' }
+    ]
+  }
+};
+// UI order: cheap junk, the pit, the money look, then the free yard bay you can put back.
+export const themeList = () => ['scrap', 'neon', 'highroller', 'stock'].map(id => GARAGE_THEMES[id]);
+export function freshThemes() { return { v: 1, byId: {}, owned: {} }; }
+const themeKeyOk = k => typeof k === 'string' && k.length > 0 && k.length <= 40;
+export function parseThemes(raw) {
+  let o = raw;
+  if (typeof raw === 'string') { try { o = JSON.parse(raw); } catch { o = null; } }
+  const d = freshThemes();
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return d;
+  const src = o.byId && typeof o.byId === 'object' ? o.byId : {};
+  for (const [k, v] of Object.entries(src)) if (themeKeyOk(k) && GARAGE_THEMES[v]) d.byId[k] = v;
+  const ow = o.owned && typeof o.owned === 'object' ? o.owned : {};
+  for (const [k, arr] of Object.entries(ow)) {
+    if (!themeKeyOk(k)) continue;
+    d.owned[k] = [...new Set((Array.isArray(arr) ? arr : []).filter(id => GARAGE_THEMES[id] && id !== 'stock'))];
+  }
+  for (const [k, v] of Object.entries(d.byId)) if (v !== 'stock' && !(d.owned[k] || []).includes(v)) d.owned[k] = [...(d.owned[k] || []), v];
+  return d;
+}
+export function themeIdOf(state, garageId) {
+  const id = state?.byId?.[garageId];
+  return GARAGE_THEMES[id] ? id : 'stock';
+}
+// pure price check. stock and a look already bought on THIS garage are free. does not mutate.
+export function quoteTheme(state, garageId, themeId, credits = 0) {
+  const t = GARAGE_THEMES[themeId];
+  if (!themeKeyOk(garageId)) return { ok: false, why: 'garage' };
+  if (!t) return { ok: false, why: 'theme' };
+  const cur = themeIdOf(state, garageId);
+  if (cur === themeId) return { ok: false, why: 'fitted', theme: t, name: t.name, price: 0 };
+  const owned = themeId === 'stock' || (state?.owned?.[garageId] || []).includes(themeId);
+  const price = owned ? 0 : t.price;
+  const cr = +credits || 0;
+  if (cr < price) return { ok: false, why: 'funds', theme: t, name: t.name, price, need: price - cr };
+  return { ok: true, theme: t, name: t.name, price, owned };
+}
+// copy-on-write. caller has already taken the credits. stock clears the fitted id.
+export function commitTheme(state, garageId, themeId) {
+  const s = parseThemes(JSON.stringify(state || null));
+  const t = GARAGE_THEMES[themeId];
+  if (!themeKeyOk(garageId) || !t) return s;
+  if (themeId === 'stock') delete s.byId[garageId];
+  else s.byId[garageId] = themeId;
+  if (themeId !== 'stock') s.owned[garageId] = [...new Set([...(s.owned[garageId] || []), themeId])];
+  return s;
+}

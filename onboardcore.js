@@ -150,7 +150,7 @@ export const CODEX = [
     { id: 'pit', t: '🥊 The Pit', d: { touch: 'The Pit is a fist-fight ring under the water tower, west Red Tape Flats. Walk up and tap 📋 The Pit to fight rounds for cash.', desk: 'The Pit is a fist-fight ring under the water tower, west Red Tape Flats. Walk up and click 📋 The Pit to fight rounds for cash.' } },
     { id: 'side', t: '📋 Side jobs', d: 'Tap ☰, then 📋 Mars side jobs for small gigs around the colony. Walk to one to see its button.' },
     { id: 'races', t: '🏁 Street races', d: 'Tap ☰, then 🏁 Street races to find a start line. Drive through the gates; 🛠 Track builder makes your own.' },
-    { id: 'rides', t: '🚗 Rides & meets', d: 'Buy, tune and show off cars: tap ☰, then 🚗 Rides & meets.' },
+    { id: 'rides', t: '🚗 Rides & meets', d: 'Buy and tune cars: tap ☰, then 🚗 Rides & meets. At your lock-up, tap Garage, then Look, to restyle it (Scrap, Neon, or High-roller).' },
     { id: 'danger', t: '🔪 Street danger', d: 'Tap ☰, then 🔪 Street danger to turn rough streets (muggers, gang fights) on or off.' },
     { id: 'club', t: '🍸 Velvet Airlock', d: 'The club in Ares Junction. Walk in through the front door; some rooms are 18+.' },
     { id: 'travel', t: '🏙 Getting around', d: 'Tap ☰, then 🏙 Districts to fast travel, or 🌍 Colonies for other towns.' },
