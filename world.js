@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { buildRoom, INTERIORS, textTex } from './interiors.js';
 import * as ROOF from './roofs.js';
 import { aiInit as pitAi, aiStep as pitStep, aiHit as pitHit, oppDamage as pitDmg, countIn as pitCount, TUNE as PITT } from './mars/pitshowcore.js'; // v7.5.29 the Pit show: pit fighter AI + tuning
-import { bountyFor } from './copbounty.js'; // v7.5.12 flat 500 cr + 100 ⭐ per cop kill
+import { takeKill } from './copbounty.js'; // v7.5.87: tiered ⭐ per cop kill, capped per chase
 import * as CP from './copcore.js'; // v7.5.28 cops calm down (car theft = no heat unless a cop is right there)
 
 // colony layouts are in colony-local metres (x east, z south); a/d place the colony from the landing site
@@ -610,8 +610,16 @@ export function createWorld(ctx) {
       backupT = 25; onEvent('backup', { officerDown: true, kind: s.kind }); }
     else { scene.remove(s.group); g.gore?.(s.x, s.y + 0.5, s.z, { mech: true, n: 2 }); }
     if (s.foot) { s.ssxCop = 1; s.ssxDropDone = 1; } // v7.5.12: never also a 20-80 cr KO drop (economy.js npcDown)
-    let bounty = bountyFor(s); if (bounty) { try { bounty = g.copBounty?.(bounty) || null; } catch (e) { bounty = null; } } // v7.5.12: once per kill (spliced above)
-    onEvent('secDown', { kind: s.kind, bounty }); crime(Math.min(5, wanted + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
+    const zone = copFree(player.x, player.z) || copFree(s.x, s.z);
+    let bounty = null;
+    if (!zone) {
+      setWanted(Math.min(5, (wanted | 0) + 1), s.foot ? 'killed a ColSec officer' : 'destroyed security');
+      const got = takeKill(chaseStars, s.kind);
+      chaseStars = got.earned;
+      bounty = { cr: got.cr, stars: got.stars, capped: got.capped };
+      if (bounty.cr > 0 || bounty.stars > 0) { try { g.copBounty?.(bounty); } catch (e) { /* pay failed */ } }
+    }
+    onEvent('secDown', { kind: s.kind, bounty, wanted, zone });
   }
   const behindCover = (s, from) => s.crouch && s.cover && Math.hypot(from.x - s.x, from.z - s.z) > 4 && ((s.cover.sx - s.x) * (from.x - s.x) + (s.cover.sz - s.z) * (from.z - s.z)) > 0;
 
@@ -628,6 +636,7 @@ export function createWorld(ctx) {
   const copOut = (o, pad) => { try { const q = globalThis.SSX?.copFree?.out?.(o.x, o.z, pad); if (q && Number.isFinite(q.x) && Number.isFinite(q.z)) { o.x = q.x; o.z = q.z; return true; } } catch (e) { /* */ } return false; };
   const copNote = k => { try { globalThis.SSX?.copFree?.note?.(k); } catch (e) { /* */ } };
   let gulchHold = false;
+  let chaseStars = 0; // ⭐ already paid for cop kills this chase; cleared when wanted hits 0
   const distC = () => { if (!C) return 1e9; const h = sites.length ? hubAt(player.x, player.z) : null; return h ? h.d : Math.hypot(player.x - cx, player.z - cz); }; // v7.5: distance to the nearest hub (colony or district)
   function setWanted(n, why) {
     if (n > wanted && why && why !== 'debug') { const E = ease(); if (E < 1) { const k = (n - wanted) * E + easeCarry, add = Math.floor(k + 1e-9); easeCarry = k - add; n = wanted + (wanted === 0 ? Math.max(1, add) : add); if (wanted === 0 && add < 1) easeCarry = 0; } else easeCarry = 0; } // mission ease: half the heat gain
@@ -636,7 +645,7 @@ export function createWorld(ctx) {
     if (n === wanted) return;
     const up = n > wanted; wanted = n; evade = 0;
     if (up) onEvent('wanted', { stars: n, why: why || '' });
-    else if (n === 0) { easeCarry = 0; strikes = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
+    else if (n === 0) { easeCarry = 0; strikes = 0; chaseStars = 0; onEvent('wantedLost', {}); for (const s of [...security]) recall(s); }
   }
   let crimeCd = 0, strikes = 0;
   function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; const r = CP.escalate(wanted, min, why, strikes); strikes = r.strikes; if (r.to !== wanted) setWanted(r.to, why); } // v7.5.28: minor crimes on top of heat escalate at half speed
