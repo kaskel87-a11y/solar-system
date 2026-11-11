@@ -98,7 +98,7 @@ function setAction(a) {
   const touch = document.body.classList.contains('touch');
   ui.btn.style.display = a ? 'block' : 'none'; if (a) ui.btn.textContent = a.label + (touch ? '' : ' (G)');
 }
-const STAGE_TEXT = { case: 'Sneak to the door', breakin: 'Picking the lock…', crack: 'Find and crack the safe', escape: 'Run from the building', clean: 'Lose your wanted stars' };
+const STAGE_TEXT = { case: 'Sneak to the gold door marker. Dodge cameras, or cut one up close.', breakin: 'Hold still at the door. The lock is being picked.', crack: 'Find the green safe marker and hold Crack.', escape: 'Get away from the building. The arrow points out.', clean: 'Lose the ★ stars: stay out of sight until they fade.' };
 function renderChip(meter, dist) {
   if (!ui) return; const c = ui.chip;
   if (!run || run.stage === 'done' || run.stage === 'failed') { c.classList.remove('on'); return; }
@@ -190,6 +190,11 @@ export function heistTick(dt, ctx) {
     if (H.wanted === 0) return finish(true);
   }
   setAction(act); renderChip(cv.maxMeter, goal ? dist(goal) : null);
+  try {
+    const G = window.SSX?.guide;
+    if (goal && run.stage !== 'clean') G?.aimGround?.({ id: 'heist', x: goal.x, z: goal.z, label: run.stage === 'crack' ? 'Safe' : run.stage === 'escape' ? 'Out' : 'Door' });
+    else G?.clear?.('heist');
+  } catch (e) { /* no guide yet */ }
   if (marks) { marks.door.visible = run.stage === 'case'; marks.safe.visible = run.stage === 'crack'; if (marks.power) marks.power.visible = !run.powerCut && STAGE_IDX(run.stage) <= STAGE_IDX('crack'); const s = 1 + Math.sin(clock * 4) * 0.08; for (const m of [marks.door, marks.safe]) m.scale.set(s, s, s); }
 }
 // camera line of sight: lens (mast top) -> your chest, against world buildings/domes + heist-local walls
@@ -210,7 +215,7 @@ function finish(success, fail) {
   const res = { id: d.id, success, loot: success ? run.loot : null, fail: success ? null : fail, stage: run.stage, t: +run.t.toFixed(2), alarm: run.alarm, stars };
   emit(success ? 'done' : 'fail', res); if (success) emit('clean', { id: d.id });
   toast(success ? `🕵️ ${d.title}: clean getaway.${stars ? ` +${stars} ⭐` : ''}` : `🕵️ ${d.title} blown: ${fail}.`, 3500);
-  cams.removeWhere(c => c.heistId === d.id); guards.stop(); dropMarks(); setAction(null);
+  cams.removeWhere(c => c.heistId === d.id); guards.stop(); dropMarks(); setAction(null); try { window.SSX?.guide?.clear?.('heist'); } catch (e) { /* */ }
   const r = runDone; run = null; runDone = null; renderChip(0, null); r?.(res);
 }
 

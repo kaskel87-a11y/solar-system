@@ -198,7 +198,7 @@ function beamMat(color) {
   const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
   m.toneMapped = false; return m;
 }
-const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();
+const _w = new THREE.Vector3();
 function build() {
   const scene = app()?.rocket?.parent; if (!scene || R.grp) return;
   const g = new THREE.Group(); g.name = 'cinderVault'; g.visible = false;
@@ -411,63 +411,24 @@ function paintMarkers() {
   }
   if (R.dock?.material) R.dock.material.color.setHex(dockOn ? (pulse > 0.5 ? 0xfff2a8 : 0xffc020) : 0xffd040);
 }
-function projectGuide(pos) {
-  const cam = app()?.camera; if (!cam || !R.mp) return null;
-  _w.set(R.mp[0] + pos[0], R.mp[1] + pos[1], R.mp[2] + pos[2]);
-  _fwd.set(0, 0, -1).applyQuaternion(cam.quaternion);
-  _to.copy(_w).sub(cam.position);
-  const behind = _to.dot(_fwd) <= 0;
-  _w.project(cam);
-  let x = _w.x, y = _w.y;
-  if (behind) { x = -x; y = -y; }
-  return { x, y, behind };
-}
-function shovePtr(el) {
-  const margin = 8, W = innerWidth, H = innerHeight;
-  const L = W * 0.25, Rg = W * 0.75, T = H * 0.25, B = H * 0.75, floor = H - 128;
-  const place = (x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
-  let x = parseFloat(el.style.left), y = parseFloat(el.style.top);
-  let r = el.getBoundingClientRect();
-  if (r.left < margin) x += margin - r.left;
-  if (r.right > W - margin) x -= r.right - (W - margin);
-  if (r.top < 58) y += 58 - r.top;
-  if (r.bottom > floor) y -= r.bottom - floor;
-  place(x, y); r = el.getBoundingClientRect();
-  if (!(r.right > L && r.left < Rg && r.bottom > T && r.top < B)) return;
-  // Wider than the side gutter: sit in the top band so the whole pill stays on screen and out of the middle.
-  // Left side of the top band: the right side is the menu and Stop flying.
-  const ny = Math.max(58 + r.height / 2, T - 8 - r.height / 2);
-  const nx = margin + r.width / 2;
-  place(nx, ny);
-}
 function paintGuide() {
-  if (!ptr) return;
   const r = R.run;
   const g = r && r.phase !== 'done' && r.phase !== 'failed' ? C.guide(r, shipM(), !inSpace()) : null;
-  if (!g?.kind) { ptr.classList.remove('on'); R.guide = null; return; }
-  let nx = 0, ny = 0.94, dist = null;
-  if (g.pos && inSpace()) {
-    const pr = projectGuide(g.pos);
-    if (pr) { nx = pr.x; ny = pr.y; }
-    const p = shipM(); if (p) dist = C.dist(p, g.pos);
-  }
-  const spot = C.edgePointer(nx, ny, innerWidth, innerHeight);
+  const G = SSX().guide;
+  if (!g?.kind) { G?.clear?.('spacebank'); R.guide = null; return; }
+  let dist = null;
+  if (g.pos && inSpace()) { const p = shipM(); if (p) dist = C.dist(p, g.pos); }
   const range = dist == null ? '' : C.fmtRange(dist);
   const label = g.kind === 'takeoff' ? 'Take off' : (range || g.hint);
-  ptr.classList.add('on');
-  const sp = ptr.querySelector('span'); if (sp.textContent !== label) sp.textContent = label;
-  ptr.querySelector('i').style.transform = `rotate(${spot.ang}rad)`;
-  ptr.style.left = spot.x + 'px'; ptr.style.top = spot.y + 'px';
-  shovePtr(ptr);
-  const box = ptr.getBoundingClientRect();
-  R.guide = { kind: g.kind, id: g.id, label, dist: dist == null ? null : Math.round(dist), x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+  let box = null;
+  if (G?.aimMars && g.pos && inSpace() && R.mp) box = G.aimMars(R.mp, g.pos, label, dist, 'spacebank');
+  else if (G?.aim) box = G.aim({ id: 'spacebank', label, nx: 0, ny: 0.94 });
+  R.guide = { kind: g.kind, id: g.id, label, dist: dist == null ? null : Math.round(dist), x: box?.x ?? null, y: box?.y ?? null };
 }
 
 // ---------- UI: one narrow left chip in space (outside the middle 50%), a bottom sheet, one dock button on Nix ----------
-// v7.5.84: an edge pointer (#sbPtr) aims at the next buoy, the gold ring, or Mars. It stays out of the middle.
-const CSS = `#sbPtr{position:fixed;z-index:20;display:none;align-items:center;gap:4px;min-height:44px;max-width:46vw;box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.15 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap}
-#sbPtr.on{display:flex}#sbPtr i{display:block;width:22px;font-style:normal;font-size:18px;line-height:22px;text-align:center}
-#sbChip{position:fixed;z-index:14;left:calc(8px + env(safe-area-inset-left));top:calc(168px + env(safe-area-inset-top));display:none;flex-direction:column;gap:4px;width:min(22vw,168px);box-sizing:border-box;padding:4px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:700 11px/1.15 system-ui,sans-serif;pointer-events:auto}
+// The edge pointer is hud/guide.js (#ssxGuide), shared with every other mission.
+const CSS = `#sbChip{position:fixed;z-index:14;left:calc(8px + env(safe-area-inset-left));top:calc(168px + env(safe-area-inset-top));display:none;flex-direction:column;gap:4px;width:min(22vw,168px);box-sizing:border-box;padding:4px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:700 11px/1.15 system-ui,sans-serif;pointer-events:auto}
 #sbChip.on{display:flex}#sbChip .m{display:none;height:6px;border:1px solid #fff;border-radius:3px;overflow:hidden}#sbChip .m.on{display:block}#sbChip .m b{display:block;height:100%;width:0;background:#fff}
 #sbChip button{display:none;min-height:44px;min-width:44px;width:100%;padding:4px;border-radius:8px;background:#000;color:#fff;border:2px solid #fff;font:800 12px/1.1 system-ui,sans-serif;touch-action:none}
 #sbChip button.on{display:block}
@@ -475,12 +436,11 @@ const CSS = `#sbPtr{position:fixed;z-index:20;display:none;align-items:center;ga
 #sbPanel.on{display:flex}#sbPanel .wrap{width:min(96vw,440px);max-height:min(70vh,560px);overflow:auto;-webkit-overflow-scrolling:touch;margin:0 8px calc(12px + env(safe-area-inset-bottom));background:#000;color:#fff;border:2px solid #fff;border-radius:16px;padding:12px;box-sizing:border-box;font:14px/1.35 system-ui,sans-serif}
 #sbPanel h2{margin:0 0 6px;font-size:17px}#sbPanel p{margin:6px 0}#sbPanel button{min-height:44px;min-width:44px;margin:4px 4px 0 0;padding:8px 10px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 14px/1.15 system-ui,sans-serif;touch-action:manipulation}
 #sbPanel button:disabled{opacity:.45}#dockSb{order:8}`;
-let dockBtn = null, chip = null, panel = null, ptr = null;
+let dockBtn = null, chip = null, panel = null;
 function panelOn() { return !!panel?.classList.contains('on'); }
 function ensureDom() {
   if (chip || typeof document === 'undefined') return;
   const st = document.createElement('style'); st.id = 'sbCss'; st.textContent = CSS; document.head.appendChild(st);
-  ptr = document.createElement('div'); ptr.id = 'sbPtr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<i>▲</i><span></span>'; document.body.appendChild(ptr);
   chip = document.createElement('div'); chip.id = 'sbChip'; chip.setAttribute('role', 'status');
   chip.innerHTML = '<span class="t"></span><span class="m"><b></b></span><button type="button" id="sbAct"></button>';
   document.body.appendChild(chip);
@@ -588,7 +548,7 @@ function setup() {
 setup();
 
 const api = {
-  version: 'v7.5.84',
+  version: 'v7.5.85',
   get state() {
     const r = R.run;
     return {

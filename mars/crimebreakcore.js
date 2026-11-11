@@ -46,7 +46,7 @@ export function ready(s, sol) {
 // can we open / start a meeting right now? charges nothing; complete() takes the money.
 export function canStart(s, { crew = 0, atGulch = false, credits = 0, sol = 0 } = {}) {
   if (!(crew > 0)) return { ok: false, why: 'Hire someone first: ☰ → 👥 Crew.', needCrew: true };
-  if (!atGulch) return { ok: false, why: 'Crime break only works at Red Static Gulch.' };
+  if (!atGulch) return { ok: false, why: 'Walk to Red Static Gulch, southeast of the colony. Crime break only works there.' };
   const r = ready(s, sol); if (!r.ok) return r;
   if (!r.intro && credits < COST_CR) return { ok: false, why: `Buy-in is ${COST_CR} cr. You have ${Math.max(0, credits | 0)} cr.`, short: true, cost: COST_CR };
   return { ok: true, intro: !!r.intro, cost: r.intro ? 0 : COST_CR, stars: STAR_PAY, buffNext: Math.min(BUFF_CAP, payBonus(s) + BUFF_STEP) };
@@ -104,7 +104,7 @@ export function exchange(s, { credits = 0, pay, grant } = {}) {
 
 // ---------- gulch market quotes (prices come from the caller’s catalog; this file does not sell) ----------
 export function marketGate(atGulch) {
-  if (!atGulch) return { ok: false, travel: true, why: 'Market is at Red Static Gulch. Walk there to buy.' };
+  if (!atGulch) return { ok: false, travel: true, why: 'The market is at Red Static Gulch, southeast of the colony. Walk there to buy.' };
   return { ok: true };
 }
 function roomFor(item, held, used, carry) {

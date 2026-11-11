@@ -70,14 +70,21 @@ function ensureUi() {
   S.ui = { panel, wrap, sheet: wrap.querySelector('.sheet'), foot: wrap.querySelector('.foot') }; return S.ui;
 }
 const panelOn = () => !!S.ui?.panel.classList.contains('on');
+let gulchRAF = 0;
+function aimGulch() {
+  const i = APP()?.surface?.info;
+  if (!panelOn() || !i?.colony || atGulch()) { SSX()?.guide?.clear?.('crimebreak'); return; }
+  SSX()?.guide?.aimGround?.({ id: 'crimebreak', x: i.colony.x + 150, z: i.colony.z + 330, label: 'Gulch' });
+}
+function trackGulch() { aimGulch(); if (panelOn()) gulchRAF = requestAnimationFrame(trackGulch); }
 function open(force = false) {
   void force; // menu passes nothing; tests still call open(true). The sheet always opens: exchange needs only a ready game.
   if (!ensureUi()) return false;
   S.meeting = false; S.line = 0; S.note = ''; if (!S.tab) S.tab = 'meet';
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ }
-  S.ui.panel.classList.add('on'); render(); return true;
+  S.ui.panel.classList.add('on'); render(); trackGulch(); return true;
 }
-function close() { S.ui?.panel.classList.remove('on'); S.meeting = false; S.line = 0; S.note = ''; clearFigs(true); return true; }
+function close() { S.ui?.panel.classList.remove('on'); S.meeting = false; S.line = 0; S.note = ''; clearFigs(true); if (gulchRAF) cancelAnimationFrame(gulchRAF); SSX()?.guide?.clear?.('crimebreak'); return true; }
 function act(ds) {
   // tabs can switch immediately; purchase / exchange / sit-down wait out the click that opened the sheet
   if (performance.now() < holdUntil && ds?.a !== 'tab') return;

@@ -120,31 +120,7 @@ export function nextBuoy(have, p) {
   for (let i = 1; i < left.length; i++) { const d = dist(p, left[i].pos); if (d < bd) { best = left[i]; bd = d; } }
   return best;
 }
-export function fmtRange(d) {
-  if (!Number.isFinite(d) || d < 0) return '';
-  if (d >= 1000) return (d / 1000).toFixed(d >= 10000 ? 0 : 1) + ' km';
-  return Math.round(d) + ' m';
-}
-// Screen point for a guide arrow. nx, ny are NDC (y up), already flipped if the target is behind the camera.
-// The point stays outside the middle half of the screen, below the top bar and above the thumb row.
-export function edgePointer(nx, ny, W, H) {
-  let x = Number.isFinite(nx) ? nx : 0, y = Number.isFinite(ny) ? ny : 1;
-  const ang = Math.atan2(x, y);
-  const ax = Math.abs(x), ay = Math.abs(y);
-  if (ax < 0.5 && ay < 0.5) { if (ax >= ay) x = (x < 0 ? -1 : 1) * 0.82; else y = (y < 0 ? -1 : 1) * 0.82; }
-  x = Math.max(-0.92, Math.min(0.92, x));
-  y = Math.max(-0.7, Math.min(0.9, y));
-  let px = (x * 0.5 + 0.5) * W, py = (-y * 0.5 + 0.5) * H;
-  const top = 62, bot = Math.min(H - 150, H * 0.78);
-  px = Math.max(36, Math.min(W - 36, px));
-  py = Math.max(top, Math.min(Math.max(top, bot), py));
-  const L = W * 0.25, R = W * 0.75, T = H * 0.25, B = H * 0.75;
-  if (px > L && px < R && py > T && py < B) {
-    const dl = px - L, dr = R - px, dt = py - T, db = B - py, m = Math.min(dl, dr, dt, db);
-    if (m === dl) px = L - 28; else if (m === dr) px = R + 28; else if (m === dt) py = Math.max(top, T - 28); else py = Math.min(Math.max(top, bot), B + 28);
-  }
-  return { x: px, y: py, ang };
-}
+export { fmtRange, edgePointer, bearingNdc } from './hud/guidecore.js';
 // Plain words for the job card, plus where the arrow should aim. onGround means the ship is not flying in space yet.
 export function guide(run, p, onGround) {
   if (!run) return null;

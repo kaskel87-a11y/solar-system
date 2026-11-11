@@ -296,7 +296,7 @@ function ui() {
   if (!hud) return;
   const pre = !!r && r.phase === 'outbound' && mars; // picked up, still on the ground: one line, no buttons (toasts can hide under the radio pill)
   const show = !!r && (inSpace() || pre) && r.phase !== 'payout'; hud.classList.toggle('on', show); if (!show) return;
-  if (pre) { const t = hud.querySelector('.t'), x = `📦 ${mobile() ? 'Take off' : 'T: take off'} → Phobos`; if (t.textContent !== x) t.textContent = x; hud.querySelector('.m').style.display = 'none'; for (const b of hud.querySelectorAll('button')) b.hidden = true; return; }
+  if (pre) { const t = hud.querySelector('.t'), x = '📦 Take off and fly to the drop ring at Phobos.'; if (t.textContent !== x) t.textContent = x; hud.querySelector('.m').style.display = 'none'; for (const b of hud.querySelectorAll('button')) b.hidden = true; try { SSX().guide?.aim?.({ id: 'smuggle', label: 'Take off', nx: 0, ny: 0.94 }); } catch (e) { /* */ } return; }
   hud.querySelector('#smgDump').hidden = false;
   const p = shipM(), { ph } = geo(), sv = R.scanning ? R.sc[R.scanning]?.v || 0 : 0;
   const lock = R.icp.reduce((m, i) => Math.max(m, i.lock.v / C.LOCK.fill), 0);
@@ -307,6 +307,13 @@ function ui() {
   hud.querySelector('.m i').style.width = Math.round(100 * (R.scanning ? sv : lock)) + '%';
   hud.querySelector('#smgRoll').hidden = !(R.scanning || R.icp.length);
   const b = hud.querySelector('#smgBribe'); b.hidden = !R.scanning; if (R.scanning) { const pr = bribeQuote(); b.textContent = `💸${pr}`; }
+  try {
+    const G = SSX().guide;
+    if (G?.aimMars && R.mp && p) {
+      if (r.phase === 'outbound') G.aimMars(R.mp, ph, `Phobos ${Math.round(C.dist(p, ph))}`, C.dist(p, ph), 'smuggle');
+      else G.aimMars(R.mp, [0, 0, 0], `Mars ${Math.round(Math.max(0, C.len(p) - 3))}`, C.len(p), 'smuggle');
+    }
+  } catch (e) { /* */ }
 }
 function bribeQuote() { let p = null; try { const x = SSX().bribes?.price?.({ kind: 'spot', stars: Math.round(heat()) + 1 }); p = Number.isFinite(+x) ? Math.round(+x) : Number.isFinite(+x?.price) ? Math.round(+x.price) : null; } catch (e) { /* */ } return p ?? C.bribePrice(heat()); }
 
