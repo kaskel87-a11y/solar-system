@@ -87,7 +87,7 @@ function blockAt(p) { // p AJ-relative [x,z]
   let best = null, bd = 1e9; for (const b of BLOCKS) { const d = dist(p, aj(b.c)); if (d < bd) { bd = d; best = b; } } return best;
 }
 const locked = b => b.hq && S.owners[b.id] !== 'player' && owned().length < 2;
-const perMin = () => owned().reduce((n, b) => n + (fight?.block === b.id && fight.kind === 'defend' ? 0 : b.income), 0);
+const perMin = () => { let n = owned().reduce((s, b) => s + (fight?.block === b.id && fight.kind === 'defend' ? 0 : b.income), 0); try { const c = window.SSX?.mobboss?.turfCut?.() || 0; if (c > 0) n = Math.round(n * (1 + c)); } catch (e) { /* */ } return n; };
 
 // ---------- ground height (raycast the terrain chunks; fallback: the player's feet) ----------
 const ray = new THREE.Raycaster(), V0 = new THREE.Vector3(), DOWN = new THREE.Vector3(0, -1, 0);

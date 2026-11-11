@@ -47,6 +47,7 @@ function stop(id) { const m = D.crew.find(q => q.id === id); if (!m) return { ok
 function collect(id) {
   const m = D.crew.find(q => q.id === id); if (!m || !m.bank.length) return { ok: false, why: 'Nothing to collect.' };
   const pref = m.bank.find(b => b.front)?.front || m.front, r = C.collect(D, m), g = game(); let where = null, cr = r.cr;
+  try { const cut = SSX()?.mobboss?.crewCut?.() || 0; if (cut > 0 && cr > 0) cr = Math.round(cr * (1 + cut)); } catch (e) { /* */ }
   if (cr > 0) { const E = emp(); if (E && fronts().length) { cr = Math.round(cr * (1 + C.WASH)); const w = E.launder(cr, pref); where = w?.name || null; if (!w) cr = r.cr; } }
   if (!where && cr > 0) g?.reward?.(0, cr); if (r.xp > 0) g?.reward?.(r.xp, 0);
   save(); const b = r.busts ? ` (${r.busts} bust${r.busts > 1 ? 's' : ''})` : '';
@@ -60,8 +61,9 @@ function bail(id) {
 }
 function level(id) {
   const m = D.crew.find(q => q.id === id), c = C.canLevel(m); if (!c) return { ok: false, why: 'Maxed out.' }; const St = SSX()?.stars;
-  if (credits() < c.cr) return { ok: false, why: `Need ${c.cr} cr.` }; if (!St || !St.canSpend?.(c.xp)) return { ok: false, why: `Need ${c.xp} spendable ⭐.` };
-  const r = St.spend(c.xp, 'crew:' + id); if (r && r.ok === false) return { ok: false, why: `Need ${c.xp} spendable ⭐.` }; if (!game()?.spend?.(c.cr)) { St.refund?.(c.xp); return { ok: false, why: `Need ${c.cr} cr.` }; }
+  let cost = c.cr; try { const off = SSX()?.mobboss?.levelOff?.() || 0; if (off > 0) cost = Math.max(1, Math.round(c.cr * (1 - off))); } catch (e) { /* */ }
+  if (credits() < cost) return { ok: false, why: `Need ${cost} cr.` }; if (!St || !St.canSpend?.(c.xp)) return { ok: false, why: `Need ${c.xp} spendable ⭐.` };
+  const r = St.spend(c.xp, 'crew:' + id); if (r && r.ok === false) return { ok: false, why: `Need ${c.xp} spendable ⭐.` }; if (!game()?.spend?.(cost)) { St.refund?.(c.xp); return { ok: false, why: `Need ${cost} cr.` }; }
   m.lv++; save(); toast(`⬆️ ${roster(id).name.split(' ')[0]} is level ${m.lv}: ${m.lv === 2 ? 'boosting rides unlocked' : 'fronts and scores unlocked'}.`); return { ok: true, lv: m.lv };
 }
 

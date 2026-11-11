@@ -31,6 +31,7 @@ const tag = `cop-${DEV}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     ok('wanted', await wait(() => window.__app.surface.info.wanted >= 1 && document.getElementById('wantedStars').textContent.includes('★'), 4000));
     const xp1 = await G(() => window.__app.game.progress.xp | 0);
     ok('stars', xp1 - xp0, xp1 - xp0 === 3);
+    ok('respect', await wait(() => (window.SSX.mobboss?.view?.().respect || 0) >= 4, 4000));
     const meter = await G(() => {
       const e = document.getElementById('wantedStars'), r = e.getBoundingClientRect(), W = innerWidth, H = innerHeight;
       const mid = r.width > 0 && r.left < W * 0.75 && W * 0.25 < r.right && r.top < H * 0.55 && H * 0.2 < r.bottom;
