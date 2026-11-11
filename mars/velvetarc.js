@@ -1,6 +1,6 @@
 // Velvet expansion: Ines's arc "House Always Wins" (Chief of Staff, story/ines-arc.md) and owning the Velvet Airlock.
 // Collin: "What's the point of Ines? Can I take over the Velvet Airlock at some point?" Yes: five jobs from Ines, then the deed.
-//   Unlock: 10+ bottles sold to Ines (SSX.velvetDeal) or 3,000 lifetime stars. Talk to Ines in the Velvet's VIP room.
+//   Unlock: 10+ bottles sold to Ines (SSX.velvetDeal) or 3,000 lifetime stars. Talk to Ines in the staff-only room.
 //   1 Short Pour         tail the delivery rover from the Rust Belt Loop to the club, catch Pell, bribe (200) or beat him
 //   2 Comped             win a Hold'em hand at the Velvet, swipe Grisby's ledger slate (15 s, while he isn't looking or
 //                        Mina the waitress screens you), get out past Thorne's bouncers
@@ -22,6 +22,7 @@ import { WING } from '../velvetwing.js';
 import { grantStars, frontStars } from '../starmixcore.js';
 import { pokerIsOpen, pokerState } from '../activities/poker.js';
 import { tap as hookTap } from '../planets/hooks.js';
+import { bearingNdc, fmtRange } from '../hud/guidecore.js';
 
 const MOBILE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const X = () => (typeof window !== 'undefined' && window.SSX) || {};
@@ -117,7 +118,7 @@ function gate() { // re-register mission 1 without the lock once Ines would talk
   const g = game(), bottles = (() => { try { return X().velvetDeal?.state?.()?.bottles | 0; } catch (e) { return 0; } })(), stars = g?.progress?.xp || 0;
   const open = VA.unlocked(bottles, stars), q = MISSIONS[0], want = open ? [] : [LOCKED];
   if (q.requires.length !== want.length) { q.requires = want; GM.registerMission(q); }
-  if (open && !S.hinted && g && !g.progress.quests?.[IDS[0]]?.everDone) { S.hinted = true; save(); radio('Ines: You\u2019ve been good for my bar. Come see me in the VIP room. Five jobs, and the Velvet is yours.', 'Ines'); try { offerBeam(); } catch (e) { /* */ } }
+  if (open && !S.hinted && g && !g.progress.quests?.[IDS[0]]?.everDone) { S.hinted = true; save(); radio('Ines: You\u2019ve been good for my bar. Come see me in the staff-only room. Five jobs, and the Velvet is yours.', 'Ines'); try { offerBeam(); } catch (e) { /* */ } }
   return open;
 }
 
@@ -397,7 +398,18 @@ function hookAll(app) {
   }
   if (!H.tickReg && typeof X().registerSurfaceTick === 'function') { H.tickReg = true; X().registerSurfaceTick((dt, tc) => { try { surfTick(dt, tc); } catch (e) { console.warn('velvetarc tick', e); } }); }
 }
+const INES = WING.ines;
+function pointInes() {
+  const guide = X().guide; if (!guide?.aim) return;
+  const app = APP(), L = app && local(app), busy = !!game()?.info?.quest;
+  if (!L || busy) { try { guide.clear('ines'); } catch (e) { /* */ } return; }
+  const dx = INES.x - L.x, dz = INES.z - L.z, dist = Math.hypot(dx, dz);
+  if (dist < 4) { guide.clear('ines'); return; }
+  const b = bearingNdc(dx, dz, app.surface?.info?.viewYaw || 0);
+  guide.aim({ id: 'ines', label: `Ines \u00b7 staff room ${fmtRange(dist)}`, nx: b.nx, ny: b.ny });
+}
 function surfTick(dt, tc) {
+  try { pointInes(); } catch (e) { /* */ }
   try { const h = X().time?.hour?.(); if (typeof h === 'number' && VA.tickHour(S, h)) save(); } catch (e) { /* */ }
   // the dark green ownership beam + green waypoint tint come from Ben's mars/ownedbeams.js (reads SSX.velvetArc.owned())
   // Ines the manager
@@ -465,7 +477,8 @@ function waypoint(quiet) {
   }
   const p = clubPoint();
   if (!p) { if (!quiet) toast('Land on Mars. Ines is at the Velvet Airlock in Ares Junction.'); return false; }
-  try { X().hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Ines \u00b7 take the Velvet' }, !!quiet); } catch (e) { /* */ }
+  try { X().hudx?.setWaypoint?.({ x: p.x, z: p.z, label: 'Ines \u00b7 staff-only room' }, !!quiet); } catch (e) { /* */ }
+  if (!quiet) toast('Ines is in the staff-only room. Go in the Velvet Airlock.', 3200);
   return true;
 }
 function offerBeam() { if (game()?.info?.quest) return false; return waypoint(true); }
@@ -477,7 +490,7 @@ function maybeBrief(app) {
   let near = false; try { const d = w?.doorFor?.('club'); near = !!(d && Number.isFinite(d.x) && Math.hypot(i.x - d.x, i.z - d.z) < 22); } catch (e) { near = false; }
   if (!inside && !near) return;
   S.briefed = true; save();
-  toast('Ines: Thorne owns this club and skims it dry. Sell me ten bottles, or make 3,000 stars. Five jobs after that, and the Velvet is yours. \u2630 \u2192 \ud83c\udf78 The Velvet.', 4800);
+  toast('Ines is in the staff-only room. Thorne owns this club and skims it dry. Sell me ten bottles, or make 3,000 stars. Five jobs after that, and the Velvet is yours. \u2630 \u2192 \ud83c\udf78 The Velvet.', 4800);
   offerBeam();
 }
 function startNext() {
@@ -497,8 +510,8 @@ function openGuide() {
   const c = chain(), b = bottlesNow();
   const rows = c.steps.map(s => (s.done ? '\u2713 ' : '\u00b7 ') + s.title).join('  ');
   const text = c.owned
-    ? 'The Velvet Airlock is yours. Ines manages it. The till is at her desk in the east wing: 8% of the floor, plus 400 cr a day, 1 star per 10 cr. The dark green beam marks the club. Upstairs is free, and ColSec leaves the place alone. ' + rows
-    : 'Ines runs the back bar. Marcus Thorne owns the club and skims it. Five jobs from her put the deed in your name: a cut of the tables, a daily till, Ines as manager, and the dark green business beam. ' + (c.unlocked ? 'She will talk business in the VIP room.' : VA.unlockHint(b, starsNow())) + ' Jobs ' + c.done + '/' + c.total + (c.next ? '. Next: ' + c.next.title + '.' : '.') + ' ' + rows;
+    ? 'Ines is in the staff-only room. The Velvet Airlock is yours. She manages it. The till is at her desk in that room: 8% of the floor, plus 400 cr a day, 1 star per 10 cr. The dark green beam marks the club. Upstairs is free, and ColSec leaves the place alone. ' + rows
+    : 'Ines is in the staff-only room. The door is open. Walk in and tap Talk to Ines. Marcus Thorne owns the club and skims it. Five jobs from her put the deed in your name: a cut of the tables, a daily till, Ines as manager, and the dark green business beam. ' + (c.unlocked ? 'She will talk business when you tap Talk to Ines.' : VA.unlockHint(b, starsNow())) + ' Jobs ' + c.done + '/' + c.total + (c.next ? '. Next: ' + c.next.title + '.' : '.') + ' ' + rows;
   const buttons = [{ id: 'wp', label: '\ud83d\udccd Beam to Ines', on: () => { waypoint(false); return false; } }];
   if (!c.owned && c.unlocked && c.next) buttons.unshift({ id: 'go', label: (c.active === c.next.id ? '\ud83d\udccd You are on ' : '\u25b6 Start ') + c.next.title, on: () => { const r = startNext(); if (!r?.ok) return false; closeSheet(); } });
   openSheet('Take over the Velvet Airlock', text, buttons);
@@ -511,7 +524,7 @@ function logHtml() {
     lead = 'You own it. Ines manages the floor. Collect the till at her desk. The dark green beam marks the club.';
     btns = '<button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam to the Velvet</button>';
   } else if (!c.unlocked) {
-    lead = `Ines runs the back bar. Thorne owns the club. ${escH(VA.unlockHint(bottlesNow(), starsNow()))} Then five jobs, and the deed is yours.`;
+    lead = `Ines is in the staff-only room. Thorne owns the club. ${escH(VA.unlockHint(bottlesNow(), starsNow()))} Then five jobs, and the deed is yours.`;
     btns = '<button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam to Ines</button>';
   } else {
     lead = `Five jobs, then the Velvet is yours: a cut of the floor, a daily till, Ines as manager, dark green beam. Next: ${escH(c.next?.title || 'done')}.`;

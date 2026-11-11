@@ -19,7 +19,7 @@ export const COLONIES = {
       [16, -38, 6, 4, 4, 'OZZIE\u2019S IRON', 0xffd040, 'guns', 'OZZIE\u2019S IRON'], [-30, -42.5, 36, 20, 8, 'THE VELVET AIRLOCK', 0xff3cc8, 'club'] /* v7.5.33 4x (was 12 x 7 at z -36); Velvet expansion 36 x 20 (was 24 x 14): same front face + door at (-30, -32.5), grew 6 m each side and 6 m back */, [6, -28, 7, 4, 4, 'SECURITY', 0x4a8aff, 'security', 'COLONY SECURITY']],
     pad: [-38, 10, 9], crates: [[-31, 16], [-33, 21], [-29, 21], [-46, -4], [36, -9], [12, 30], [-8, -24]],
     shop: [-6, 26.2], contacts: [{ name: 'Rook', at: [36, -26], blurb: 'Fixer. Doesn\u2019t like questions.' }, { name: 'Vesna', at: [8, 24], blurb: 'Salvage broker. Pays on time.' }],
-    // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the VIP room
+    // contacts who live indoors (talk to them at a hotspot inside): Dutch behind the cantina bar, Ozzie at the gun counter, Ines in the Velvet staff-only room
     inside: { cantina: { barkeep: 'Dutch', talk: 'Dutch' }, guns: { dealer: 'Ozzie', talk: 'Ozzie' }, club: { owner: 'Ines' } },
     vehicles: [['buggy', -14, 30, 0.4], ['hauler', -50, -24, 1.6], ['hoverbike', 20, 30, -0.3], ['shuttle', -38, 10, 0.9], ['buggy', 42, 12, 2.4]],
     guards: [[0, -22], [-26, 4], [22, -20]], colonists: 5, lamps: 12

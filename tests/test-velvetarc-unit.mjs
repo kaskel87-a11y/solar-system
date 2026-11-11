@@ -78,6 +78,9 @@ let screens = 0; for (let t = 0; t < total; t += 0.1) { const p = P.patrol(route
 ok('Mina passes the slate every loop', screens > 5);
 ok('spots inside the wing', [W.desk, W.safe, W.handover, W.ledger].every(q => q.x > W.x0 && q.x < W.x1 && q.z > W.z0 && q.z < W.z1));
 ok('desk + safe in the office', [W.desk, W.safe].every(q => q.x > W.office.x0 && q.z < W.office.z1));
+ok('Ines stands in the staff office', W.ines && W.ines.x > W.office.x0 && W.ines.x < W.office.x1 && W.ines.z > W.office.z0 && W.ines.z < W.office.z1);
+ok('staff door stays open', /doorCol\.on = false/.test(wing) && !/doorCol\.on = !own/.test(wing));
+ok('talk button names Ines', /Talk to Ines/.test(wing));
 
 // ---- wiring ----
 const arc = src('mars/velvetarc.js'), html = src('index.html'), sw = src('sw.js'), inter = src('interiors.js'), world = src('world.js'), ps = src('privateshow.js');
@@ -93,6 +96,7 @@ ok('no surname "Varga" in the game', !/Varga/.test(arc + wing + src('mars/velvet
 ok('small dome gone from world.js', !/\[-22,\s*-16/.test(world));
 ok('green beam uses Ben\'s ownedbeams (no duplicate beam mesh)', !/velvetBeam/.test(arc) && /velvetArc\?\.owned/.test(src('mars/ownedbeams.js')));
 ok('takeover is on the quest log and the menu', /function logHtml/.test(arc) && /Take over the Velvet Airlock/.test(arc) && /rmVelvet/.test(arc) && /velvetArc\?\.logHtml/.test(html));
+ok('guide names the staff room', /Ines is in the staff-only room/.test(arc));
 ok('pit step is the cage', /type: 'pit', at: \[-292, -68\]/.test(arc));
 ok('every arc step names what to do', (arc.match(/type: '/g) || []).length >= 20 && !/type: 'pick', who: 'Pell', prompt:/.test(arc));
 ok('step changes say what is next', /Step done\. Next:/.test(arc) && /Step done\. Next:/.test(src('storymars.js')));

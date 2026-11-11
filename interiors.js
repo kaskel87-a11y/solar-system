@@ -438,7 +438,7 @@ export const INTERIORS = {
       box(X1 - 0.6, 0.45, -4.6, 0.9, 0.9, 3.4, velvet); box(X1 - 0.25, 1.05, -4.6, 0.3, 1.3, 3.4, velvet); api.col(X1 - 0.6, -4.6, 0.5, 1.75);
       box(X1 - 2.0, 0.42, -4.6, 1.0, 0.06, 1.6, chrome); box(X1 - 2.0, 0.2, -4.6, 0.1, 0.4, 0.1, chrome); api.col(X1 - 2.0, -4.6, 0.55, 0.85);
       box(X1 - 2.0, 0.5, -4.3, 0.08, 0.12, 0.08, mat(0xffd040, { basic: true }));
-      api.person({ top: 0x2a0a18, bottom: 0x2a0a18, shoes: 0x0a0a0a, hair: 0xe8e8f0, hairStyle: 'bun', skin: 0xd8a888, accent: 0xffd040 }, X1 - 0.75, -4.6, Math.PI / 2, (p, t) => { sitPose(p); p.arms[1].rotation.x = 1.1 + Math.sin(t * 0.7) * 0.15; p.head.rotation.y = Math.sin(t * 0.3) * 0.3; });
+      api.person({ top: 0x1a1a22, bottom: 0x1a1a22, hair: 0x2a1a10, hairStyle: 'short', skin: 0x8a5a3a }, X1 - 0.75, -4.6, Math.PI / 2, (p, t) => { sitPose(p); p.arms[1].rotation.x = 1.1 + Math.sin(t * 0.7) * 0.15; p.head.rotation.y = Math.sin(t * 0.3) * 0.3; });
       api.person({ top: 0x22222a, bottom: 0x22222a, hair: 0x3a2a1a, hairStyle: 'short', skin: 0xb07a54, shades: true, bulk: 1.2 }, X1 - 0.5, Z0 + 0.5, Math.PI * 0.75, (p, t) => guard(p, t));
       // v7.5.81 Danny's booth and private show are in her own room (dannyroom.js). The 50 cr dance is not on her menu.
       let dannyBooth = null;
@@ -453,7 +453,6 @@ export const INTERIORS = {
       const lb = box(X0 + 0.5, 0.25, Z1 - 0.9, 0.4, 0.4, 0.6, mat(0x3a2a10, { metalness: 0.6 })), lg = box(X0 + 0.5, 0.46, Z1 - 0.9, 0.3, 0.03, 0.5, mat(0xffd040, { basic: true }));
       api.ticks.push(t => { const on = !(o.taken?.('club-lockbox')); lb.visible = lg.visible = on; });
       api.spot({ id: 'vip', x: ropeX, z: Z1 + 1.0, r: 1.5, label: '🍾 VIP room', act: 'vip', who: 'Tiny', cond: () => ropeCol.on });
-      api.spot({ id: 'owner', x: X1 - 2.3, z: -3.4, r: 1.3, label: '💬 ' + (o.owner || 'Ines'), act: 'talk', who: o.owner || 'Ines' });
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });

@@ -2,7 +2,8 @@
 // next to the club is gone from world.js and the club grew into the space: the building is 36 x 20 m outside (was 24 x 14,
 // same front face and door) and the room gains a 14 m east wing (room-local x 11..25, z -8..24; interiors.js club w 58):
 //   north-west  the counting room: the cashier cage
-//   north-east  Ines's office: desk, the office safe, the books. STAFF ONLY until the club is yours (mars/velvetarc.js).
+//   north-east  Ines's office: desk, the office safe, the books. The STAFF ONLY door is open so you can
+//               always walk in and talk to Ines. The till and the safe stay shut until you own the club.
 //   south       the Dome Room: the old dome's glass, salvaged as a canopy over a high-roller Hold'em table (act 'poker',
 //               the same Velvet Hold'em modal as the card room) where Grisby keeps the house books; sofas, a champagne bar.
 // The old east wall (x 11, z -8..8: the VIP room and the booths) stays as a partition, so nothing in the old room moves.
@@ -16,6 +17,7 @@ export const WING = {
   table: { x: 18, z: 13 },               // high-roller Hold'em under the dome
   ledger: { x: 22.2, z: 9.0, r: 1.15 },  // Grisby's slate on its stand, behind his chair
   office: { x0: 18, x1: 25, z0: -8, z1: 1, door: 21.25 },
+  ines: { x: 21.5, z: -1.55 }, // standing just inside the staff door, facing it
   desk: { x: 21.5, z: -3.6, r: 1.3 },
   safe: { x: 24.0, z: -6.6, r: 1.1 },
   handover: { x: 15.0, z: 19.5, r: 2.0 }, // the lounge floor, in front of everybody
@@ -45,16 +47,27 @@ export function addVelvetWing(api, poses = {}) {
   box(O.x1 - rw / 2, H / 2, O.z1, rw, H, 0.24, wallM); api.col(O.x1 - rw / 2, O.z1, rw / 2, 0.16, 'wall');
   box(O.door, (H + 2.6) / 2, O.z1, gapW, H - 2.6, 0.24, wallM);
   box(O.door - gapW / 2, 1.3, O.z1 + 0.14, 0.06, 2.6, 0.06, green); box(O.door + gapW / 2, 1.3, O.z1 + 0.14, 0.06, 2.6, 0.06, green);
-  const officeSign = api.sign('STAFF ONLY', 0xff5a5a, O.door, 3.05, O.z1 + 0.15, 0, 2.6, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' });
-  const ownSign = api.sign('THE OFFICE', 0x2aff7a, O.door, 3.05, O.z1 + 0.15, 0, 2.6, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' }); ownSign.visible = false;
-  const doorCol = api.col(O.door, O.z1, gapW / 2 + 0.05, 0.2, 'rope'); // shut until the club is yours
-  const chain = box(O.door, 0.9, O.z1 + 0.18, gapW, 0.06, 0.06, mat(0xff5a5a, { basic: true }));
+  const officeSign = api.sign('STAFF ONLY', 0xff5a5a, O.door, 3.15, O.z1 + 0.15, 0, 2.6, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' });
+  const ownSign = api.sign('THE OFFICE', 0x2aff7a, O.door, 3.15, O.z1 + 0.15, 0, 2.6, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' }); ownSign.visible = false;
+  api.sign('INES IS INSIDE', 0xffd040, O.door, 2.72, O.z1 + 0.16, 0, 1.7, { w: 512, h: 96, font: 'bold 44px system-ui, sans-serif' });
+  const doorCol = api.col(O.door, O.z1, gapW / 2 + 0.05, 0.2, 'rope');
+  doorCol.on = false; // always open: Ines is in this room from the start
+  const chain = box(O.door, 0.9, O.z1 + 0.18, gapW, 0.06, 0.06, mat(0xff5a5a, { basic: true })); chain.visible = false;
   // desk + chair + green banker's lamp
   const D = W.desk; box(D.x, 0.42, D.z - 1.4, 2.4, 0.84, 1.0, dark); box(D.x, 0.86, D.z - 1.4, 2.5, 0.05, 1.1, mat(0x3a1a0a, { roughness: 0.4 })); api.col(D.x, D.z - 1.4, 1.25, 0.55);
   box(D.x - 0.7, 1.05, D.z - 1.55, 0.08, 0.35, 0.08, chrome); box(D.x - 0.7, 1.24, D.z - 1.55, 0.4, 0.1, 0.18, green);
   box(D.x + 0.4, 0.9, D.z - 1.3, 0.5, 0.03, 0.36, mat(0xf7f3ea)); // the books
   box(D.x, 0.3, D.z - 2.4, 0.6, 0.6, 0.6, velvet); box(D.x, 0.85, D.z - 2.75, 0.6, 0.9, 0.12, velvet); api.col(D.x, D.z - 2.5, 0.35, 0.4);
   const nameplate = api.sign('INES \u00b7 MANAGER', 0xffd040, D.x, 1.05, D.z - 0.86, 0, 1.0, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' }); nameplate.visible = false;
+  // Ines herself: silver bun, dark dress, gold glow, standing where the open door shows her
+  const IN = W.ines;
+  const glowM = new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0.75, depthWrite: false }); api.disposables.push(glowM);
+  const inesRing = api.mk(G.cyl, glowM, IN.x, 0.035, IN.z, 0.85, 0.04, 0.85); api.g.add(inesRing);
+  const halo = api.mk(G.sph, glowM, IN.x, 2.15, IN.z, 0.22, 0.22, 0.22); api.g.add(halo);
+  api.sign('INES', 0xffd040, IN.x, 2.55, IN.z + 0.2, 0, 1.15, { w: 256, h: 96, font: 'bold 64px system-ui, sans-serif' });
+  api.person({ top: 0x2a0a18, bottom: 0x2a0a18, shoes: 0x0a0a0a, hair: 0xe8e8f0, hairStyle: 'bun', skin: 0xd8a888, accent: 0xffd040 }, IN.x, IN.z, Math.PI, (p, t) => poses.idle?.(p, t, 2));
+  api.ticks.push(t => { glowM.opacity = 0.4 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3)); });
+  api.spot({ id: 'ines', x: IN.x, z: IN.z + 0.9, r: 1.55, label: '\u{1F4AC} Talk to Ines', act: 'talk', who: 'Ines' });
   // the safe: a squat steel box with a gold dial (stores contraband for the owner, no carry cap)
   const S = W.safe; box(S.x, 0.6, S.z - 0.6, 1.0, 1.2, 0.8, mat(0x3a3e46, { metalness: 0.8, roughness: 0.35 })); api.col(S.x, S.z - 0.6, 0.55, 0.45);
   const dial = api.mk(G.cyl, mat(0xffd040, { metalness: 0.8, roughness: 0.3 }), S.x, 0.75, S.z - 0.18, 0.16, 0.04, 0.16); dial.rotation.x = Math.PI / 2; api.g.add(dial);
@@ -127,7 +140,7 @@ export function addVelvetWing(api, poses = {}) {
     const own = !!call('owned'), gone = !!call('ledgerGone'), th = !!call('thorneHere'), k = own + ':' + gone + ':' + th;
     if (thorneGrp) thorneGrp.visible = th;
     if (k === last) return; last = k;
-    doorCol.on = !own; chain.visible = !own; officeSign.visible = !own; ownSign.visible = own; nameplate.visible = own; deed.visible = own;
+    officeSign.visible = !own; ownSign.visible = own; nameplate.visible = own; deed.visible = own;
     slate.visible = !gone;
   });
   return { wing: W };
