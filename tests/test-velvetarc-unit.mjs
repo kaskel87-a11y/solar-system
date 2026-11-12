@@ -44,8 +44,21 @@ ok('Grisby looks 3.2 s of every 9 s', VA.grisbyLooking(0.5) && !VA.grisbyLooking
 let m = { p: 0 };
 m = VA.swipeTick(m, 1, { atSlate: true, looking: false, screened: false }); ok('swipe progresses unseen', m.p === 1 && m.state === 'working');
 m = VA.swipeTick(m, 1, { atSlate: true, looking: true, screened: true }); ok('waitress screens you', m.p === 2);
-m = VA.swipeTick(m, 1, { atSlate: true, looking: true, screened: false }); ok('caught resets', m.p === 0 && m.caught === 1 && m.state === 'caught');
-m = VA.swipeTick(m, 1, { atSlate: false, looking: false, screened: false }); ok('away', m.state === 'away' && m.p === 0);
+m = VA.swipeTick(m, 1, { atSlate: true, looking: true, screened: false }); ok('caught pauses', m.p === 1 && m.caught === 1 && m.state === 'caught'); // was 2 s; one 1 s knock-back, meter kept
+m = VA.swipeTick(m, 1, { atSlate: true, looking: true, screened: false }); ok('same look holds', m.p === 1 && m.caught === 1 && m.state === 'wait');
+m = VA.swipeTick(m, 1, { atSlate: false, looking: false, screened: false }); ok('away', m.state === 'away' && m.p === 1);
+// standing at the slate through Grisby's looks (3.2 s of every 9 s) still finishes inside 30 s
+{
+  let stand = { p: 0 }, doneAt = null, wiped = false, half = false;
+  for (let t = 0; t <= 30; t += 0.1) {
+    const before = stand.p || 0;
+    stand = VA.swipeTick(stand, 0.1, { atSlate: true, looking: VA.grisbyLooking(t), screened: false });
+    if (before >= 2 && stand.p < before - VA.SWIPE.knock - 0.001) wiped = true;
+    if (stand.p >= VA.SWIPE.seconds * 0.5) half = true;
+    if (stand.state === 'done' && doneAt == null) doneAt = +t.toFixed(1);
+  }
+  ok('stand still finishes by 30 s', doneAt != null && doneAt <= 30 && doneAt >= 20 && half && !wiped, true);
+}
 m = VA.swipeTick({ p: 14.5 }, 1, { atSlate: true, looking: false }); ok('done at 15 s', m.state === 'done' && m.p === 15);
 s = VA.fresh();
 ok('pit: win, lose, win = won', VA.pitResult(s, true) === 'next' && VA.pitResult(s, false) === 'next' && VA.pitResult(s, true) === 'won');

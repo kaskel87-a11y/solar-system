@@ -284,9 +284,10 @@ function tick(app, dt) {
       const slate = roomAt(world, WING.ledger.x, WING.ledger.z); if (slate) { aimAt(tg, slate.x, slate.z); indoorsAim(true); }
       const atSlate = Math.hypot(L.x - (WING.ledger.x + 0.1), L.z - (WING.ledger.z - 0.8)) < VA.SWIPE.range, now = performance.now() / 1000;
       const m = VA.swipeTick(R.swipe, dt, { atSlate, looking: VA.grisbyLooking(now), screened: minaNear() }); R.swipe = m;
-      if (m.state === 'caught') toast('\ud83d\udc40 Grisby looks up. You study the ceiling. Start again.', 2200);
+      if (m.state === 'caught') toast('Grisby is looking, hold still', 2200);
       if (m.state === 'done') { S.ledgerGone = true; save(); toast('\ud83d\udcd2 Slate up your sleeve. Grisby is still counting.', 3000); return nextStep(g); }
-      showStep(s, !atSlate ? 'Stand at the beam: Grisby\u2019s slate, Dome Room.' : m.state === 'wait' ? 'He\u2019s looking. Wait, or let Mina walk between you.' : `Lifting the slate\u2026 ${Math.round(m.p / VA.SWIPE.seconds * 100)}%`);
+      const pct = Math.round((m.p || 0) / VA.SWIPE.seconds * 100);
+      showStep(s, !atSlate ? 'Stand at the beam: Grisby\u2019s slate, Dome Room.' : (m.state === 'wait' || m.state === 'caught') ? 'Grisby is looking, hold still' : `Swiping... ${pct}%`);
       return;
     }
     case 'escape': {
@@ -537,7 +538,10 @@ const api = {
   state: () => ({ ...S, safe: { ...S.safe }, ids: IDS.slice(), unlocked: (() => { try { return gate(); } catch (e) { return false; } })() }),
   grisbyLooking: () => VA.grisbyLooking(performance.now() / 1000), ledgerGone: () => !!S.ledgerGone,
   thorneHere: () => questStep()?.s.type === 'handover',
-  ledgerOn: () => !S.ledgerGone && questStep()?.s.type === 'swipe', ledgerLabel: () => `\ud83d\udcd2 Ledger slate \u00b7 ${Math.round((R.swipe.p || 0) / VA.SWIPE.seconds * 100)}%`, ledgerSpot,
+  ledgerOn: () => !S.ledgerGone && questStep()?.s.type === 'swipe', ledgerLabel: () => {
+    const pct = Math.round((R.swipe.p || 0) / VA.SWIPE.seconds * 100);
+    return VA.grisbyLooking(performance.now() / 1000) ? 'Grisby is looking, hold still' : `Swiping... ${pct}%`;
+  }, ledgerSpot,
   handoverOn: () => questStep()?.s.type === 'handover', handoverLabel: () => '\ud83d\udcd2 Hand Thorne the ledger', handoverSpot,
   deskLabel: () => `\ud83d\udcbc Ines \u00b7 manager \u00b7 collect ${Math.floor(S.till)} cr`, deskSpot,
   safeLabel: () => `\ud83d\udd12 Office safe (${VA.safeTotal(S)})`, safeSpot,

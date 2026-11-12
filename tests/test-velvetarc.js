@@ -55,8 +55,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('minaWalks', JSON.stringify(mina), !!mina && mina.x > 11 && mina.x < 25 && mina.z > 1 && mina.z < 24);
     const ms = await at(mina.x + 0.3, mina.z + 0.3); ok('minaSpot', ms?.id, ms?.id === 'waitress-dome');
     ok('officeLocked', JSON.stringify(await at(21.5, -3.6)), (await at(21.5, -3.6))?.id !== 'velvet-desk');
-    // old room spots untouched
-    ok('showSpotKept', (await at(6.55, -5.3))?.id, (await at(6.55, -5.3))?.id === 'show');
+    // Danny's show left the VIP couch for her own room (dannyroom.js)
+    ok('showSpotKept', (await at(-28.4, -6.35))?.id, (await at(-28.4, -6.35))?.id === 'show');
     ok('leaveSpot', (await at(-11, 22))?.id, (await at(-11, 22))?.id === 'leave');
     // screenshots of the wing
     await G(() => window.__app.surface.debugInside(5.5, 21, -Math.PI * 0.62)); await sleep(1800);
@@ -83,10 +83,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < 6 && (await G(() => window.__app.game.debug.step()?.type)) !== 'swipe'; i++) { await G(() => window.__app.game.debug.advance()); await sleep(400); }
     ok('swipeStep', await G(() => window.__app.game.debug.step()?.type), (await G(() => window.__app.game.debug.step()?.type)) === 'swipe');
     const ls = await at(22.3, 8.2, 0); ok('ledgerSpot', ls?.id, ls?.id === 'velvet-ledger');
-    await sleep(3500); R.swipeAfter3s = await G(() => window.SSX.velvetArc.runner.swipe);
-    // v7.5.57: Grisby's look window resets the meter, so re-arm it until a clear tick lands (was timing-flaky on small screens)
-    for (let i = 0; i < 30 && (await G(() => window.__app.game.debug.step()?.type)) === 'swipe'; i++) { await G(() => window.SSX.velvetArc.debug.swipeDone()); await sleep(500); }
-    ok('swipeDone', await wait(() => window.__app.game.debug.step()?.type === 'escape', 12000));
+    // v7.5.92: a look pauses the meter (1 s knock-back). Standing at the slate finishes within 30 s.
+    let sawHalf = false;
+    const tSwipe = Date.now();
+    while (Date.now() - tSwipe < 40000) {
+      const st = await G(() => ({ type: window.__app.game.debug.step()?.type, p: window.SSX.velvetArc.runner.swipe || 0, text: window.__app.game.debug.step()?.text || '' }));
+      if (!sawHalf && st.p >= 7.5) {
+        sawHalf = true; R.swipeHalf = st.text;
+        await G(() => { const css = document.createElement('style'); css.textContent = '#toast,#radio,#obLine,#ssxGuide{display:none!important}'; document.head.appendChild(css); });
+        await page.screenshot({ path: out + `comped-swipe-${tag}.png` });
+      }
+      if (st.type === 'escape') break;
+      await sleep(300);
+    }
+    ok('swipeHalf', R.swipeHalf, sawHalf);
+    ok('swipeDone', await G(() => window.__app.game.debug.step()?.type), (await G(() => window.__app.game.debug.step()?.type)) === 'escape');
     ok('ledgerGone', await G(() => window.SSX.velvetArc.ledgerGone()));
     await G(() => window.__app.game.abandon?.()); await G(() => window.__app.game.debug.clear()); await sleep(400);
     // mission 5: the handover in the Dome Room (Thorne appears), then his armored suit outside
