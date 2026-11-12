@@ -7,7 +7,7 @@ export const KEY = 'ssx.velvetarc.v1';
 export const UNLOCK = { bottles: 10, stars: 3000 };
 export const TAKE = { pct: 0.08, perDay: 400, crPerStar: 10, cap: 20000 }; // the till never holds more than 20k (a 2-week absence)
 export const PERKS = { showMult: 0.75, upstairsFree: true };
-export const SWIPE = { seconds: 15, cycle: 9, look: 3.2, range: 1.6 }; // Grisby checks his slate 3.2 s of every 9 s
+export const SWIPE = { seconds: 15, cycle: 9, look: 3.2, range: 1.6, knock: 1 }; // Grisby checks his slate 3.2 s of every 9 s. A look pauses the swipe and knocks 1 s off, once.
 export const PIT = { wins: 2, bouts: 3 };
 export const BOSS = { hp: 160, phases: [0.66, 0.33] };
 export const CHASE = { close: 9, hold: 3 };
@@ -50,13 +50,20 @@ export function safeIn(s, item, qty) { const n = Math.floor(qty); if (!item || !
 export function safeOut(s, item, qty = Infinity) { const have = s.safe[item] || 0, n = Math.min(have, Math.floor(qty)); if (!(n > 0)) return 0; if (have - n > 0) s.safe[item] = have - n; else delete s.safe[item]; return n; }
 export const safeTotal = s => Object.values(s.safe).reduce((a, b) => a + b, 0);
 
-// mission 2: Grisby's look cycle (deterministic in time) and the swipe meter. Progress only while you're at the slate and
-// he isn't looking, or a waitress is between you; caught = meter resets and a warning.
+// mission 2: Grisby's look cycle (deterministic in time) and the swipe meter. Progress while you're at the slate and
+// he isn't looking, or a waitress is between you. A look pauses the meter (one 1 s knock-back, one 'caught' warning).
 export const grisbyLooking = t => ((t % SWIPE.cycle) + SWIPE.cycle) % SWIPE.cycle < SWIPE.look;
 export function swipeTick(m, dt, { atSlate, looking, screened }) {
-  if (!atSlate) return { ...m, state: 'away' };
-  if (looking && !screened) return { p: 0, caught: (m.caught || 0) + (m.p > 0 ? 1 : 0), state: m.p > 0 ? 'caught' : 'wait' };
-  const p = Math.min(SWIPE.seconds, (m.p || 0) + dt); return { ...m, p, state: p >= SWIPE.seconds ? 'done' : 'working' };
+  const base = m && typeof m === 'object' ? m : { p: 0 };
+  if (!atSlate) return { ...base, looked: false, state: 'away' };
+  if (looking && !screened) {
+    if (base.looked) return { ...base, state: 'wait' };
+    const had = (base.p || 0) > 0;
+    const p = Math.max(0, (base.p || 0) - (SWIPE.knock || 0));
+    return { ...base, p, looked: true, caught: (base.caught || 0) + (had ? 1 : 0), state: had ? 'caught' : 'wait' };
+  }
+  const p = Math.min(SWIPE.seconds, (base.p || 0) + Math.max(0, +dt || 0));
+  return { ...base, p, looked: false, state: p >= SWIPE.seconds ? 'done' : 'working' };
 }
 // mission 4: best 2 of 3 at the Pit
 export function pitResult(s, win) { if (win) s.pitWins++; else s.pitLosses++; return s.pitWins >= PIT.wins ? 'won' : s.pitLosses > PIT.bouts - PIT.wins ? 'lost' : 'next'; }
