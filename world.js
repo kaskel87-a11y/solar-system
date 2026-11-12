@@ -1109,7 +1109,7 @@ export function createWorld(ctx) {
     else if (door.kind === 'club' && wanted > 0) return { ok: false, msg: 'Brick: Not tonight. You’ve got security crawling up your ass. Lose them first.' };
     if (door.kind === 'club') { let ban = ''; try { ban = globalThis.SSX?.dancers?.banMsg?.() || ''; } catch (e) { ban = ''; } if (ban) return { ok: false, msg: ban }; }
     if (door.kind === 'mansion') { const live = cams.filter(c => !(c.cased > time) && Math.hypot(c.x - door.x, c.z - door.z) < 30); if (live.length && !ctx.game().flag('guest:' + door.name)) alarm(2, door, `broke into ${door.name}`); } // case the cameras first or it's loud
-    if (wanted >= 3 && door.kind !== 'security') return { ok: false, msg: `${door.name}: shutters down. Nobody opens a door for a ${wanted}★ fugitive.` };
+    if (wanted >= 3 && door.kind !== 'security' && !door.home) return { ok: false, msg: `${door.name}: shutters down. Nobody opens a door for a ${wanted}★ fugitive.` };
     let paid = 0;
     if (def.cover && !coverPaid && !ownClub) {
       if (!game.spend(def.cover)) return { ok: false, msg: `Brick: Cover’s ${def.cover}. You’ve got lint. Beat it.` };
@@ -1127,6 +1127,7 @@ export function createWorld(ctx) {
     if (!inside) return null; const { door, room } = inside; room.group.visible = false; inside = null;
     if (lights[0]) { const h = hubAt(door.x, door.z)?.site || { x: cx, z: cz, tint: C.tint }; lights[0].position.set(h.x, height(h.x, h.z) + 9, h.z); lights[0].color.setHex(h.tint || C.tint); lights[0].distance = 70; lights[0].decay = 1.6; }
     onEvent('door', {});
+    if (door.exit && Number.isFinite(door.exit.x) && Number.isFinite(door.exit.z)) return { x: door.exit.x, z: door.exit.z, yaw: door.exit.yaw || 0 };
     return { x: door.x, z: door.z + 0.6, yaw: Math.PI };
   }
   function collidePlayer(x, z, r, feet) {

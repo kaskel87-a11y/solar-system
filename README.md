@@ -4,6 +4,12 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.93: walk into your habitat
+
+Your Mars habitat is a room now. Walk up to the door and tap **Enter**. Inside: **Rest** on the bunk (full heal, 3 minutes between rests), **Locker** (the same stash as the crate outside), a terminal, Frankie's bed, and **Leave** by the door you came in.
+
+**On a phone:** ☰ → **🏠 Mars base** → **🛏️ Go inside**. If you are not at the door, follow the arrow on the edge of the screen. 1. Walk to the door. 2. Tap Enter. 3. Inside, tap Rest, Locker, or Leave.
+
 ## v7.5.91: themed lock-ups
 Your lock-up next to Red Line Motors can wear a look: **Scrap bay** (240 cr), **Neon pit** (480 cr) or **High-roller** (1,400 cr). Each one changes the open bay around your car: the light color, the walls and floor, the props and the sign. Neon pulses, scrap flickers, high-roller shimmers. A look you already bought on that garage is free to put back. The yard lock-up is free.
 

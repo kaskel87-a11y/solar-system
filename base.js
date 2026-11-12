@@ -1,9 +1,10 @@
 // Mars base building (v7.5): buy a lot on Mars, place walls, gates, a garage, a stash and turrets on a 2 m grid, and it
-// all saves to localStorage (ssx.base.v1) and comes back on reload. v7.5.72 adds the habitat (rest at the door) and the
-// landing pad (call your rover down onto it). Pure rules live in basecore.js; core access goes through
-// basehooks.js. Registers its per-frame tick with SSX.registerSurfaceTick (README add-on API) and
+// all saves to localStorage (ssx.base.v1) and comes back on reload. v7.5.72 adds the habitat and the landing pad.
+// v7.5.93 makes the habitat a walk-in room (habinterior.js, the same interiors.js kit as the shops): walk to the
+// door and tap Enter. Inside, Rest (3 min), the locker (same stash) and Leave. Pure rules live in basecore.js; core
+// access goes through basehooks.js. Registers its per-frame tick with SSX.registerSurfaceTick (README add-on API) and
 // publishes window.SSX.base once the app exists. No permanent HUD: ☰ 🏠 Mars base, plus one context button in #surfBtns
-// near your lot (Buy / Build / Stash / Rest / Call rover / Rover home; Place / Remove in build mode) and a top toolbar only while building.
+// near your lot (Buy / Build / Stash / Enter / Call rover / Rover home; Place / Remove in build mode) and a top toolbar only while building.
 //
 //   SSX.base.plots() / owned() / state(id) / buy(id) / place(id, type, i, j, r) / remove(id, pieceId)
 //   SSX.base.deposit(id, { credits, medkits }) / withdraw(id, { credits, medkits }) / build(on, id)
@@ -17,6 +18,8 @@
 import * as THREE from 'three';
 import * as BC from './basecore.js';
 import * as H from './basehooks.js';
+import { HAB_KIND, HAB_SPOTS } from './habinterior.js';
+import { bearingNdc, fmtRange } from './hud/guidecore.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 const WORLD = 'Mars', GHOST_AHEAD = 5, NEAR = 3;
@@ -35,6 +38,8 @@ let lastRide = null; // { car, x, z } (world) after last frame's push-out
 let root = null, sceneRef = null, centres = {}, inst = null, ghost = null, markers = null, grid = null, tracers = null;
 let build = null;             // { plotId, type, r, tool: 'place'|'remove' }
 let ui = null, actNow = null, inPlotId = null, menuBtn = null, clock = 0;
+let habNav = null;            // plot id while the edge arrow points at that habitat's door
+const gated = new WeakSet();
 const turretSt = new Map();   // `${plotId}:${pieceId}` -> { yaw, cd, flash }
 const raids = new Map();      // plotId -> { until, id, src }
 const targetSources = new Set();
@@ -271,11 +276,15 @@ function overview() {
     const s = plotState(p.id), c = centres[p.id], d = c && P ? Math.hypot(c.x - P.x, c.z - P.z) : null, near = d != null && d < BC.HALF + NEAR + 2, sum = BC.summary(s);
     const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''}${sum.hab ? ' · 🛏️' : ''}${sum.pad ? ' · 🛬' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
     const where = d == null ? 'Mars' : near ? 'here' : `${Math.round(d)} m ${compass(c.x - P.x, c.z - P.z)}`;
-    const btn = s.owned ? (near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : '') : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
+    const btn = s.owned
+      ? `${sum.hab ? `<button data-act="hab" data-id="${p.id}">🛏️ Go inside</button>` : ''}${near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : ''}`
+      : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
     return `<div class="row"><div><b>${s.owned ? '🏠' : '🏷️'} ${p.name}</b> <small>· ${p.district} · ${where}</small><br><small>${info}</small></div>${btn}</div>`;
   }).join('');
-  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can rest in, and a landing pad that calls your rover. You have ${cr} cr.</small>${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
-    ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } });
+  const anyHab = BC.PLOTS.some(p => plotState(p.id).owned && plotState(p.id).pieces.some(q => q.type === 'hab'));
+  const steps = anyHab ? `<p><b>Your habitat</b><br>1. Tap Go inside. If you are not at the door, follow the arrow.<br>2. At the door, tap Enter.<br>3. Inside: Rest on the bunk (3 min), Locker for your stash, Leave by the door.</p>` : '';
+  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can walk into, and a landing pad that calls your rover. You have ${cr} cr.</small>${steps}${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
+    ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } if (ds.act === 'hab') goInside(ds.id); });
 }
 function stashUi(id) {
   const s = plotState(id), g = C?.game, cr = H.credits(g), mk = H.medkits(g);
@@ -350,7 +359,7 @@ export function baseTick(dt, ctx) {
   for (const p of BC.PLOTS) { const g = plotState(p.id).owned && plotState(p.id).pieces.find(q => q.type === 'garage'); if (!g || !ctx.rover || !centres[p.id]) continue;
     const l = toLocal(p.id, ctx.rover.x, ctx.rover.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r);
     if (Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d && 'fuel' in ctx.rover && ctx.rover.fuel < 100) ctx.rover.fuel = Math.min(100, ctx.rover.fuel + dt * 25); }
-  subscribeRaids(); updateTurrets(dt, ctx);
+  subscribeRaids(); updateTurrets(dt, ctx); tickHabGuide(); patchGate(ctx.game);
   if (build && (build.plotId !== plotUnder(P.x, P.z, 12) || car || indoor)) { H.toast('🏗️ Left your lot. Build mode off.', 1800); setBuild(false); }
   let act = null;
   if (build) act = updateBuild();
@@ -362,7 +371,7 @@ export function baseTick(dt, ctx) {
       const s = plotState(near), l = toLocal(near, P.x, P.z), REACH = { garage: 4, hab: 3.6, pad: 3.3 }, close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (REACH[t] || 2.2); })());
       const st = close('stash'), gr = close('garage'), hb = close('hab'), pd = close('pad');
       if (st) act = { label: '💰 Stash', fn: async () => stashUi(near) };
-      else if (hb) act = { label: '🛌 Rest', fn: async () => restIn(near) };
+      else if (hb) act = { label: '🚪 Enter', fn: async () => { aimHab(false); enterHab(near); } };
       else if (pd) act = { label: '🛬 Call rover', fn: async () => callRover(near, pd) };
       else if (gr) { // the garage stores / respawns your ride; paint & parts live in Pumpkin's SSX.garage (feature-detected at call time)
         const parked = ctx.rover && roverInBay(near, gr, ctx.rover), cz = customizer();
@@ -377,11 +386,98 @@ export function baseTick(dt, ctx) {
 // PR #7's SSX.garage has only grant*() today; a future open()/openGarage() lights the Customize action up
 function customizer() { const G = typeof window !== 'undefined' && window.SSX?.garage; const f = G && (G.open || G.openGarage || G.customize); return typeof f === 'function' ? () => f.call(G) : null; }
 function roverInBay(id, g, rv) { const l = toLocal(id, rv.x, rv.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r); return Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d; }
+const canStash = s => !!s && s.pieces.some(q => q.type === 'stash' || q.type === 'hab');
 function roverHome(id, g) {
   const c = BC.pieceCentre(g), w = toWorldXZ(id, c.x, c.z), [bx, bz] = BC.rotXZ(0, 1, g.r); // nose to the open front
   H.parkVehicle(C.rover, w.x, w.z, Math.atan2(-bx, -bz) + Math.PI, C.height(w.x, w.z) + 0.6); emit('garage', { plotId: id, x: w.x, z: w.z }); H.toast('🚙 Rover\u2019s in the garage. Fuel topped up.', 2200);
 }
-// v7.5.72 habitat: one tap at the door. Full health does not start the cooldown (basecore.restReady). Death still belongs
+// v7.5.93: the habitat door opens the walk-in room (habinterior.js). Rest moved inside; same 3-minute cooldown.
+const habPiece = id => plotState(id)?.pieces.find(q => q.type === 'hab') || null;
+function habDoorWorld(id) {
+  const p = habPiece(id), c0 = centres[id]; if (!p || !c0) return null;
+  const c = BC.pieceCentre(p), [fx, fz] = BC.rotXZ(0, 1, p.r);
+  const w = toWorldXZ(id, c.x + fx * 2.35, c.z + fz * 2.35);
+  return { x: w.x, z: w.z, yaw: Math.atan2(fx, fz), piece: p };
+}
+function habPlot(id) {
+  if (id && habPiece(id)) return id;
+  if (inPlotId && habPiece(inPlotId)) return inPlotId;
+  let best = null, bd = 1e9; const P = C?.player;
+  for (const p of BC.PLOTS) {
+    const d = habDoorWorld(p.id); if (!d) continue;
+    const dist = P ? Math.hypot(d.x - P.x, d.z - P.z) : 0;
+    if (dist < bd) { bd = dist; best = p.id; }
+  }
+  return best;
+}
+function aimHab(id) {
+  const g = typeof window !== 'undefined' ? window.SSX?.guide : null;
+  if (!id) { habNav = null; try { g?.clear?.('habdoor'); } catch (e) { /* no guide */ } return; }
+  habNav = id;
+}
+function tickHabGuide() {
+  if (!habNav || !C) return;
+  const door = habDoorWorld(habNav), g = window.SSX?.guide;
+  if (!door || H.indoors(C.world)) { aimHab(false); return; }
+  const P = C.player, dx = door.x - P.x, dz = door.z - P.z, dist = Math.hypot(dx, dz);
+  if (dist < 4.2) { aimHab(false); return; } // the Enter button is the cue from here
+  const yaw = window.__app?.surface?.info?.viewYaw || P.yaw || 0;
+  const b = bearingNdc(dx, dz, yaw);
+  try { g?.aim?.({ id: 'habdoor', label: `Habitat ${fmtRange(dist)}`, nx: b.nx, ny: b.ny }); } catch (e) { /* guide missing */ }
+}
+function patchGate(game) {
+  if (!game || gated.has(game) || typeof game.mapGate !== 'function') return;
+  gated.add(game);
+  const orig = game.mapGate.bind(game);
+  game.mapGate = () => { if (habNav) { const d = habDoorWorld(habNav); if (d) return { x: d.x, z: d.z }; } return orig(); };
+}
+function enterHab(id) {
+  const plot = habPlot(id), door = plot && habDoorWorld(plot);
+  if (!door) { H.toast('🛏️ Build a habitat first. Stand on your lot and tap Build.', 2400); return { ok: false, why: 'no-hab' }; }
+  const surf = window.__app?.surface;
+  if (typeof surf?.enterBuilding !== 'function') { H.toast('🚪 Door is stuck.', 1800); return { ok: false, why: 'no-surface' }; }
+  const spec = {
+    i: 'hab:' + plot, kind: HAB_KIND, name: 'Habitat', title: 'YOUR BUNK', home: true,
+    x: door.x, z: door.z, exit: { x: door.x, z: door.z, yaw: door.yaw },
+    ins: {
+      plotId: plot,
+      rest: () => restIn(plot),
+      restState: () => BC.restReady(plotState(plot)?.habRest, Date.now()),
+      locker: () => stashUi(plot),
+      terminal: () => terminalToast(plot),
+      frankie: () => frankieToast()
+    }
+  };
+  let r = null; try { r = surf.enterBuilding(spec); } catch (e) { console.warn('hab enter', e); r = { ok: false, msg: 'Door is stuck.' }; }
+  if (!r?.ok) { if (r?.msg) H.toast(r.msg, 2600); return r || { ok: false }; }
+  aimHab(false);
+  H.toast('🛏️ Inside. 1. Rest on the bunk. 2. Locker is your stash. 3. Leave is the door behind you.', 3200);
+  emit('hab:enter', { plotId: plot });
+  return r;
+}
+function goInside(id) {
+  const plot = habPlot(id);
+  if (!plot) { H.toast('🛏️ Build a habitat first. ☰ → Mars base, then Build.', 2600); return { ok: false, why: 'no-hab' }; }
+  if (H.indoors(C?.world)) { H.toast('🛏️ You are already inside. Tap Leave by the door.', 2400); return { ok: false, why: 'inside' }; }
+  const door = habDoorWorld(plot), P = C?.player;
+  const dist = P && door ? Math.hypot(door.x - P.x, door.z - P.z) : 99;
+  closePanel();
+  if (dist < 4.2) { aimHab(false); return enterHab(plot); }
+  aimHab(plot); tickHabGuide();
+  H.toast('🛏️ Follow the arrow to the habitat door. Then tap Enter.', 3200);
+  return { ok: true, why: 'arrow', x: door?.x, z: door?.z };
+}
+function terminalToast(id) {
+  const s = plotState(id), info = C?.game?.info, ready = BC.restReady(s?.habRest, Date.now());
+  const hp = info ? `${Math.round(info.hp)}/${Math.round(info.hpMax)} HP` : 'HP unknown';
+  const bunk = ready.ok ? 'Bunk is ready.' : `Bunk is warm. ${Math.ceil(ready.left / 1000)}s.`;
+  H.toast(`📟 ${hp}. Locker: ${s?.stash.credits | 0} cr, ${s?.stash.medkits | 0} medkits. ${bunk}`, 3200);
+}
+function frankieToast() {
+  let name = 'Frankie'; try { name = window.__app?.dogNameGet?.() || name; } catch (e) { /* default */ }
+  H.toast(`🐶 ${name} snorts and leans on your boot. The bed smells like dust and kibble.`, 2400);
+}
+// v7.5.72 habitat rest, now from the bunk inside. Full health does not start the cooldown (basecore.restReady). Death still belongs
 // to the hospital / booking flow; this is a field med-bay, not a new respawn.
 function restIn(id) {
   const s = plotState(id); if (!s?.pieces.some(q => q.type === 'hab')) return H.toast('🛏️ Build a habitat first.', 1800);
@@ -472,12 +568,14 @@ const api = {
   },
   remove(id, pieceId) {
     const s = plotState(id), p = s && s.pieces.find(q => q.id === pieceId); if (!p) return { ok: false, msg: 'Nothing there' };
-    if (p.type === 'stash' && (s.stash.credits || s.stash.medkits)) return { ok: false, msg: '💰 Empty the stash first.' };
+    const holds = s.stash.credits || s.stash.medkits;
+    if (p.type === 'stash' && holds) return { ok: false, msg: '💰 Empty the stash first.' };
+    if (p.type === 'hab' && holds && !s.pieces.some(q => q.type === 'stash')) return { ok: false, msg: '💰 Empty the locker first.' };
     const refund = BC.refundOf(p); BC.removePiece(s, pieceId); turretSt.delete(id + ':' + pieceId); H.give(C?.game, refund); persist(); if (root?.parent) rebuildPieces();
     emit('remove', { plotId: id, type: p.type, pieceId, refund }); return { ok: true, refund, msg: `🗑️ ${BC.PIECES[p.type].name} scrapped. +${refund} cr` };
   },
   deposit(id, { credits = 0, medkits = 0 } = {}) {
-    const s = plotState(id); if (!s?.pieces.some(q => q.type === 'stash')) return { ok: false, msg: 'Build a stash first' };
+    const s = plotState(id); if (!canStash(s)) return { ok: false, msg: 'Build a stash first' };
     credits = Math.max(0, credits | 0); medkits = Math.max(0, medkits | 0);
     if (medkits > H.medkits(C?.game)) return { ok: false, msg: 'Not enough medkits' };
     if (credits && !H.spend(C?.game, credits)) return { ok: false, msg: 'Not enough credits' };
@@ -485,7 +583,7 @@ const api = {
     emit('stash', { plotId: id, op: 'deposit', credits, medkits, stash: { ...s.stash } }); return { ok: true, stash: { ...s.stash } };
   },
   withdraw(id, { credits = 0, medkits = 0 } = {}) {
-    const s = plotState(id); if (!s?.pieces.some(q => q.type === 'stash')) return { ok: false, msg: 'Build a stash first' };
+    const s = plotState(id); if (!canStash(s)) return { ok: false, msg: 'Build a stash first' };
     credits = Math.max(0, Math.min(credits | 0, s.stash.credits)); medkits = Math.max(0, Math.min(medkits | 0, s.stash.medkits));
     s.stash.credits -= credits; s.stash.medkits -= medkits; persist(); if (credits) H.give(C?.game, credits); if (medkits) H.addMedkits(C?.game, medkits);
     emit('stash', { plotId: id, op: 'withdraw', credits, medkits, stash: { ...s.stash } }); return { ok: true, stash: { ...s.stash } };
@@ -493,6 +591,38 @@ const api = {
   build: (on = true, id, o = {}) => on ? setBuild(true, id, !!o.force) : setBuild(false), // o.force opens build mode on a build:false lot
   refresh: () => { syncOwners(); return api.owned(); }, syncOwners: () => api.refresh(), // re-read every add-on lot's owned() now
   stashUi: id => stashUi(id || inPlotId), overview: () => overview(),
+  habDoor: id => { const d = habDoorWorld(habPlot(id)); return d ? { plotId: habPlot(id), x: d.x, z: d.z, yaw: d.yaw } : null; },
+  habSpots: HAB_SPOTS,
+  enterHab: id => enterHab(id),
+  goInside: id => goInside(id),
+  get habGuide() { return habNav; },
+  // WebKit software GL dies on a real pointer event while the canvas is up. Tests call this instead.
+  press(sel) {
+    const el = typeof document !== 'undefined' && typeof sel === 'string' ? document.querySelector(sel) : null;
+    if (!el) return false;
+    if (el.id === 'baseMenu') { try { window.__app?.toggleMenu?.(false); } catch (e) { /* menu shut */ } overview(); return true; }
+    if (el.id === 'baseBtn') { doAction(); return true; }
+    if (el.id === 'driveBtn') {
+      const raw = window.__app?.surface?.world?.nearSpot?.();
+      if (raw?.act === 'leave') { window.__app.surface.leaveBuilding(); return true; }
+      if (typeof raw?.run === 'function') { raw.run(raw); return true; }
+      return false;
+    }
+    const b = el.closest?.('button') || el;
+    if (b.closest?.('#basePanel')) {
+      if (b.disabled) return false;
+      if (b.dataset.act === 'hab') { goInside(b.dataset.id); return true; }
+      if (b.dataset.act === 'close' || b.id === 'baseStashClose') { closePanel(); return true; }
+      if (b.dataset.k && b.dataset.op) {
+        const id = habPlot(); if (!id) return false;
+        const have = b.dataset.op === 'in' ? (b.dataset.k === 'credits' ? H.credits(C?.game) : H.medkits(C?.game)) : (plotState(id).stash[b.dataset.k] | 0);
+        const n = b.dataset.n === 'all' ? have : Math.min(+b.dataset.n, have);
+        (b.dataset.op === 'in' ? api.deposit : api.withdraw)(id, { [b.dataset.k]: n });
+        stashUi(id); return true;
+      }
+    }
+    return false;
+  },
   // ---- raids (for Steve's SSX.raids or anyone else) ----
   raid(id, opts = {}) {
     const p = BC.plotById(id), s = plotState(id); if (!p || !s?.owned) return { ok: false, msg: 'Not your lot' };

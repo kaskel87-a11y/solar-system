@@ -28,7 +28,7 @@ export const PIECES = {
   turret: { id: 'turret', name: 'Turret', icon: '🔫', cost: 1000, hp: 200, fp: [1, 1], max: 4,  colliders: [[0, 0, 0.45, 0.45]], blurb: 'Auto-fires at security and raiders inside 32 m.', range: 32, rate: 0.9, dmg: 1 },
   // v7.5.72: the two pieces the original "place habitats and landing pads" line never got. The hab is a bunk you rest in
   // (walls on three sides, door open toward +z). The pad is a lit slab you can walk and drive on (no colliders).
-  hab: { id: 'hab', name: 'Habitat', icon: '🛏️', cost: 1400, hp: 400, fp: [2, 2], max: 1, colliders: [[0, -1.86, 1.95, 0.2], [-1.86, 0.15, 0.2, 1.7], [1.86, 0.15, 0.2, 1.7]], blurb: 'Pressurized bunk. Rest at the door and the med-bay patches you up.' },
+  hab: { id: 'hab', name: 'Habitat', icon: '🛏️', cost: 1400, hp: 400, fp: [2, 2], max: 1, colliders: [[0, -1.86, 1.95, 0.2], [-1.86, 0.15, 0.2, 1.7], [1.86, 0.15, 0.2, 1.7]], blurb: 'Pressurized bunk. Walk up to the door and tap Enter. Rest, a locker and the dog are inside.' },
   pad: { id: 'pad', name: 'Landing pad', icon: '🛬', cost: 700, hp: 250, fp: [3, 3], max: 1, colliders: [], blurb: 'Lit pad. Call your rover down onto it. Fuel gets topped up.' }
 };
 // habitat rest: real-time cooldown, saved on the plot as habRest (ms). A full-health rest does not start it.
