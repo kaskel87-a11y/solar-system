@@ -58,7 +58,7 @@ fs.mkdirSync(out, { recursive: true });
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000));
     await sleep(800);
-    await G(() => { try { window.SSX.onboard?.skip?.(); } catch (e) {} try { window.SSX.control?.debug?.setTimes({ first: 9999, after: 9999 }); } catch (e) {} document.getElementById('radioLater')?.click(); window.__app.surface.game.debug.credits(20000); });
+    await G(() => { try { window.SSX.onboard?.skip?.(); } catch (e) {} try { window.SSX.control?.debug?.setTimes({ first: 9999, after: 9999 }); } catch (e) {} const r = document.getElementById('radio'); if (r) r.style.display = 'none'; window.__app.surface.game.debug.credits(20000); });
     ok('api', await wait(() => !!window.SSX?.base?.ready && window.SSX.base.PIECES.hab && window.SSX.base.PIECES.pad, 15000));
     ok('plot', await wait(id => !!window.SSX.base.plots().find(p => p.id === id)?.world, 8000, PID));
     const bought = await G(id => window.SSX.base.buy(id), PID);
@@ -113,26 +113,33 @@ fs.mkdirSync(out, { recursive: true });
     await move(door.x, door.z, door.yaw);
     try { await G(() => { window.__app.surface.setView('third'); window.__app.surface.zoom(0.72); }); } catch (e) { /* default chase cam */ }
     await sleep(1400);
-    ok('restBtn', await wait(() => window.SSX.base.action === '🛌 Rest', 8000));
+    ok('enterBtn', await wait(() => window.SSX.base.action === '🚪 Enter', 8000));
     const btn = await G(() => { const b = document.getElementById('baseBtn'), r = b.getBoundingClientRect(), W = innerWidth, H = innerHeight;
       const centre = r.left < W * 0.75 && r.right > W * 0.25 && r.top < H * 0.75 && r.bottom > H * 0.25;
       const bg = getComputedStyle(b).backgroundColor;
       return { w: r.width, h: r.height, text: b.textContent, centre, shown: getComputedStyle(b).display !== 'none', bg }; });
-    ok('restTarget', btn, btn.shown && btn.w >= 44 && btn.h >= 44 && !btn.centre && /Rest/.test(btn.text) && /0,\s*0,\s*0/.test(btn.bg));
+    ok('enterTarget', btn, btn.shown && btn.w >= 44 && btn.h >= 44 && !btn.centre && /Enter/.test(btn.text) && /0,\s*0,\s*0/.test(btn.bg));
     await page.screenshot({ path: `${out}${tag}.png`, timeout: 90000 });
-    // rest: full health does not start the cooldown; a real wound does; the bunk stays warm after
-    await act(); await sleep(400);
+    // v7.5.93: the door enters the room. Rest is the bunk inside, same 3-minute cooldown.
+    await act();
+    ok('insideHab', await wait(() => window.__app.surface.info?.inside?.kind === 'hab', 8000));
+    await G(() => { const s = window.SSX.base.habSpots.bunk; window.__app.surface.debugInside(s.x, s.z, Math.PI); });
+    ok('restBtn', await wait(() => /Rest/.test(document.getElementById('driveBtn').textContent || ''), 8000));
+    const rest = async () => { if (desk) await page.keyboard.press('KeyE'); else await ourTap('#driveBtn'); };
+    await rest(); await sleep(400);
     ok('restFull', await G(id => { const g = window.__app.surface.game.info, s = window.SSX.base.state(id); return { hp: g.hp, habRest: s.habRest || 0 }; }, PID), (await G(id => { const g = window.__app.surface.game.info, s = window.SSX.base.state(id); return g.hp >= g.hpMax && !(s.habRest > 0); }, PID)));
     await G(() => { const i = window.__app.surface.game.info; window.__app.surface.game.debug.hurt(Math.max(1, Math.min(i.hp + i.shield - 8, i.shield + 40))); }); await sleep(200);
     const wounded = await G(() => window.__app.surface.game.info.hp);
     ok('wounded', wounded, wounded > 0 && wounded < 80);
-    await act();
+    await rest();
     ok('restored', await wait(() => window.__app.surface.game.info.hp >= window.__app.surface.game.info.hpMax && window.__app.surface.game.info.shield >= window.__app.surface.game.info.shieldMax, 4000));
     ok('cooldownSaved', await G(id => window.SSX.base.state(id).habRest > 0, PID));
     await G(() => { const i = window.__app.surface.game.info; window.__app.surface.game.debug.hurt(Math.max(1, Math.min(i.hp + i.shield - 8, i.shield + 40))); }); await sleep(200);
     const again = await G(() => window.__app.surface.game.info.hp);
-    await act(); await sleep(300);
+    await rest(); await sleep(300);
     ok('cooldownHolds', await G(() => window.__app.surface.game.info.hp), (await G(() => window.__app.surface.game.info.hp)) === again && again < 80);
+    await G(() => window.__app.surface.leaveBuilding());
+    ok('leftHab', await wait(() => !window.__app.surface.info.inside, 5000));
     ok('reloadKeeps', await G(id => { window.SSX.base.reload(); const s = window.SSX.base.state(id); return s.habRest > 0 && s.pieces.some(p => p.type === 'hab') && s.pieces.some(p => p.type === 'pad'); }, PID));
     // call the rover onto the pad from a long way off
     const far = await G(() => { const s = window.__app.surface, i = s.info; s.debugMove(i.roverX + 2, i.roverZ, 0); if (!s.info.driving) s.interact(); return s.info.driving; });
