@@ -148,10 +148,11 @@ fs.mkdirSync(out, { recursive: true });
     const padAt = await G(id => { const B = window.SSX.base, w = B.plots().find(p => p.id === id).world, p = B.state(id).pieces.find(q => q.type === 'pad');
       return { x: w.x + (p.i + 1.5) * 2 - 10, z: w.z + (p.j + 1.5) * 2 - 10 }; }, PID);
     await move(padAt.x, padAt.z + 2.2, 0);
-    ok('callBtn2', await wait(() => window.SSX.base.action === '🛬 Call rover', 8000));
+    // v7.5.94: the pad button calls the ship until the ship is parked. The rover still sets down from Call rover.
+    ok('callBtn2', await wait(() => window.SSX.base.action === '🚀 Call ship', 8000));
     const away = await G(p => Math.hypot(window.__app.surface.info.roverX - p.x, window.__app.surface.info.roverZ - p.z), padAt);
     ok('roverAway', away, away > 40);
-    await act(); await sleep(500);
+    await G(id => window.SSX.base.callRover(id), PID); await sleep(500);
     const parked = await G(p => { const i = window.__app.surface.info; return { d: Math.hypot(i.roverX - p.x, i.roverZ - (p.z - 0.6)), fuel: i.thrust.fuel }; }, padAt);
     ok('roverOnPad', parked, parked.d < 3 && parked.fuel === 100);
   } catch (e) { errors.push('TEST ' + e.message); }

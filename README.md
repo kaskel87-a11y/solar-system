@@ -4,6 +4,14 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.94: call your starship down
+
+If you own a landing pad on Mars, you can call your starship onto it. The ship comes down on the pad (engines lit, dust, a short rumble). Then board it the usual way: ☰ → **🚀 Take off**.
+
+**On a phone:** ☰ → **🏠 Mars base** → **🚀 Call ship**. If you are not on the pad, follow the arrow on the edge of the screen. 1. Follow the arrow to the pad. 2. Tap **🚀 Call ship**. 3. When it is down, ☰ → **🚀 Take off**.
+
+ColSec blocks the call at 3 stars. A job in progress keeps the ship where it is. If you die clean (no stars, not busted) and you own a habitat, **🏠 Wake at base** is offered. A bust or any heat still wakes you at the hospital or the lockup.
+
 ## v7.5.93: walk into your habitat
 
 Your Mars habitat is a room now. Walk up to the door and tap **Enter**. Inside: **Rest** on the bunk (full heal, 3 minutes between rests), **Locker** (the same stash as the crate outside), a terminal, Frankie's bed, and **Leave** by the door you came in.

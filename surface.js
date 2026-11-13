@@ -245,6 +245,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
   let flats = []; // colony ground (v7): flattened discs
   function height(x, z) {
+    if (!cfg) return 0;
     const r = Math.hypot(x, z);
     const s = smooth(30, 70, r);
     const pad = cfg.padH ?? 0;
@@ -514,7 +515,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
 
   // ---------- Player, camera, companions ----------
   const player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: -0.05, grounded: false, walked: 0, bob: 0, moving: 0, moveYaw: 0, faceYaw: 0 };
-  const VIEW_KEY = 'ssx.view.v1', CAM_MAX = 320, SHIP = { x: 14, z: -22 };
+  const VIEW_KEY = 'ssx.view.v1', CAM_MAX = 320, SHIP_HOME = { x: 14, z: -22 }, SHIP = { x: SHIP_HOME.x, z: SHIP_HOME.z };
+  let shipGroup = null; // the surface Starship mesh; base.js moves it onto a landing pad (v7.5.94)
   const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
   const lerpAngle = (a, b, t) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * Math.min(1, t);
   // on-foot and rover views are remembered separately; the rover defaults to the third-person chase cam
@@ -679,8 +681,11 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     meteorMat = new THREE.MeshStandardMaterial({ color: 0x2b2522, metalness: 0.7, roughness: 0.4, flatShading: true, emissive: 0x112233 });
     buildSky();
     const f = cfg.fog; baseFog = f.type === 'exp2' ? { density: f.density } : { near: f.near, far: scene.fog.far };
-    // landing site
-    const ship = place(buildRocket(), SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit.' }); ship.rotation.y = 0.5;
+    // landing site (v7.5.94: SHIP x/z move when the ship is called onto a base pad; each landing starts at the home site)
+    SHIP.x = SHIP_HOME.x; SHIP.z = SHIP_HOME.z;
+    const rocketBuilt = buildRocket(), rocketFlames = rocketBuilt.userData.flames; // place() replaces userData; keep the engine glow
+    shipGroup = place(rocketBuilt, SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit. Call it down onto a landing pad you own.' });
+    shipGroup.userData.flames = rocketFlames; shipGroup.rotation.y = 0.5;
     const flag = place(buildFlag(), -6, -10, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
     const special = place(builders[cfg.poi.kind](cfg.poi.sign), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
     flats = world.layout(bodyName, safePoint);
@@ -717,7 +722,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     scene.traverse(o => { if (o.isMesh || o.isPoints || o.isSprite) { if (o.geometry && !o.geometry.userData.shared && ![rockGeo, trunkGeo, leafGeo, meteorGeo, beamGeo].includes(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (!m || m.userData.shared || [beamOn, beamOff, glintMat].includes(m)) return; if (m.map?.userData?.shared) { m.dispose(); return; } if (m.map && m.map !== grain && m.map !== textures.earth) m.map.dispose(); m.dispose(); }); } });
     [terrainMat, rockMat, trunkMat, leafMat, meteorMat].forEach(m => m?.dispose());
     scene.clear(); poiObjects.length = 0; waterMesh = null; skyGroup = null; scene.fog = null;
-    farMesh = null; farCenter = null; rover = null; car = null; dog = null; astro = null; dust = null; discItems = []; driving = false;
+    farMesh = null; farCenter = null; rover = null; car = null; dog = null; astro = null; dust = null; shipGroup = null; discItems = []; driving = false;
     cfg = null; state = null;
   }
 
@@ -1374,6 +1379,28 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (indoor) leaveBuilding(); if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
   function dogTo(x, z) { if (!dog || driving) return; dog.mode = 'follow'; dog.sniff = null; dog.x = x + 1.4; dog.z = z + 1.2; dog.y = height(dog.x, dog.z); dog.vy = 0; dog.nextSniff = 12; }
   function dustRing(x, z, n = 70) { if (!dust) return; const y = height(x, z); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, sp = 3 + (i % 5); spawnDust(x + Math.cos(a) * 2.2, y + 0.4, z + Math.sin(a) * 2.2, Math.cos(a) * sp, 1.5 + (i % 3), Math.sin(a) * sp); } }
+  // v7.5.94: park or fly the surface Starship. yOff is metres above the ground (engine glow while it is up). groundY pins the legs to a pad.
+  function placeShip(x, z, yOff = 0, yaw, groundY) {
+    if (!shipGroup || !cfg || !Number.isFinite(+x) || !Number.isFinite(+z)) return null;
+    SHIP.x = +x; SHIP.z = +z;
+    const gy = Number.isFinite(+groundY) ? +groundY : height(SHIP.x, SHIP.z);
+    const y = gy + (Number.isFinite(+yOff) ? +yOff : 0);
+    shipGroup.position.set(SHIP.x, y, SHIP.z);
+    if (Number.isFinite(+yaw)) shipGroup.rotation.y = +yaw;
+    const flames = shipGroup.userData.flames;
+    if (flames) {
+      const lit = y - gy > 0.8;
+      flames.visible = lit;
+      if (lit) { const s = 0.72 + Math.random() * 0.5; flames.scale.set(1, s, 1); }
+    }
+    return { x: SHIP.x, z: SHIP.z, y, ground: gy };
+  }
+  function shipPose() {
+    if (!shipGroup || !cfg) return null;
+    const gy = height(SHIP.x, SHIP.z);
+    return { x: SHIP.x, z: SHIP.z, y: shipGroup.position.y, ground: gy, alt: shipGroup.position.y - gy, yaw: shipGroup.rotation.y, lit: !!shipGroup.userData.flames?.visible, homeX: SHIP_HOME.x, homeZ: SHIP_HOME.z };
+  }
+  function dustAt(x, z, n = 36) { if (!dust || !Number.isFinite(+x) || !Number.isFinite(+z)) return false; dustRing(+x, +z, Math.max(8, Math.min(64, n | 0))); return true; }
   // v7.5.7: the rover lands ~3.5 m beside you, on a clear dry spot (not in a rock); if that side is blocked, the other side, then behind, then in front
   const SUMMON_R = 3.5;
   function summonSpot() {
@@ -1454,7 +1481,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
       let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
       return v ? world.despawnVehicle(v) : false; },
-    summonRover, rocksNear, rockPush, boulders: (x, z, R = 60) => { const out = []; for (const L of rockBlk.values()) for (const r of L) if (Math.hypot(r.x - x, r.z - z) < R) out.push({ x: r.x, z: r.z, sc: r.sc, sr: r.sr, top: r.top }); return out; }, warpToRover, returnToShip, roverNav, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
+    summonRover, rocksNear, rockPush, boulders: (x, z, R = 60) => { const out = []; for (const L of rockBlk.values()) for (const r of L) if (Math.hypot(r.x - x, r.z - z) < R) out.push({ x: r.x, z: r.z, sc: r.sc, sr: r.sr, top: r.top }); return out; }, warpToRover, returnToShip, roverNav, placeShip, shipPose, dustAt, enterBuilding, leaveBuilding, fastTravel, registerTick: fn => { if (typeof fn === 'function' && !extraTicks.includes(fn)) extraTicks.push(fn); return () => { const i = extraTicks.indexOf(fn); if (i >= 0) extraTicks.splice(i, 1); }; },
     debugInside(lx, lz, yaw = 0, pitch) { const b = world.inside; if (!b) return false; player.x = (b.ax ?? (b.x0 + b.x1) / 2) + lx; player.z = (b.az ?? (b.z0 + b.z1) / 2) + lz; /* v7.5.33 room-local = the room anchor (the club's shell is off-centre) */ player.yaw = yaw; player.faceYaw = yaw; if (Number.isFinite(pitch)) player.pitch = pitch; return true; },
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air

@@ -33,6 +33,7 @@ ok('hab cap 1', (() => { const p = B.freshSave().plots['aj-north']; p.owned = tr
 ok('rest cooldown', B.restReady(0, 1000).ok && !B.restReady(1000, 1000 + B.REST_MS - 1).ok && B.restReady(1000, 1000 + B.REST_MS).ok && B.REST_MS === 180000);
 const saved = B.freshSave(); saved.plots['aj-north'].owned = true; saved.plots['aj-north'].habRest = 123456; B.addPiece(saved.plots['aj-north'], 'hab', 1, 1, 0);
 ok('habRest survives migrate', B.migrate(saved).plots['aj-north'].habRest === 123456 && B.migrate(saved).plots['aj-north'].pieces[0].type === 'hab');
+ok('shipPlot migrates', (() => { const q = B.freshSave(); q.shipPlot = 'aj-north'; return B.migrate(q).shipPlot === 'aj-north' && B.migrate({}).shipPlot === null && B.migrate({ shipPlot: 'nope' }).shipPlot === null; })());
 ok('rotXZ matches THREE (r1: +z -> +x)', B.rotXZ(0, 1, 1).join() === '1,0' && B.rotXZ(1, 0, 1).join() === '0,-1');
 ok('snap centres the footprint', JSON.stringify(B.snap('wall', 0, 0.1, 0.1)) === '{"i":5,"j":5}' && JSON.stringify(B.snap('garage', 0, 0, 0)) === '{"i":4,"j":4}');
 ok('pickTarget nearest in range', B.pickTarget(0, 0, [{ x: 40, z: 0 }, { x: 10, z: 0 }, { x: 5, z: 3 }]).x === 5 && B.pickTarget(0, 0, [{ x: 40, z: 0 }]) === null);

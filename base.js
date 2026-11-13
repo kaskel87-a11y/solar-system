@@ -1,10 +1,14 @@
 // Mars base building (v7.5): buy a lot on Mars, place walls, gates, a garage, a stash and turrets on a 2 m grid, and it
 // all saves to localStorage (ssx.base.v1) and comes back on reload. v7.5.72 adds the habitat and the landing pad.
 // v7.5.93 makes the habitat a walk-in room (habinterior.js, the same interiors.js kit as the shops): walk to the
-// door and tap Enter. Inside, Rest (3 min), the locker (same stash) and Leave. Pure rules live in basecore.js; core
+// door and tap Enter. Inside, Rest (3 min), the locker (same stash) and Leave.
+// v7.5.94: stand on a landing pad you own and tap 🚀 Call ship (or ☰ → 🏠 Mars base → Call ship). The starship
+// descends onto the pad (engine glow, dust, a short rumble on the shared audio context). Board it with ☰ → 🚀 Take off.
+// If you are not on the pad, the edge arrow points at it. 3 stars or a job in progress refuses the call. A clean death
+// (not busted, no stars) with a habitat offers Wake at base. Pure rules live in basecore.js; core
 // access goes through basehooks.js. Registers its per-frame tick with SSX.registerSurfaceTick (README add-on API) and
 // publishes window.SSX.base once the app exists. No permanent HUD: ☰ 🏠 Mars base, plus one context button in #surfBtns
-// near your lot (Buy / Build / Stash / Enter / Call rover / Rover home; Place / Remove in build mode) and a top toolbar only while building.
+// near your lot (Buy / Build / Stash / Enter / Call ship / Call rover / Rover home; Place / Remove in build mode) and a top toolbar only while building.
 //
 //   SSX.base.plots() / owned() / state(id) / buy(id) / place(id, type, i, j, r) / remove(id, pieceId)
 //   SSX.base.deposit(id, { credits, medkits }) / withdraw(id, { credits, medkits }) / build(on, id)
@@ -20,6 +24,7 @@ import * as BC from './basecore.js';
 import * as H from './basehooks.js';
 import { HAB_KIND, HAB_SPOTS } from './habinterior.js';
 import { bearingNdc, fmtRange } from './hud/guidecore.js';
+import { getAudioCtx, realDest } from './audioctx.js';
 
 const LS = (() => { try { return window.localStorage; } catch (e) { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; } })();
 const WORLD = 'Mars', GHOST_AHEAD = 5, NEAR = 3;
@@ -39,6 +44,10 @@ let root = null, sceneRef = null, centres = {}, inst = null, ghost = null, marke
 let build = null;             // { plotId, type, r, tool: 'place'|'remove' }
 let ui = null, actNow = null, inPlotId = null, menuBtn = null, clock = 0;
 let habNav = null;            // plot id while the edge arrow points at that habitat's door
+let padNav = null;            // plot id while the edge arrow points at that landing pad
+let landing = null;           // { plotId, x, z, yaw, ground, t, dur, dusted } while the starship is coming down
+let wakePlot = null, wakeUntil = 0, wakeBtn = null;
+const LAND_DUR = 2.7, LAND_H = 64;
 const gated = new WeakSet();
 const turretSt = new Map();   // `${plotId}:${pieceId}` -> { yaw, cd, flash }
 const raids = new Map();      // plotId -> { until, id, src }
@@ -225,7 +234,9 @@ body:not(.touch) #baseBar { left: calc(140px + env(safe-area-inset-left, 0px)); 
 #basePanel.on { display: flex; } #basePanel .wrap { width: min(94vw, 460px); max-height: 78vh; overflow: auto; margin-bottom: calc(10px + env(safe-area-inset-bottom)); background: rgba(12,15,26,.95); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 12px 14px; color: #e8ecf4; font: 13px system-ui, sans-serif; }
 #basePanel h2 { margin: 2px 0 8px; font-size: 16px; } #basePanel .row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.08); flex-wrap: wrap; }
 #basePanel .row > div { flex: 1 1 150px; } #basePanel small { opacity: .75; } #basePanel button { min-height: 44px; min-width: 64px; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: rgba(40,48,70,.95); color: #fff; font-weight: 700; }
-#basePanel button[disabled] { opacity: .45; }`;
+#basePanel button[disabled] { opacity: .45; }
+#baseWake { display: none; height: 44px !important; min-width: 44px; font-size: 0.72rem !important; touch-action: manipulation !important; background: #000 !important; color: #fff !important; border: 1px solid #fff !important; }
+#baseWake.on { display: block; }`;
 function ensureUi() {
   if (ui || typeof document === 'undefined') return ui;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
@@ -277,14 +288,16 @@ function overview() {
     const info = s.owned ? `${s.pieces.length} pieces${sum.turret ? ` · ${sum.turret} 🔫` : ''}${sum.garage ? ' · 🚗' : ''}${sum.hab ? ' · 🛏️' : ''}${sum.pad ? ' · 🛬' : ''} · stash ${s.stash.credits} cr` : p.owner ? p.blurb || 'Sold at its own sign.' : `${p.price} cr · ${p.blurb}`;
     const where = d == null ? 'Mars' : near ? 'here' : `${Math.round(d)} m ${compass(c.x - P.x, c.z - P.z)}`;
     const btn = s.owned
-      ? `${sum.hab ? `<button data-act="hab" data-id="${p.id}">🛏️ Go inside</button>` : ''}${near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : ''}`
+      ? `${sum.hab ? `<button data-act="hab" data-id="${p.id}">🛏️ Go inside</button>` : ''}${sum.pad ? `<button data-act="ship" data-id="${p.id}">🚀 Call ship</button>` : ''}${near && BC.canBuildUi(p.id) ? `<button data-act="build" data-id="${p.id}">🏗️ Build</button>` : ''}`
       : p.owner ? '' : `<button data-act="buy" data-id="${p.id}" ${near && cr >= p.price ? '' : 'disabled'}>${near ? (cr >= p.price ? 'Buy' : 'Short') : 'Go there'}</button>`;
     return `<div class="row"><div><b>${s.owned ? '🏠' : '🏷️'} ${p.name}</b> <small>· ${p.district} · ${where}</small><br><small>${info}</small></div>${btn}</div>`;
   }).join('');
   const anyHab = BC.PLOTS.some(p => plotState(p.id).owned && plotState(p.id).pieces.some(q => q.type === 'hab'));
-  const steps = anyHab ? `<p><b>Your habitat</b><br>1. Tap Go inside. If you are not at the door, follow the arrow.<br>2. At the door, tap Enter.<br>3. Inside: Rest on the bunk (3 min), Locker for your stash, Leave by the door.</p>` : '';
-  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can walk into, and a landing pad that calls your rover. You have ${cr} cr.</small>${steps}${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
-    ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } if (ds.act === 'hab') goInside(ds.id); });
+  const anyPad = BC.PLOTS.some(p => plotState(p.id).owned && plotState(p.id).pieces.some(q => q.type === 'pad'));
+  const steps = (anyHab ? `<p><b>Your habitat</b><br>1. Tap Go inside. If you are not at the door, follow the arrow.<br>2. At the door, tap Enter.<br>3. Inside: Rest on the bunk (3 min), Locker for your stash, Leave by the door.</p>` : '')
+    + (anyPad ? `<p><b>Your landing pad</b><br>1. Tap Call ship. If you are not on the pad, follow the arrow.<br>2. Stand on the pad and tap 🚀 Call ship. The ship comes down.<br>3. Board it: ☰ → 🚀 Take off.</p>` : '');
+  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can walk into, and a landing pad that calls your rover or your starship. You have ${cr} cr.</small>${steps}${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
+    ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } if (ds.act === 'hab') goInside(ds.id); if (ds.act === 'ship') goShip(ds.id); });
 }
 function stashUi(id) {
   const s = plotState(id), g = C?.game, cr = H.credits(g), mk = H.medkits(g);
@@ -337,7 +350,7 @@ function occupiedByYou(id, q) { const l = toLocal(id, C.player.x, C.player.z); r
 export function baseTick(dt, ctx) {
   C = ctx; clock += dt;
   if (!api.ready) init(); drainPending(); syncOwners();
-  if (ctx.name !== WORLD) { if (root?.parent) root.parent.remove(root); if (build) setBuild(false); setAction(null); if (menuBtn) menuBtn.style.display = 'none'; inPlotId = null; return; }
+  if (ctx.name !== WORLD) { if (root?.parent) root.parent.remove(root); if (build) setBuild(false); setAction(null); if (menuBtn) menuBtn.style.display = 'none'; inPlotId = null; if (landing) landing = null; if (padNav) aimPad(false); tickWake(); return; }
   if (menuBtn) menuBtn.style.display = '';
   ensureRoot(ctx); if (!root?.parent) return; ensureUi();
   const P = ctx.player, car = ctx.car, indoor = H.indoors(ctx.world);
@@ -359,7 +372,7 @@ export function baseTick(dt, ctx) {
   for (const p of BC.PLOTS) { const g = plotState(p.id).owned && plotState(p.id).pieces.find(q => q.type === 'garage'); if (!g || !ctx.rover || !centres[p.id]) continue;
     const l = toLocal(p.id, ctx.rover.x, ctx.rover.z), c = BC.pieceCentre(g), [w, d] = BC.footprint('garage', g.r);
     if (Math.abs(l.x - c.x) < w && Math.abs(l.z - c.z) < d && 'fuel' in ctx.rover && ctx.rover.fuel < 100) ctx.rover.fuel = Math.min(100, ctx.rover.fuel + dt * 25); }
-  subscribeRaids(); updateTurrets(dt, ctx); tickHabGuide(); patchGate(ctx.game);
+  subscribeRaids(); updateTurrets(dt, ctx); tickHabGuide(); tickLanding(dt); syncParkedShip(); tickPadGuide(); tickWake(); patchGate(ctx.game);
   if (build && (build.plotId !== plotUnder(P.x, P.z, 12) || car || indoor)) { H.toast('🏗️ Left your lot. Build mode off.', 1800); setBuild(false); }
   let act = null;
   if (build) act = updateBuild();
@@ -368,11 +381,13 @@ export function baseTick(dt, ctx) {
     if (near && !plotState(near).owned && BC.plotById(near).owner) act = null; // add-on lot sold by its own add-on
     else if (near && !plotState(near).owned) { const p = BC.plotById(near); act = { label: `🏷️ Buy lot ${p.price}`, fn: async () => { const r = api.buy(near); H.toast(r.msg, 2600); } }; }
     else if (near) {
-      const s = plotState(near), l = toLocal(near, P.x, P.z), REACH = { garage: 4, hab: 3.6, pad: 3.3 }, close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (REACH[t] || 2.2); })());
+      const s = plotState(near), l = toLocal(near, P.x, P.z), REACH = { garage: 4, hab: 3.6, pad: 4.6 }, close = t => s.pieces.find(q => q.type === t && (() => { const c = BC.pieceCentre(q); return Math.hypot(c.x - l.x, c.z - l.z) < (REACH[t] || 2.2); })());
       const st = close('stash'), gr = close('garage'), hb = close('hab'), pd = close('pad');
       if (st) act = { label: '💰 Stash', fn: async () => stashUi(near) };
       else if (hb) act = { label: '🚪 Enter', fn: async () => { aimHab(false); enterHab(near); } };
-      else if (pd) act = { label: '🛬 Call rover', fn: async () => callRover(near, pd) };
+      else if (pd && !landing) act = shipOnPad(near, pd)
+        ? { label: '🛬 Call rover', fn: async () => callRover(near, pd) }
+        : { label: '🚀 Call ship', fn: async () => goShip(near) };
       else if (gr) { // the garage stores / respawns your ride; paint & parts live in Pumpkin's SSX.garage (feature-detected at call time)
         const parked = ctx.rover && roverInBay(near, gr, ctx.rover), cz = customizer();
         if (cz && (parked || !ctx.rover)) act = { label: '🔧 Customize', fn: async () => { const f = customizer(); if (!f) return H.toast('🔧 No tuner in this build.', 1800); f(); emit('garage:customize', { plotId: near }); } };
@@ -413,6 +428,7 @@ function habPlot(id) {
 function aimHab(id) {
   const g = typeof window !== 'undefined' ? window.SSX?.guide : null;
   if (!id) { habNav = null; try { g?.clear?.('habdoor'); } catch (e) { /* no guide */ } return; }
+  if (padNav) aimPad(false);
   habNav = id;
 }
 function tickHabGuide() {
@@ -429,7 +445,11 @@ function patchGate(game) {
   if (!game || gated.has(game) || typeof game.mapGate !== 'function') return;
   gated.add(game);
   const orig = game.mapGate.bind(game);
-  game.mapGate = () => { if (habNav) { const d = habDoorWorld(habNav); if (d) return { x: d.x, z: d.z }; } return orig(); };
+  game.mapGate = () => {
+    if (padNav) { const d = padWorld(padNav); if (d) return { x: d.x, z: d.z }; }
+    if (habNav) { const d = habDoorWorld(habNav); if (d) return { x: d.x, z: d.z }; }
+    return orig();
+  };
 }
 function enterHab(id) {
   const plot = habPlot(id), door = plot && habDoorWorld(plot);
@@ -477,8 +497,8 @@ function frankieToast() {
   let name = 'Frankie'; try { name = window.__app?.dogNameGet?.() || name; } catch (e) { /* default */ }
   H.toast(`🐶 ${name} snorts and leans on your boot. The bed smells like dust and kibble.`, 2400);
 }
-// v7.5.72 habitat rest, now from the bunk inside. Full health does not start the cooldown (basecore.restReady). Death still belongs
-// to the hospital / booking flow; this is a field med-bay, not a new respawn.
+// v7.5.72 habitat rest, now from the bunk inside. Full health does not start the cooldown (basecore.restReady). A clean
+// death can offer the habitat as a wake-up spot (offerWake); a bust or any stars still goes to the hospital or the lockup.
 function restIn(id) {
   const s = plotState(id); if (!s?.pieces.some(q => q.type === 'hab')) return H.toast('🛏️ Build a habitat first.', 1800);
   const ready = BC.restReady(s.habRest, Date.now());
@@ -489,16 +509,212 @@ function restIn(id) {
   g.restore(); s.habRest = Date.now(); persist(); emit('rest', { plotId: id, at: s.habRest });
   H.toast('🛌 Patched up. The hab\u2019s med-bay is filthy, but it works.', 2600);
 }
+// v7.5.94 landing pad: the starship. The mesh and SHIP coords live on the surface (placeShip). This drives the descent.
+const padPiece = id => plotState(id)?.pieces.find(q => q.type === 'pad') || null;
+function padWorld(id, pad) {
+  const p = pad || padPiece(id), c0 = centres[id]; if (!p || !c0) return null;
+  const c = BC.pieceCentre(p), w = toWorldXZ(id, c.x, c.z), [fx, fz] = BC.rotXZ(0, 1, p.r);
+  return { x: w.x, z: w.z, yaw: Math.atan2(fx, fz), piece: p, ground: null };
+}
+function shipPose() { try { return window.__app?.surface?.shipPose?.() || null; } catch (e) { return null; } }
+function shipOnPad(id, pad) {
+  const w = padWorld(id, pad), pose = shipPose(); if (!w || !pose) return false;
+  const gy = Number.isFinite(w.ground) ? w.ground : pose.ground;
+  return Math.hypot(pose.x - w.x, pose.z - w.z) < 6 && Math.abs(pose.y - gy) < 2.5;
+}
+function padPlot(id) {
+  if (id && padPiece(id)) return id;
+  if (inPlotId && padPiece(inPlotId)) return inPlotId;
+  if (S.shipPlot && padPiece(S.shipPlot)) return S.shipPlot;
+  let best = null, bd = 1e9; const P = C?.player;
+  for (const p of BC.PLOTS) {
+    const w = padWorld(p.id); if (!w) continue;
+    const dist = P ? Math.hypot(w.x - P.x, w.z - P.z) : 0;
+    if (dist < bd) { bd = dist; best = p.id; }
+  }
+  return best;
+}
+function jobName() {
+  const x = (typeof window !== 'undefined' && window.SSX) || {};
+  try { if (x.heist?.active) return 'heist'; } catch (e) { /* */ }
+  try { if (x.jobs?.active?.()) return 'job'; } catch (e) { /* */ }
+  try { if (window.__activities?.active) return 'activity'; } catch (e) { /* */ }
+  try { if (x.beltway?.active?.()) return 'beltway'; } catch (e) { /* */ }
+  try { if (x.smuggle?.state?.run) return 'smuggle'; } catch (e) { /* */ }
+  try { if (x.spacebank?.state?.run) return 'spacebank'; } catch (e) { /* */ }
+  try { if (C?.game?.info?.quest) return 'quest'; } catch (e) { /* */ }
+  return null;
+}
+function shipBlock() {
+  const app = typeof window !== 'undefined' ? window.__app : null;
+  if (!app?.state?.onSurface || C?.name !== WORLD) return { ok: false, why: 'space', msg: 'Land on Mars first. Your pad is on your lot.' };
+  if (H.indoors(C?.world)) return { ok: false, why: 'inside', msg: 'Step outside first. The ship needs open sky.' };
+  if (C?.game?.isDown?.()) return { ok: false, why: 'down', msg: 'You are down. The ship will not come.' };
+  if ((H.heat(C?.world).wanted | 0) >= 3) return { ok: false, why: 'heat', msg: 'ColSec has the sky at 3 stars. Lose the heat, then call the ship.' };
+  if (jobName()) return { ok: false, why: 'job', msg: 'Finish the job first. The ship stays where it is.' };
+  if (landing) return { ok: false, why: 'busy', msg: 'The ship is already coming down.' };
+  return null;
+}
+function refuseShip(b) { if (b?.msg) H.toast('🚀 ' + b.msg.replace(/^🚀\s*/, ''), 2800); return b || { ok: false, why: 'no' }; }
+function aimPad(id) {
+  const g = typeof window !== 'undefined' ? window.SSX?.guide : null;
+  if (!id) { padNav = null; try { g?.clear?.('shippad'); } catch (e) { /* no guide */ } return; }
+  if (habNav) aimHab(false);
+  padNav = id;
+}
+function tickPadGuide() {
+  if (!padNav || !C || landing) return;
+  const w = padWorld(padNav), g = window.SSX?.guide;
+  if (!w || H.indoors(C.world)) { aimPad(false); return; }
+  const P = C.player, dx = w.x - P.x, dz = w.z - P.z, dist = Math.hypot(dx, dz);
+  if (dist < 5.2) { aimPad(false); return; } // the Call ship button is the cue from here
+  const yaw = window.__app?.surface?.info?.viewYaw || P.yaw || 0;
+  const b = bearingNdc(dx, dz, yaw);
+  try { g?.aim?.({ id: 'shippad', label: `Landing pad ${fmtRange(dist)}`, nx: b.nx, ny: b.ny }); } catch (e) { /* guide missing */ }
+}
+function landSound(seconds = LAND_DUR) {
+  try {
+    const a = getAudioCtx(); if (!a) return false;
+    let master = 0.85;
+    try { const m = window.SSX?.audio?.mix?.get?.(); if (m) master = m.mute ? 0 : (Number.isFinite(+m.master) ? +m.master : 0.85); } catch (e) { /* mix */ }
+    try { if (localStorage.getItem('ssx.muted') === '1') master = 0; } catch (e) { /* */ }
+    if (!(master > 0)) return false;
+    if (a.state === 'suspended') a.resume?.()?.catch?.(() => {});
+    const t = a.currentTime, end = t + seconds, peak = Math.max(0.0002, 0.2 * master);
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.12);
+    g.gain.setValueAtTime(Math.max(0.0002, peak * 0.7), Math.max(t + 0.2, end - 0.35));
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+    const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(160, t); f.frequency.linearRampToValueAtTime(70, end);
+    const o = a.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(58, t); o.frequency.exponentialRampToValueAtTime(34, end);
+    o.connect(f); f.connect(g); g.connect(realDest(a));
+    o.start(t); o.stop(end + 0.05);
+    o.addEventListener('ended', () => { try { o.disconnect(); f.disconnect(); g.disconnect(); } catch (e) { /* */ } });
+    return true;
+  } catch (e) { return false; }
+}
+function stepClear(id, pad) {
+  const w = padWorld(id, pad); if (!w || !C) return;
+  const [fx, fz] = BC.rotXZ(0, 1, pad.r);
+  const px = w.x + fx * 12, pz = w.z + fz * 12;
+  if (Math.hypot(C.player.x - w.x, C.player.z - w.z) < 9) {
+    try { window.__app?.surface?.debugMove?.(px, pz, Math.atan2(fx, fz)); } catch (e) { /* */ }
+  }
+  const rv = C.rover;
+  if (rv && Math.hypot(rv.x - w.x, rv.z - w.z) < 9) {
+    const [sx, sz] = BC.rotXZ(1, 0, pad.r), x = w.x + sx * 14, z = w.z + sz * 14;
+    H.parkVehicle(rv, x, z, rv.yaw, C.height(x, z) + (rv.spec?.hover || 0));
+    if (rv.group) rv.group.position.set(rv.x, rv.y, rv.z);
+  }
+}
+function homeShip() {
+  const s = window.__app?.surface, p = s?.shipPose?.();
+  if (!s?.placeShip || !p) return false;
+  s.placeShip(p.homeX, p.homeZ, 0, 0.5);
+  return true;
+}
+function syncParkedShip() {
+  if (landing) return;
+  const id = S.shipPlot; if (!id) return;
+  const pad = padPiece(id);
+  if (!pad) { S.shipPlot = null; persist(); homeShip(); return; }
+  if (shipOnPad(id, pad)) return;
+  const w = padWorld(id, pad), s = window.__app?.surface;
+  if (!w || !s?.placeShip) return;
+  s.placeShip(w.x, w.z, 0, w.yaw, w.ground);
+}
+function startLanding(id, pad) {
+  const w = padWorld(id, pad), s = window.__app?.surface;
+  if (!w || !s?.placeShip) return { ok: false, why: 'no-ship', msg: 'The ship is not on this rock.' };
+  stepClear(id, pad);
+  aimPad(false);
+  if (build) setBuild(false);
+  landing = { plotId: id, x: w.x, z: w.z, yaw: w.yaw, ground: w.ground, t: 0, dur: LAND_DUR, dusted: false };
+  s.placeShip(w.x, w.z, LAND_H, w.yaw, w.ground);
+  landSound(LAND_DUR);
+  H.toast('🚀 Ship is coming down. Stay off the pad.', 2600);
+  emit('ship:call', { plotId: id, x: w.x, z: w.z });
+  return { ok: true, why: 'landing', x: w.x, z: w.z };
+}
+function tickLanding(dt) {
+  if (!landing || !C) return;
+  const s = window.__app?.surface, L = landing;
+  if (!s?.placeShip || !padPiece(L.plotId)) { landing = null; homeShip(); return; }
+  L.t += dt;
+  const u = Math.min(1, L.t / L.dur), e = 1 - (1 - u) * (1 - u), yOff = LAND_H * (1 - e);
+  s.placeShip(L.x, L.z, yOff, L.yaw, L.ground);
+  if (!L.dusted && u > 0.72) { L.dusted = true; try { s.dustAt?.(L.x, L.z, 28); } catch (e2) { /* dust pool */ } }
+  if (u < 1) return;
+  s.placeShip(L.x, L.z, 0, L.yaw, L.ground);
+  try { s.dustAt?.(L.x, L.z, 48); } catch (e2) { /* dust pool */ }
+  const id = L.plotId; landing = null;
+  S.shipPlot = id; persist();
+  emit('ship', { plotId: id, x: L.x, z: L.z });
+  H.toast('🚀 Ship is on the pad. Board it: ☰ → 🚀 Take off.', 3200);
+}
+function goShip(id) {
+  const block = shipBlock(); if (block) return refuseShip(block);
+  const plot = padPlot(id);
+  if (!plot) return refuseShip({ ok: false, why: 'no-pad', msg: 'Build a landing pad first. Stand on your lot and tap Build.' });
+  const pad = padPiece(plot), w = padWorld(plot, pad), P = C?.player;
+  const dist = P && w ? Math.hypot(w.x - P.x, w.z - P.z) : 99;
+  if (C?.car) return refuseShip({ ok: false, why: 'drive', msg: 'Get out of the ride first.' });
+  closePanel();
+  if (shipOnPad(plot, pad)) {
+    if (dist > 5.2) { aimPad(plot); tickPadGuide(); H.toast('🚀 The ship is on your pad. Follow the arrow. Then ☰ → 🚀 Take off.', 3200); return { ok: true, why: 'arrow', x: w?.x, z: w?.z }; }
+    aimPad(false);
+    H.toast('🚀 The ship is on the pad. Board it: ☰ → 🚀 Take off.', 2800);
+    return { ok: true, why: 'parked', x: w?.x, z: w?.z };
+  }
+  if (dist > 5.2) { aimPad(plot); tickPadGuide(); H.toast('🚀 Follow the arrow to your landing pad. Then tap Call ship.', 3200); return { ok: true, why: 'arrow', x: w?.x, z: w?.z }; }
+  return startLanding(plot, pad);
+}
+function ensureWake() {
+  if (wakeBtn || typeof document === 'undefined') return wakeBtn;
+  wakeBtn = document.createElement('button'); wakeBtn.id = 'baseWake'; wakeBtn.className = 'glass'; wakeBtn.textContent = '🏠 Wake at base';
+  const sb = document.getElementById('surfBtns'); if (sb) sb.insertBefore(wakeBtn, sb.firstChild); else document.body.appendChild(wakeBtn);
+  H.tap(wakeBtn, () => wakeAtBase());
+  return wakeBtn;
+}
+function offerWake(d) {
+  wakePlot = null; wakeUntil = 0; wakeBtn?.classList.remove('on');
+  if (!d || d.why === 'busted') return;
+  if ((H.heat(C?.world).wanted | 0) > 0) return; // not clean: hospital or the lockup keeps you
+  const plot = habPlot(null); if (!plot || !habDoorWorld(plot)) return;
+  wakePlot = plot; wakeUntil = clock + 50; ensureWake(); wakeBtn?.classList.add('on');
+  H.toast('🏠 You own a habitat. Tap Wake at base, or stay at the hospital.', 4000);
+}
+function tickWake() {
+  const on = !!(wakePlot && C?.name === WORLD && clock < wakeUntil && !H.indoors(C?.world) && !C?.game?.isDown?.());
+  if (!on) { if (wakePlot && clock >= wakeUntil) wakePlot = null; wakeBtn?.classList.remove('on'); return; }
+  ensureWake(); wakeBtn?.classList.add('on');
+}
+function wakeAtBase() {
+  const plot = wakePlot; wakePlot = null; wakeUntil = 0; wakeBtn?.classList.remove('on');
+  const door = plot && habDoorWorld(plot);
+  if (!door) { H.toast('🛏️ The habitat is gone.', 2000); return { ok: false, why: 'no-hab' }; }
+  try { window.__app?.surface?.debugMove?.(door.x, door.z, door.yaw); } catch (e) { /* */ }
+  H.toast('🏠 You wake at your habitat. The door is in front of you. The hospital still took its cut.', 3200);
+  emit('wake', { plotId: plot, x: door.x, z: door.z });
+  return { ok: true, x: door.x, z: door.z, plotId: plot };
+}
 // v7.5.72 landing pad: park the rover on the slab, nose toward the approach (+z at r = 0), fuel topped up.
+// When the starship has the slab, the rover sets down beside it.
 function callRover(id, pad) {
-  const rv = C?.rover; if (!rv) return H.toast('🛬 No rover on this rock.', 2000);
-  try { if (window.SSX?.consequences?.roverImpounded?.()) return H.toast('🛬 Rover\u2019s impounded at ColSec. The pad stays empty.', 2600); } catch (e) { /* no consequences module */ }
-  const c = BC.pieceCentre(pad), [ox, oz] = BC.rotXZ(0, -0.6, pad.r), w = toWorldXZ(id, c.x + ox, c.z + oz), [fx, fz] = BC.rotXZ(0, 1, pad.r);
+  pad = pad || padPiece(id);
+  const rv = C?.rover; if (!rv) { const msg = '🛬 No rover on this rock.'; H.toast(msg, 2000); return { ok: false, why: 'no-rover', msg }; }
+  if (!pad) { const msg = '🛬 Build a landing pad first.'; H.toast(msg, 2000); return { ok: false, why: 'no-pad', msg }; }
+  try { if (window.SSX?.consequences?.roverImpounded?.()) { const msg = '🛬 Rover\u2019s impounded at ColSec. The pad stays empty.'; H.toast(msg, 2600); return { ok: false, why: 'impound', msg }; } } catch (e) { /* no consequences module */ }
+  const beside = shipOnPad(id, pad);
+  const c = BC.pieceCentre(pad), [ox, oz] = BC.rotXZ(beside ? 10 : 0, beside ? 0 : -0.6, pad.r), w = toWorldXZ(id, c.x + ox, c.z + oz), [fx, fz] = BC.rotXZ(0, 1, pad.r);
   const yaw = Math.atan2(-fx, -fz);
   H.parkVehicle(rv, w.x, w.z, yaw, C.height(w.x, w.z) + (rv.spec?.hover || 0));
   rv.air = false; rv.pitch = 0; rv.roll = 0; rv.steer = 0;
   if (rv.group) { rv.group.position.set(rv.x, rv.y, rv.z); rv.group.rotation.set(rv.pitch || 0, rv.yaw, rv.roll || 0); }
-  emit('pad', { plotId: id, x: w.x, z: w.z }); H.toast('🛬 Rover\u2019s on the pad. Fuel topped up.', 2200);
+  const msg = beside ? '🛬 Rover is beside the ship. Fuel topped up.' : '🛬 Rover\u2019s on the pad. Fuel topped up.';
+  emit('pad', { plotId: id, x: w.x, z: w.z }); H.toast(msg, 2200);
+  return { ok: true, x: w.x, z: w.z, msg };
 }
 const tv0 = new THREE.Vector3(), tv1 = new THREE.Vector3();
 function updateTurrets(dt, ctx) {
@@ -571,7 +787,9 @@ const api = {
     const holds = s.stash.credits || s.stash.medkits;
     if (p.type === 'stash' && holds) return { ok: false, msg: '💰 Empty the stash first.' };
     if (p.type === 'hab' && holds && !s.pieces.some(q => q.type === 'stash')) return { ok: false, msg: '💰 Empty the locker first.' };
-    const refund = BC.refundOf(p); BC.removePiece(s, pieceId); turretSt.delete(id + ':' + pieceId); H.give(C?.game, refund); persist(); if (root?.parent) rebuildPieces();
+    const refund = BC.refundOf(p); BC.removePiece(s, pieceId); turretSt.delete(id + ':' + pieceId);
+    if (p.type === 'pad' && S.shipPlot === id) { S.shipPlot = null; if (landing?.plotId === id) landing = null; homeShip(); }
+    H.give(C?.game, refund); persist(); if (root?.parent) rebuildPieces();
     emit('remove', { plotId: id, type: p.type, pieceId, refund }); return { ok: true, refund, msg: `🗑️ ${BC.PIECES[p.type].name} scrapped. +${refund} cr` };
   },
   deposit(id, { credits = 0, medkits = 0 } = {}) {
@@ -596,12 +814,23 @@ const api = {
   enterHab: id => enterHab(id),
   goInside: id => goInside(id),
   get habGuide() { return habNav; },
+  callShip: id => goShip(id),
+  callRover: id => callRover(id),
+  goShip: id => goShip(id),
+  wakeAtBase: () => wakeAtBase(),
+  get padGuide() { return padNav; },
+  get wakeOffer() { return wakePlot && clock < wakeUntil ? wakePlot : null; },
+  get ship() {
+    const pose = shipPose();
+    return { plotId: S.shipPlot || null, landing: landing ? { plotId: landing.plotId, t: landing.t, alt: LAND_H * (1 - Math.min(1, landing.t / landing.dur)) } : null, pose };
+  },
   // WebKit software GL dies on a real pointer event while the canvas is up. Tests call this instead.
   press(sel) {
     const el = typeof document !== 'undefined' && typeof sel === 'string' ? document.querySelector(sel) : null;
     if (!el) return false;
     if (el.id === 'baseMenu') { try { window.__app?.toggleMenu?.(false); } catch (e) { /* menu shut */ } overview(); return true; }
     if (el.id === 'baseBtn') { doAction(); return true; }
+    if (el.id === 'baseWake') { wakeAtBase(); return true; }
     if (el.id === 'driveBtn') {
       const raw = window.__app?.surface?.world?.nearSpot?.();
       if (raw?.act === 'leave') { window.__app.surface.leaveBuilding(); return true; }
@@ -612,6 +841,7 @@ const api = {
     if (b.closest?.('#basePanel')) {
       if (b.disabled) return false;
       if (b.dataset.act === 'hab') { goInside(b.dataset.id); return true; }
+      if (b.dataset.act === 'ship') { goShip(b.dataset.id); return true; }
       if (b.dataset.act === 'close' || b.id === 'baseStashClose') { closePanel(); return true; }
       if (b.dataset.k && b.dataset.op) {
         const id = habPlot(); if (!id) return false;
@@ -736,6 +966,7 @@ function init() {
   try { window.SSX.registerSurfaceTick?.(baseTick); } catch (e) { console.warn('base tick', e); } // core runs it every surface frame (returns an unregister fn)
   for (const k of ['start', 'wave', 'end']) addEventListener('raid:' + k, e => onRaidEvent(k, e?.detail)); subscribeRaids();
   try { menuBtn = H.addMenuItem(app, { id: 'baseMenu', label: '🏠 Mars base', onTap: () => overview() }); if (menuBtn && C?.name !== WORLD) menuBtn.style.display = 'none'; } catch (e) { console.warn('base menu', e); }
+  try { window.SSX.on?.('game:respawn', d => { setTimeout(() => { try { offerWake(d); } catch (e) { console.warn('base wake', e); } }, 60); }); } catch (e) { /* no bus yet */ }
   emit('load', { owned: api.owned() });
 }
 if (typeof window !== 'undefined') {
