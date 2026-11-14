@@ -31,6 +31,7 @@
  */
 import * as THREE from 'three';
 import * as F from './farmcore.js';
+import { addCrop, sway as swayCrops } from './cropscape.js';
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => app()?.game || surf()?.game, world = () => surf()?.world;
 const T = () => window.SSX?.time, EMP = () => window.SSX?.empire, STORM = () => window.SSX?.storm, RAIDS = () => window.SSX?.raids, CB = () => window.SSX?.contraband;
@@ -507,7 +508,7 @@ function rebuildFarm(force) {
   const nL = lotsInUse(), ex = S.exp || F.freshExp();
   const key = JSON.stringify([S.owned, S.dome, nL, ex, S.racks.map((r, k) => [r.crop, Math.round(r.growth * 10), r.health > 0, HL(k, r)]), allPieces().map(p => [p.plot, p.id, p.i, p.j, p.r])]);
   if (!force && key === rackKey) return; rackKey = key;
-  if (rackG) { fg.remove(rackG); rackG.traverse(o => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); }
+  if (rackG) { fg.remove(rackG); rackG.traverse(o => { if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose?.(); const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []); for (const m of mats) { if (m?.userData?.shared) continue; m.map?.dispose?.(); m.dispose?.(); } }); }
   rackG = new THREE.Group(); fg.add(rackG);
   // the lot is one 20 x 20 m base lot (F.LOT): dome on the north 6 x 6 cells, racks along the south row, a path up the middle.
   // With SSX.base (#24) the dome and racks are base pieces it draws; we draw only what it doesn't have, plus the crops.
@@ -541,13 +542,12 @@ function rebuildFarm(force) {
   };
   if (S.dome && !bp.some(p => p.lot === 0 && p.type === D.type)) ownDome(rackG, 'farm-dome');
   for (let n = 1; n < nL; n++) if (!bp.some(p => p.lot === n && p.type === D.type)) ownDome(lots[n], 'farm-dome-' + (n + 1));
-  const leaf = { potato: 0x6aa84f, algae: 0x2fbf71, glowberry: 0x6e5bff, lichen: 0xd9e6f2 };
   S.racks.forEach((r, k) => {
     const c = rackSpot(k, bRacks), g0 = new THREE.Group(); g0.position.set(c.x, c.lot ? rackY(c, fgY) : 0, c.z); g0.rotation.y = c.rot; rackG.add(g0);
     if (!c.base) { box(1.6, 0.9, 3.4, mat(0x9aa3ad, { metalness: 0.5 }), 0, 0.2, 0, g0); box(1.7, 0.06, 3.5, mat(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.4 }), 0, 2.3, 0, g0);
       for (const z of [-1.6, 1.6]) box(0.1, 2.1, 0.1, mat(0x777777), 0, 0.2, z, g0); }
-    const left = r.crop ? HL(k, r) : 0; // hands-on harvest: cut patches come off the rack from the north end
-    if (r.crop && left > 0) { const g = Math.max(0.1, r.growth), dead = r.health <= 0; const cm = box(1.4, 0.9 * g, 3.1 * left, mat(dead ? 0x5a4632 : leaf[r.crop], r.crop === 'glowberry' || r.crop === 'lichen' ? { emissive: leaf[r.crop], emissiveIntensity: r.growth >= 1 ? 0.6 : 0.2 } : {}), 0, 1.1, 1.55 * (1 - left), g0); cm.name = 'farm-crop'; }
+    const left = r.crop ? HL(k, r) : 0; // hands-on harvest: cut patches come off the bed from the north end
+    if (r.crop && left > 0) addCrop(g0, { crop: r.crop, growth: r.growth, left, dead: r.health <= 0, y: 1.1, sway: k });
   });
 }
 // a rack on an extra lot stands on the lowest ground under it (as SSX.base draws its pieces), in the homestead group's frame
@@ -760,6 +760,7 @@ function tick(dt, tc) {
   if (restoredFrom && !restoreSaid) { restoreSaid = true; say(`🌱 ${F.SITES.farm.name} is back: dome${S.dome ? '' : ' (none)'} and ${S.racks.length} rack${S.racks.length === 1 ? '' : 's'} restored from your save.`); emit('restore', { from: restoredFrom, dome: S.dome, racks: S.racks.length }); }
   raidTick(dt, dh);
   if ((uiT -= dt) <= 0) { uiT = 0.25; refresh(); guideTick(); }
+  if (rackG) swayCrops(rackG, performance.now() * 0.001);
   beaconTick(dt);
 }
 function status() {
@@ -786,6 +787,7 @@ const API = {
     away(minutes) { return catchUpAway(Date.now() - Math.max(0, +minutes || 0) * 60000, 'debug'); }, awayPending: () => awayPending,
     reload() { S = loadState(); restoreSaid = false; synced = false; if (restoredFrom) save(); rebuildFarm(true); emit('load', {}); return status(); },
     ground: (x, z) => ground(x, z), colony: () => { const c = colony(); return c ? { x: c.x, z: c.z } : null; },
+    grow(i, g) { const r = S.racks[i]; if (!r?.crop) return false; r.growth = F.clamp(+g || 0, 0, 1); save(); dirty = true; rebuildFarm(true); return r.growth; },
     inPit, floating, scene: () => G ? { farm: !!G.userData.fg, dome: !!G.getObjectByName('farm-dome') || basePieces().some(p => p.type === F.LOT.dome.type), crops: (() => { let n = 0; G.traverse(o => { if (o.name === 'farm-crop') n++; }); return n; })() } : null
   }
 };
