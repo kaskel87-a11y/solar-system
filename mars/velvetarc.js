@@ -511,7 +511,7 @@ function openGuide() {
   const c = chain(), b = bottlesNow();
   const rows = c.steps.map(s => (s.done ? '\u2713 ' : '\u00b7 ') + s.title).join('  ');
   const text = c.owned
-    ? 'Ines is in the staff-only room. The Velvet Airlock is yours. She manages it. The till is at her desk in that room: 8% of the floor, plus 400 cr a day, 1 star per 10 cr. The dark green beam marks the club. Upstairs is free, and ColSec leaves the place alone. ' + rows
+    ? 'Ines is in the staff-only room. The Velvet Airlock is yours. She manages it. The till is at her desk in that room: 8% of the floor, plus 400 cr a day, 1 star per 10 cr. Your boss chair is on the west wall of that office: sit, and your crew brings jobs. The dark green beam marks the club. Upstairs is free, and ColSec leaves the place alone. ' + rows
     : 'Ines is in the staff-only room. The door is open. Walk in and tap Talk to Ines. Marcus Thorne owns the club and skims it. Five jobs from her put the deed in your name: a cut of the tables, a daily till, Ines as manager, and the dark green business beam. ' + (c.unlocked ? 'She will talk business when you tap Talk to Ines.' : VA.unlockHint(b, starsNow())) + ' Jobs ' + c.done + '/' + c.total + (c.next ? '. Next: ' + c.next.title + '.' : '.') + ' ' + rows;
   const buttons = [{ id: 'wp', label: '\ud83d\udccd Beam to Ines', on: () => { waypoint(false); return false; } }];
   if (!c.owned && c.unlocked && c.next) buttons.unshift({ id: 'go', label: (c.active === c.next.id ? '\ud83d\udccd You are on ' : '\u25b6 Start ') + c.next.title, on: () => { const r = startNext(); if (!r?.ok) return false; closeSheet(); } });
@@ -522,7 +522,7 @@ function logHtml() {
   const rows = c.steps.map(s => `${s.done ? '\u2705' : '\u00b7'} ${escH(s.title)}`).join('<br>');
   let lead, btns;
   if (c.owned) {
-    lead = 'You own it. Ines manages the floor. Collect the till at her desk. The dark green beam marks the club.';
+    lead = 'You own it. Ines manages the floor. Your boss chair is in the office, west wall: sit and your crew brings jobs. Collect the till at her desk. The dark green beam marks the club.';
     btns = '<button type="button" class="btn" data-varc="wp">\ud83d\udccd Beam to the Velvet</button>';
   } else if (!c.unlocked) {
     lead = `Ines is in the staff-only room. Thorne owns the club. ${escH(VA.unlockHint(bottlesNow(), starsNow()))} Then five jobs, and the deed is yours.`;

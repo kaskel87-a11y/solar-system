@@ -33,6 +33,8 @@ body.hudx #questTrack .hxQw .ar{width:15px;height:15px;display:block} body.hudx 
 body.hudx.touch.flying #obLine.ob-space{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 /* v7.6: toasts stay inside the viewport minus safe areas, long words wrap, 3 lines before the clamp */
 body.hudx #toast{max-width:min(100%,calc(100vw - 16px - var(--sal,0px) - var(--sar,0px)));overflow-wrap:anywhere;-webkit-line-clamp:3}
+/* v7.5.95 iPhone SE: the toast ✕ (.ssx-x, 44px, z-index 3) painted over the Crime break sheet's ×. The sheet wins the tap. */
+body.hudx:has(#cbGulch.on) #toast .ssx-x{z-index:0;pointer-events:none}
 body.hudx #questTrack :is(.hxTx,.hxHow){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden} /* every hint: 2 lines max (hud/hints.js copy is sized to fit 390 px) */
 body.hudx #questTrack .hxHow{color:#9fe8ff;font-weight:600} #hxCard #hxJob.on~#questTrack .hxHow{display:none} /* a running job: keep the card tight */
 body.hudx #stackR:has(#questTrack[style*="block"]) > #actChip,body.hxCardOn #actChip{display:none!important}

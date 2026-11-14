@@ -4,6 +4,14 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.95: the Velvet is your lounge
+
+Once the deed is in your name, the office in the east wing has your chair (west wall, a BOSS sign). Walk up and tap **Sit · boss chair**. Someone from your crew (☰ → **👥 Crew**) comes in and offers a job. Take it. An arrow on the edge of the screen and one plain sentence tell you the next step.
+
+The jobs: rob First Junction Trust (break in, crack the vault, get away, then lose the stars — the alarm is 2 stars), sort out a problem in the club with your fists (a drunk at the bar, a rival on the floor, or a thief at the till — no stars), or collect a marker just outside the door. Now and then a troublemaker walks in. Throw him out with the 👊 button. That pays a little cash and does not add stars.
+
+Before you own the club, the chair is not there. After you do, ☰ → **🍸 The Velvet** says so.
+
 ## v7.5.94: call your starship down
 
 If you own a landing pad on Mars, you can call your starship onto it. The ship comes down on the pad (engines lit, dust, a short rumble). Then board it the usual way: ☰ → **🚀 Take off**.
