@@ -7,7 +7,7 @@ Players see the new name. Old saves keep working. Where a stored id was itself a
 | Old name players saw | New name | Stored id |
 |---|---|---|
 | Merc with a Mouth | Crimson Mercenary | `merc` (unchanged). The look changed too: one dark visor, a shoulder plate, no white eye slits and no swords on the back. |
-| Your Starship / the starship | the Ashfall | There was no stored ship id. The code function `buildStarship` is still the mesh builder. |
+| Your Starship / the starship | the Ashfall | There was no stored ship id. The mesh builder is `buildAshfall`. Call ship still says Call ship; the ship it brings is the Ashfall. |
 | Roadster kit | Lowline kit | Was `roadster` / `kit:roadster`. Now `lowline` / `kit:lowline`. Old saves are rewritten on load. |
 | Black Ops (bandana) | Pitch Black | `blackops` kept, so an owned bandana stays equipped. |
 | Gold-Chain Kingpin (outfit) | Gold-Chain Boss | `kingpin` kept. |
@@ -19,7 +19,7 @@ Players see the new name. Old saves keep working. Where a stored id was itself a
 | Viper SMG | Rattler SMG | `smg` kept, including the engraved shop copy and the gunsmith job. |
 | Pit Viper (race rival) | Pit Adder | Custom tracks saved with the old rival name are rewritten when the race save loads. |
 
-"open-world" replaced "GTA" in the readme, the roadmap, and the notes that ship inside the game files. Nothing in the game was named GTA.
+"open-world" replaced "GTA" in the readme, the roadmap, and the notes that ship inside the game files. Comments that said "grand theft" now say "theft" or "stealing rides". Danny Alvarez stays. Ordinary words such as halo and dune stay.
 
 ## Reviewed and kept
 

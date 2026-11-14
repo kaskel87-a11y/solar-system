@@ -46,7 +46,7 @@ const tag = (DEV ? DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : 'desktop') +
     R.radioToast = await G(() => document.getElementById('toast').textContent); ok('radioToastShown', R.radioToast, /📻/.test(R.radioToast));
     await shot('driving-radio');
     // --- wanted ---
-    await G(() => window.__app.surface.world.setWanted(3, 'Grand theft buggy.'));
+    await G(() => window.__app.surface.world.setWanted(3, 'Stole a buggy.'));
     ok('wanted3', await wait(() => window.__app.surface.info.wanted === 3 && document.getElementById('wantedStars').textContent === '★★★', 5000));
     ok('pursuit', await wait(() => window.__app.surface.world.debug.security().length > 0, 20000));
     R.security = await G(() => window.__app.surface.world.debug.security().map(s => s.kind).join(','));
