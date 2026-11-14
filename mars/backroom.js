@@ -153,7 +153,8 @@ function use(id) {
   state.pack[id] -= 1; if (state.pack[id] <= 0) delete state.pack[id];
   state.fx = B.useGood(id, now());
   save(); paintFx(); say(`${B.GOODS[id].name}. ${B.GOODS[id].blurb}`);
-  render(); return { ok: true };
+  if (card?.classList.contains('on')) render();
+  return { ok: true };
 }
 function price(which) {
   if (!state.deal) return;
@@ -262,6 +263,7 @@ function boot() {
     goods: B.GOODS,
     open: openBooth,
     buff() { return B.fxAt(state.fx, now()); },
+    use(id) { return use(id); },
     state: () => state,
     debug: {
       setPack(id, n) { state.pack[id] = n; save(); },
