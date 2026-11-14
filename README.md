@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.113: Ion Dust on the side table
+
+Danny’s room has a low glass table. If you are carrying Ion Dust, the button says Use. If you are not, it offers one at a markup. A short cartoon flash and a sparkle play, then the same Ion Dust rush and crash show on the timer. Leave room still works.
+
 ## v7.5.112: leave Danny’s room
 
 When the private dance ends you are standing, facing the door, and the camera and the stick work again. A big **Leave room** button takes you back onto the club floor. The doorway is open, with a marker on it.

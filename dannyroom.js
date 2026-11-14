@@ -18,10 +18,70 @@ export const DANNY_ROOM = {
   show: { x: -28.4, z: -6.35 },
   special: { x: -29.4, z: -6.35 },
   exit: { x: -26.5, z: -4.65 },
-  stand: { x: -28.2, z: -4.65, yaw: -Math.PI / 2 }
+  stand: { x: -28.2, z: -4.65, yaw: -Math.PI / 2 },
+  table: { x: -31.5, z: -4.9 }
 };
+export const DUST_PRICE = 200;
 
 const DF = DANNY_NAME.split(' ')[0];
+function glassMat(mat) { return mat(0xbfe8ff, { transparent: true, opacity: 0.38, roughness: 0.05 }); }
+function addDustTable(api, R, glass, chrome, gold) {
+  const { box } = api, T = R.table;
+  box(T.x, 0.32, T.z, 0.72, 0.045, 0.46, glass);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(T.x + sx * 0.28, 0.15, T.z + sz * 0.16, 0.035, 0.3, 0.035, chrome);
+  box(T.x, 0.36, T.z, 0.18, 0.02, 0.07, gold);
+  api.col(T.x, T.z, 0.32, 0.22);
+  api.spot({ id: 'danny-dust', x: T.x + 0.7, z: T.z, r: 1.15, act: 'danny', label: '⚡ Ion Dust', run() { return useTable(); } });
+  const spot = api.spots[api.spots.length - 1];
+  setInterval(() => {
+    const n = window.SSX?.backroom?.state?.().pack?.iondust | 0;
+    const next = n > 0 ? '⚡ Use Ion Dust' : `⚡ Buy Ion Dust · ${DUST_PRICE} cr`;
+    if (spot.label !== next) spot.label = next;
+  }, 400);
+}
+function sniff() {
+  let flash = document.getElementById('dustFlash');
+  if (!flash) {
+    const st = document.createElement('style');
+    st.textContent = `#dustFlash{position:fixed;inset:0;z-index:28;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 60%, rgba(255,255,255,.9), rgba(140,220,255,.25) 42%, transparent 68%)}#dustFlash.pop{animation:dustPop .5s ease-out}#dustSpark{position:fixed;left:50%;top:46%;z-index:29;pointer-events:none;font:700 28px/1 system-ui,sans-serif;opacity:0;transform:translate(-50%,-50%)}#dustSpark.pop{animation:dustSpark .6s ease-out}@keyframes dustPop{0%{opacity:.95}100%{opacity:0}}@keyframes dustSpark{0%{opacity:1;transform:translate(-50%,-40%)}100%{opacity:0;transform:translate(-50%,-80%)}}`;
+    document.head.appendChild(st);
+    flash = document.createElement('div'); flash.id = 'dustFlash'; document.body.appendChild(flash);
+    const sp = document.createElement('div'); sp.id = 'dustSpark'; sp.textContent = '✨'; document.body.appendChild(sp);
+  }
+  const spark = document.getElementById('dustSpark');
+  flash.classList.remove('pop'); spark?.classList.remove('pop');
+  void flash.offsetWidth; flash.classList.add('pop'); spark?.classList.add('pop');
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (Ctx) {
+    const ac = sniff.ac || (sniff.ac = new Ctx()), o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(520, ac.currentTime); o.frequency.exponentialRampToValueAtTime(180, ac.currentTime + 0.12);
+    g.gain.setValueAtTime(0.05, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.14);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.15);
+    }
+  } catch (e) { /* no audio */ }
+  try {
+    const s = window.__app?.surface, i = s?.info; if (!i?.inside) return;
+    const x = i.x - i.inside.ax, z = i.z - i.inside.az, yaw = i.viewYaw || 0;
+    s.debugInside(x, z, yaw, 0.42);
+    setTimeout(() => { try { s.debugInside(x, z, yaw, -0.06); } catch (e) { /* */ } }, 480);
+  } catch (e) { /* */ }
+}
+function useTable() {
+  const br = window.SSX?.backroom;
+  const toast = window.__app?.toast || (() => {});
+  if (!br?.use) return { ok: false };
+  const have = br.state?.().pack?.iondust | 0;
+  if (!have) {
+    const g = window.__app?.surface?.game;
+    if (!g?.spend?.(DUST_PRICE)) { toast(`Ion Dust is ${DUST_PRICE} cr at this table.`, 2200); return { ok: false, why: 'broke' }; }
+    br.debug.setPack('iondust', (br.state().pack.iondust | 0) + 1);
+  }
+  const r = br.use('iondust');
+  if (!r?.ok) return r;
+  sniff();
+  toast('⚡ Ion Dust. The room tilts, then it lets go.', 1800);
+  return r;
+}
 const hop = (x, z, yaw) => { try { window.__app?.surface?.debugInside?.(x, z, yaw); } catch (e) { /* not in a room */ } };
 // The price card, with Special on top. The 18+ gate runs once; after that the card is immediate.
 function showMenu() {
@@ -126,6 +186,7 @@ export function addDannyRoom(api, poses = {}) {
   api.sign("DANNY'S ROOM", 0xff7eb8, D.x, 3.35, -7.68, 0, 2.8, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
   api.spot({ id: 'danny-door', x: D.x, z: D.z, r: 1.25, act: 'danny', label: "🚪 Danny's room", run() { hop(R.land.x, R.land.z, R.land.yaw); showMenu(); } });
   api.spot({ id: 'danny-back', x: R.exit.x, z: R.exit.z, r: 1.2, act: 'danny', label: '🚪 Leave room', run() { leaveRoom(); } });
+  addDustTable(api, R, glassMat(mat), chrome, gold);
   // her stage: the booth (private dance, lap, encore, three-strike rule). No 50 cr option.
   const P = R.pole;
   box(P.x, 0.12, P.z, 1.4, 0.24, 1.4, black); box(P.x, 0.26, P.z, 1.2, 0.04, 1.2, gold); box(P.x, (0.24 + H) / 2, P.z, 0.06, H - 0.24, 0.06, chrome); api.col(P.x, P.z, 0.7, 0.7);

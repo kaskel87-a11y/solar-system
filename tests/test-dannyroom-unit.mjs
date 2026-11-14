@@ -23,6 +23,7 @@ ok('back door is on the main-room north wall, west of the stage', R.door.x < -5 
 const d = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 ok('no 50 cr option on her menu', !/Dance · 50 cr/.test(room) && !/id: 'private'/.test(room));
 ok('special covers standing in front of her and misses the exit', d(R.pole, R.land) < 2.1 && d(R.pole, R.exit) > 2.1 + 0.6);
+ok('dust table is in the room and clear of the door', inside(R.table) && d(R.table, R.exit) > 2);
 ok('price card leads with Special', /id="pshowSpecial"/.test(src('privateshow.js')) && src('privateshow.js').indexOf('id="pshowSpecial"') < src('privateshow.js').indexOf('id="pshowYes"'));
 ok('other dancers keep their private dance', /label: 'Private dance'/.test(src('clubprivate.js')));
 
