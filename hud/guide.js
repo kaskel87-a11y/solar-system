@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { edgePointer, fmtRange, bearingNdc } from './guidecore.js';
 
 const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;width:max-content;max-width:min(88vw,320px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
-#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center}#ssxGuide span{display:block;white-space:nowrap;overflow:visible;text-overflow:clip}`;
+#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center}#ssxGuide span{display:block;white-space:nowrap}#ssxGuide.hxShort span{max-width:7.2em;overflow:hidden;text-overflow:ellipsis}#ssxGuide .hxFull{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}`;
 
 let el = null, pin = null, pinAt = 0, last = null;
 const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();
@@ -40,7 +40,13 @@ function show(spec) {
   const spot = edgePointer(spec.nx, spec.ny, innerWidth, innerHeight);
   const label = spec.label || '';
   node.classList.add('on');
-  const sp = node.querySelector('span'); if (sp.textContent !== label) sp.textContent = label;
+  node.classList.toggle('hxShort', label.length > 28);
+  node.dataset.full = label;
+  const dist = String(label).match(/(\d+(?:\.\d+)?\s*(?:m|km))\s*$/);
+  const short = label.length > 28 ? (dist ? dist[1] : label.slice(0, 26).trim()) : label;
+  const sp = node.querySelector('span'); if (sp.textContent !== short) sp.textContent = short;
+  let full = node.querySelector('.hxFull'); if (!full) { full = document.createElement('b'); full.className = 'hxFull'; node.appendChild(full); }
+  if (full.textContent !== label) full.textContent = label;
   node.querySelector('i').style.transform = `rotate(${spot.ang}rad)`;
   node.style.left = spot.x + 'px'; node.style.top = spot.y + 'px';
   shove(node);

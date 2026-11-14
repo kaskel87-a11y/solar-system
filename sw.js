@@ -17,7 +17,7 @@ const PRECACHE = [
   ...['street', 'street-tags', 'street-crowds', 'street-tow', 'street-tex', 'street-lines'].map(n => `mars/${n}.js${q}`), // v7.5 Red Tape Flats street life
   ...['colliders', 'street-blood', 'street-combat', 'street-tweakers', 'street-rant', 'street-night'].map(n => `mars/${n}.js${q}`), // Red Tape Flats colliders, street violence, rockheads, night
   `city.js${q}`, `citydata.js${q}`, `activities/runner.js${q}`, `activities/poker.js${q}`, `activities/poker-eval.js${q}`, `activities/coords.js${q}`, `activities/deadends.js${q}`, 'activities/side-activities.json', // v7.5 Mars city + side activities
-  ...['hud/hudx', 'hud/hudmap', 'hud/hints', 'hud/guide', 'hud/guidecore'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter; v7.5.85 shared mission pointer
+  ...['hud/hudx', 'hud/hudmap', 'hud/hints', 'hud/guide', 'hud/guidecore', 'hud/onecard'].map(n => `${n}.js${q}`), // v7.5.5 HUD declutter; v7.5.85 shared mission pointer; v7.5.111 one objective line
   `hud/wpbeam.js${q}`, // v7.5.8 waypoint light beam
   ...['mars/ownedbeams', 'mars/ownedbeamscore'].map(n => `${n}.js${q}`), // v7.5.51 dark green beams over owned places
   ...['mars/gulchbeam', 'mars/gulchbeamcore'].map(n => `${n}.js${q}`), // v7.5.71 glowing red beam over Red Static Gulch
