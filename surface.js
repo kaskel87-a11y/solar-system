@@ -1061,7 +1061,25 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const e = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.72), new THREE.MeshBasicMaterial({ color: 0x7fe9ff })); e.position.set(0, -0.06, -0.45); bl.add(e);
       P.armR.add(bl); P.blade = bl;
     }
-    if (P.blade) P.blade.visible = !player.caneHand; // v7.5.15: Velvet Mack's cane is the melee weapon, so no machete in the same hand
+    if (player.plasma && !P.plasma) {
+      const bl = new THREE.Group(); bl.position.set(0, -0.7, 0);
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.22, 8), new THREE.MeshStandardMaterial({ color: 0x2a241c, roughness: 0.7, metalness: 0.3 }));
+      grip.rotation.x = Math.PI / 2; grip.position.z = 0.02; bl.add(grip);
+      const guard = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 6, 12), new THREE.MeshStandardMaterial({ color: 0xc8c2b4, metalness: 0.6, roughness: 0.35 }));
+      guard.position.z = -0.1; bl.add(guard);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.78), new THREE.MeshStandardMaterial({ color: 0x3ef0ff, emissive: 0x3ef0ff, emissiveIntensity: 1.4, roughness: 0.2 }));
+      edge.name = 'edge'; edge.position.z = -0.52; bl.add(edge);
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.8), new THREE.MeshBasicMaterial({ color: 0x3ef0ff, transparent: true, opacity: 0.35, depthWrite: false }));
+      glow.name = 'glow'; glow.position.z = -0.52; bl.add(glow);
+      P.armR.add(bl); P.plasma = bl; window.__plasmaMesh = bl;
+    }
+    if (P.blade) P.blade.visible = !player.caneHand && !player.plasma; // v7.5.15: Velvet Mack's cane is the melee weapon, so no machete in the same hand
+    if (P.plasma) {
+      P.plasma.visible = !!player.plasma && !player.caneHand;
+      const hex = window.SSX?.plasma?.hex?.() || 0x3ef0ff, edge = P.plasma.getObjectByName('edge'), glow = P.plasma.getObjectByName('glow');
+      if (edge?.material?.color) { edge.material.color.setHex(hex); edge.material.emissive?.setHex(hex); }
+      if (glow?.material?.color) glow.material.color.setHex(hex);
+    }
     const m = player.melee;
     if (m && m.t > 0) {
       m.t -= dt; const k = Math.max(0, m.t / m.max), arc = Math.sin(k * Math.PI);
@@ -1069,6 +1087,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         const big = m.step === 2; P.armR.rotation.x = (big ? 2.9 : 2.3) * Math.sin(k * Math.PI * 0.5) * (k > 0.35 ? 1 : k / 0.35) - 0.25 * (1 - k);
         P.armR.rotation.z = (big ? 0 : (m.step % 2 ? -0.45 : 0.45)) * arc; P.armL.rotation.x = -0.35 * arc;
       } else if (m.kick) { P.legR.rotation.x = 1.45 * arc; P.armL.rotation.x = -0.5 * arc; }
+      else if (m.plasma) { P.armR.rotation.x = -0.6 + 3.0 * Math.sin((1 - k) * Math.PI); P.armR.rotation.z = (m.step % 2 ? -0.9 : 0.9) * arc; P.armL.rotation.x = -0.4 * arc; }
       else if (m.blade) P.armR.rotation.x = 0.1 + 2.4 * k;
       else (m.step % 2 ? P.armL : P.armR).rotation.x = 1.6 * arc;
     } else if (m && m.cane && !m.done) { P.armR.rotation.z = 0; m.done = true; }

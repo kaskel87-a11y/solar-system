@@ -54,6 +54,7 @@ export const SHOP = [
   { id: 'railrifle', name: 'Scoped rail rifle', desc: 'Shoulder coil gun. One slug punches clean through a line of anything. Comes with 6 slugs.', price: 420, kind: 'weapon', ammo: 'slugs', start: 6, venue: 'guns' },
   { id: 'launcher', name: 'Frag launcher', desc: 'Break-action grenade launcher. Lobs frags in an arc, 5 m blast. Comes with 4 frags.', price: 480, kind: 'weapon', ammo: 'grenades', start: 4, venue: 'guns' },
   { id: 'cleaver', name: 'Thermal cleaver', desc: 'Half a metre of red-hot steel. Slower than the machete and hits like a truck.', price: 300, kind: 'melee', venue: 'guns' },
+  { id: 'plasmablade', name: 'Plasma Blade', desc: 'A short grip and a glowing edge. Cyan, amber or violet. Swing with FIRE. ☰ → Plasma Blade picks the colour.', price: 480, kind: 'melee', venue: 'guns' },
   { id: 'rounds', name: 'SMG rounds ×60', desc: 'Caseless 5 mm. Found in ammo crates too, once you own the SMG.', price: 35, kind: 'ammo', ammo: 'rounds', n: 60, venue: 'guns', needs: 'weapon:smg' },
   { id: 'slugs', name: 'Rail slugs ×6', desc: 'Tungsten. Don\u2019t drop them on your foot.', price: 45, kind: 'ammo', ammo: 'slugs', n: 6, venue: 'guns', needs: 'weapon:railrifle' },
   { id: 'grenades', name: 'Frag grenades ×4', desc: 'Launcher frags. Point away from face.', price: 60, kind: 'ammo', ammo: 'grenades', n: 4, venue: 'guns', needs: 'weapon:launcher' },
@@ -631,11 +632,12 @@ export function createGame(ctx) {
   let swings = [];
   const hasBlade = () => P.unlocks.includes('melee:blade');
   const hasCleaver = () => P.unlocks.includes('melee:cleaver');
+  const hasPlasma = () => P.unlocks.includes('melee:plasmablade');
   // which edge you swing: the one you have selected, else the best you own
-  const meleeKind = () => P.equip.weapon === 'cleaver' && hasCleaver() ? 'cleaver' : P.equip.weapon === 'blade' && hasBlade() ? 'blade' : hasCleaver() ? 'cleaver' : hasBlade() ? 'blade' : null;
+  const meleeKind = () => P.equip.weapon === 'plasmablade' && hasPlasma() ? 'plasma' : P.equip.weapon === 'cleaver' && hasCleaver() ? 'cleaver' : P.equip.weapon === 'blade' && hasBlade() ? 'blade' : hasPlasma() ? 'plasma' : hasCleaver() ? 'cleaver' : hasBlade() ? 'blade' : null;
   // v7.5.15 (Collin): with the Velvet Mack skin on, his jeweled cane is the melee weapon instead of the machete —
   // machete damage and reach, a little more knockback, a thwack instead of a slash (the thermal cleaver, when you pick it, stays the cleaver)
-  const caneOn = () => { try { return window.SSX?.skins?.equipped === 'mack' && P.equip.weapon !== 'cleaver'; } catch (_) { return false; } };
+  const caneOn = () => { try { return window.SSX?.skins?.equipped === 'mack' && P.equip.weapon !== 'cleaver' && P.equip.weapon !== 'plasmablade'; } catch (_) { return false; } };
   // v7.5.95: fists work indoors only while a Velvet troublemaker is in reach (mars/bosslounge.js). Guns stay holstered.
   function loungeFists() { try { return globalThis.SSX?.bosslounge?.fists?.() === true; } catch (e) { return false; } }
   function melee() {
@@ -643,10 +645,10 @@ export function createGame(ctx) {
     const bare = loungeFists();
     if (st.driving || H.down > 0 || st.intro > 0 || st.outro > 0 || MEL.cd > 0) return false;
     if (st.inside && !bare) { holster(); return false; }
-    const cane = bare ? false : caneOn(), mk = bare ? null : (cane ? 'blade' : meleeKind()), blade = !!mk, heavy = mk === 'cleaver';
+    const cane = bare ? false : caneOn(), mk = bare ? null : (cane ? 'blade' : meleeKind()), plasma = mk === 'plasma', heavy = mk === 'cleaver', blade = !!mk;
     if (time - MEL.last > 1.1) MEL.combo = 0;
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
-    const kick = step === 2 && !cane, base = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
+    const kick = step === 2 && !cane && !plasma, base = plasma ? [4, 5, 8][step] : heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (plasma ? 3.6 : heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (plasma ? 1.5 : heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     let suit = 1; try { suit = window.SSX?.wear?.melee?.() || 1; } catch (e) { suit = 1; }
     const dmg = base * suit;
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
@@ -674,19 +676,21 @@ export function createGame(ctx) {
     }
     if (bare) { try { if (globalThis.SSX.bosslounge.punch(player.x, player.z, fx, fz)) hits++; } catch (e) { /* */ } }
     else if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
-    swing(yaw, blade, kick, heavy, cane); const mt = kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane };
+    swing(yaw, blade, kick, heavy, cane, plasma); const mt = plasma ? 0.34 : kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane, plasma };
+    if (plasma) { try { window.__plasmaSwing = { at: performance.now(), hex: window.SSX?.plasma?.hex?.() || 0x3ef0ff }; } catch (e) { /* */ } }
     W.recoil = kick ? 1.6 : 1; W.lastShot = time;
     if (hits > 0) { try { window.SSX?.wear?.onPunch?.(); } catch (e) { /* */ } }
     onEvent('melee', { hit: hits > 0, blade, kick, step, heavy, cane });
     return true;
   }
-  function swing(yaw, blade, kick, heavy, cane) {
-    const arc = blade ? 2.4 : kick ? 1.2 : 0.8;
-    const m = new THREE.Mesh(new THREE.TorusGeometry(blade ? (heavy ? 1.9 : 1.7) : 1.1, blade ? (heavy ? 0.09 : cane ? 0.04 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: cane ? 0xd9a8ff : heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8, transparent: true, opacity: cane ? 0.6 : blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+  function swing(yaw, blade, kick, heavy, cane, plasma) {
+    const arc = plasma ? 2.6 : blade ? 2.4 : kick ? 1.2 : 0.8;
+    const col = plasma ? (window.SSX?.plasma?.hex?.() || 0x3ef0ff) : cane ? 0xd9a8ff : heavy ? 0xff7a30 : blade ? 0x9ff4ff : 0xfff2d8;
+    const m = new THREE.Mesh(new THREE.TorusGeometry(plasma ? 1.85 : blade ? (heavy ? 1.9 : 1.7) : 1.1, plasma ? 0.11 : blade ? (heavy ? 0.09 : cane ? 0.04 : 0.05) : 0.08, 4, 18, arc), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: plasma ? 0.95 : cane ? 0.6 : blade ? 0.9 : 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
     m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + (kick ? 0.5 : 0.15), yaw, (MEL.combo % 2 ? 1 : -1) * 0.3);
     m.geometry.rotateZ(Math.PI / 2 - arc / 2);
     m.position.set(player.x - Math.sin(yaw) * 0.6, player.y - (kick ? 1.2 : 0.55), player.z - Math.cos(yaw) * 0.6); scene.add(m);
-    swings.push({ m, life: 0.18, max: 0.18 });
+    const life = plasma ? 0.28 : 0.18; swings.push({ m, life, max: life });
   }
   function updateMelee(dt) {
     MEL.cd = Math.max(0, MEL.cd - dt);
@@ -990,7 +994,7 @@ export function createGame(ctx) {
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
     if (st.inside) { holster(); return false; }
     if (!st.driving && typeof window !== 'undefined' && window.SSX?.fireHooks) for (const f of window.SSX.fireHooks) { try { if (f(aimAt) === true) return true; } catch (e) { /* an add-on hook (mars/harvest.js sickle) must never block a shot */ } }
-    if (!st.driving && ((P.equip.weapon === 'blade' && hasBlade()) || (P.equip.weapon === 'cleaver' && hasCleaver()))) return melee();
+    if (!st.driving && ((P.equip.weapon === 'blade' && hasBlade()) || (P.equip.weapon === 'cleaver' && hasCleaver()) || (P.equip.weapon === 'plasmablade' && hasPlasma()))) return melee();
     const wpn = curWeapon(); if (!wpn) return false;
     if (W.cd > 0 || (wpn.heat && W.over)) return false;
     if (wpn.ammo) { if (!P.inv[wpn.ammo]) { W.cd = 0.5; onEvent('dry', { weapon: wpn.name }); return false; } P.inv[wpn.ammo]--; }
@@ -1042,13 +1046,13 @@ export function createGame(ctx) {
       if (!owned.includes(next) || (!id && owned.length < 2)) { onEvent('toast', { text: `🔫 ${roverWpn().name}. Rail cannon, rocket pods, plasma torch, EMP and turret tiers are sold at the colony shop.` }); return false; }
       P.equip.rover = next; save(); setTurretLook(); onEvent('weapon', { id: 'rover:' + next, name: roverWpn().name, icon: roverWpn().icon, rover: true }); return true;
     }
-    const owned = ['rifle', ...['shotgun', 'smg', 'railrifle', 'launcher'].filter(ownW), ...(hasBlade() ? ['blade'] : []), ...(hasCleaver() ? ['cleaver'] : [])];
+    const owned = ['rifle', ...['shotgun', 'smg', 'railrifle', 'launcher'].filter(ownW), ...(hasBlade() ? ['blade'] : []), ...(hasCleaver() ? ['cleaver'] : []), ...(hasPlasma() ? ['plasmablade'] : [])];
     const next = id || owned[(owned.indexOf(P.equip.weapon) + 1) % owned.length];
     if (!owned.includes(next) || (!id && owned.length < 2)) { onEvent('toast', { text: '🔫 Plasma blaster: unlimited, it just runs hot. Shotguns and the machete are at the colony shop; SMGs, rail rifles and frag launchers at the gun shop.' }); return false; }
     if (quest && stepDef()?.weapon && quest.wave && next !== stepDef().weapon) { fail(`${quest.def.contact || 'Control'}: You swapped off my ${WEAPONS[stepDef().weapon]?.name || stepDef().weapon}. Test\u2019s void.`); }
     P.equip.weapon = next; save(); const w = WEAPONS[next]; onEvent('weapon', { id: next, name: wName(next), shells: P.inv.shells, ammo: w?.ammo ? P.inv[w.ammo] : null, ammoType: w?.ammo || null }); return true;
   }
-  const wName = id => id === 'blade' ? 'Vibro-machete' : id === 'cleaver' ? 'Thermal cleaver' : WEAPONS[id]?.name || id;
+  const wName = id => id === 'blade' ? 'Vibro-machete' : id === 'cleaver' ? 'Thermal cleaver' : id === 'plasmablade' ? 'Plasma Blade' : WEAPONS[id]?.name || id;
   let holsterT = -9;
   function holster() { if (time - holsterT > 2.5) { holsterT = time; onEvent('toast', { text: '🔒 Holstered. House rules: no weapons indoors.' }); } }
   const SMOKE = [[0.55, 0.52, 0.5], [0.4, 0.38, 0.36], [1, 0.6, 0.25]];
@@ -1707,7 +1711,7 @@ export function createGame(ctx) {
     else if (agents.length || orbs.length) { for (const a of [...agents]) { const c = center(a); burst(c.x, c.y, c.z, 12); removeAgent(a); } for (const o of orbs) scene.remove(o.mesh); orbs = []; }
     for (const b of [...bodies]) { b.t -= dt; if (b.t <= 0) { scene.remove(b.g); bodies.splice(bodies.indexOf(b), 1); } }
     updateWeapons(dt, input);
-    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver(); player.caneHand = caneOn();
+    updateBolts(dt); updateFx(dt); updateTurret(dt); updateSparks(dt); updateDebris(dt); if (!ins) updatePickups(dt); updateMelee(dt); if (!ins) updateResupply(); player.hasBlade = hasBlade() || hasCleaver(); player.plasma = hasPlasma() && P.equip.weapon === 'plasmablade'; player.caneHand = caneOn();
     updateQuest(dt); if (!ins) { updateRares(dt); updateZone(dt); updateDogWarn(dt); }
   }
   // tapping a quest item or rare find picks it up; returns undefined when the object is not ours
@@ -1780,7 +1784,7 @@ export function createGame(ctx) {
         boss: bossRef ? { name: bossRef.T.name, hp: Math.max(0, bossRef.hp), max: bossRef.T.hp } : null,
         rares: rareCount(), raresHere: rares.length, kills: P.stats.kills, deaths: P.stats.deaths, badges: P.badges.length, busted: P.stats.busted,
         weapon: st.driving ? (st.own && turret ? 'rover:' + roverId() : null) : P.equip.weapon, rover: (() => { const w = roverWpn(); return { id: w.id, name: w.name, short: w.short, icon: w.icon, tier: roverTier(), owned: roverOwned(), lastEmp: W.lastEmp || null }; })(), kit: P.equip.kit, weaponName: (!st.driving && (P.equip.weapon === 'blade' || P.equip.weapon === 'cleaver')) ? wName(P.equip.weapon) : curWeapon()?.name || '', shells: P.inv.shells, ammo: (() => { const w = !st.driving && WEAPONS[P.equip.weapon]; return w?.ammo ? { type: w.ammo, n: P.inv[w.ammo] || 0, cap: ammoCap(w.ammo) } : null; })(), inv: { ...P.inv }, maxhp: P.maxhp || 0, maxammo: P.maxammo || 0, hasCleaver: hasCleaver(), meleeKind: meleeKind(), medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),
-        hasBlade: hasBlade(), canFire: !!curWeapon() || (!st.driving && (P.equip.weapon === 'blade' || P.equip.weapon === 'cleaver')), meleeNear: meleeNear(), meleeCd: MEL.cd, combo: MEL.combo,
+        hasBlade: hasBlade(), canFire: !!curWeapon() || (!st.driving && (P.equip.weapon === 'blade' || P.equip.weapon === 'cleaver' || P.equip.weapon === 'plasmablade')), meleeNear: meleeNear(), meleeCd: MEL.cd, combo: MEL.combo,
         tracker: (() => { let d = 1e9; for (const a of agents) if (!a.T.still || true) d = Math.min(d, Math.hypot(a.x - player.x, a.z - player.z)); return d; })(),
         zone: zone ? { x: zone.x, z: zone.z, active: zone.active } : null
       };

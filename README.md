@@ -4,6 +4,12 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.98: a bigger Pit, and a plasma blade
+
+The Pit in Red Tape Flats is a bigger ring now, with bleachers, more lights, and a betting window. Follow the arrow to the window. The board shows both fighters and their odds. Put credits on one before the bell, then take the marked seat in the stands and watch. You get paid if your fighter drops the other one.
+
+The Plasma Blade is at Ozzie's Iron. It is a short grip and a glowing edge, in cyan, amber, or violet. ☰ → Plasma Blade picks the colour. Swing with FIRE.
+
 ## v7.5.97: original names
 
 Borrowed names are gone. The ship is the Ashfall. The red rover shell is the Lowline kit. The red armour is the Crimson Mercenary suit (one dark visor, no swords on the back). The DJ on Ceres 94.7 is Lux. The full old-to-new list is `docs/IP-RENAMES.md`. An old save that bought the rover shell still has it: the stored id is rewritten when the game loads.

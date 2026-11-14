@@ -57,6 +57,8 @@ const PRECACHE = [
   `mars/shoptiers.js${q}`, `mars/shoptierscore.js${q}`, // 🆕 shop restock tiers (v7.5.45)
   `mars/pitring.js${q}`, `mars/pitringcore.js${q}`, // 🥊 The Pit landmark (v7.5.21)
   `mars/pitshow.js${q}`, `mars/pitshowcore.js${q}`, // 🥊 The Pit show: strobes, crowd rush, rounds, star-burst finale (v7.5.29)
+  `mars/pitbets.js${q}`, `mars/pitbetscore.js${q}`, // v7.5.98 spectator bets at The Pit
+  `mars/plasma.js${q}`, `mars/plasmacore.js${q}`, // v7.5.98 Plasma Blade
   `mars/velvetdeal.js${q}`, `mars/velvetdealcore.js${q}`, // 🍸 Ines's side deal + Danny takes product (v7.5.26)
   `mars/velvetarc.js${q}`, `mars/velvetarccore.js${q}`, `velvetwing.js${q}`, // 🏛️ Velvet expansion: the east wing + Ines's arc, owning the club
   `mars/bosslounge.js${q}`, `mars/bossloungecore.js${q}`, // v7.5.95 boss lounge in the office once you own the Velvet (SSX.bosslounge)
