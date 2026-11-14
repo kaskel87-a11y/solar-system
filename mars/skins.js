@@ -238,7 +238,7 @@ body.surface:not(.indoors) #skBtn.show{display:block}
 #skPanel .list{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 10px 10px;touch-action:pan-y}
 #skPanel .row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #2a2a2a} #skPanel .row:first-child{border-top:0}
 #skPanel .row .ic{font-size:24px;width:30px;text-align:center} #skPanel .row .nm{flex:1;font-weight:800} #skPanel .row .nm small{display:block;font-weight:400;color:#bbb;font-size:12px;line-height:1.25}
-#skPanel button{min-height:44px;min-width:44px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px system-ui,sans-serif;touch-action:manipulation;padding:0 12px;white-space:nowrap}
+#skPanel button{min-height:48px;min-width:48px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px system-ui,sans-serif;touch-action:manipulation;padding:0 12px;white-space:nowrap}
 #skPanel button.on{background:#fff;color:#000} #skPanel button.no{border-style:dashed;border-color:#777;color:#aaa}
 #skPanel .lh{display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid #444;margin-top:2px;font:800 12px system-ui,sans-serif;color:#bbb;text-transform:uppercase;letter-spacing:.04em} #skPanel .lh span{flex:1}
 #skPanel .lh button{min-height:34px;font-size:13px;padding:0 10px;text-transform:none;letter-spacing:0}
@@ -305,7 +305,7 @@ function grant(id, wear = false) {
 function equip(id, quiet) {
   const r = C.equip(st, id); if (!r.ok) { toast(C.BY_ID[id]?.venue === 'planum' ? '👕 Buy it at Planum Swag first.' : '👕 Buy it at Threadbare first.'); return r; }
   st = r.state; save(); if (player) { applySkin(player, id); stats.applies++; v8Sync(player); }
-  if (!quiet) toast(id === C.STOCK ? '👕 Back in the stock suit.' : `👕 Wearing ${C.BY_ID[id].name}.`, 2000);
+  if (!quiet) { const how = C.BY_ID[id]?.how; toast(id === C.STOCK ? '👕 Back in the stock suit.' : `👕 Wearing ${C.BY_ID[id].name}.${how ? ' ' + how : ''}`, how ? 4200 : 2000); }
   emit('equip', { id }); render(); return { ok: true, id };
 }
 function hookMenu() {

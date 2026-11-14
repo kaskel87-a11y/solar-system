@@ -35,9 +35,9 @@ export const fresh = () => ({ fuel: FUEL_MAX, ground: 0, lit: false, down: 0, hi
 export function handBack(mode, g, dt, airborne) { return airborne ? g * (1 - gScale(mode)) * dt : 0; }
 
 // can the thrusters fire this frame?
-export function canThrust(s, { jump, alt }) {
+export function canThrust(s, { jump, alt, ceil }) {
   if (!jump || s.down > 0) return false;
-  if (alt >= CEIL) return false;
+  if (alt >= (ceil || CEIL)) return false;
   return s.lit ? s.fuel > 0 : s.fuel >= MIN_START;
 }
 
@@ -48,12 +48,14 @@ export function step(s, inp) {
   let vy = inp.vy;
   const shot = s.down > 0; // shot out: no thrust and no float, you drop at full Mars gravity
   if (shot) s.down = Math.max(0, s.down - dt);
+  const thrustN = inp.thrust || THRUST, burnN = inp.burn || BURN, maxUp = inp.maxUp || MAX_UP, fuelMax = inp.fuelMax || FUEL_MAX;
+  if (s.fuel > fuelMax) s.fuel = fuelMax;
   const thrust = canThrust(s, inp);
   s.lit = thrust;
   if (inp.airborne && !shot) vy += handBack(mode, inp.g, dt, true);
   if (thrust) {
-    vy = Math.min(MAX_UP, vy + THRUST * dt);
-    s.fuel = Math.max(0, s.fuel - BURN * (BURN_SCALE[mode] ?? 1) * dt);
+    vy = Math.min(maxUp, vy + thrustN * dt);
+    s.fuel = Math.max(0, s.fuel - burnN * (BURN_SCALE[mode] ?? 1) * dt);
   }
   if (mode === 'ZERO-G' && inp.airborne && !thrust && !shot && s.flying) { // float: ease toward a gentle sink (or a dive on ▼)
     const tgt = inp.dive ? ZG_DIVE : ZG_SINK;
@@ -62,18 +64,19 @@ export function step(s, inp) {
   if (inp.airborne) { s.ground = 0; if (thrust) s.flying = true; }
   else {
     s.ground += dt; s.flying = false;
-    if (s.ground >= REFILL_DELAY) s.fuel = Math.min(FUEL_MAX, s.fuel + REFILL * dt);
+    if (s.ground >= REFILL_DELAY) s.fuel = Math.min(fuelMax, s.fuel + REFILL * dt);
   }
   return vy;
 }
 
 // extra air-steer for this frame: stick/WASD (mx right, mz forward, each -1..1) turned into world dx, dz (yaw like surface.js)
-export function airSteer(mx, mz, yaw, dt, flying) {
+export function airSteer(mx, mz, yaw, dt, flying, extra = AIR_EXTRA) {
   if (!flying) return [0, 0];
   let len = Math.hypot(mx, mz); if (len < 0.05) return [0, 0];
   if (len > 1) { mx /= len; mz /= len; len = 1; }
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-  return [(fx * mz + rx * mx) * AIR_EXTRA * dt, (fz * mz + rz * mx) * AIR_EXTRA * dt];
+  const spd = extra > 0 ? extra : AIR_EXTRA;
+  return [(fx * mz + rx * mx) * spd * dt, (fz * mz + rz * mx) * spd * dt];
 }
 
 // ColSec fire at a flying jetpack. Mutates s; returns null | 'hit' | 'down'.

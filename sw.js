@@ -46,6 +46,8 @@ const PRECACHE = [
   `mobboss.js${q}`, `mobbosscore.js${q}`, // v7.5.88 Mob Boss respect (SSX.mobboss)
   `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, // fast travel on Mars (Pumpkin)
   `mars/skins.js${q}`, `mars/skinscore.js${q}`, // Mars player skins (Pumpkin)
+  `mars/wearfx.js${q}`, `mars/wearfxcore.js${q}`, // v7.5.96 suit effects
+  `mars/rideguns.js${q}`, `mars/ridegunscore.js${q}`, // v7.5.96 mounted guns on every car
   `mars/jetpack.js${q}`, `mars/jetpackcore.js${q}`, // Mars jetpack (Pumpkin)
   `mars/flame.js${q}`, `mars/flamecore.js${q}`, // 🔥 flamethrower (Steve)
   `mars/sniper.js${q}`, `mars/snipercore.js${q}`, // 🎯 sniper scope + contracts (v7.5.19)

@@ -4,6 +4,14 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.96: new suits and guns on every car
+
+New clothes turn up as sparkles on the ground, and they are also for sale at Threadbare in Ares Junction. Put one on with ☰ → **Wardrobe** → **Wear**.
+
+The raccoon suit runs faster. The Merc with a Mouth suit punches harder. The super jetpack (hold Jump) flies higher and longer than the shop jetpack. Roller skates roll and coast. The dino suit bites, the banana suit jumps higher, the hoverboard floats, and the spring boots launch you.
+
+Mounted guns are on the wall at the Meridian Depot. Buy them once and every car you drive has them, including a bought car and a stolen ride. Rockets are the next case on that wall. While you drive, tap **FIRE**. Shooting a person brings stars, the same as before.
+
 ## v7.5.95: the Velvet is your lounge
 
 Once the deed is in your name, the office in the east wing has your chair (west wall, a BOSS sign). Walk up and tap **Sit · boss chair**. Someone from your crew (☰ → **👥 Crew**) comes in and offers a job. Take it. An arrow on the edge of the screen and one plain sentence tell you the next step.

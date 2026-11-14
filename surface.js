@@ -745,7 +745,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const len = Math.hypot(mvx, mvz);
     if (len > 1) { mvx /= len; mvz /= len; }
     const running = input.run;
-    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1);
+    let wear = null; try { wear = window.SSX?.wear?.move?.() || null; } catch (e) { wear = null; }
+    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1);
     fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
     const dx = (fwd.x * mvz + right.x * mvx) * speed * dt, dz = (fwd.z * mvz + right.z * mvx) * speed * dt;
     player.moving = Math.min(1, len); player.running = running && len > 0.3;
@@ -757,13 +758,19 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       const c = world.collidePlayer(nx, nz, 0.45, feet); if (c) { nx = c.x; nz = c.z; } // v7.5.39: height-aware, roofs you're above don't block
       if (!indoor) { const rc = rockPush(nx, nz, 0.45, feet, 0.6); if (rc) { nx = rc.x; nz = rc.z; } } // v7.5.41: boulders block you on foot
       player.x = nx; player.z = nz;
+      if (wear?.coast) { player.roll = { x: dx / Math.max(dt, 0.016), z: dz / Math.max(dt, 0.016), t: wear.coast }; }
+    } else if (wear?.coast && player.roll?.t > 0) {
+      player.roll.t -= dt; player.roll.x *= 0.94; player.roll.z *= 0.94;
+      let nx = player.x + player.roll.x * dt, nz = player.z + player.roll.z * dt;
+      const c = world.collidePlayer(nx, nz, 0.45, player.y - EYE); if (c) { nx = c.x; nz = c.z; player.roll.t = 0; }
+      player.x = nx; player.z = nz;
     }
-    const ground = footGround(player.x, player.z, player.y - EYE) + EYE; // v7.5.39: roofs hold you up (land, walk, snipe)
+    const ground = footGround(player.x, player.z, player.y - EYE) + EYE + (player.grounded ? (wear?.hover || 0) : 0); // v7.5.39: roofs hold you up (land, walk, snipe)
     roofCheck(ground - EYE);
     if (state.outro > 0) {
       state.outro -= dt; player.vy += 25 * dt; player.y += player.vy * dt;
     } else {
-      if (player.grounded && input.jump) { player.vy = 4.2; player.grounded = false; }
+      if (player.grounded && input.jump) { player.vy = 4.2 * (wear?.jump || 1); player.grounded = false; }
       player.vy -= g * dt; player.y += player.vy * dt;
       if (player.y <= ground) { player.y = ground; player.vy = 0; player.grounded = true; }
       else if (player.grounded && player.y - ground < 0.35 && player.vy <= 0) { player.y = ground; }
@@ -1486,7 +1493,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // test hook: jump to just short of the active quest's current objective
     debugLaunch(vy = 9) { if (!driving || !car) return false; if (car.spec?.hover) { car.lift = 6; car.air = true; return true; } car.y += 0.6; car.vy = vy; car.air = true; return true; }, // v7.4 tests: pop the car into the air
     meleeRig: () => ({ blade: !!astro?.parts?.blade, bladeShown: !!astro?.parts?.blade?.visible, caneHand: !!player.caneHand, swing: player.melee ? { t: +player.melee.t.toFixed(3), cane: !!player.melee.cane, step: player.melee.step } : null, armR: +(astro?.parts?.armR?.rotation.x || 0).toFixed(2) }), // v7.5.15 test hook
-    debugMove(x, z, yaw = 0) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
+    debugMove(x, z, yaw = 0, pitch) { if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); if (Number.isFinite(pitch)) player.pitch = pitch; return true; },
     debugQuestGo(short = 6) { const w = game.waypoint(); if (!w) return false; const dx = w.x - player.x, dz = w.z - player.z, L = Math.hypot(dx, dz) || 1, k = Math.max(0, (L - short) / L), x = player.x + dx * k, z = player.z + dz * k, yaw = Math.atan2(-dx, -dz); if (driving) { car.x = x; car.z = z; car.yaw = yaw; car.y = height(x, z); car.prevG = null; car.vy = 0; car.speed = 0; updateChunks(x, z, true); } else debugPlace(x, z, yaw); return true; },
     mapData() {
       if (!cfg) return null;

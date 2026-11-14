@@ -76,7 +76,10 @@ export const SHOP = [
   { id: 'rail', name: 'Rail cannon', desc: 'Magnetic slug at 400 m/s. Slow to cycle, punches through everything in a line.', price: 300, kind: 'roverwpn' },
   { id: 'rockets', name: 'Rocket pods', desc: 'Twin dumb-fire rocket pods, 5 m blast radius. Do not fire at your own feet.', price: 280, kind: 'roverwpn' },
   { id: 'torch', name: 'Plasma torch', desc: 'Flamethrower-style plasma jet. Short range, wide, nasty.', price: 240, kind: 'roverwpn' },
-  { id: 'emp', name: 'EMP pulse', desc: '25 m shockwave that stuns and fries anything nearby. Long recharge.', price: 260, kind: 'roverwpn' }
+  { id: 'emp', name: 'EMP pulse', desc: '25 m shockwave that stuns and fries anything nearby. Long recharge.', price: 260, kind: 'roverwpn' },
+  // v7.5.96: one kit for every car you can drive, not only the stock rover
+  { id: 'rideguns', name: 'Mounted guns', desc: 'Twin guns on every rover and car you drive. Tap FIRE. Shooting people brings stars.', price: 900, kind: 'ridekit' },
+  { id: 'riderockets', name: 'Rocket tier', desc: 'Rockets on that same mount. Needs mounted guns. A blast that hits a person brings stars.', price: 1400, kind: 'ridekit', needsUp: 'rideguns' }
 ];
 
 // ---------- Missions ----------
@@ -161,11 +164,20 @@ const ALIEN_ZONES = { Moon: { a: -150, d: 220, wave: ['drone', 'drone', 'crawler
 const RARE_TYPES = [
   { type: 'crystal', w: 0.35, name: 'Olivine crystals', xp: 15, credits: 10, fact: 'Olivine is a green mineral found in meteorites and in rocks on the Moon and Mars. On Earth, gem-quality olivine is called peridot.' },
   { type: 'meteorite', w: 0.25, name: 'Pallasite meteorite', xp: 15, credits: 15, fact: 'Pallasites are rare meteorites made of iron-nickel metal studded with olivine crystals. Most scientists think they formed where an asteroid\u2019s metal core met its rocky mantle.' },
-  { type: 'salvage', w: 0.19, name: 'Wreck salvage', xp: 10, credits: 45, fact: 'Somebody\u2019s bad day: a stripped supply drone. The colony scrapyard pays for parts, no questions asked.' },
-  { type: 'artifact', w: 0.13, name: 'Hive resin', xp: 25, credits: 30, fiction: true, fact: 'Hardened hive resin, still warm. Colony labs pay well for it and don\u2019t ask where you got it.' },
+  { type: 'salvage', w: 0.11, name: 'Wreck salvage', xp: 10, credits: 45, fact: 'Somebody\u2019s bad day: a stripped supply drone. The colony scrapyard pays for parts, no questions asked.' },
+  { type: 'artifact', w: 0.05, name: 'Hive resin', xp: 25, credits: 30, fiction: true, fact: 'Hardened hive resin, still warm. Colony labs pay well for it and don\u2019t ask where you got it.' },
   // v7.3: rare finds that permanently raise your caps (game fiction)
   { type: 'biomod', w: 0.04, name: 'Black-market biomod', xp: 30, credits: 0, fiction: true, perm: 'maxhp', fact: 'A sealed injector of somebody\u2019s very illegal tissue booster. +15 max health, permanently.' },
-  { type: 'bandolier', w: 0.04, name: 'Smuggler\u2019s bandolier', xp: 30, credits: 0, fiction: true, perm: 'maxammo', fact: 'Somebody\u2019s loss. Hidden pouches everywhere. +25% ammo capacity, permanently.' }
+  { type: 'bandolier', w: 0.04, name: 'Smuggler\u2019s bandolier', xp: 30, credits: 0, fiction: true, perm: 'maxammo', fact: 'Somebody\u2019s loss. Hidden pouches everywhere. +25% ammo capacity, permanently.' },
+  // v7.5.96 wear drops. Same spark on the ground. Picking one up puts the suit in the wardrobe.
+  { type: 'wear', w: 0.02, name: 'Raccoon suit', xp: 20, credits: 0, fiction: true, skin: 'raccoon', fact: 'Ears, a mask and a ringed tail. You run faster. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Merc with a Mouth suit', xp: 20, credits: 0, fiction: true, skin: 'merc', fact: 'Red and black, full mask. Punches hit harder. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Super jetpack', xp: 25, credits: 0, fiction: true, skin: 'superjet', fact: 'Hold Jump. It flies higher and longer than the shop jetpack. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Roller skates', xp: 15, credits: 0, fiction: true, skin: 'skates', fact: 'You roll, and you coast when you let go. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Dino suit', xp: 15, credits: 0, fiction: true, skin: 'dino', fact: 'Snout, tail, a harder punch. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Banana suit', xp: 15, credits: 0, fiction: true, skin: 'banana', fact: 'You bounce. Jump goes higher. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Hoverboard', xp: 20, credits: 0, fiction: true, skin: 'hover', fact: 'You float just off the ground. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Spring boots', xp: 15, credits: 0, fiction: true, skin: 'springs', fact: 'Jump is a launch. ☰ → Wardrobe → Wear.' }
 ];
 
 // ---------- Hostile xenofauna (fiction) ----------
@@ -633,7 +645,9 @@ export function createGame(ctx) {
     const cane = bare ? false : caneOn(), mk = bare ? null : (cane ? 'blade' : meleeKind()), blade = !!mk, heavy = mk === 'cleaver';
     if (time - MEL.last > 1.1) MEL.combo = 0;
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
-    const kick = step === 2 && !cane, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
+    const kick = step === 2 && !cane, base = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
+    let suit = 1; try { suit = window.SSX?.wear?.melee?.() || 1; } catch (e) { suit = 1; }
+    const dmg = base * suit;
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff
     let yaw = player.faceYaw ?? player.yaw, best = null, bd = range + 2.5;
@@ -661,6 +675,7 @@ export function createGame(ctx) {
     else if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
     swing(yaw, blade, kick, heavy, cane); const mt = kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane };
     W.recoil = kick ? 1.6 : 1; W.lastShot = time;
+    if (hits > 0) { try { window.SSX?.wear?.onPunch?.(); } catch (e) { /* */ } }
     onEvent('melee', { hit: hits > 0, blade, kick, step, heavy, cane });
     return true;
   }
@@ -958,6 +973,7 @@ export function createGame(ctx) {
   }
   function muzzle() {
     const st = ctx.st();
+    if (st.driving) { const kit = rideKit(); if (kit) { const r = st.rover; return new THREE.Vector3(r.x - Math.sin(r.yaw) * 1.7, (r.y ?? height(r.x, r.z)) + 1.15, r.z - Math.cos(r.yaw) * 1.7); } }
     if (st.driving && !st.own) { const r = st.rover; return new THREE.Vector3(r.x - Math.cos(r.yaw) * 0.9, (r.y ?? height(r.x, r.z)) + 1.7, r.z + Math.sin(r.yaw) * 0.9); }
     if (st.driving && st.own && turret) { turret.group.updateMatrixWorld(true); const md = turret.mods[roverId()], tips = md ? md.tips : [turret.tipL, turret.tipR]; return tips[W.side % tips.length].getWorldPosition(new THREE.Vector3()); }
     if (st.camDist < 0.8) return new THREE.Vector3(player.x, player.y - 0.35, player.z).addScaledVector(camera.getWorldDirection(tmpV), 0.6);
@@ -966,7 +982,8 @@ export function createGame(ctx) {
   }
   // fire once. aimAt = {x,y} in NDC to shoot along a screen ray, or null for auto-aim (phone Fire button)
   // own rover: the turret (aliens on). Stolen rides: your sidearm out the window. On foot: blaster or shotgun.
-  const curWeapon = () => { const st = ctx.st(); if (st.driving) return st.own ? (turret ? roverWpn() : null) : (P.equip.weapon === 'shotgun' && P.unlocks.includes('weapon:shotgun') ? WEAPONS.shotgun : WEAPONS.rifle); return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
+  const rideKit = () => { try { return (typeof window !== 'undefined' && window.SSX?.rideguns?.weapon?.()) || null; } catch (e) { return null; } };
+  const curWeapon = () => { const st = ctx.st(); if (st.driving) { const kit = rideKit(); if (kit) return kit; return st.own ? (turret ? roverWpn() : null) : (P.equip.weapon === 'shotgun' && P.unlocks.includes('weapon:shotgun') ? WEAPONS.shotgun : WEAPONS.rifle); } return WEAPONS[P.equip.weapon] || WEAPONS.rifle; };
   function fire(aimAt) {
     const st = ctx.st();
     if (H.down > 0 || st.intro > 0 || st.outro > 0) return false;
@@ -1497,6 +1514,7 @@ export function createGame(ctx) {
     (P.rare[world] ||= []).push(r.id);
     gain(r.def.xp, r.def.credits, true);
     if (r.def.perm) grantPerm(r.def.perm, r.def.name, true);
+    if (r.def.skin) { try { const g = window.SSX?.skins?.grant; if (typeof g === 'function') g(r.def.skin, true); } catch (e) { /* wardrobe not loaded */ } }
     burst(r.x, height(r.x, r.z) + 1, r.z, 24, 5, [[0.6, 1, 0.6], [1, 1, 1]]);
     onEvent('rare', { name: r.def.name, fact: r.def.fact, fiction: !!r.def.fiction, xp: r.def.xp, count: rareCount() });
   }
@@ -1566,7 +1584,7 @@ export function createGame(ctx) {
   }
   // ----- colony shop -----
   // v7.3: every store is a walk-in venue. Where things are sold: supply (gear), guns (Ozzie's Iron), depot (rover parts, paint), bar
-  const venuesOf = it => it.venue ? [it.venue] : ({ weapon: ['supply', 'guns'], ammo: ['supply', 'guns'], melee: ['supply', 'guns'], medkit: ['supply', 'bar'], upgrade: it.id === 'roverarmor' ? ['depot'] : ['supply'], maxhp: ['supply', 'guns'], maxammo: ['supply', 'guns'], roverup: ['depot'], roverwpn: ['depot'] })[it.kind] || ['supply'];
+    const venuesOf = it => it.venue ? [it.venue] : ({ weapon: ['supply', 'guns'], ammo: ['supply', 'guns'], melee: ['supply', 'guns'], medkit: ['supply', 'bar'], upgrade: it.id === 'roverarmor' ? ['depot'] : ['supply'], maxhp: ['supply', 'guns'], maxammo: ['supply', 'guns'], roverup: ['depot'], roverwpn: ['depot'], ridekit: ['depot'] })[it.kind] || ['supply'];
   const COS_VENUE = { paint: 'depot', kit: 'depot', bandana: 'supply' };
   const inVenue = (vs, venue) => venue ? vs.includes(venue) : !vs.includes('bar');
   function shopItem(id) { return shopList(null, true).items.find(i => i.id === id) || null; }
@@ -1576,17 +1594,17 @@ export function createGame(ctx) {
       let owned = false, ok = true, why = '';
       if (it.kind === 'weapon') owned = own('weapon:' + it.id);
       if (it.kind === 'melee') owned = own('melee:' + it.id);
-      if (it.kind === 'upgrade' || it.kind === 'roverup') owned = hasUp(it.id);
+      if (it.kind === 'upgrade' || it.kind === 'roverup' || it.kind === 'ridekit') owned = hasUp(it.id);
       if (it.kind === 'roverwpn') owned = own('rover:' + it.id);
       if (it.kind === 'maxhp' || it.kind === 'maxammo') owned = hasUp(it.id);
-      if (it.needsUp && !hasUp(it.needsUp)) { ok = false; why = it.kind === 'roverup' ? 'Needs Mk II' : 'Needs tier ' + (it.tier - 1); }
+      if (it.needsUp && !hasUp(it.needsUp)) { ok = false; why = it.kind === 'ridekit' ? 'Buy mounted guns first.' : it.kind === 'roverup' ? 'Needs Mk II' : 'Needs tier ' + (it.tier - 1); }
       if (it.needs && !own(it.needs)) { ok = false; why = 'Needs the ' + (WEAPONS[it.needs.split(':')[1]]?.name || 'gun'); }
       if (it.kind === 'medkit' && P.inv.medkits >= 3) { ok = false; why = 'Carrying 3'; }
       if (it.kind === 'ammo' && (P.inv[it.ammo || 'shells'] || 0) >= ammoCap(it.ammo || 'shells')) { ok = false; why = 'Full'; }
       if (it.kind === 'drink' && H.hp >= H.max && !it.shield) { ok = true; }
       const equipped = (it.kind === 'weapon' || it.kind === 'melee') && owned && P.equip.weapon === it.id || it.kind === 'roverwpn' && owned && P.equip.rover === it.id;
       return { id: it.id, name: it.name, desc: it.desc, price: it.price, owned, equipped, ok: ok && !owned, why, afford: P.credits >= it.price, kind: it.kind, tier: it.tier, ammo: it.ammo, venues: venuesOf(it),
-        group: it.kind === 'upgrade' || it.kind === 'maxhp' || it.kind === 'maxammo' ? 'Upgrades' : it.kind === 'roverup' || it.kind === 'roverwpn' ? 'Rover weapons' : it.kind === 'drink' || it.kind === 'rumor' ? 'Drinks' : it.kind === 'weapon' || it.kind === 'melee' ? 'Weapons' : it.kind === 'ammo' ? 'Ammo' : 'Gear' };
+        group: it.kind === 'upgrade' || it.kind === 'maxhp' || it.kind === 'maxammo' ? 'Upgrades' : it.kind === 'roverup' || it.kind === 'roverwpn' || it.kind === 'ridekit' ? 'Rover weapons' : it.kind === 'drink' || it.kind === 'rumor' ? 'Drinks' : it.kind === 'weapon' || it.kind === 'melee' ? 'Weapons' : it.kind === 'ammo' ? 'Ammo' : 'Gear' };
     });
     for (const k of ['kit', 'paint', 'bandana']) for (const [v, c] of Object.entries(COSMETICS[k])) if (c.shop) {
       if (!all && venue && COS_VENUE[k] !== venue) continue;
@@ -1621,6 +1639,7 @@ export function createGame(ctx) {
     else if (it.kind === 'upgrade') { P.upgrades.push(it.id); applyUpgrades(); }
     else if (it.kind === 'roverup') { P.upgrades.push(it.id); P.equip.rover = 'cannon'; setTurretLook(); }
     else if (it.kind === 'roverwpn') { P.unlocks.push('rover:' + it.id); P.equip.rover = it.id; setTurretLook(); }
+    else if (it.kind === 'ridekit') { P.upgrades.push(it.id); onEvent('toast', { text: it.id === 'riderockets' ? '🚀 Rockets on every car. Tap FIRE while you drive. Hitting a person brings stars.' : '🔫 Mounted guns on every car you drive. Tap FIRE. Hitting a person brings stars.', long: true }); }
     save(); onEvent('bought', { id, name: it.name });
     return { ok: true, msg: `${it.name}: yours.` };
   }
