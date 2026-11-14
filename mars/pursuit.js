@@ -1,5 +1,5 @@
 /*
- * mars/pursuit.js: GTA-style wanted pursuit for Mars ColSec (v7.5.x, Marsmania)
+ * mars/pursuit.js: open-world wanted pursuit for Mars ColSec (v7.5.x, Marsmania)
  *
  * world.js stays the single source of heat: world.wanted (0-5), world.crime(), world.setWanted(), its security dispatch
  * (drones, buggies, officers, heavies, gunship), its bust timer (game.bust) and its evade timer. This file layers on top:

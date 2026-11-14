@@ -1,6 +1,6 @@
-// v7.2 test: air steering (yaw + bank) with the stick while airborne, Roadster-style cold-gas Thrust (lift, fuel drain,
+// v7.2 test: air steering (yaw + bank) with the stick while airborne, Lowline-style cold-gas Thrust (lift, fuel drain,
 // ground recharge), rover blaster with hostiles off and while flying, rover weapon upgrades (tiers, rail, rockets, torch,
-// EMP) bought at the shop, switched with the weapon chip and persisted, the Roadster kit, multi-touch stick + Thrust
+// EMP) bought at the shop, switched with the weapon chip and persisted, the Lowline kit, multi-touch stick + Thrust
 // (Chromium CDP), and the PWA bits (manifest, icons, service worker).
 // BASE=http://localhost:8765/ DEV="iPhone 14" BR=webkit node test-v72.js
 const { chromium, webkit, devices } = require('playwright');
@@ -163,8 +163,8 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     }
     R.mountHits = JSON.stringify(kills);
     await G(() => { window.__app.game.debug.clear(); window.__app.game.switchWeapon('rockets'); });
-    // ---------- 7. Roadster kit ----------
-    ok('buyKit', null, await G(() => window.__app.game.buy('kit:roadster').ok));
+    // ---------- 7. Lowline kit ----------
+    ok('buyKit', null, await G(() => window.__app.game.buy('kit:lowline').ok));
     await sleep(300);
     const ik = await I();
     ok('kitFitted', `kit=${ik.kit} max=${ik.thrust.max}`, ik.kit && ik.thrust.max === 130);
@@ -176,7 +176,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 8. persistence across a reload ----------
     await page.reload(); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     const P = await G(() => window.__app.game.progress);
-    ok('persisted', `${P.equip.rover} ${P.equip.kit}`, P.equip.rover === 'rockets' && P.equip.kit === 'roadster' && P.unlocks.includes('rover:emp') && P.upgrades.includes('turret3'));
+    ok('persisted', `${P.equip.rover} ${P.equip.kit}`, P.equip.rover === 'rockets' && P.equip.kit === 'lowline' && P.unlocks.includes('rover:emp') && P.upgrades.includes('turret3'));
     // ---------- 9. multi-touch: thumb on the stick + Thrust (Chromium CDP) ----------
     if (BR === 'chromium') {
       await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh)); await land();

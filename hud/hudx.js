@@ -148,7 +148,7 @@ export function drawMini(o) {
   const blink = (now / 250 | 0) % 2; for (const q of md.world?.security || []) { const p = proj(q.x, q.z, true); dot(p, blink ? '#ef4444' : '#3b82f6', 2.8); out.security = (out.security || 0) + 1; }
   for (const [, ms] of o.marks || []) for (const m of ms) { const p = proj(m.x, m.z, !!m.clamp); if (p) { dot(p, m.color || '#f59e0b', m.r || 2.6); out.marks = (out.marks || 0) + 1;
     if (m.icon) { c.font = `${Math.round(11 * dpr)}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(m.icon, p[0], p[1] - ((m.r || 2.6) + 6) * dpr); c.textBaseline = 'alphabetic'; out.icons = (out.icons || 0) + 1; } } } // v7.5.21 icon marks (🥊 The Pit)
-  // your rides (clamped): the rover when on foot, the Starship always (small, they are how you get home)
+  // your rides (clamped): the rover when on foot, the Ashfall always (small, they are how you get home)
   if (md.ship) { const p = proj(md.ship.x, md.ship.z, true); c.save(); c.translate(p[0], p[1]); c.beginPath(); c.moveTo(0, -4 * dpr); c.lineTo(3.5 * dpr, 3.5 * dpr); c.lineTo(-3.5 * dpr, 3.5 * dpr); c.closePath(); c.fillStyle = '#ff8a3c'; c.fill(); c.restore(); out.ship = true; }
   if (md.rover && !md.driving) { const p = proj(md.rover.x, md.rover.z, true); c.fillStyle = '#4fa8ff'; c.fillRect(p[0] - 3 * dpr, p[1] - 3 * dpr, 6 * dpr, 6 * dpr); out.rover = true; }
   // the ☰ 🛒 Shop target you asked for (pulsing $)

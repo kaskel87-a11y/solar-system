@@ -261,7 +261,7 @@ export function setPieceStep(sp, dt, { x, z, speed = 0, close = 0, crateDmg = 0 
   else if (sp.t > sp.limit) sp.status = 'timer';
   return sp;
 }
-// where to aim: lead the target by the time it takes to close the gap (clamped), like a GTA interceptor
+// where to aim: lead the target by the time it takes to close the gap (clamped), like a open-world interceptor
 export function interceptPoint(target, tv, from, speed, maxLead = 2.2) {
   const d = Math.hypot(target.x - from.x, target.z - from.z), t = Math.min(maxLead, d / Math.max(4, speed));
   return { x: target.x + tv.x * t, z: target.z + tv.z * t, t };

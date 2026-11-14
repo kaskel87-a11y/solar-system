@@ -354,7 +354,7 @@ function questStarted(app, g, def) {
       toast(app, '\ud83d\udd12 First Junction Trust re-keyed the vault after the ledger job. It\u2019s locked again: you\u2019ll have to crack it.', 4600); }
     const d = app.surface.world.doorFor?.(BANK), s = def.steps.find(x => x.at === 'bankdoor' || x._bankdoor);
     if (s) { s._bankdoor = true; const dr = d ? relTo(app, d) : null; s.at = dr ? [dr.x, dr.z + 4] : ROW(-18, -14); }
-    const names = { pros: 'pros', cheap: 'bargain muscle', ozzie: 'Ozzie on the drill', drunk: 'a drunk on the drill', penny: 'Penny on the cameras', halo: 'Halo on the cameras', kestrel: 'Kestrel at the wheel', self: 'you at the wheel' };
+    const names = { pros: 'pros', cheap: 'bargain muscle', ozzie: 'Ozzie on the drill', drunk: 'a drunk on the drill', penny: 'Penny on the cameras', halo: 'Lux on the cameras', kestrel: 'Kestrel at the wheel', self: 'you at the wheel' };
     const picks = ['quality', 'driller', 'hacker', 'wheel'].map(k => names[crew(g, k)]).filter(Boolean);
     toast(app, `\ud83e\uddd1\u200d\ud83e\udd1d Crew: ${picks.join(', ') || 'whoever Rook could find'}.`, 4200);
   }
@@ -392,7 +392,7 @@ function startHeistStep(app, g, q, s) {
   h.off.push(() => window.removeEventListener('heist:safe:result', onSafe), () => window.removeEventListener('heist:escape', onEsc), () => window.removeEventListener('heist:fail', onFail));
   if (s.heist === 'rook') { const hk = crew(g, 'hacker'), dr = crew(g, 'driller');
     if (hk === 'penny') { try { H.applyTip(def.id, { type: 'cameras' }); } catch (e) { /* */ } toast(app, '\ud83d\udce1 Penny marked every Trust camera. Stay out of the cones.', 3200); }
-    else if (hk === 'halo') { try { for (const c of def.cameras) H.disableCamera?.(c.id, 90); } catch (e) { /* */ } toast(app, '\ud83d\udcf7 Halo looped the cameras for a bit.', 3000); }
+    else if (hk === 'halo') { try { for (const c of def.cameras) H.disableCamera?.(c.id, 90); } catch (e) { /* */ } toast(app, '\ud83d\udcf7 Lux looped the cameras for a bit.', 3000); }
     if (dr === 'ozzie') { try { H.applyTip(def.id, { type: 'safe', ease: 0.4 }); } catch (e) { /* */ } }
   }
   try { H.startHeist(def.id); } catch (e) { console.warn('storymars2 startHeist', e); h.fallback = true; }

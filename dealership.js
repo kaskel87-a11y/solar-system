@@ -356,7 +356,7 @@ function syncRover(dt) {
   if (rv.__dlrKey !== key || rv.__dlrKind !== ride.kind) applyRide(rv, ride, key);
   const L = rv.__dlr;
   if (L?.skin) {
-    // keep the stock hull hidden (game.applyCosmetics / the Roadster kit can re-show it) and spin our wheels
+    // keep the stock hull hidden (game.applyCosmetics / the Lowline kit can re-show it) and spin our wheels
     if ((rv.stockParts?.[0]?.visible) || rv.kitG?.visible) hideStock(rv, true);
     for (const w of L.skin.wheels || []) { w.spin.rotation.x -= rv.speed * dt / (L.wr || 0.5); if (w.front) w.pivot.rotation.y = -rv.steer * 0.45; }
     for (const t of L.turrets) t.position.y = L.turretY;
@@ -762,7 +762,7 @@ function renderGarage() {
   if (gTab === 'look') return head('🎨 Lock-up look', wallet()) + tabRow + body;
   return head('🔧 Lock-ups', wallet()) +
     `<div class="chips">${G.rides.map(x => `<button data-gsel="${esc(x.id)}" class="${x.id === r.id ? 'on' : ''}">${G.active === x.id ? '🔑 ' : ''}${esc(rideName(x))}</button>`).join('')}</div>
-    <b>${esc(rideName(r))}</b> · Class ${'★'.repeat(tier)} · show rep ${GC.repScore(r, tier)}${stock ? '<div class="sub">Stock rover paint and the Roadster body live at Meridian Depot.</div>' : ''}
+    <b>${esc(rideName(r))}</b> · Class ${'★'.repeat(tier)} · show rep ${GC.repScore(r, tier)}${stock ? '<div class="sub">Stock rover paint and the Lowline body live at Meridian Depot.</div>' : ''}
     ${tabRow}${body}
     <div class="row"><button class="go" data-drive="${esc(r.id)}" ${act ? 'disabled' : ''}>${act ? '🔑 Your ride' : '🚗 Drive this'}</button>${r.id !== 'stock' ? `<button data-sell="${esc(r.id)}">💸 Sell · ${GC.tradeIn(r, listingOf(r.kind))} cr</button>` : ''}</div>`;
 }

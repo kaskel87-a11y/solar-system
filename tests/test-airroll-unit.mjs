@@ -9,7 +9,7 @@ t('inside hides', !rollVisible({ ...base, inside: true }));
 t('desktop never', !rollVisible({ ...base, touch: false }));
 t('cinematic hides', !rollVisible({ ...base, cinematic: true }));
 t('landing transition hides', !rollVisible({ ...base, transitioning: true }));
-t('starship flight shows', rollVisible({ ...base, onSurface: false, flying: true, driving: false, air: false }));
+t('Ashfall flight shows', rollVisible({ ...base, onSurface: false, flying: true, driving: false, air: false }));
 t('space orbit view hides', !rollVisible({ ...base, onSurface: false, flying: false }));
 t('null safe', !rollVisible(null));
 t('default right', rollDir(0, 0) === 1);

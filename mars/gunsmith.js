@@ -7,7 +7,7 @@ const AT = [-246, -62], NEAR = 5.5, MARKUP = 1.6;
 const fin = v => typeof v === 'number' && isFinite(v);
 // what Bore takes. wants use contraband ids (glowdust lowg redstatic voidhoney); cash = base credits before the markup
 const CATALOG = [
-  { id: 'smg', kind: 'gun', label: 'Viper SMG', wants: [{ item: 'glowdust', qty: 3 }], cash: 420, ammo: 30 },
+  { id: 'smg', kind: 'gun', label: 'Rattler SMG', wants: [{ item: 'glowdust', qty: 3 }], cash: 420, ammo: 30 },
   { id: 'shotgun', kind: 'gun', label: 'Breacher shotgun', wants: [{ item: 'redstatic', qty: 2 }], cash: 380, ammo: 12 },
   { id: 'rifle', kind: 'gun', label: 'Longwatch AR-7', wants: [{ item: 'voidhoney', qty: 2 }, { item: 'lowg', qty: 2 }], cash: 640, ammo: 48 },
   { id: 'rail', kind: 'gun', label: 'Halcyon coil lance (rare)', wants: [{ item: 'voidhoney', qty: 4 }, { item: 'glowdust', qty: 4 }], cash: 2400, ammo: 3, noFavor: true },

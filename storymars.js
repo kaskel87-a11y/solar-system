@@ -19,7 +19,7 @@ function failJob(app, g, why) {
 const spawnNear = (g, type, dist, ang) => (typeof g.spawnWave === 'function' ? g.spawnWave(type, dist, ang) : g.debug.spawn(type, dist, ang, true));
 const hostiles = g => g.debug.agents().filter(a => a.src === 'quest' || a.src === 'debug' || a.src === 'minion');
 
-// ---------- human wave types (M-rated GTA tone: guns, no gore beyond the core FX) ----------
+// ---------- human wave types (M-rated open-world tone: guns, no gore beyond the core FX) ----------
 const geo = {}, mats = {};
 function res() {
   if (geo.torso) return;
@@ -82,7 +82,7 @@ const STEPS = {
     { type: 'choice', id: 'driller', prompt: 'Who drills the vault?', text: 'Hire a driller',
       options: [{ id: 'ozzie', label: 'Ozzie (pricey, solid)', line: 'Ozzie: I bring the drill, you bring the money. Nobody touches my drill.' }, { id: 'drunk', label: 'The cantina drunk (cheap)', line: 'Drunk: I drilled a vault once. Or a wall. Something drilled.' }] },
     { type: 'choice', id: 'hacker', prompt: 'Who gets you past the vault locks?', text: 'Hire inside help',
-      options: [{ id: 'penny', label: 'Penny Okoro (vault engineer)', line: 'Penny: I designed those locks. I hated those locks.' }, { id: 'halo', label: 'Halo (DJ, fence)', line: 'Halo: I\u2019ll spin the alarms into a remix. You\u2019re welcome.' }] },
+      options: [{ id: 'penny', label: 'Penny Okoro (vault engineer)', line: 'Penny: I designed those locks. I hated those locks.' }, { id: 'halo', label: 'Lux (DJ, fence)', line: 'Lux: I\u2019ll spin the alarms into a remix. You\u2019re welcome.' }] },
     { type: 'choice', id: 'wheel', prompt: 'Who drives the getaway?', text: 'Hire a wheelman',
       options: [{ id: 'kestrel', label: 'Kestrel', line: 'Kestrel: I don\u2019t brake. Hold on to something.' }, { id: 'self', label: 'Drive it yourself', line: 'Rook: Your neck. Literally.' }] },
     { type: 'goto', at: [-280, -40], r: 14, text: 'Bring the crew to the Red Tape Flats safehouse' }] },

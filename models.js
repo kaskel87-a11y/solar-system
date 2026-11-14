@@ -1,4 +1,4 @@
-// Low-poly models shared by space flight and the surface: Starship-style ship, astronaut, French bulldog, six-wheel rover, discoveries.
+// Low-poly models shared by space flight and the surface: Ashfall-style ship, astronaut, French bulldog, six-wheel rover, discoveries.
 import * as THREE from 'three';
 
 // No environment map in these scenes, so metals stay mostly diffuse (high metalness renders black).
@@ -14,7 +14,7 @@ export function mergeGeos(list) {
   const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); return out;
 }
 
-// ---------- Starship-style ship (generic look, no logos or text) ----------
+// ---------- Ashfall-style ship (generic look, no logos or text) ----------
 let steelTex = null;
 function getSteelTex() {
   if (steelTex) return steelTex;

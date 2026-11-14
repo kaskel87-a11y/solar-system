@@ -8,7 +8,7 @@ const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest',
-  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
+  `surface.js${q}`, `models.js${q}`, `game.js${q}`, `ipcore.js${q}`, `world.js${q}`, `audio7.js${q}`, `interiors.js${q}`, `missions-data.js${q}`,
   `race.js${q}`, `racecore.js${q}`, `trackbuilder.js${q}`, `racehooks.js${q}`, `storymars.js${q}`, `storymars2.js${q}`, `marsshops.js${q}`, ...['dealership', 'garagecore', 'carmeet', 'rides', 'myrides', 'ridepark', 'roofs'].map(n => `${n}.js${q}`), `mars/contraband.js${q}`, `mars/jobs.js${q}`, `mars/pursuit.js${q}`, `mars/turf.js${q}`, `mars/arsenal.js${q}`, `mars/gunsmith.js${q}`, `mars/beltway.js${q}`, ...['director', 'directorcore'].map(n => `modes/${n}.js${q}`), `mars/dress.js${q}`, ...['modes/hook', 'modes/raids', 'modes/rags', 'modes/ragscore', 'modes/ragsrover'].map(n => `${n}.js${q}`), `modes/rags-data.json${q}`, ...['danger', 'dangercore', 'dangerhooks', 'pursuit', 'ambient', 'ambientcore', 'streetdata'].map(n => `${n}.js${q}`), 'data/barter.json', 'data/random-events.json', 'mars/barter.json', ...['heist', 'heistcore', 'safecrack', 'cameras', 'heisthooks', 'controlmode', 'gatecore', 'guards', 'guardcore', 'heistlos'].map(n => `${n}.js${q}`),
   ...['audioctx', 'mars-audio', 'radio', 'ambience', 'barks', 'synth'].map(n => `${n}.js${q}`), // Mars city ambience
   ...['grime', 'grime-tex', 'grime-lines', 'grime-street'].map(n => `mars/${n}.js${q}`), // Mars grime pass
@@ -31,7 +31,7 @@ const PRECACHE = [
   ...['index', 'hooks', 'vehicles', 'referrals', 'venus', 'mercury', 'titan', 'europa', 'io'].map(n => `planets/${n}.js${q}`),
   `mars/rep.js${q}`,
   `mars/bribes.js${q}`,
-  ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`), // v7.5.72 habitat + landing pad; v7.5.94 call the starship down (same files, cache key is ?v=)
+  ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`), // v7.5.72 habitat + landing pad; v7.5.94 call the Ashfall down (same files, cache key is ?v=)
   `habinterior.js${q}`, // v7.5.93 walk-in habitat room
   `mars/lab.js${q}`,
   ...['time', 'timecore'].map(n => `mars/${n}.js${q}`),

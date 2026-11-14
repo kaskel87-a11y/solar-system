@@ -154,7 +154,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- 6. car meet: circuit race with a wager ----------
     // a saved Mars track shows up in the meet's track list too
     await G(() => { const k = 'ssx.race.v1', d = JSON.parse(localStorage.getItem(k) || '{"v":1,"best":{},"wins":{},"runs":{},"tracks":[]}'), c = window.__race.tracks().find(t => t.id === 'mars-rustbelt').gates;
-      d.tracks = [{ id: 't-pumpkin', name: 'My Mars loop', world: 'Mars', custom: true, anchor: 'abs', loop: true, laps: 2, par: 30, rival: { name: 'Pit Viper', kind: 'buggy' }, gates: c.slice(0, 5).map(g => ({ x: g.x, z: g.z })), props: [] }];
+      d.tracks = [{ id: 't-pumpkin', name: 'My Mars loop', world: 'Mars', custom: true, anchor: 'abs', loop: true, laps: 2, par: 30, rival: { name: 'Pit Adder', kind: 'buggy' }, gates: c.slice(0, 5).map(g => ({ x: g.x, z: g.z })), props: [] }];
       localStorage.setItem(k, JSON.stringify(d)); window.__race.reload(); });
     // Steve's day/night cycle (stubbed here until it merges): meets follow SSX.time.isNight() and skip their own darkening
     await G(() => { window.__night = false; window.SSX.time = { isNight: () => window.__night }; window.__dealer.skipToMeet(); });

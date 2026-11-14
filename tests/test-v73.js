@@ -85,7 +85,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     // ---------- gun shop: SMG off the rack, rounds out of the case, Ozzie's full list ----------
     r = await goIn('guns'); ok('enterGuns', r.label, r.inn);
     await standAtWare('smg'); await waitBtn(/SMG/);
-    ok('gunRackLabel', await btn(), /Buy Viper SMG|Buy .*SMG/.test(await btn()));
+    ok('gunRackLabel', await btn(), /Buy Rattler SMG|Buy .*SMG/.test(await btn()));
     await tapAt('#driveBtn'); await sleep(300);
     const gi = await G(() => window.__app.game.info);
     ok('smgEquipped', `${gi.weapon} ${JSON.stringify(gi.ammo)}`, gi.weapon === 'smg' && gi.ammo?.type === 'rounds' && gi.ammo.n > 0);

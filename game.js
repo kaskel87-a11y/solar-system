@@ -8,6 +8,7 @@ import { mergeGeos } from './models.js';
 import { buildHuman } from './interiors.js';
 import { buildVehicle } from './world.js';
 import { kbOnly, KB_AIM_CONE } from './controlmode.js';
+import { migrateSave } from './ipcore.js';
 const KB_FIRE_CONE = 0.52; // v7.5.16: F-key auto-aim, rad either side of the heading (~30 degrees)
 import { segHit, CP_RADIUS } from './gatecore.js'; // v7.5.3 mission checkpoints: xz segment hits (airborne / fast frames)
 import { clearGates, reachSpot } from './racecore.js'; // v7.5.3 mission race gates use the race.js nudge (PR #31): never inside a dome/building
@@ -23,7 +24,7 @@ export function loadProgress() {
   const d = DEFAULT_PROGRESS();
   try {
     const p = JSON.parse(localStorage.getItem(PROGRESS_KEY));
-    if (p && typeof p === 'object') return { ...d, ...p, equip: { ...d.equip, ...p.equip }, settings: { ...d.settings, ...p.settings }, stats: { ...d.stats, ...p.stats }, inv: { ...d.inv, ...p.inv }, upgrades: p.upgrades || [], flags: p.flags || [] };
+    if (p && typeof p === 'object') return migrateSave({ ...d, ...p, equip: { ...d.equip, ...p.equip }, settings: { ...d.settings, ...p.settings }, stats: { ...d.stats, ...p.stats }, inv: { ...d.inv, ...p.inv }, upgrades: p.upgrades || [], flags: p.flags || [] });
   } catch (e) { /* ignore */ }
   return d;
 }
@@ -36,9 +37,9 @@ export const COSMETICS = {
   paint: { steel: { name: 'Stainless', color: 0xb4b9c1 }, lunar: { name: 'Lunar White', color: 0xeef2f6 }, rust: { name: 'Rust Red', color: 0xb0482a }, gold: { name: 'Venus Gold', color: 0xd8a838 }, shadow: { name: 'Shadow Black', color: 0x34363d }, neon: { name: 'Io Neon', color: 0x2fd4c0 },
     hazard: { name: 'Hazard Yellow', color: 0xe0b020, shop: 80 }, oxide: { name: 'Oxide Maroon', color: 0x5a1c1c, shop: 80 }, camo: { name: 'Dust Camo', color: 0x7a6a48, shop: 80 } },
   bandana: { none: { name: 'No bandana' }, red: { name: 'Classic Red', color: 0xd23b3b }, stars: { name: 'Star Blue', color: 0x2a5cd8 }, green: { name: 'Mission Green', color: 0x3cc060 }, galaxy: { name: 'Galaxy Purple', color: 0x8a3cf0 },
-    blackops: { name: 'Black Ops', color: 0x18181c, shop: 60 }, blaze: { name: 'Blaze Orange', color: 0xff6a00, shop: 60 } },
+    blackops: { name: 'Pitch Black', color: 0x18181c, shop: 60 }, blaze: { name: 'Blaze Orange', color: 0xff6a00, shop: 60 } },
   // v7.2: a low two-seater body shell with bigger cold-gas pods (generic styling, no badges)
-  kit: { stock: { name: 'Stock hull' }, roadster: { name: 'Roadster kit', color: 0x8a0f14, shop: 350 } }
+  kit: { stock: { name: 'Stock hull' }, lowline: { name: 'Lowline kit', color: 0x8a0f14, shop: 350 } }
 };
 // the colony shop: weapons, gear, upgrades and cosmetics (cosmetics come from COSMETICS[*].shop)
 export const SHOP = [
@@ -49,7 +50,7 @@ export const SHOP = [
   { id: 'armor', name: 'Suit armor plating', desc: '+25 max shield.', price: 200, kind: 'upgrade' },
   { id: 'blade', name: 'Vibro-machete', desc: 'Humming 60 cm blade. Melee hits land 3× harder and open things up. Select it on the weapon chip to slash with FIRE.', price: 220, kind: 'melee' },
   // v7.3 Ozzie's Iron (gun shop)
-  { id: 'smg', name: 'Viper SMG', desc: 'Compact caseless SMG. Sprays 13 rounds a second and kicks like a mule. Comes with 60 rounds.', price: 260, kind: 'weapon', ammo: 'rounds', start: 60, venue: 'guns' },
+  { id: 'smg', name: 'Rattler SMG', desc: 'Compact caseless SMG. Sprays 13 rounds a second and kicks like a mule. Comes with 60 rounds.', price: 260, kind: 'weapon', ammo: 'rounds', start: 60, venue: 'guns' },
   { id: 'railrifle', name: 'Scoped rail rifle', desc: 'Shoulder coil gun. One slug punches clean through a line of anything. Comes with 6 slugs.', price: 420, kind: 'weapon', ammo: 'slugs', start: 6, venue: 'guns' },
   { id: 'launcher', name: 'Frag launcher', desc: 'Break-action grenade launcher. Lobs frags in an arc, 5 m blast. Comes with 4 frags.', price: 480, kind: 'weapon', ammo: 'grenades', start: 4, venue: 'guns' },
   { id: 'cleaver', name: 'Thermal cleaver', desc: 'Half a metre of red-hot steel. Slower than the machete and hits like a truck.', price: 300, kind: 'melee', venue: 'guns' },
@@ -91,7 +92,7 @@ export const SHOP = [
 export const QUESTS = [
   { id: 'moon-camera', world: 'Moon', title: 'Recover the lost Apollo camera', intro: 'Control. Apollo crews left their cameras behind to save weight. One of ours walked off near the old landing zone, and I doubt it walked on its own. Go get it back before some scavenger pawns it in Freeport.',
     steps: [{ type: 'goto', a: 60, d: 95, item: 'camera', text: 'Find the lost camera' }, { type: 'return', text: 'Bring the camera back to the ship' }],
-    reward: { xp: 60, credits: 50, badge: 'Shutterbug', unlock: 'bandana:stars' }, fact: 'Apollo astronauts left about a dozen Hasselblad camera bodies on the Moon and brought home only the film, saving weight for Moon rocks.' },
+    reward: { xp: 60, credits: 50, badge: 'Shutterbug', unlock: 'bandana:stars' }, fact: 'Apollo astronauts left about a dozen film cameras on the Moon and brought home only the film, saving weight for Moon rocks.' },
   { id: 'moon-ice', world: 'Moon', title: 'Scan 3 ice deposits in Shackleton', intro: 'Control. The shadowed crater ahead is our stand-in for Shackleton. Scan three ice deposits. Water is worth more than gold up here, and everybody knows it.',
     steps: [{ type: 'collect', a: -100, d: 150, spread: 16, n: 3, item: 'icecore', text: 'Scan ice deposits' }],
     reward: { xp: 80, credits: 60, unlock: 'paint:lunar' }, fact: 'Shackleton crater sits almost exactly on the Moon\u2019s south pole. Parts of its floor never see sunlight, which makes it a top target in the hunt for ice.' },
@@ -171,7 +172,7 @@ const RARE_TYPES = [
   { type: 'bandolier', w: 0.04, name: 'Smuggler\u2019s bandolier', xp: 30, credits: 0, fiction: true, perm: 'maxammo', fact: 'Somebody\u2019s loss. Hidden pouches everywhere. +25% ammo capacity, permanently.' },
   // v7.5.96 wear drops. Same spark on the ground. Picking one up puts the suit in the wardrobe.
   { type: 'wear', w: 0.02, name: 'Raccoon suit', xp: 20, credits: 0, fiction: true, skin: 'raccoon', fact: 'Ears, a mask and a ringed tail. You run faster. ☰ → Wardrobe → Wear.' },
-  { type: 'wear', w: 0.02, name: 'Merc with a Mouth suit', xp: 20, credits: 0, fiction: true, skin: 'merc', fact: 'Red and black, full mask. Punches hit harder. ☰ → Wardrobe → Wear.' },
+  { type: 'wear', w: 0.02, name: 'Crimson Mercenary suit', xp: 20, credits: 0, fiction: true, skin: 'merc', fact: 'Crimson armour and one dark visor. Punches hit harder. ☰ → Wardrobe → Wear.' },
   { type: 'wear', w: 0.02, name: 'Super jetpack', xp: 25, credits: 0, fiction: true, skin: 'superjet', fact: 'Hold Jump. It flies higher and longer than the shop jetpack. ☰ → Wardrobe → Wear.' },
   { type: 'wear', w: 0.02, name: 'Roller skates', xp: 15, credits: 0, fiction: true, skin: 'skates', fact: 'You roll, and you coast when you let go. ☰ → Wardrobe → Wear.' },
   { type: 'wear', w: 0.02, name: 'Dino suit', xp: 15, credits: 0, fiction: true, skin: 'dino', fact: 'Snout, tail, a harder punch. ☰ → Wardrobe → Wear.' },
@@ -243,7 +244,7 @@ export const WEAPONS = {
   rifle: { name: 'Plasma blaster', cd: 0.13, dmg: 1.1, speed: 110, color: 0x7fe9ff, size: 1, heat: 6.5, life: 1.0 },
   shotgun: { name: 'Shotgun', cd: 0.8, dmg: 1.0, pellets: 8, spread: 0.075, speed: 85, color: 0xffb347, size: 0.75, ammo: 'shells', life: 0.4 },
   // v7.3 Ozzie's Iron
-  smg: { name: 'Viper SMG', cd: 0.075, dmg: 0.7, speed: 120, color: 0xffe066, size: 0.6, ammo: 'rounds', spread: 0.03, life: 0.8 },
+  smg: { name: 'Rattler SMG', cd: 0.075, dmg: 0.7, speed: 120, color: 0xffe066, size: 0.6, ammo: 'rounds', spread: 0.03, life: 0.8 },
   railrifle: { name: 'Rail rifle', cd: 1.0, dmg: 8, speed: 420, color: 0x9fd8ff, size: 1.4, ammo: 'slugs', life: 0.4, pierce: true, beam: true, rail: true },
   launcher: { name: 'Frag launcher', cd: 0.9, dmg: 2, speed: 32, color: 0xff7a20, size: 1.6, ammo: 'grenades', life: 3, splash: 5, splashDmg: 9, grav: 14, lob: 0.25, rocket: true },
   roverCannon: { name: 'Rover cannon', cd: 0.11, dmg: 1.5, speed: 120, color: 0xff5cf0, size: 1.7, heat: 6, twin: true, life: 1.1 }
@@ -1174,7 +1175,7 @@ export function createGame(ctx) {
     const glow = [0x220a33, 0x0a2433, 0x331a05][tier]; turret.heatMat.userData.base = glow;
     if (id === 'cannon' && tier >= 2) { turret.mods.cannon = { g: turret.quad, tips: [turret.tipL, turret.tipR, ...turret.qTips], flashes: [...turret.flashes, ...turret.qFl], virtual: true }; turret.quad.visible = true; }
     else delete turret.mods.cannon;
-    turret.group.position.y = P.equip.kit === 'roadster' && P.unlocks.includes('kit:roadster') ? 1.72 : 2.34;
+    turret.group.position.y = P.equip.kit === 'lowline' && P.unlocks.includes('kit:lowline') ? 1.72 : 2.34;
   }
   function updateTurret(dt) {
     if (!turret) return;
@@ -1559,7 +1560,7 @@ export function createGame(ctx) {
   function applyCosmetics() {
     const st = ctx.st();
     if (st.ownRover?.paint) st.ownRover.paint.color.setHex(COSMETICS.paint[P.equip.paint]?.color ?? 0xb4b9c1);
-    st.ownRover?.setKit?.(P.equip.kit === 'roadster' && P.unlocks.includes('kit:roadster'), COSMETICS.paint[P.equip.paint]?.color);
+    st.ownRover?.setKit?.(P.equip.kit === 'lowline' && P.unlocks.includes('kit:lowline'), COSMETICS.paint[P.equip.paint]?.color);
     setTurretLook();
     if (bandana) { bandana.userData.cleanup?.(); bandana.parent?.remove(bandana); bandana = null; }
     const b = COSMETICS.bandana[P.equip.bandana], body = st.dog?.parts?.body;

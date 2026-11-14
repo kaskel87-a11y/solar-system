@@ -4,11 +4,15 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.97: original names
+
+Borrowed names are gone. The ship is the Ashfall. The red rover shell is the Lowline kit. The red armour is the Crimson Mercenary suit (one dark visor, no swords on the back). The DJ on Ceres 94.7 is Lux. The full old-to-new list is `docs/IP-RENAMES.md`. An old save that bought the rover shell still has it: the stored id is rewritten when the game loads.
+
 ## v7.5.96: new suits and guns on every car
 
 New clothes turn up as sparkles on the ground, and they are also for sale at Threadbare in Ares Junction. Put one on with ☰ → **Wardrobe** → **Wear**.
 
-The raccoon suit runs faster. The Merc with a Mouth suit punches harder. The super jetpack (hold Jump) flies higher and longer than the shop jetpack. Roller skates roll and coast. The dino suit bites, the banana suit jumps higher, the hoverboard floats, and the spring boots launch you.
+The raccoon suit runs faster. The Crimson Mercenary suit punches harder. The super jetpack (hold Jump) flies higher and longer than the shop jetpack. Roller skates roll and coast. The dino suit bites, the banana suit jumps higher, the hoverboard floats, and the spring boots launch you.
 
 Mounted guns are on the wall at the Meridian Depot. Buy them once and every car you drive has them, including a bought car and a stolen ride. Rockets are the next case on that wall. While you drive, tap **FIRE**. Shooting a person brings stars, the same as before.
 
@@ -20,9 +24,9 @@ The jobs: rob First Junction Trust (break in, crack the vault, get away, then lo
 
 Before you own the club, the chair is not there. After you do, ☰ → **🍸 The Velvet** says so.
 
-## v7.5.94: call your starship down
+## v7.5.94: call your Ashfall down
 
-If you own a landing pad on Mars, you can call your starship onto it. The ship comes down on the pad (engines lit, dust, a short rumble). Then board it the usual way: ☰ → **🚀 Take off**.
+If you own a landing pad on Mars, you can call your Ashfall onto it. The ship comes down on the pad (engines lit, dust, a short rumble). Then board it the usual way: ☰ → **🚀 Take off**.
 
 **On a phone:** ☰ → **🏠 Mars base** → **🚀 Call ship**. If you are not on the pad, follow the arrow on the edge of the screen. 1. Follow the arrow to the pad. 2. Tap **🚀 Call ship**. 3. When it is down, ☰ → **🚀 Take off**.
 
@@ -54,7 +58,7 @@ Fly close to **Mercury, Venus, Earth, the Moon, Mars, Io, Europa or Titan**. A *
 - **Land button:** it's always visible while you fly. If you're far from a world, it puts the autopilot on the nearest one. Planet cards have a "Land here" button.
 - **Camera:** first person, third person and aerial views. Tap the 👁 pill or press V. Pinch or use the mouse wheel to zoom out up to about 320 m. Fog and draw distance open up as you zoom out.
 - **Discoveries:** 23 real sites and features across the Moon, Mars, Venus, Mercury and Earth. Gold beacons show what's left to find and turn green once found. The Discoveries log keeps the facts and saves in your browser.
-- **Starship:** a stylized steel ship with heat tiles and flaps. You fly it in space and it stands on landing legs on the surface.
+- **Ashfall:** a stylized steel ship with heat tiles and flaps. You fly it in space and it stands on landing legs on the surface.
 - **Rover:** a six-wheeled pressurized rover. Press Drive or E, steer with the stick or WASD, and hold Boost or Shift. It follows the terrain and gets big hops in low gravity.
 - **Frankie the French bulldog:** follows you, rides in the rover, sits when you stop and sniffs toward undiscovered signals. Pet him with the button or P. He wears a helmet away from Earth. You can rename him in the log.
 
@@ -127,7 +131,7 @@ Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Dis
 ## v7.4: five new colonies, street races and barrel rolls
 - **Colonies on Venus, Mercury, Titan, Europa and Io** (merged from PR #1): Sulfur Gate, Shadowline Array, Kraken Landing, Conamara Station and Loki Forge. Each one has its own contacts, jobs, radio lines and a signature ride (acid crawler, sun skimmer, methane skiff, crevasse sled, lava runner). Every storefront is a walk-in interior. You get a world's travel permit by finishing a referral job, then fast travel from ☰ **🌍 Colonies** (40 cr the first time, free after that). The Titan methane skiff is amphibious and skims the methane seas.
 - **Street races and a track builder** (merged from PR #2): ☰ **🏁 Street races** has checkpoint gates, a 3-2-1 countdown, lap times, best-lap ghosts, an AI rival and a buy-in purse. ☰ **🛠 Track builder** lets you lay out your own gates and race them.
-- **Barrel rolls:** anything airborne can roll, including the thruster rover, hover bikes, stolen rides that catch air and the Starship in space.
+- **Barrel rolls:** anything airborne can roll, including the thruster rover, hover bikes, stolen rides that catch air and the Ashfall in space.
   - **Laptop:** press **Q / E** in the air, or double-tap **A / D**.
   - **Phone:** flick the stick sideways twice, fast, or swipe across the Thrust button.
   - Land on your wheels for a stunt bonus: 25 cr × rolls², plus 10 cr with the body kit. Land on the roof and you take damage.
@@ -159,19 +163,19 @@ Land on Mars and Ares Junction is now the hub of a city. Open ☰ → 🏙 **Dis
 | Ares Junction (Mars) | Cantina | Dutch behind the bar: drinks (heal/shield), rumors, jobs |
 | | Ares Supply | Medkits, armor, heat sink, shells; Trauma implants and Bandolier rigs in the cases; Frankie's bandanas |
 | | Meridian Depot | Rover parts wall (turrets, rail cannon, rockets, torch, EMP, armor), paint and body kit wall, a hidden stash |
-| | Ozzie's Iron | Wall rack of long guns (shotgun, Viper SMG, rail rifle, frag launcher), cases of ammo and blades; Ozzie's jobs |
+| | Ozzie's Iron | Wall rack of long guns (shotgun, Rattler SMG, rail rifle, frag launcher), cases of ammo and blades; Ozzie's jobs |
 | | The Velvet Airlock | Neon club: fully clothed costumed dancers, bar, booths, Brick at the door (20 cr cover, no entry while wanted), VIP room (60 cr) with Ines |
 | | Colony Security | Deputy Rusk takes 80 × stars² cr to make your wanted level disappear (not at 4★+) |
 | Freeport (Moon) | The Dry Sea, Freeport Supply, Freeport Arms | Bar, gear store, gun shop |
 
 **Shopping is physical.** Guns hang on the wall, gear and upgrades sit in lit glass cases, and every item has a price tag (it flips to OWNED or EQUIPPED). Walk up to an item for **🛒 Buy <item> · <price>**, or tap the item itself. The clerk at the counter has the full list as a fallback. Finding a store: each one is a big green **$** on the radar, **🛒 Shop** beats Pet near a store, and ☰ → **🛒 Shop** marks the nearest one with a pulsing $.
 
-**New gear:** Viper SMG (rounds), scoped rail rifle (slugs), frag launcher (lobbed grenades with splash), heavy cleaver (melee). Max health (+15 per Trauma implant) and ammo capacity (+25% per Bandolier rig) go up with buyable tiers I-III, rare biomod/bandolier finds and two hidden stashes.
+**New gear:** Rattler SMG (rounds), scoped rail rifle (slugs), frag launcher (lobbed grenades with splash), heavy cleaver (melee). Max health (+15 per Trauma implant) and ammo capacity (+25% per Bandolier rig) go up with buyable tiers I-III, rare biomod/bandolier finds and two hidden stashes.
 
 **Story.** Contacts from the story pack (Dutch, Ozzie, Ines, Brick, Rusk) live in the buildings. Dutch's and Ozzie's first jobs, Vesna's resin job and Kestrel's ghost run are playable now; later missions unlock as the engine grows (v7.4).
 
 **Playtest fixes (from the v7.2 bug list).**
-- The chase camera now pulls in instead of going through buildings, domes or the Starship's legs, so you stay on screen next to walls.
+- The chase camera now pulls in instead of going through buildings, domes or the Ashfall's legs, so you stay on screen next to walls.
 - **🛬 Fly to … & land** now goes to the world you picked, or to **Mars** (Ares Junction, where the game is) when you haven't picked one. Before, it went to whatever was nearest.
 - Job offers that arrive while you're landing show up as a one-line pill. A minimized pill really hides Accept/Later now, and **Later** is readable.
 - Frankie no longer wanders off sniffing while you run.
@@ -221,19 +225,19 @@ SSX.registerBody({ name: 'Ceres', r: 1.2, d: 300 });
 
 ### Barrel rolls (airroll.js): `SSX.airRoll`
 Any vehicle you drive (rover, stolen cars, hover bikes, the Raccoon Mobile...) can barrel roll while it's airborne, and the
-Starship can roll in flight. Mods (e.g. a zero-g toggle) should call this instead of building their own roll. Also on `__app.airRoll`.
+Ashfall can roll in flight. Mods (e.g. a zero-g toggle) should call this instead of building their own roll. Also on `__app.airRoll`.
 
 ```js
 SSX.airRoll.roll('left' | 'right')   // true if accepted (starts on the next frame; -1 / +1 also accepted); false when canRoll() is false
-SSX.airRoll.canRoll()                // driving + airborne + not already rolling (not inside), or flying the Starship
-SSX.airRoll.isRolling()              // a vehicle or the Starship is mid-roll
+SSX.airRoll.canRoll()                // driving + airborne + not already rolling (not inside), or flying the Ashfall
+SSX.airRoll.isRolling()              // a vehicle or the Ashfall is mid-roll
 const off = SSX.airRoll.on('start', e => console.log(e.dir, e.target)); off(); // returns an unsubscribe fn
 // events: 'start' { dir: 'left'|'right', target: 'vehicle'|'ship' } · 'end' { target } · 'land' { rolls } (clean landing)
 //         'crash' {} (landed on the roof: 22 hp + most of your speed) · '*' gets fn(evt, data) for all of them
 ```
-A vehicle roll takes 0.75 s; land it clean for 25·n² cr (n = rolls in that jump). The Starship roll (0.9 s) is cosmetic and
+A vehicle roll takes 0.75 s; land it clean for 25·n² cr (n = rolls in that jump). The Ashfall roll (0.9 s) is cosmetic and
 the camera stays level. Events are polled (about 50 ms), so treat them as UI/audio cues, not physics.
-Controls: phones get a 🌀 Roll button that shows only while you're airborne in a vehicle or flying the Starship (hold the stick
+Controls: phones get a 🌀 Roll button that shows only while you're airborne in a vehicle or flying the Ashfall (hold the stick
 or swipe the button left/right to pick the side; default right). Desktop: **Z** (toward the A/D you're holding, else right),
 plus the v7.4 inputs: Q / E in the air, double-tap A / D, double-flick the stick, swipe across Thrust.
 
@@ -318,7 +322,7 @@ Core hooks: one dynamic import line in `index.html`, `a.__ssxMusic || a.destinat
 
 **Air control.** Your rover now steers in the air. While it's airborne, from a jump, a crest or thrusters, push the stick left or right to yaw. It banks into the turn and the turn rate doesn't depend on speed. Stick forward or back noses it down or up a little. The chase cam swings after the heading softly, so banked turns read well. In first person the cockpit roll is halved and the gauge shows **ALT** instead of km/h.
 
-**Cold-gas thrusters (Roadster-style).** In your own rover, or a stolen hover bike, the **Jump** slot becomes **🚀 Thrust**:
+**Cold-gas thrusters.** In your own rover, or a stolen hover bike, the **Jump** slot becomes **🚀 Thrust**:
 - Hold it to fire four belly pods and two tail nozzles. You climb at about 6 m/s, up to a 70 m ceiling.
 - Feather it to hover. Let go to glide down. Push the stick forward while thrusting to drive with the tail jets.
 - Fuel is the thin bar inside the button. A full tank lasts about 5 s of burn, and the bar turns orange below 25%.
@@ -340,17 +344,17 @@ Core hooks: one dynamic import line in `index.html`, `a.__ssxMusic || a.destinat
 
 The rover turret now works with **hostiles off** and **while flying**. When you're airborne, the turret can depress to shoot down at the ground. Splash and EMP damage on colony folk or security still counts as a crime.
 
-**Roadster kit (shop → "Rover body", 350).** A low, sleek two-seater shell in deep red (or your chosen paint) over the six-wheel chassis, with a rear spoiler, light bars and bigger thruster pods. It gives +30% fuel (130) and faster recharge. Tap it again in the shop to go back to the stock hull. The styling is generic, with no badges or logos.
+**Lowline kit (shop → "Rover body", 350).** A low, sleek two-seater shell in deep red (or your chosen paint) over the six-wheel chassis, with a rear spoiler, light bars and bigger thruster pods. It gives +30% fuel (130) and faster recharge. Tap it again in the shop to go back to the stock hull. The styling is generic, with no badges or logos.
 
 **Install it as an app (PWA).**
-- The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Starship-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
+- The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Ashfall-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
 - `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.3`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` and the game's own modules are fetched network-first, with the cache as the offline fallback, so new releases and hotfixes still land. three.js, textures and icons are served cache-first.
 - The HUD already respects the notch and home-bar safe areas in standalone mode.
 - **On iPhone:** open https://kaskel87-a11y.github.io/solar-system/ in Safari, tap **Share (□↑) → Add to Home Screen → Add**. On iOS 16.4+ Chrome works too: **Share → Add to Home Screen**. Launch it from the home-screen icon for full screen with no browser bars.
 - **On Android or desktop Chrome:** use the ☰ menu → **📲 Add to Home Screen**, which triggers the install prompt, or use the browser's Install button.
 - The ☰ menu item has a small dot until you've opened it once. It hides itself when the game is already running as an installed app. There are no banners.
 
-**Third-person camera stays behind you (GTA-style).**
+**Third-person camera stays behind you (open-world).**
 - On foot, your character turns to face the way you walk, and the camera eases round behind them. It pulls hard when you run away from the lens and gently when you strafe or walk back toward it.
 - The same follow works in your rover, stolen rides, and while flying.
 - Drag to orbit and look around whenever you like. The camera settles back behind you 1.5 s after you let go, or right away once you start moving.
@@ -360,7 +364,7 @@ The rover turret now works with **hostiles off** and **while flying**. When you'
 **Share with friends (free, no App Store).**
 - ☰ menu → **🔗 Share with friends** opens the phone's share sheet (iMessage, WhatsApp, etc.). It sends the title, a one-line pitch and the clean link https://kaskel87-a11y.github.io/solar-system/.
 - Where there's no share sheet, as on most desktop browsers, it copies the link and shows a small "Link copied" toast.
-- The page carries Open Graph and Twitter card tags, with a 1200×630 gameplay card (`share-card.jpg`: the Roadster thrusting past the Starship). Links unfurl with a big preview in iMessage, Slack, Discord and X.
+- The page carries Open Graph and Twitter card tags, with a 1200×630 gameplay card (`share-card.jpg`: the Lowline thrusting past the Ashfall). Links unfurl with a big preview in iMessage, Slack, Discord and X.
 - Everyone's progress is their own. Credits, unlocks, quests and settings live in that device's localStorage, so nothing is shared through the link. A friend opening it starts fresh, and so does an installed home-screen copy on a new phone.
 
 Tests: `tests/test-cam.js` checks that the camera converges behind you after turning, and covers orbit hold, ease-back, zoom kept, rover, flying and stolen rides. `tests/test-v72.js` covers:
@@ -368,7 +372,7 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
 - thrust lift, fuel drain, empty tank and ground recharge;
 - turret fire with hostiles off while flying;
 - buying every mount, cycling them by tapping the chip, and each mount damaging a target;
-- the Roadster kit, and persistence across a reload;
+- the Lowline kit, and persistence across a reload;
 - the share item (share sheet and copy-link fallback) and the OG/Twitter meta tags;
 - a Chromium CDP multi-touch check (thumb on the stick plus Thrust);
 - manifest, icons, iOS meta tags and the service worker.
@@ -391,7 +395,7 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
   - It runs a punch, punch, kick combo. The kick knocks things back and staggers them. Fists do little damage.
   - **Vibro-machete** (220 cr at the shop, or sometimes dropped by hunters, nests and the Queen): it shows in your hand, sweeps everything in its arc, does 3× damage and leaves ichor everywhere. Select it on the chip to slash with FIRE.
 
-## v7: darker, meaner, and a bit of GTA in space
+## v7: darker, meaner, and a bit of open-world crime in space
 - **Tone:** this is a game for adults now. Mission Control and the colony contacts are dry and salty (mild swearing, no sexual content). The "(Fiction!)" tags are gone. The Log's Rewards tab has one quiet line noting which parts are fictional (hostiles, hives, colonies, contacts, security). Planet facts are still real science.
 - **Hostiles:** these are biomechanical crawlers that burrow and ambush, armored hunters that strafe and burst-fire, diving seekers, resin nests that keep hatching crawlers, and a much nastier Hive Queen who swipes and summons. They flank, lunge and hit hard. Kills burst ichor and chitin debris and leave splats on the ground.
 - **Weapons and supplies:**
@@ -446,7 +450,7 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
 
 ## v6.1: minimal phone HUD
 - **One slim top bar:** planet and gravity, shield and health bars, credits and XP, and a ☰ menu. The menu holds Take off, Discoveries/Log, View, Summon rover, Warp to rover, Return to ship, Hide HUD and Settings. On desktop it opens with Tab or M.
-- **Radar minimap (top-left):** heading-up. It shows your rover (blue), the Starship (orange), the quest objective (cyan), the next discovery (gold), aliens (red) and Frankie. A label gives the rover distance. Tap the radar for the rover/ship menu.
+- **Radar minimap (top-left):** heading-up. It shows your rover (blue), the Ashfall (orange), the quest objective (cyan), the next discovery (gold), aliens (red) and Frankie. A label gives the rover distance. Tap the radar for the rover/ship menu.
 - **Contextual buttons:** Pet appears only when Frankie is close, Drive only next to the rover, and FIRE only when aliens are around. They sit in the right-thumb area.
 - **Compact cards:** discoveries and facts appear as a one-line card that disappears after about 4 seconds. Tap it to read the full fact, which also stays in the log. Only one message shows at a time, and a pending Mission Control offer shrinks to a "tap to read" chip.
 - **Hide HUD (cinematic):** use ☰ → 🎬 Hide HUD, or U on desktop. Tap 👁 to bring it back.
@@ -454,7 +458,7 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
 
 ## v6: side quests, aliens and more to discover
 - **Side quests:** Mission Control radios you quest offers (with Quindar beeps and an optional voice). There are 14 quests across the Moon, Mars, Venus, Mercury, Earth, Io, Europa and Titan. Examples: recover a lost Apollo camera, scan ice in Shackleton, rescue a stranded rover, follow the Mars signal to an alien outpost and its Hive Queen boss, find the Venera capsule before it cooks, outrun the sunrise on Mercury, and play fetch with Frankie on Earth. A blue arrow and a beam point to each step. You earn XP, ranks, credits, badges, rover paints and bandanas for Frankie. Progress saves in your browser.
-- **Aliens:** drones, crawlers and a boss (reworked in v7, see above). Your shield recharges, and if you go down you're beamed back to the Starship. Frankie growls when aliens are near. Turn them off in **📜 Log → ⚙️ Settings** for peaceful exploring.
+- **Aliens:** drones, crawlers and a boss (reworked in v7, see above). Your shield recharges, and if you go down you're beamed back to the Ashfall. Frankie growls when aliens are near. Turn them off in **📜 Log → ⚙️ Settings** for peaceful exploring.
   - **Phone:** hold **FIRE** to auto-aim at the nearest alien.
   - **Desktop:** click, or hold F, at the crosshair or mouse pointer.
 - **Rover plasma blaster:** a twin-barrel heavy blaster on the roof, with muzzle flash, recoil and a heat meter that can overheat. On a phone it auto-aims ahead. On desktop it follows your aim.
@@ -464,7 +468,7 @@ Tests: `tests/test-cam.js` checks that the camera converges behind you after tur
   - **Terrain:** it has more contrast (slope shading, light and dark patches, darker rocks).
   - **Venus and Titan:** the haze is lighter and fades with distance, so nearby ground stays clear.
   - **HUD:** the pills are smaller, have solid backgrounds and sit stacked in the corners.
-- **Return to rover:** on foot, the **🚙 Rover · 1.2 km** pill shows how far away your rover is and which way it is. Tap it to **summon the rover** to you, **warp to the rover** (Frankie comes too) or **return to the Starship**. This works at any distance. It's disabled while aliens are attacking. On desktop: **R** summons, **Shift+R** warps, **H** goes to the ship.
+- **Return to rover:** on foot, the **🚙 Rover · 1.2 km** pill shows how far away your rover is and which way it is. Tap it to **summon the rover** to you, **warp to the rover** (Frankie comes too) or **return to the Ashfall**. This works at any distance. It's disabled while aliens are attacking. On desktop: **R** summons, **Shift+R** warps, **H** goes to the ship.
 
 See [ROADMAP.md](ROADMAP.md) for what's next (v7.3: buildings, gun shop, security combat, more missions).
 

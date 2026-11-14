@@ -1,18 +1,18 @@
 // Barrel rolls for anything airborne (Ben). Public API: SSX.airRoll (also __app.airRoll), for any vehicle you drive
-// (rover, stolen cars, hover bikes, the Raccoon Mobile...) and the Starship in flight. Mods such as a zero-g toggle
+// (rover, stolen cars, hover bikes, the Raccoon Mobile...) and the Ashfall in flight. Mods such as a zero-g toggle
 // should call this instead of building their own roll.
 //
 //   SSX.airRoll.roll('left' | 'right')  -> true if the roll was accepted (it starts on the next frame; also accepts -1 / +1)
-//   SSX.airRoll.canRoll()               -> true when a roll can start now (driving + airborne + not rolling, or flying the Starship)
-//   SSX.airRoll.isRolling()             -> true while a vehicle or the Starship is mid-roll
+//   SSX.airRoll.canRoll()               -> true when a roll can start now (driving + airborne + not rolling, or flying the Ashfall)
+//   SSX.airRoll.isRolling()             -> true while a vehicle or the Ashfall is mid-roll
 //   SSX.airRoll.on(evt, fn)             -> unsubscribe function. evt: 'start' { dir, target }, 'end' { target },
 //                                          'land' { rolls } (clean landing after rolling), 'crash' {} (landed on the roof), '*' (all, fn(evt, data))
 //   target is 'vehicle' or 'ship'; dir is 'left' or 'right'.
 //
 // The roll physics live where v7.4 put them: surface.js stunt() (0.75 s, 360°, a clean landing pays 25·n² cr, landing
-// on the roof costs 22 hp and most of your speed) and index.html requestRoll() for the Starship (0.9 s, cosmetic, camera
+// on the roof costs 22 hp and most of your speed) and index.html requestRoll() for the Ashfall (0.9 s, cosmetic, camera
 // stays level). This file adds the API, a phone context button that shows ONLY while you're airborne in a vehicle or
-// flying the Starship, and a desktop key: Z (rolls toward the A/D or arrow you're holding, else right). The v7.4 inputs
+// flying the Ashfall, and a desktop key: Z (rolls toward the A/D or arrow you're holding, else right). The v7.4 inputs
 // still work too: Q / E in the air, double-tap A / D, double-flick the stick, swipe across Thrust.
 // Phone button input is pointerdown -> pointerup with the same pointerId (never onclick), so a held joystick finger never
 // blocks it. Hook: one `import './airroll.js'` line in index.html. Pure helpers are unit-tested (tests/test-airroll-unit.mjs).

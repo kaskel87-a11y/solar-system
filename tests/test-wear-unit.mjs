@@ -33,7 +33,7 @@ const game = src('game.js');
 ok('wear drops grant the suit', game.includes("skin: 'raccoon'") && game.includes('skins?.grant'));
 ok('ride kit is a depot item', game.includes("kind: 'ridekit'") && game.includes('ridekit: [\'depot\']'));
 ok('every driven car can use the kit', /if \(st\.driving\) \{ const kit = rideKit\(\)/.test(game));
-ok('no trademark in the suit name', !/deadpool/i.test(src('mars/skinscore.js')) && C.BY_ID.merc.name === 'Merc with a Mouth');
+ok('no trademark in the suit name', !/deadpool/i.test(src('mars/skinscore.js')) && C.BY_ID.merc.name === 'Crimson Mercenary');
 
 if (fails) { console.log(fails + ' failed'); process.exit(1); }
 console.log('wear unit ok');
