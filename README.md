@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.101: a map you can move
+
+Tap the round map. Drag with one finger to move it, pinch to zoom, or use the mouse wheel on a computer. **Me** jumps back to you. The row under the title is All, Activities, Crime, Owned, and Shops. Tap a place. The card says what you can do there and what it pays. **Set waypoint** puts the arrow on it. **Beam there** shows up when that place already lets you travel.
+
 ## v7.5.100: the ship stays the Ashfall
 
 The ship you fly, and the one Call ship brings down, is the Ashfall. The old product name is gone from the screen and from the code that builds the mesh.
