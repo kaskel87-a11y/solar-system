@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.111: one objective line
+
+The phone shows one short line for what you are doing, in large dark text on a light bar. Moonshine, a payout, and other notices wait behind **▤ More**. Toasts and empire texts show one at a time and fade quickly. They stay out of the middle of the screen. The arrow at the edge stays.
+
 ## v7.5.110: quiet deals in the back booth
 
 At the Velvet Airlock, or around the back of The Thin Air, a buyer signals. Pack a street good from your stash: Glowcap from Glow-dust, Red Haze, Ion Dust, or Slowtime. Pick a low, fair, or greedy price, watch the suspicion bar, and hand it off before it fills. Glance away if eyes turn. Getting spotted costs the stash, a fine, or a fight with the bouncer. Using one starts a timed effect with a crash after: slow aim, a fast shaky run, harder hits with blurry controls, or green night sight. The name and the seconds sit under the minimap.

@@ -267,6 +267,7 @@ function boot() {
       setPack(id, n) { state.pack[id] = n; save(); },
       use(id) { return use(id); },
       reset() { state = B.fresh(); save(); },
+      quiet() { state.seen = true; save(); },
       setNow(fn) { now = fn; }
     }
   };
