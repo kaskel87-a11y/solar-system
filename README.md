@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.106: a simpler Empire sheet
+
+Open ☰ and tap Empire. One line says what it is for. **Collect** takes every till in one tap and shows the total. Places you own sit above places for sale. Each row is a name, what it earns, and one short grey line for where it is.
+
 ## v7.5.105: Danny’s figure
 
 Danny’s chest, waist and hips are a rounder adult shape, and the old blocky top is gone. She wears a micro bikini: a small triangle on each side, thin straps, and a small string bottom. It stays on. A normal refresh loads the new figure.

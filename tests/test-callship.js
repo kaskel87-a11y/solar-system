@@ -53,7 +53,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     await G(() => { localStorage.clear(); localStorage.setItem('ssx.adult', '1'); localStorage.setItem('ssx.onboard.v1', '{"v":1,"status":"done","done":true,"skipped":true}'); });
     await page.goto(base + '?storm=0&t=' + Date.now(), { timeout: 180000 });
     await wait(() => window.__frames > 3 && !document.getElementById('loading'), 150000);
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content), (await G(() => document.querySelector('meta[name="app-version"]').content)) === 'v7.5.105');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content), (await G(() => document.querySelector('meta[name="app-version"]').content)) === 'v7.5.106');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     await land();
     await G(() => { try { window.SSX.onboard?.skip?.(); } catch (e) {} try { window.SSX.control?.debug?.setTimes({ first: 9999, after: 9999 }); } catch (e) {} const r = document.getElementById('radio'); if (r) r.style.display = 'none'; window.__app.surface.game.setAliens?.(false); window.__app.surface.game.debug.credits(20000); const t = window.SSX?.time; if (t?.set) { t.set(12); t.freeze?.(true); } });
