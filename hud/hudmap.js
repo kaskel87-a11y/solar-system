@@ -24,6 +24,7 @@ body.hxMapOpen :is(#fireBtn,#meleeBtn,#joy,#surfBtns,#petBtn,#driveBtn){visibili
 #hxMap .it.act{border-color:#38e1ff;background:#06222b} #hxMap .it.wp{border-color:#facc15}
 #hxLoc{position:absolute;left:8px;right:8px;bottom:8px;z-index:4;display:none;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff}
 #hxLoc.on{display:flex} #hxLoc .nm{font:800 17px system-ui,sans-serif} #hxLoc .do,#hxLoc .pay{margin:0;font-size:14px}
+#hxLoc #hxLocFly{width:100%}
 #hxLoc .row{display:flex;gap:8px;flex-wrap:wrap} #hxLoc .row button{flex:1 1 120px}
 @media (orientation:landscape){#hxMap .body{flex-direction:row} #hxMap .cvw{height:auto;flex:0 0 min(55vw,calc(100vh - 140px));min-height:0;aspect-ratio:1} #hxMap .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px} #hxMap .lst{flex:1;max-height:none}}
 @media (orientation:portrait){#hxMap .side{flex:0 1 32%;min-height:0;display:flex;flex-direction:column;gap:6px}}
@@ -35,7 +36,7 @@ function build() {
   el.innerHTML = `<div class="hd"><h2>🗺️ Map</h2><button id="hxMapMini" type="button"></button><button id="hxMapMenu" type="button" aria-label="Menu">☰</button><button id="hxMapClose" type="button" aria-label="Close map">✕</button></div>
 <div class="chips">${MODES.map(([k, l]) => `<button type="button" data-mode="${k}">${l}</button>`).join('')}</div>
 <div class="body"><div class="cvw"><canvas></canvas><div class="zm"><button type="button" data-z="1.6" aria-label="Zoom in">＋</button><button type="button" data-z="0.625" aria-label="Zoom out">－</button><button type="button" id="hxMapMe" data-z="0" aria-label="Recenter on me">Me</button></div>
-<div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX" aria-label="Close place">✕</button></div></div></div>
+<div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><button type="button" id="hxLocFly">Fly ship here</button><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX" aria-label="Close place">✕</button></div></div></div>
 <div class="side"><div class="lg"><span>Drag to move. Pinch or scroll to zoom.</span><span>➤ you</span><span>◆ objective</span><span>$ shop</span></div>
 <div class="lst" role="list"></div></div></div>`;
   document.body.appendChild(el); cv = el.querySelector('canvas'); X = cv.getContext('2d');
@@ -44,6 +45,7 @@ function build() {
   A.onTap(el.querySelector('#hxMapMini'), () => { A.mini(A.mini() === 'lite' ? 'full' : 'lite'); paintHead(); });
   for (const b of el.querySelectorAll('.chips button')) A.onTap(b, () => { A.S.mapMode = b.dataset.mode; A.save(); paintHead(); list(); hideCard(); });
   for (const b of el.querySelectorAll('.zm button')) A.onTap(b, () => { const z = +b.dataset.z; if (z) zoom = Math.max(0.35, Math.min(8, zoom * z)); else { zoom = 1.4; center = null; } });
+  A.onTap(el.querySelector('#hxLocFly'), () => { if (cardP) window.SSX?.shiphop?.fromMap?.(cardP); });
   A.onTap(el.querySelector('#hxLocWp'), () => { if (cardP) setWp(cardP); });
   A.onTap(el.querySelector('#hxLocBeam'), () => { if (cardP) window.SSX?.fastTravel?.offer?.(cardP); });
   A.onTap(el.querySelector('#hxLocX'), () => hideCard());
@@ -108,6 +110,9 @@ function openCard(p) {
   const beam = box.querySelector('#hxLocBeam');
   const can = !!(p.ft && window.SSX?.fastTravel?.offer);
   beam.style.display = can ? '' : 'none';
+  const fly = box.querySelector('#hxLocFly');
+  const mars = A.app()?.surface?.info?.name === 'Mars' && Number.isFinite(p.x);
+  fly.style.display = mars ? '' : 'none';
   box.classList.add('on');
 }
 function choose(p) {
