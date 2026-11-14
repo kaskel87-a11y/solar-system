@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.99: hang glider
+
+Buy it from ☰ → **Hang glider**. Run and tap **Glide**, or tap **Glide** while you are falling from somewhere high. It goes much faster than you can sprint. **Left** and **Right** steer it. Jets are on that same page. Once they are fitted, hold **Boost** to climb.
+
 ## v7.5.98: a bigger Pit, and a plasma blade
 
 The Pit in Red Tape Flats is a bigger ring now, with bleachers, more lights, and a betting window. Follow the arrow to the window. The board shows both fighters and their odds. Put credits on one before the bell, then take the marked seat in the stands and watch. You get paid if your fighter drops the other one.
