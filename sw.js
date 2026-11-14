@@ -44,7 +44,7 @@ const PRECACHE = [
   `spacebank.js${q}`, `spacebankcore.js${q}`, // v7.5.82 Cinder Vault orbital bank job (SSX.spacebank)
   `duckblind.js${q}`, `duckblindcore.js${q}`, // v7.5.86 Duck Blind marsh shoot on Earth (SSX.duckblind)
   `mobboss.js${q}`, `mobbosscore.js${q}`, // v7.5.88 Mob Boss respect (SSX.mobboss)
-  `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, // fast travel on Mars (Pumpkin)
+  `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, `mars/shiphop.js${q}`, `mars/shiphopcore.js${q}`, // fast travel on Mars (Pumpkin) + Ashfall hops
   `mars/skins.js${q}`, `mars/skinscore.js${q}`, // Mars player skins (Pumpkin)
   `mars/wearfx.js${q}`, `mars/wearfxcore.js${q}`, // v7.5.96 suit effects
   `mars/rideguns.js${q}`, `mars/ridegunscore.js${q}`, // v7.5.96 mounted guns on every car

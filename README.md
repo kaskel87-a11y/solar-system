@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.103: fly the Ashfall across Mars
+
+Walk up to the Ashfall and tap **🚀 Take off**. A list of spots on Mars comes up: Ares Junction downtown, the Velvet Airlock, your landing pad, Planum Australe, the Pit, the farm, Red Line Motors, and the trading post. Pick one. The ship lifts, crosses, and sets down, and you step out beside it. **Go to space** is still on that list. At 3 stars, or during a job, the ship stays put. On the map, a place card has **Fly ship here**.
+
 ## v7.5.102: the farm grows real crops
 
 The homestead beds, the gulch racks, and the Hydro Den trays show the crop you planted. A sprout gets leaves, then fruit, and a gold ring when it is ready to cut. A sickle still shortens the bed from the north end. The clocks, the yields, and the saves are the same.

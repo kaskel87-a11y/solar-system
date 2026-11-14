@@ -616,6 +616,7 @@ function homeShip() {
 }
 function syncParkedShip() {
   if (landing) return;
+  try { if (window.SSX?.shiphop?.holdsShip?.()) return; } catch (e) { /* a hop owns the mesh until it sets down */ }
   const id = S.shipPlot; if (!id) return;
   const pad = padPiece(id);
   if (!pad) { S.shipPlot = null; persist(); homeShip(); return; }
@@ -815,6 +816,7 @@ const api = {
   goInside: id => goInside(id),
   get habGuide() { return habNav; },
   callShip: id => goShip(id),
+  releaseShip() { if (landing) return false; S.shipPlot = null; persist(); return true; },
   callRover: id => callRover(id),
   goShip: id => goShip(id),
   wakeAtBase: () => wakeAtBase(),
