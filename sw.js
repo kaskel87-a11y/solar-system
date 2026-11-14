@@ -3,7 +3,7 @@
 // so every release installs a fresh worker, gets fresh cache names and deletes the old caches.
 const V = new URL(self.location).searchParams.get('v') || 'dev';
 // BUILD bumps on same-version hotfixes so the worker reinstalls and the old caches are dropped
-const BUILD = 1;
+const BUILD = 2;
 const SHELL = `ssx-shell-${V}.${BUILD}`, ASSETS = `ssx-assets-${V}`;
 const q = `?v=${V}`;
 const PRECACHE = [
@@ -92,7 +92,7 @@ const PRECACHE = [
   ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
   ...['ridestars', 'starmixcore'].map(n => `${n}.js${q}`), // v7.5.46 ride/heist/front stars
-  `clubdancers.js${q}`, `privateshow.js${q}`, `dannyroom.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers (their GLBs cache on first visit to the club)
+  `clubdancers.js${q}`, `privateshow.js${q}`, `dannyroom.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['dancer_danny', 'dancer_rhea', 'dancer_kiara'].map(n => `models/dancers/${n}.glb${q}`), ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers; the GLB url carries ?v= so a refresh cannot keep the old model
   `savecode.js${q}`, // 💾 Save Code (SSX.savecode)
   `copcore.js${q}`, // v7.5.28 cops calm down: car theft heat, minor-crime escalation, 1★ nuisance rules
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
@@ -114,6 +114,14 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.pathname.endsWith('/sw.js')) return;
+  // dancer models: always hit the network on a refresh so the new figure shows up. The cache is only for offline.
+  if (url.pathname.endsWith('.glb')) {
+    e.respondWith(fetch(req, { cache: 'reload' }).then(r => {
+      if (r.ok) { const cp = r.clone(); caches.open(SHELL).then(c => c.put(req, cp)); }
+      return r;
+    }).catch(() => caches.match(req)));
+    return;
+  }
   // game code (our own .js modules + manifest): network first, cache as the offline fallback, so fixes land even without a ?v bump
   if ((url.pathname.endsWith('.js') && !url.pathname.includes('/vendor/')) || url.pathname.endsWith('.webmanifest')) {
     e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(SHELL).then(c => c.put(req, cp)); } return r; }).catch(() => caches.match(req)));

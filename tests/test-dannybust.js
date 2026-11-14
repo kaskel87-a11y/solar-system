@@ -20,7 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.104');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.105');
     await G(() => { localStorage.clear(); localStorage.setItem('ssx.adult', '1'); });
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000));
@@ -47,11 +47,18 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     ok('dancing', await wait(() => window.__pshow?.state?.ready, 20000));
     await G(() => { window.__pshow.lapBeat('lean'); window.__pshow.debugView('chest'); });
     await sleep(1600);
-    const cups = await G(() => {
-      let n = 0; window.__app.surface.scene.traverse(o => { if (o.name === 'ssx-cup') n++; });
-      return n;
+    const suit = await G(() => {
+      let cup = 0, strap = 0, bot = 0, ball = 0;
+      window.__app.surface.scene.traverse(o => {
+        if (o.name === 'ssx-micro-cup') cup++;
+        if (o.name === 'ssx-micro-strap') strap++;
+        if (o.name === 'ssx-micro-bottom') bot++;
+        if (o.name === 'ssx-cup') ball++;
+      });
+      return { cup, strap, bot, ball };
     });
-    ok('cups', cups >= 2);
+    R.suit = suit;
+    ok('micro', suit.cup >= 2 && suit.strap >= 2 && suit.bot >= 1 && suit.ball === 0);
     await page.screenshot({ path: out + `danny-bust-${tag}.png` });
     ok('console', errors.length === 0);
     if (errors.length) R.errors = errors.slice(0, 8);
