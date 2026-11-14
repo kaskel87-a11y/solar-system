@@ -13,6 +13,7 @@
 //   ssx.farm2.v1.bak (#83 pattern: an owned op is never lost to one bad read).
 import * as THREE from 'three';
 import * as K from './farm2core.js';
+import { addCrop, sway as swayCrops } from './cropscape.js';
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => app()?.game || surf()?.game, world = () => surf()?.world;
 const FARM = () => window.SSX?.farm, STARS = () => window.SSX?.stars;
@@ -201,11 +202,10 @@ function build(sc) {
   rebuild(true);
   try { window.SSX?.minimap?.addMarks?.('farm2', [{ x: p.x, z: p.z, color: '#ff3b30', r: 3, ring: true }]); } catch (e) { /* */ }
 }
-const leafMat = {};
 function rebuild(force) {
   if (!rackG) return; const key = JSON.stringify([S.owned, S.racks.map(r => [r.crop, Math.round(r.growth * 10)]), lightsOffT > 0]);
   if (!force && key === rackKey) return; rackKey = key;
-  for (const c of [...rackG.children]) { rackG.remove(c); c.traverse(o => { o.geometry?.dispose?.(); }); }
+  for (const c of [...rackG.children]) { rackG.remove(c); c.traverse(o => { if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose?.(); }); }
   lamps = [];
   const s = sign(S.owned ? 'RED STATIC GULCH' : 'NO TRESPASS · ASK SKIV', '#ffffff', S.owned ? '#3a0d0d' : '#111111', 5); s.position.set(-4, 1.4, 11.7); rackG.add(s);
   S.racks.forEach((r, i) => {
@@ -213,9 +213,8 @@ function rebuild(force) {
     box(1.4, 0.8, 3, mat(0x6d4c3a, { m: 0.5 }), 0, 0.2, 0, g);
     const lamp = box(1.5, 0.08, 3.1, mat(0xb44bff, { e: 0xa020f0, ei: lightsOffT > 0 ? 0 : 0.9 }), 0, 3.2, 0, g); lamps.push(lamp);
     for (const zz of [-1.4, 1.4]) box(0.08, 3, 0.08, mat(0x555555), 0, 0.2, zz, g);
-    const c = K.CROPS[r.crop]; if (!c) return; const gr = Math.max(0.12, r.growth);
-    const m = leafMat[r.crop] ||= mat(c.color, { e: c.color, ei: r.crop === 'glowcactus' || r.crop === 'ghostspore' ? 0.5 : 0.15 });
-    for (let k = 0; k < 4; k++) { const cm = box(0.32, 0.9 * gr, 0.32, m, (k % 2 ? 0.3 : -0.3), 1.0, -1.05 + k * 0.7, g); cm.name = 'farm2-crop'; if (r.crop === 'voidpoppy' && r.growth >= 1) { const bud = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4), m); bud.position.set(cm.position.x, 1.0 + 0.9 * gr + 0.1, cm.position.z); g.add(bud); } }
+    if (!K.CROPS[r.crop]) return;
+    addCrop(g, { crop: r.crop, growth: r.growth, left: 1, y: 1.0, sway: i, name: 'farm2-crop' });
   });
 }
 function redraw() { rebuild(true); if (panel?.classList.contains('show')) render(); }
@@ -334,7 +333,7 @@ function tick(dt, tc) {
   if (!m) { if (G) G.visible = false; if (wasMars) { wasMars = false; refreshUi(); } if ((uiT -= dt) <= 0) { uiT = 0.25; refreshUi(); } return; }
   wasMars = true;
   if (!G || scene !== tc.scene) { scene = tc.scene; if (scene) build(scene); hookBase(); }
-  if (G) G.visible = true;
+  if (G) { G.visible = true; if (rackG) swayCrops(rackG, performance.now() * 0.001); }
   if (raid) { raid.t -= dt; if (drones) { drones.visible = true; const t = performance.now() / 1000; drones.children.forEach((d, k) => d.position.set(Math.cos(t * 0.8 + k * Math.PI) * 9, 9 + Math.sin(t * 2 + k) * 0.6, Math.sin(t * 0.8 + k * Math.PI) * 9)); } if (raid.t <= 0) endRaid(); }
   else if (drones?.visible) drones.visible = false;
   if (lightsOffT > 0) { lightsOffT -= dt; if (lightsOffT <= 0) rebuild(true); }

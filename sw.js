@@ -77,7 +77,7 @@ const PRECACHE = [
   `stormguard.js${q}`, `stormguardcore.js${q}`, // storm perf guard + shader prewarm
   `mars/mouth.js${q}`, `mars/mouthcore.js${q}`, // foul-mouthed Mars locals (Steve)
   'vendor/three/build/three.module.min.js',
-  `mars/farm.js${q}`, `mars/farmcore.js${q}`, // Mars farming (SSX.farm)
+  `mars/farm.js${q}`, `mars/farmcore.js${q}`, `mars/cropscape.js${q}`, `mars/cropscapecore.js${q}`, // Mars farming (SSX.farm) + crop beds
   `mars/harvest.js${q}`, `mars/harvestcore.js${q}`, // hands-on harvest: sickle, silo, harvester (SSX.harvest)
   `mars/sandworm.js${q}`, `mars/sandwormcore.js${q}`, // the sandworm fight at the farm (SSX.sandworm; v7.5.74 weak-point crits)
   `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)

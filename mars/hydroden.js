@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { COLONIES } from '../world.js';
 import { registerInterior, textTex } from '../interiors.js';
 import * as K from './hydrodencore.js';
+import { stageOf } from './cropscapecore.js';
 
 // ---------- the dome gets a door (before the colony is built) ----------
 let tagged = false;
@@ -143,18 +144,44 @@ registerInterior(K.KIND, {
     // grow racks down both walls: tray + soil + a purple grow bar above; the plants are one instanced draw
     const rows = [[-w / 2 + 1.1, -0.5], [w / 2 - 1.1, -0.5]];
     for (const [x, z] of rows) { box(x, 0.55, z, 1.4, 1.1, 8.5, rack); box(x, 1.12, z, 1.3, 0.06, 8.3, soil); box(x, 3.0, z, 0.35, 0.08, 8.3, grow); api.col(x, z, 0.75, 4.3); }
-    const pg = new THREE.ConeGeometry(0.22, 0.75, 5), pm = new THREE.MeshLambertMaterial({ color: 0x5ad04a, emissive: 0x1a4010 });
-    const per = 14, im = new THREE.InstancedMesh(pg, pm, rows.length * per); api.disposables.push(pg, pm);
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3(); let i = 0;
-    for (const [x, z] of rows) for (let k = 0; k < per; k++) { const s = 0.8 + ((k * 37) % 7) / 14; q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), k * 1.3); m4.compose(pos.set(x + ((k % 2) - 0.5) * 0.5, 1.5 * s * 0.75 + 0.85, z - 4 + k * 0.6), q, sc.set(s, s, s)); im.setMatrixAt(i++, m4); }
-    api.g.add(im);
+    const pg = new THREE.ConeGeometry(0.18, 0.7, 5), pm = new THREE.MeshLambertMaterial({ color: 0x5ad04a, emissive: 0x1a4010, emissiveIntensity: 0.25 });
+    const fg = new THREE.SphereGeometry(0.1, 6, 4), fm = new THREE.MeshLambertMaterial({ color: 0xffe14a, emissive: 0xffc107, emissiveIntensity: 0.8 });
+    const per = 14, im = new THREE.InstancedMesh(pg, pm, rows.length * per), fruit = new THREE.InstancedMesh(fg, fm, rows.length * per);
+    api.disposables.push(pg, pm, fg, fm);
+    const slots = [];
+    for (const [x, z] of rows) for (let k = 0; k < per; k++) slots.push({ x: x + ((k % 2) - 0.5) * 0.45, z: z - 3.6 + k * 0.55, k });
+    const swayG = new THREE.Group(); swayG.name = 'den-sway'; swayG.add(im); swayG.add(fruit); api.g.add(swayG);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), scv = new THREE.Vector3(), pos = new THREE.Vector3();
+    const paintDen = ph => {
+      const p = ph.phase === 'ready' ? 1 : ph.phase === 'growing' ? Math.max(0.05, ph.p) : 0;
+      const stage = ph.phase === 'empty' ? 0 : stageOf(p);
+      const h = [0.28, 0.55, 0.85, 1.1][stage];
+      const colors = { potato: 0x6aa84f, algae: 0x2fbf71, glowberry: 0x6e5bff, lichen: 0xd9e6f2 };
+      pm.color.setHex(colors[ph.crop] || 0x5ad04a);
+      pm.emissive.setHex(stage === 3 ? 0xffe14a : 0x143010);
+      pm.emissiveIntensity = stage === 3 ? 0.85 : 0.2;
+      im.count = ph.phase === 'empty' ? 0 : slots.length;
+      fruit.count = stage >= 2 ? slots.length : 0;
+      slots.forEach((s, i) => {
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.k * 0.7);
+        m4.compose(pos.set(s.x, 1.15 + h * 0.35, s.z), q, scv.set(0.85, h, 0.85));
+        im.setMatrixAt(i, m4);
+        m4.compose(pos.set(s.x, 1.15 + h * 0.7, s.z), q, scv.set(stage === 3 ? 1.15 : 0.6, stage === 3 ? 1.15 : 0.6, stage === 3 ? 1.15 : 0.6));
+        fruit.setMatrixAt(i, m4);
+      });
+      im.instanceMatrix.needsUpdate = true; fruit.instanceMatrix.needsUpdate = true;
+      if (live.cue) live.cue.visible = stage === 3;
+    };
+    live.paintDen = paintDen; paintDen(K.rackPhase(rackSt()));
+    const cue = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 5, 12), new THREE.MeshLambertMaterial({ color: 0xffe14a, emissive: 0xffc107, emissiveIntensity: 0.9 }));
+    cue.rotation.x = Math.PI / 2; cue.position.set(-w / 2 + 1.1, 2.35, 0.2); cue.visible = false; cue.name = 'den-ready'; api.g.add(cue); api.disposables.push(cue.geometry, cue.material); live.cue = cue;
     // Nettle's trade table: scale, baggies, cash box; a sheet of tarp on the back wall; crates of shine by the door
     box(0, 0.45, -2.2, 3.4, 0.9, 1.0, wood); box(0, 0.93, -2.2, 3.5, 0.05, 1.1, mat(0x6a5a40)); api.col(0, -2.2, 1.8, 0.6);
     box(-0.9, 1.02, -2.2, 0.5, 0.1, 0.4, mat(0xc8c8c8, { metalness: 0.7, roughness: 0.3 })); box(0.4, 1.0, -2.3, 0.6, 0.06, 0.4, lime); box(1.2, 1.05, -2.1, 0.45, 0.2, 0.3, mat(0x2a2a2a));
     box(0, 2.2, -d / 2 + 0.2, 7, 3.2, 0.05, tarp);
     for (const [x, z] of [[-5.2, 4.2], [-4.4, 4.6], [5.0, 4.4]]) { box(x, 0.35, z, 0.8, 0.7, 0.8, wood); api.col(x, z, 0.45, 0.45); }
     live.fan = box(0, d > 0 ? 4.85 : 4.85, 1.5, 2.2, 0.04, 0.3, mat(0x50544a)); // ceiling fan blade
-    api.ticks.push((t, dt) => { if (live.fan) live.fan.rotation.y += dt * 4; });
+    api.ticks.push((t, dt) => { if (live.fan) live.fan.rotation.y += dt * 4; swayG.rotation.z = Math.sin(t * 1.25) * 0.03; });
     live.nettle = api.person({ top: 0x3a4a2a, bottom: 0x22201a, hair: 0x6a7a5a, hairStyle: 'long', skin: 0xa07050, accent: 0x7dff6a, glow: 0x7dff6a }, 0, -3.1, 0, anim, 0.7);
     api.person({ top: 0x1a1a1a, bottom: 0x1e1e22, hairStyle: 'cap', skin: 0x6a4a32, accent: 0xff4a4a, bulk: 1.3 }, w / 2 - 2.6, -4.4, -Math.PI / 4, hulk);
     api.person({ top: 0x5a4a3a, bottom: 0x2a2a2a, hair: 0x2a1a10, hairStyle: 'short', skin: 0xd8b090 }, -w / 2 + 2.4, 2.4, Math.PI / 2, anim, 2.3);
@@ -167,7 +194,7 @@ registerInterior(K.KIND, {
     const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); tag.scale.set(3.2, 0.6, 1); tag.position.set(-w / 2 + 1.1, 2.55, 0.6); api.g.add(tag);
     const barM = new THREE.MeshBasicMaterial({ color: 0x7dff6a }), bar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1), barM); bar.position.set(-w / 2 + 1.1, 2.15, 0.6); api.g.add(bar);
     let last = '', acc = 1;
-    api.ticks.push((t, dt) => { acc += dt; if (acc < 0.5) return; acc = 0; const ph = K.rackPhase(rackSt()); // (rackSt: build() has a local `rack` material)
+    api.ticks.push((t, dt) => { acc += dt; if (acc < 0.5) return; acc = 0; const ph = K.rackPhase(rackSt()); live.paintDen?.(ph); // (rackSt: build() has a local `rack` material)
       const txt = ph.phase === 'growing' ? `${K.goodIcon(ph.crop)} ${K.mmss(ph.ms)} · ${Math.round(ph.p * 100)}%` : ph.phase === 'ready' ? `${K.goodIcon(ph.crop)} READY · ${ph.n}` : `🌱 RACK FOR RENT · ${K.RACK.rent} cr`;
       bar.visible = ph.phase !== 'empty'; bar.scale.z = Math.max(0.02, ph.p * 2.6); bar.position.z = 0.6 - (2.6 - bar.scale.z) / 2; barM.color.setHex(ph.phase === 'ready' ? 0xffffff : 0x7dff6a);
       if (txt === last) return; last = txt; cx.clearRect(0, 0, 512, 96); cx.fillStyle = 'rgba(0,0,0,0.75)'; cx.fillRect(0, 0, 512, 96); cx.strokeStyle = '#fff'; cx.lineWidth = 4; cx.strokeRect(2, 2, 508, 92);
