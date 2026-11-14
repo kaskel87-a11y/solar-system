@@ -23,8 +23,8 @@ const off = (() => { try { return /[?&]perfgov=0/.test(location.search) || local
 const app = () => window.__app;
 const phone = () => (matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window) && Math.min(screen.width || innerWidth, screen.height || innerHeight) <= 500;
 const S = { cull: false, cands: [], candT: 0, passT: 0, culled: 0, total: 0, dpr: null, dprMax: 2, lowT: 0, highT: 0, fps: 60, frames: 0, fpsT: 0, drops: 0, raises: 0,
-  landed: false, freed: [], freedMB: 0, freedN: 0, wrapped: false, phone: false, dropAt: -1e9, raiseAt: -1e9, lock: false };
-const STEPS = [2, 1.75, 1.5, 1.25, 1], CAP_STEPS = [2, 1.75, 1.5, 1.25, 1, 0.85];
+  landed: false, freed: [], freedMB: 0, freedN: 0, wrapped: false, phone: false, dropAt: -1e9, raiseAt: -1e9, lock: false, booted: false };
+const STEPS = [2.5, 2.25, 2, 1.75, 1.5, 1.25, 1], CAP_STEPS = [2.5, 2.25, 2, 1.75, 1.5, 1.25, 1, 0.85];
 // ---------- 4. 30 fps pacing (phones, sustained load) ----------
 const fpsPref = (() => { try { const m = /[?&]fps=(30|60)/.exec(location.search); return m ? m[1] : (localStorage.getItem('ssx.fps') || 'auto'); } catch (e) { return 'auto'; } })();
 const FRAME = 1000 / 30;
@@ -103,6 +103,8 @@ function wrapRender() {
 
 // ---------- 2. adaptive pixel ratio (phones) ----------
 export function setDpr(v) { const R = app()?.renderer; if (!R?.setPixelRatio) return; v = Math.max(C.on && C.lite ? 0.85 : 1, Math.min(S.dprMax, v)); S.dpr = v; if (Math.abs(R.getPixelRatio() - v) > 0.01) { R.setPixelRatio(v); try { R.setSize(innerWidth, innerHeight); } catch (e) { /* */ } } }
+// Graphics tiers (gfx.js) own the ceiling. Medium stays at today's 2 / phone start 1.5. Low and High pass their own cap.
+export function setDprCap(max, start) { S.phone = phone(); S.dprMax = max; S.lowT = S.highT = 0; S.lock = false; if (start != null) setDpr(start); else if (S.dpr != null) setDpr(Math.min(S.dpr, max)); }
 function dprTick(dt, now) {
   S.frames++; if (now - S.fpsT >= 1000) { S.fps = S.frames * 1000 / (now - S.fpsT); S.frames = 0; S.fpsT = now; } else return;
   try { capTick(now, !!app()?.state?.onSurface); } catch (e) { /* */ }
@@ -115,7 +117,7 @@ function dprTick(dt, now) {
   // v7.5.16 hysteresis: every resize reallocates the render targets (a hitch). After a drop, no raise for 60 s; a raise that has
   // to come back down within 30 s locks the ratio for the session (no 20 s up/down see-saw at the 30 fps cap).
   if (S.lowT >= 3) { S.lowT = 0; const nx = ST.find(v => v < cur - 0.01); if (nx) { if (now - S.raiseAt < 30000) S.lock = true; setDpr(nx); S.drops++; S.dropAt = now; } }
-  else if (!S.lock && now - S.dropAt > 60000 && S.highT >= (C.on ? 20 : 12)) { S.highT = 0; const up = [...ST].reverse().find(v => v > cur + 0.01 && v <= Math.min(S.dprMax, C.on ? 1.5 : 2)); if (up) { setDpr(up); S.raises++; S.raiseAt = now; } }
+  else if (!S.lock && now - S.dropAt > 60000 && S.highT >= (C.on ? 20 : 12)) { S.highT = 0; const ceil = C.on ? Math.min(1.5, S.dprMax) : S.dprMax; const up = [...ST].reverse().find(v => v > cur + 0.01 && v <= ceil); if (up) { setDpr(up); S.raises++; S.raiseAt = now; } }
 }
 
 // ---------- 3. space-view textures while landed ----------
@@ -146,7 +148,7 @@ let last = 0;
 function tick(now) {
   requestAnimationFrame(tick);
   const a = app(); if (!a?.renderer) return; wrapRender();
-  if (S.dpr == null) { S.phone = phone(); S.dprMax = Math.min(window.devicePixelRatio || 1, 2); if (S.phone) setDpr(Math.min(1.5, S.dprMax)); else S.dpr = a.renderer.getPixelRatio(); S.fpsT = now; }
+  if (!S.booted) { S.booted = true; S.phone = phone(); S.fpsT = now; if (S.dpr == null) { const b = window.SSX?.gfx?.budget?.(); S.dprMax = b?.cap || Math.min(window.devicePixelRatio || 1, 2); if (S.phone) setDpr(Math.min(b?.start ?? 1.5, S.dprMax)); else if (b?.start) setDpr(b.start); else S.dpr = a.renderer.getPixelRatio(); } }
   const dt = last ? now - last : 16; last = now; dprTick(dt, now);
   const landed = !!a.state?.onSurface || document.body.classList.contains('surface');
   if (landed !== S.landed) { S.landed = landed; try { landed ? onLand() : onTakeoff(); } catch (e) { console.warn('perfgov land', e); } }
@@ -154,6 +156,6 @@ function tick(now) {
 }
 if (!off) requestAnimationFrame(tick);
 window.SSX = window.SSX || {};
-window.SSX.perfGov = { off, state: () => ({ off, phone: S.phone, dpr: app()?.renderer?.getPixelRatio?.(), fps: Math.round(S.fps), drops: S.drops, raises: S.raises, culled: S.culled, total: S.total, landed: S.landed, freedN: S.freedN, freedMB: S.freedMB, texBefore: S.texBefore, texAfter: S.texAfter, cap: C.on ? 30 : null, capWhy: C.why, capPref: fpsPref, lite: C.lite, landedS: C.landedT, flushes: C.flushes }),
+window.SSX.perfGov = { off, state: () => ({ off, phone: S.phone, dpr: app()?.renderer?.getPixelRatio?.(), dprMax: S.dprMax, fps: Math.round(S.fps), drops: S.drops, raises: S.raises, culled: S.culled, total: S.total, landed: S.landed, freedN: S.freedN, freedMB: S.freedMB, texBefore: S.texBefore, texAfter: S.texAfter, cap: C.on ? 30 : null, capWhy: C.why, capPref: fpsPref, lite: C.lite, landedS: C.landedT, flushes: C.flushes }),
   setCap,
-  cullPass, setDpr, freed: () => ({ n: S.freedN, mb: S.freedMB }) };
+  cullPass, setDpr, setDprCap, freed: () => ({ n: S.freedN, mb: S.freedMB }) };

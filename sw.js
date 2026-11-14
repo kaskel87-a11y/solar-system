@@ -73,6 +73,7 @@ const PRECACHE = [
   ...['storm', 'stormcore'].map(n => `mars/${n}.js${q}`), // v7.5.5 Mars dust storms (Ben)
   `mars/raccoonrover.js${q}`, `mars/raccooncore.js${q}`, // Raccoon Rover (Pumpkin)
   `brightness.js${q}`, `brightnesscore.js${q}`, // ☰ → ☀️ Brightness + night floor
+  `gfx.js${q}`, `gfxcore.js${q}`, // v7.5.114 ☰ → 🎨 Graphics (Low / Medium / High)
   `economy.js${q}`, `economycore.js${q}`, // money boost: SSX.economy.payoutMult, streak bonus, KO drops (Ben)
   `stormguard.js${q}`, `stormguardcore.js${q}`, // storm perf guard + shader prewarm
   `mars/mouth.js${q}`, `mars/mouthcore.js${q}`, // foul-mouthed Mars locals (Steve)
