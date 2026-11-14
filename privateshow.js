@@ -196,7 +196,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (!S.ending && !S.dbg) { S.left -= dt; if (S.left <= 0) end('song'); }
     if (S.mode === 'lap' && !S.dbg) { lapTick(dt, ctx); return; }
     // her routine
-    const r = S.dbg ? [1, /idle/i, 1.0, true] : routineAt(S.t); h.play(r[1], S.dbg ? 0 : 0.5, r[4] || 1); h.armsIdle(r[3]); if (S.dbg) h.pose({});
+    const r = S.dbg ? [1, /idle/i, 1.0, true] : routineAt(S.t); h.play(r[1], S.dbg ? 0 : 0.5, r[4] || 1); h.armsIdle(r[3]); if (S.dbg) h.pose(S.dbg === 'chest' ? { lean: 0.42, L: 'thigh', R: 'thigh' } : {});
     const goal = b.seat.z - 0.45 - r[2]; S.z += (goal - S.z) * Math.min(1, dt * 0.8);
     h.group.position.set(Math.sin(S.t * 0.5) * 0.12, 0, S.z); h.group.rotation.y = Math.PI + Math.sin(S.t * 0.35) * 0.35; // the model faces -z; turn her to the chair
     h.update(dt);
@@ -209,7 +209,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (S.shot === 0 || S.shot === 2) { _p.set(Math.sin(S.t * 0.4) * 0.03, 1.12 + Math.sin(S.t * 0.7) * 0.01, b.seat.z + 0.08); _l.set(hx * 0.6, 1.0 + Math.sin(S.t * 0.5) * 0.08, hz); cam.fov = portrait ? 72 : 52; }
     else if (S.shot === 1) { _p.set(1.55 - u * 0.25, 1.5, b.seat.z + 0.15); _l.set(hx, 1.05, hz); cam.fov = portrait ? 66 : 46; } // over-the-shoulder dolly
     else { _p.set(-1.3 + u * 0.3, 0.75, hz + 1.0); _l.set(hx, 1.15, hz); cam.fov = portrait ? 70 : 50; } // low side angle
-    if (S.dbg) { const d = { front: [0, 1.0, 3.1, 0.92, 44, 66], side: [3.1, 1.0, 0, 0.92, 44, 66], back: [0, 1.0, -1.6, 0.92, 44, 66], face: [0.08, 1.62, 0.72, 1.57, 34, 46] }[S.dbg] || [0, 1, 3.1, 0.92, 44, 66]; // test/screenshot views of her (look-dev)
+    if (S.dbg) { const d = { front: [0, 1.0, 3.1, 0.92, 44, 66], side: [3.1, 1.0, 0, 0.92, 44, 66], back: [0, 1.0, -1.6, 0.92, 44, 66], face: [0.08, 1.62, 0.72, 1.57, 34, 46], chest: [0.26, 1.16, 1.12, 1.08, 36, 50] }[S.dbg] || [0, 1, 3.1, 0.92, 44, 66]; // test/screenshot views of her (look-dev). chest matches the close chair-side angle
       _p.set(hx + d[0], d[1], hz + d[2]); _l.set(hx, d[3], hz); cam.fov = portrait ? d[5] : d[4]; h.group.rotation.y = Math.PI; h.group.position.x = hx; }
     b.g.localToWorld(_p); b.g.localToWorld(_l); cam.position.copy(_p); S.camLocal = b.g.worldToLocal(_l.clone().copy(_p)); cam.lookAt(_l); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   }
@@ -269,7 +269,7 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     // cinematic camera: a shot per beat, slow dolly/arc inside each, always inside the booth
     const cam = ctx.camera; if (S.fovSaved == null) { S.fovSaved = cam.fov; S.cam = cam; }
     const portrait = innerWidth < innerHeight, u = Math.min(1, S.bt / B[1]), e = u * u * (3 - 2 * u), hx = S.x, hz = S.z;
-    if (S.dbg === 'chest') { _cp.set(hx + 0.42, 1.18, hz + 0.72); _cl.set(hx, 1.02, hz); cam.fov = portrait ? 56 : 40;
+    if (S.dbg === 'chest') { _cp.set(hx + 0.18, 1.30, hz + 0.36); _cl.set(hx, 1.22, hz); cam.fov = portrait ? 40 : 30;
       _p.copy(_cp); _l.copy(_cl); b.g.localToWorld(_p); b.g.localToWorld(_l); cam.position.copy(_p); S.camLocal = _cp.clone(); cam.lookAt(_l); cam.updateProjectionMatrix(); cam.updateMatrixWorld(); return; }
     const sz = b.seat.z; let fov;
     switch (B[0]) {

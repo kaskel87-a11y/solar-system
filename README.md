@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.105: Danny’s figure
+
+Danny’s chest, waist and hips are a rounder adult shape, and the old blocky top is gone. She wears a micro bikini: a small triangle on each side, thin straps, and a small string bottom. It stays on. A normal refresh loads the new figure.
+
 ## v7.5.104: Danny’s top follows her body
 
 In the private dance, the white bikini top is a smooth mini top with fabric shading, not flat blocks. It stays on, it moves a little with the dance, and it does not poke through her. The other dancers use the same top. The Ines arrow on the side of the screen shows the whole label.
