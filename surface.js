@@ -726,8 +726,10 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     cfg = null; state = null;
   }
 
+  function drunkK() { try { return window.SSX?.bar?.fx?.()?.k || 0; } catch (e) { return 0; } }
   function look(dx, dy, k) {
-    if (driving) camYawOff -= dx * k; else player.yaw -= dx * k;
+    const aim = driving ? 1 : 1 - 0.2 * drunkK(); // a little slower to turn when you've been drinking; the stick still wins
+    if (driving) camYawOff -= dx * k; else player.yaw -= dx * k * aim;
     if (dx) lastLook = time;
     player.pitch -= dy * k;
     player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch));
@@ -748,7 +750,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (len > 1) { mvx /= len; mvz /= len; }
     const running = input.run;
     let wear = null; try { wear = window.SSX?.wear?.move?.() || null; } catch (e) { wear = null; }
-    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1);
+    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1) * (1 - 0.16 * drunkK());
     const duelOn = world.duel && world.duel.phase !== 'done';
     const basis = duelOn ? viewYaw : player.yaw;
     fwd.set(-Math.sin(basis), 0, -Math.cos(basis)); right.set(Math.cos(basis), 0, -Math.sin(basis));
@@ -1058,8 +1060,17 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     try { const dn = window.SSX?.pitfight?.downFor?.() || 0; if (dn > 0) player.slump = Math.max(player.slump || 0, Math.min(1, dn)); } catch (e) { /* */ }
     if (player.slump > 0) { a.group.rotation.order = 'YXZ'; a.group.rotation.x = -Math.min(1, player.slump) * 1.42; } else if (a.group.rotation.x) a.group.rotation.x = 0; // v7.5.29 the Pit: knocked down (mars/pitshow.js)
     const sw = Math.sin(player.bob) * 0.6 * player.moving;
-    if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; }
-    else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; }
+    const dk = drunkK();
+    if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; a.group.rotation.z = 0; }
+    else if (dk > 0.12 && !(player.melee?.t > 0)) {
+      const trip = Math.sin(player.bob * 0.5);
+      P.legL.rotation.x = sw * (1 + 0.45 * dk) + trip * 0.35 * dk;
+      P.legR.rotation.x = -sw * (0.75 + 0.2 * (1 - dk)) - trip * 0.2 * dk;
+      P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.9;
+      P.armL.rotation.z = Math.sin(time * 2.2) * 0.4 * dk;
+      a.group.rotation.z = Math.sin(time * 1.6) * 0.14 * dk;
+      a.group.position.y -= Math.max(0, trip) * 0.05 * dk;
+    } else { P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.7; P.armR.rotation.x = sw * 0.7; P.armL.rotation.z = 0; a.group.rotation.z = 0; }
     // v7.1 melee: the vibro-machete rides in the right hand once you own it; punches, kicks and slashes animate the limbs
     if (player.hasBlade && !P.blade) {
       const bl = new THREE.Group(); bl.position.set(0, -0.7, 0);
