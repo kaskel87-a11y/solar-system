@@ -17,7 +17,8 @@ export const DANNY_ROOM = {
   dance: { x: -29.4, z: -5.2 },
   show: { x: -28.4, z: -6.35 },
   special: { x: -29.4, z: -6.35 },
-  exit: { x: -26.9, z: -4.15 }
+  exit: { x: -26.5, z: -4.65 },
+  stand: { x: -28.2, z: -4.65, yaw: -Math.PI / 2 }
 };
 
 const DF = DANNY_NAME.split(' ')[0];
@@ -105,7 +106,15 @@ export function addDannyRoom(api, poses = {}) {
   const H = api.h;
   box(cx, H / 2, R.z0, rw, H, 0.16, wall); api.col(cx, R.z0, rw / 2, 0.12, 'wall');
   box(R.x0, H / 2, cz, 0.16, H, rd, wall); api.col(R.x0, cz, 0.12, rd / 2, 'wall');
-  box(R.x1, H / 2, cz, 0.16, H, rd, wall); api.col(R.x1, cz, 0.12, rd / 2, 'wall');
+  // east wall, with a walk-through gap at the exit so the corner is not a sealed box
+  const gapZ = R.exit.z, gap = 1.8, zCut = gapZ - gap / 2;
+  const nLen = zCut - R.z0, nC = (R.z0 + zCut) / 2;
+  box(R.x1, H / 2, nC, 0.16, H, nLen, wall); api.col(R.x1, nC, 0.12, nLen / 2, 'wall');
+  const sLen = R.z1 - (gapZ + gap / 2);
+  if (sLen > 0.25) { const sC = (R.z1 + gapZ + gap / 2) / 2; box(R.x1, H / 2, sC, 0.16, H, sLen, wall); api.col(R.x1, sC, 0.12, sLen / 2, 'wall'); }
+  box(R.x1 - 0.06, 1.35, gapZ - gap / 2, 0.1, 2.7, 0.08, pink); box(R.x1 - 0.06, 1.35, gapZ + gap / 2, 0.1, 2.7, 0.08, pink);
+  box(R.x1 - 0.06, 2.72, gapZ, 0.1, 0.08, gap + 0.16, gold);
+  api.sign('LEAVE', 0xffd040, R.x1 - 0.2, 2.3, gapZ, -Math.PI / 2, 1.8, { w: 256, h: 96, font: 'bold 64px system-ui, sans-serif' });
   box(cx, H / 2, R.z1, rw, H, 0.16, wall); api.col(cx, R.z1, rw / 2, 0.12, 'wall');
   box(cx, 0.08, R.z0 + 0.12, rw - 0.4, 0.04, 0.04, pink);
   api.sign(DANNY_NAME.toUpperCase(), 0xff7eb8, cx, 3.1, R.z0 + 0.16, 0, 3.2, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
@@ -116,7 +125,7 @@ export function addDannyRoom(api, poses = {}) {
   box(D.x - 0.85, 1.35, -7.7, 0.08, 2.7, 0.08, pink); box(D.x + 0.85, 1.35, -7.7, 0.08, 2.7, 0.08, pink); box(D.x, 2.72, -7.7, 1.86, 0.08, 0.08, gold);
   api.sign("DANNY'S ROOM", 0xff7eb8, D.x, 3.35, -7.68, 0, 2.8, { w: 512, h: 96, font: 'bold 52px system-ui, sans-serif' });
   api.spot({ id: 'danny-door', x: D.x, z: D.z, r: 1.25, act: 'danny', label: "🚪 Danny's room", run() { hop(R.land.x, R.land.z, R.land.yaw); showMenu(); } });
-  api.spot({ id: 'danny-back', x: R.exit.x, z: R.exit.z, r: 0.6, act: 'danny', label: '🚪 Back to the club', run() { hop(R.back.x, R.back.z, R.back.yaw); } });
+  api.spot({ id: 'danny-back', x: R.exit.x, z: R.exit.z, r: 1.2, act: 'danny', label: '🚪 Leave room', run() { leaveRoom(); } });
   // her stage: the booth (private dance, lap, encore, three-strike rule). No 50 cr option.
   const P = R.pole;
   box(P.x, 0.12, P.z, 1.4, 0.24, 1.4, black); box(P.x, 0.26, P.z, 1.2, 0.04, 1.2, gold); box(P.x, (0.24 + H) / 2, P.z, 0.06, H - 0.24, 0.06, chrome); api.col(P.x, P.z, 0.7, 0.7);
@@ -134,4 +143,46 @@ export function addDannyRoom(api, poses = {}) {
   api.spot({ id: 'danny-special', x: P.x, z: P.z, r: 2.1, act: 'danny', adult: true, label: '🎬 Special · 5,000 cr', who: DANNY_NAME, run() { return openSpecial(); } });
   return booth;
 }
-if (typeof window !== 'undefined') { window.SSX = window.SSX || {}; window.SSX.dannyRoom = { openSpecial, SPECIAL_PRICE, showMenu }; }
+let leaveBtn = null, markT = 0;
+function ensureLeave() {
+  if (leaveBtn) return leaveBtn;
+  const st = document.createElement('style');
+  st.textContent = `#dannyLeave{display:none;position:fixed;z-index:32;left:50%;bottom:calc(118px + env(safe-area-inset-bottom));transform:translateX(-50%);min-width:200px;min-height:56px;padding:0 18px;border-radius:14px;border:2px solid #111;background:rgba(255,255,255,.94);color:#111;font:800 18px/1 system-ui,sans-serif;touch-action:manipulation}#dannyLeave.on{display:block}`;
+  document.head.appendChild(st);
+  leaveBtn = document.createElement('button');
+  leaveBtn.id = 'dannyLeave'; leaveBtn.type = 'button'; leaveBtn.textContent = 'Leave room';
+  document.body.appendChild(leaveBtn);
+  const bind = window.__onTap || ((el, fn) => el.addEventListener('click', fn));
+  bind(leaveBtn, () => leaveRoom());
+  return leaveBtn;
+}
+function inHerRoom() {
+  const i = window.__app?.surface?.info;
+  if (!i?.inside || i.inside.kind !== 'club') return false;
+  const x = i.x - i.inside.ax, z = i.z - i.inside.az, R = DANNY_ROOM;
+  return x > R.x0 - 0.3 && x < R.x1 + 1.2 && z > R.z0 - 0.3 && z < R.z1 + 0.3;
+}
+function markDoor() {
+  const i = window.__app?.surface?.info; if (!i?.inside) return;
+  const R = DANNY_ROOM, x = i.inside.ax + R.exit.x, z = i.inside.az + R.exit.z;
+  try { window.SSX?.hudx?.setWaypoint?.({ x, z, label: 'Leave room' }, true); } catch (e) { /* */ }
+  try { window.SSX?.guide?.aimGround?.({ id: 'danny-out', x, z, label: 'Leave room' }); } catch (e) { /* */ }
+}
+export function leaveRoom() {
+  const R = DANNY_ROOM;
+  hop(R.back.x, R.back.z, R.back.yaw);
+  leaveBtn?.classList.remove('on');
+  try { window.SSX?.hudx?.setWaypoint?.(null, true); } catch (e) { /* */ }
+}
+export function afterShow() {
+  const R = DANNY_ROOM;
+  try { window.__app?.surface?.debugInside?.(R.stand.x, R.stand.z, R.stand.yaw, -0.06); } catch (e) { /* */ }
+  ensureLeave().classList.add('on');
+  markDoor();
+  clearInterval(markT);
+  markT = setInterval(() => {
+    if (!inHerRoom()) { leaveBtn?.classList.remove('on'); clearInterval(markT); return; }
+    markDoor();
+  }, 400);
+}
+if (typeof window !== 'undefined') { window.SSX = window.SSX || {}; window.SSX.dannyRoom = { openSpecial, SPECIAL_PRICE, showMenu, afterShow, leaveRoom }; }

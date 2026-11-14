@@ -332,7 +332,11 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     if (S.cam) { S.cam.fov = S.fovSaved; S.cam.updateProjectionMatrix(); }
     h.release(); b.g.remove(h.group);
     document.body.classList.remove('pshow', 'cinebars'); ui.style.display = 'none'; cap.textContent = '';
+    const joy = document.getElementById('joy'), hudEl = document.getElementById('surfHud');
+    if (joy) joy.style.visibility = '';
+    if (hudEl) hudEl.style.visibility = '';
     S = null;
+    try { window.SSX?.dannyRoom?.afterShow?.(); } catch (e) { /* room exit */ }
   }
   const api = { offer, start, tip, encore, touch, end, debugView: v => { if (S) S.dbg = v || null; }, lapBeat: n => { if (S?.mode !== 'lap') return false; const i = LAP.findIndex(r => r[0] === n); if (i < 0) return false; S.bi = i; S.bt = 0; S.beat = LAP[i]; return true; }, get active() { return !!S; }, get state() { return S ? { mode: S.mode, beat: S.beat?.[0] || null, t: S.t, left: S.left, budget: S.budget, tips: S.tips, encore: S.encore, encoreLeft: S.encore ? 0 : 1, shot: S.shot, popX: S.h.popX, popN: S.h.popN, herZ: S.h.group.position.z, herX: S.h.group.position.x, ready: !!S.h.md, stats: S.h.stats(), camInBooth: !!S.camLocal && Math.abs(S.camLocal.x) < S.b.W / 2 && Math.abs(S.camLocal.z) < S.b.D / 2 + 0.6 && S.camLocal.y > 0 && S.camLocal.y < S.b.H } : null }, hasNumber };
   window.__pshow = api; // tests / modding (SSX.privateShow once the modding API exists)
