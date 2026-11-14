@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.114: Graphics quality
+
+☰ → 🎨 Graphics. Three buttons: Low, Medium, High. The one you are on is marked. The choice is saved on this device and takes effect without a reload. Medium is the starting point on a phone and on a desktop. Low is lighter (softer resolution, shorter view, no shadows). High adds sun shadows on nearby things, a sharper picture, and a bit more shine. A phone never switches itself to High.
+
 ## v7.5.113: Ion Dust on the side table
 
 Danny’s room has a low glass table. If you are carrying Ion Dust, the button says Use. If you are not, it offers one at a markup. A short cartoon flash and a sparkle play, then the same Ion Dust rush and crash show on the timer. Leave room still works.

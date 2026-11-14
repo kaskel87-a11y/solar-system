@@ -78,6 +78,7 @@ These were still listed as "to come" or left unchecked. The code and `git log` s
 
 ## v8: realistic visuals
 - [ ] Integrate the look-dev materials, lighting and post-processing, with quality tiers (low / med / high). Medium is the iPhone default at 60 fps.
+  - [x] **v7.5.114:** ☰ → 🎨 Graphics, three buttons (Low, Medium, High), current tier marked, saved in `ssx.gfx.v1`, applied live. Medium is the default on every device (a phone is never moved to High on its own) and keeps today's pixel-ratio cap, plus ACES filmic tone mapping, sRGB output, fog nudged toward the sky color, and a hemisphere fill where a scene has none. Low caps the pixel ratio at 1, leaves shadows off, shortens fog, and flattens texture filtering. High opts in to a sun shadow on nearby objects, a higher pixel-ratio cap (2.25 on a phone, 2.5 on a desktop), and a small environment light. The full look-dev material and post stack is still open. `tests/test-gfx.js`.
 
 ## Future: Collin's ideas (Oct 25)
 These three shipped with the Mars city work. Left here so the next run does not rebuild them.
