@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.110: quiet deals in the back booth
+
+At the Velvet Airlock, or around the back of The Thin Air, a buyer signals. Pack a street good from your stash: Glowcap from Glow-dust, Red Haze, Ion Dust, or Slowtime. Pick a low, fair, or greedy price, watch the suspicion bar, and hand it off before it fills. Glance away if eyes turn. Getting spotted costs the stash, a fine, or a fight with the bouncer. Using one starts a timed effect with a crash after: slow aim, a fast shaky run, harder hits with blurry controls, or green night sight. The name and the seconds sit under the minimap.
+
 ## v7.5.109: drinks knock you off balance
 
 A drink at the Velvet bar or the cantina stacks. Your walk sways and drifts a little, your step stumbles, the camera leans, and the world blurs more the more you have had. Shots go wide and come out slower. The drift stays small enough that the stick still steers. It wears off in about a minute. Dock water or dock coffee, at the bar or the cantina, clears it faster. A small meter sits under the minimap while you are tipsy or worse.

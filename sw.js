@@ -92,7 +92,7 @@ const PRECACHE = [
   ...['empire', 'empirecore', 'mars/empireprompt', 'mars/empirepromptcore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids) + prompts
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
   ...['ridestars', 'starmixcore'].map(n => `${n}.js${q}`), // v7.5.46 ride/heist/front stars
-  `clubdancers.js${q}`, `privateshow.js${q}`, `dannyroom.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['dancer_danny', 'dancer_rhea', 'dancer_kiara'].map(n => `models/dancers/${n}.glb${q}`), ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers; the GLB url carries ?v= so a refresh cannot keep the old model
+  `clubdancers.js${q}`, `privateshow.js${q}`, `dannyroom.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `mars/backroom.js${q}`, `mars/backroomcore.js${q}`, `phonetexts.js${q}`, ...['dancer_danny', 'dancer_rhea', 'dancer_kiara'].map(n => `models/dancers/${n}.glb${q}`), ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers; the GLB url carries ?v= so a refresh cannot keep the old model
   `savecode.js${q}`, // 💾 Save Code (SSX.savecode)
   `copcore.js${q}`, // v7.5.28 cops calm down: car theft heat, minor-crime escalation, 1★ nuisance rules
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',

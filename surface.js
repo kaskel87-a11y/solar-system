@@ -727,8 +727,18 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   }
 
   function drunkK() { try { return window.SSX?.bar?.fx?.()?.k || 0; } catch (e) { return 0; } }
+  function pace() {
+    try {
+      const b = window.SSX?.backroom?.buff?.();
+      if (b?.kind === 'rush') return b.phase === 'on' ? 1.35 : 0.78;
+      if (b?.kind === 'strong' && b.phase === 'crash') return 0.9;
+      if (b?.kind === 'slowaim' && b.phase === 'crash') return 0.88;
+    } catch (e) { /* */ }
+    return 1;
+  }
   function look(dx, dy, k) {
-    const aim = driving ? 1 : 1 - 0.2 * drunkK(); // a little slower to turn when you've been drinking; the stick still wins
+    let aim = driving ? 1 : 1 - 0.2 * drunkK(); // a little slower to turn when you've been drinking; the stick still wins
+    try { const b = window.SSX?.backroom?.buff?.(); if (!driving && b?.kind === 'strong' && b.phase === 'on') aim *= 0.72; } catch (e) { /* */ }
     if (driving) camYawOff -= dx * k; else player.yaw -= dx * k * aim;
     if (dx) lastLook = time;
     player.pitch -= dy * k;
@@ -750,7 +760,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     if (len > 1) { mvx /= len; mvz /= len; }
     const running = input.run;
     let wear = null; try { wear = window.SSX?.wear?.move?.() || null; } catch (e) { wear = null; }
-    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1) * (1 - 0.16 * drunkK());
+    const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1) * (1 - 0.16 * drunkK()) * pace();
     const duelOn = world.duel && world.duel.phase !== 'done';
     const basis = duelOn ? viewYaw : player.yaw;
     fwd.set(-Math.sin(basis), 0, -Math.cos(basis)); right.set(Math.cos(basis), 0, -Math.sin(basis));

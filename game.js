@@ -651,6 +651,7 @@ export function createGame(ctx) {
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
     const kick = step === 2 && !cane && !plasma, base = plasma ? [4, 5, 8][step] : heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (plasma ? 3.6 : heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (plasma ? 1.5 : heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     let suit = 1; try { suit = window.SSX?.wear?.melee?.() || 1; } catch (e) { suit = 1; }
+    try { const b = window.SSX?.backroom?.buff?.(); if (b?.kind === 'strong') suit *= b.phase === 'on' ? 1.55 : 0.65; } catch (e) { /* */ }
     const dmg = base * suit;
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff
@@ -1025,6 +1026,14 @@ export function createGame(ctx) {
     const dir0 = to.clone().sub(from).normalize(), n = wpn.pellets || 1;
     let dk = 0; try { dk = window.SSX?.bar?.fx?.()?.k || 0; } catch (e) { dk = 0; }
     if (dk > 0.08 && !st.driving) { const slop = 0.05 * dk; dir0.x += (Math.random() - 0.5) * slop * 2; dir0.y += (Math.random() - 0.5) * slop; dir0.z += (Math.random() - 0.5) * slop * 2; dir0.normalize(); W.cd *= 1 + 0.28 * dk; }
+    try {
+      const b = window.SSX?.backroom?.buff?.();
+      if (b?.kind === 'slowaim' && !st.driving) {
+        const slop = b.phase === 'on' ? 0.012 : 0.09;
+        dir0.x += (Math.random() - 0.5) * slop; dir0.y += (Math.random() - 0.5) * slop * 0.4; dir0.z += (Math.random() - 0.5) * slop; dir0.normalize();
+        W.cd *= b.phase === 'on' ? 1.4 : 1.12;
+      }
+    } catch (e) { /* */ }
     if (wpn.lob) { dir0.y += wpn.lob + Math.min(0.35, from.distanceTo(to) / 160); dir0.normalize(); } // frags arc
     for (let k = 0; k < n; k++) {
       const d = dir0.clone(); if (wpn.spread) { d.x += (Math.random() - 0.5) * wpn.spread * 2; d.y += (Math.random() - 0.5) * wpn.spread * 1.4; d.z += (Math.random() - 0.5) * wpn.spread * 2; d.normalize(); }
