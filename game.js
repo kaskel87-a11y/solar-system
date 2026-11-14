@@ -66,9 +66,10 @@ export const SHOP = [
   { id: 'rig2', name: 'Bandolier rig II', desc: '+25% more ammo capacity. Needs rig I.', price: 380, kind: 'maxammo', tier: 2, needsUp: 'rig1' },
   { id: 'rig3', name: 'Bandolier rig III', desc: '+25% more ammo capacity. Needs rig II.', price: 600, kind: 'maxammo', tier: 3, needsUp: 'rig2' },
   // v7.3 bars (Cantina, The Dry Sea, the Velvet Airlock)
-  { id: 'whiskey', name: 'Red Dust whiskey', desc: 'Tastes like rust and bad decisions. +20 health.', price: 12, kind: 'drink', heal: 20, venue: 'bar' },
-  { id: 'synthgin', name: 'Synth-gin, neat', desc: 'Distilled from something. +10 health and a full shield.', price: 18, kind: 'drink', heal: 10, shield: true, venue: 'bar' },
-  { id: 'water', name: 'Water ration', desc: 'Recycled. Don\u2019t ask from what. +5 health.', price: 3, kind: 'drink', heal: 5, venue: 'bar' },
+  { id: 'whiskey', name: 'Red Dust whiskey', desc: 'Tastes like rust and bad decisions. +20 health. Makes you wobble.', price: 12, kind: 'drink', heal: 20, venue: 'bar', booze: 2.2 },
+  { id: 'synthgin', name: 'Synth-gin, neat', desc: 'Distilled from something. +10 health and a full shield. Hits hard.', price: 18, kind: 'drink', heal: 10, shield: true, venue: 'bar', booze: 2.6 },
+  { id: 'water', name: 'Water ration', desc: 'Recycled. Don\u2019t ask from what. +5 health. Clears a wobble.', price: 3, kind: 'drink', heal: 5, venue: 'bar', sober: 2 },
+  { id: 'coffee', name: 'Dock coffee', desc: 'Bitter, hot, and it steadies your hands.', price: 6, kind: 'drink', heal: 4, venue: 'bar', sober: 3 },
   { id: 'round', name: 'Buy the bar a round', desc: 'Loosens tongues. You hear things.', price: 25, kind: 'rumor', venue: 'bar' },
   { id: 'heatsink', name: 'Blaster heat sink', desc: 'Plasma blaster runs 35% cooler.', price: 180, kind: 'upgrade' },
   { id: 'roverarmor', name: 'Rover armor', desc: 'Your rover takes half damage.', price: 150, kind: 'upgrade' },
@@ -1022,6 +1023,8 @@ export function createGame(ctx) {
     }
     if (useTurret) turret.lock = to.clone();
     const dir0 = to.clone().sub(from).normalize(), n = wpn.pellets || 1;
+    let dk = 0; try { dk = window.SSX?.bar?.fx?.()?.k || 0; } catch (e) { dk = 0; }
+    if (dk > 0.08 && !st.driving) { const slop = 0.05 * dk; dir0.x += (Math.random() - 0.5) * slop * 2; dir0.y += (Math.random() - 0.5) * slop; dir0.z += (Math.random() - 0.5) * slop * 2; dir0.normalize(); W.cd *= 1 + 0.28 * dk; }
     if (wpn.lob) { dir0.y += wpn.lob + Math.min(0.35, from.distanceTo(to) / 160); dir0.normalize(); } // frags arc
     for (let k = 0; k < n; k++) {
       const d = dir0.clone(); if (wpn.spread) { d.x += (Math.random() - 0.5) * wpn.spread * 2; d.y += (Math.random() - 0.5) * wpn.spread * 1.4; d.z += (Math.random() - 0.5) * wpn.spread * 2; d.normalize(); }
@@ -1638,7 +1641,11 @@ export function createGame(ctx) {
     else if (it.kind === 'melee') { P.unlocks.push('melee:' + it.id); P.equip.weapon = it.id; onEvent('weapon', { id: it.id, name: it.name, shells: P.inv.shells, blade: true }); }
     else if (it.kind === 'ammo') addAmmo(it.ammo || 'shells', it.n || 12);
     else if (it.kind === 'maxhp' || it.kind === 'maxammo') { P.upgrades.push(it.id); grantPerm(it.kind, it.name, true); }
-    else if (it.kind === 'drink') { H.hp = Math.min(H.max, H.hp + it.heal); if (it.shield) H.shield = H.smax; save(); onEvent('bought', { id, name: it.name, drink: true }); return { ok: true, msg: `${it.name}. ${barLine()}` }; }
+    else if (it.kind === 'drink') {
+      H.hp = Math.min(H.max, H.hp + it.heal); if (it.shield) H.shield = H.smax; save();
+      try { if (it.sober) window.SSX?.bar?.sober?.(it.sober); else if (it.booze) window.SSX?.bar?.sip?.(it.booze); } catch (e) { /* bar not up */ }
+      onEvent('bought', { id, name: it.name, drink: true }); return { ok: true, msg: `${it.name}. ${it.sober ? 'The wobble eases.' : barLine()}` };
+    }
     else if (it.kind === 'rumor') { save(); onEvent('bought', { id, name: it.name }); return { ok: true, msg: `You buy a round. Somebody leans in: \u201c${pick(bark('Rumors', '_')) || 'Nothing. Keep drinking.'}\u201d`, rumor: true }; }
     else if (it.kind === 'medkit') P.inv.medkits++;
     else if (it.kind === 'upgrade') { P.upgrades.push(it.id); applyUpgrades(); }

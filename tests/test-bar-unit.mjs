@@ -2,7 +2,7 @@
 // when it exposes one, a per-type base otherwise), the daily demand cap stops selling at BAR.dailyCap a day and resets
 // on a new day, drinks are priced 15-60 cr, drunk stacks / wears off in ~60-90 s / blacks out, and with no SSX.liquor the
 // adapter is off (the sell section hides). node tests/test-bar-unit.mjs
-import { DRINKS, DRUNK, BAR, decay, soberTime, addDrink, stage, effects, slur, basePrice, barPrice, normInventory, capLeft, recordSale, quote, soldLine, liquorAdapter, dayKey, drinkUnits, COUNTER } from '../bar.js';
+import { DRINKS, DRUNK, BAR, decay, soberTime, addDrink, clearDrink, stage, effects, steerSide, STEER_CAP, slur, basePrice, barPrice, normInventory, capLeft, recordSale, quote, soldLine, liquorAdapter, dayKey, drinkUnits, COUNTER } from '../bar.js';
 const bad = [], ok = (k, c, v) => { console.log(`${c ? 'ok  ' : 'FAIL'} ${k}${v !== undefined ? ': ' + v : ''}`); if (!c) bad.push(k); };
 
 // house drinks
@@ -67,6 +67,12 @@ ok('stages climb', ['sober', 'tipsy', 'drunk', 'heavy', 'blackout'].join() === [
 ok('capped at max', addDrink(9, 50) === DRUNK.max);
 ok('effects grow with level', effects(2).roll < effects(6).roll && effects(6).vignette > effects(2).vignette && effects(0).vignette === 0);
 ok('blur only when heavy', !effects(4).blur && effects(7).blur === 1);
+ok('blur amount scales and stays at most 2px', effects(0).blurPx === 0 && effects(3).blurPx > effects(1).blurPx && effects(9).blurPx <= 2);
+let steerOk = true, peak = 0, sip = 0;
+for (let t = 0; t < 8; t += 0.13) { for (const k of [0, 0.2, 0.6, 1]) { const s = steerSide(k, t); if (Math.abs(s) > STEER_CAP + 1e-9) steerOk = false; } }
+const top = Math.PI / (2 * 1.7); peak = Math.abs(steerSide(0.9, top)); sip = Math.abs(steerSide(0.15, top));
+ok('drift stays inside the steer cap', steerOk && peak <= STEER_CAP && peak > sip, peak.toFixed(3));
+ok('water and coffee clear a stack', clearDrink(4, 2) === 2 && clearDrink(1.5, 3) === 0);
 ok('typical buzz (~5) wears off in 60-90 s', soberTime(5) >= 60 && soberTime(5) <= 90, soberTime(5).toFixed(1) + ' s');
 let x = 5, tt = 0; while (x > 0 && tt < 300) { x = decay(x, 0.1); tt += 0.1; } ok('decay() matches closed form', Math.abs(tt - soberTime(5)) < 1.5, tt.toFixed(1));
 ok('decay never negative', decay(0.01, 10) === 0 && decay(0, 1) === 0);

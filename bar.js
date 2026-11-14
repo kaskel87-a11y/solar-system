@@ -41,9 +41,15 @@ export function soberTime(D) { const a = DRUNK.decayA, b = DRUNK.decayB; return 
 export function addDrink(D, units) { return clamp((D || 0) + Math.max(0, +units || 0), 0, DRUNK.max); }
 export function stage(D) { return D >= DRUNK.blackout ? 'blackout' : D >= DRUNK.heavy ? 'heavy' : D >= DRUNK.drunk ? 'drunk' : D >= DRUNK.tipsy ? 'tipsy' : 'sober'; }
 // what the effects look like at level D (k: 0..1 intensity)
+export const STEER_CAP = 0.28; // sideways drift never takes more than this share of a step, so a thumb can still steer
+export function steerSide(k, t) {
+  const amp = Math.min(STEER_CAP, 0.12 + 0.7 * Math.max(0, k || 0));
+  return clamp(Math.sin((t || 0) * 1.7) * amp, -STEER_CAP, STEER_CAP);
+}
+export function clearDrink(D, units) { return clamp((D || 0) - Math.max(0, +units || 0), 0, DRUNK.max); }
 export function effects(D) {
   const k = clamp((D || 0) / 8, 0, 1), st = stage(D || 0);
-  return { k, stage: st, roll: 0.06 * k, yaw: 0.035 * k, vignette: +(Math.min(0.95, k * 1.05)).toFixed(3), blur: st === 'heavy' || st === 'blackout' ? 1 : 0, drift: 0.5 * k };
+  return { k, stage: st, roll: 0.11 * k, yaw: 0.07 * k, vignette: +(Math.min(0.95, k * 1.05)).toFixed(3), blur: st === 'heavy' || st === 'blackout' ? 1 : 0, blurPx: +Math.min(2, k * 2.4).toFixed(2), drift: 0.5 * k, slow: 1 - 0.16 * k, aim: 0.045 * k };
 }
 // slur a line: harder the drunker. rng injectable for tests.
 export function slur(text, k = 0.5, rng = Math.random) {
@@ -162,12 +168,16 @@ body.barNear #driveBtn{background:#000!important;color:#fff!important;border:1.5
 #barDrunk{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 30%,rgba(70,0,60,.55) 68%,rgba(8,0,10,.95) 100%)}
 #barDrunk::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 46% 50%,rgba(255,60,200,.16),rgba(0,0,0,0) 55%);animation:barSwim 4.5s ease-in-out infinite alternate}
 #barDrunk.heavy{-webkit-backdrop-filter:blur(1px);backdrop-filter:blur(1px)}
+#drunkHud{display:none;position:fixed;z-index:8;top:calc(148px + var(--sat,0px));left:calc(10px + var(--sal,0px));width:88px;height:16px;pointer-events:none;align-items:center;gap:4px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:rgba(0,0,0,.78);color:#fff;border:1px solid rgba(255,255,255,.35);font:800 9px/16px system-ui,sans-serif}
+#drunkHud.on{display:flex}#drunkHud b{flex:none;width:28px;overflow:hidden}#drunkHud .bk{flex:1;height:6px;border-radius:3px;background:#333;overflow:hidden}#drunkHud i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c8f5a0,#e080ff)}
+@media (max-height:500px){#drunkHud{top:calc(6px + var(--sat,0px));left:calc(108px + var(--sal,0px));width:72px}}
 @keyframes barSwim{0%{transform:translate(-2%,0)}100%{transform:translate(2%,1%)}}
 @media (orientation:landscape) and (max-height:520px){#barCard{width:min(620px,calc(100vw - 24px))}}
 `;
 export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addEventListener('click', fn), fx = {}, hud = () => {}, liquor = liquorAdapter() } = {}) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const veil = document.createElement('div'); veil.id = 'barDrunk'; document.body.appendChild(veil);
+  const hudEl = document.createElement('div'); hudEl.id = 'drunkHud'; hudEl.innerHTML = '<b></b><span class="bk"><i></i></span>'; document.body.appendChild(hudEl);
   const el = document.createElement('div'); el.id = 'barPanel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div id="barCard"><div class="hd"><b>🥃 SPACE LIQUOR · Nova</b><span id="barCash"></span><button class="barBtn" id="barClose" aria-label="Close">✕</button></div>
 <div id="barSell"></div><div id="barDrinks"></div><div id="barOwn"></div>
@@ -199,17 +209,29 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
       sell.innerHTML = `<h4 class="main">💰 Sell your bottles</h4><div class="sub">Best price in town: ${BAR.mult}× what the aliens pay. ${n ? `Nova buys ${n} more today.` : BAR.fullLine}</div>${rows || '<div class="sub">No bottles on you. Run some through the farm still.</div>'}`;
     }
     // 2) house drinks
-    $('barDrinks').innerHTML = `<h4>🍸 House drinks</h4>` + DRINKS.map(d => `<div class="barRow"><span class="n">${d.icon} ${d.name}<small>${d.line}</small></span><button class="barBtn" data-drink="${d.id}">${d.price} cr</button></div>`).join('');
+    $('barDrinks').innerHTML = `<h4>🍸 House drinks</h4>` + DRINKS.map(d => `<div class="barRow"><span class="n">${d.icon} ${d.name}<small>${d.line}</small></span><button class="barBtn" data-drink="${d.id}">${d.price} cr</button></div>`).join('')
+      + `<div class="barRow"><span class="n">💧 Dock water<small>Clears the wobble faster.</small></span><button class="barBtn" data-sober="1.8">8 cr</button></div><div class="barRow"><span class="n">☕ Dock coffee<small>Bitter. Clears it faster than water.</small></span><button class="barBtn" data-sober="3">12 cr</button></div>`;
     // 3) your own bottles, to drink
     const own = $('barOwn');
     if (!hasL || !inv.length) { own.innerHTML = ''; own.style.display = 'none'; }
     else { own.style.display = ''; own.innerHTML = `<h4>🧺 Drink your own</h4>` + inv.map(it => `<div class="barRow"><span class="n">${it.icon} ${esc(it.name)} ×${it.qty}<small>Nova pours it, no charge</small></span><button class="barBtn" data-own="${esc(it.id)}">Drink</button></div>`).join(''); }
     for (const b of el.querySelectorAll('[data-sell]')) onTap(b, () => sellBottles(b.dataset.sell, b.dataset.n === 'all' ? Infinity : 1));
     for (const b of el.querySelectorAll('[data-drink]')) onTap(b, () => buyDrink(b.dataset.drink));
+    for (const b of el.querySelectorAll('[data-sober]')) onTap(b, () => buySober(+b.dataset.sober));
     for (const b of el.querySelectorAll('[data-own]')) onTap(b, () => drinkOwn(b.dataset.own));
     meter();
   }
-  function meter() { const s = el.querySelector('#barMeter i'); if (s) s.style.width = Math.round(clamp(D / DRUNK.blackout, 0, 1) * 100) + '%'; const g = $('barStage'); if (g) g.textContent = stage(D); }
+  function meter() { const s = el.querySelector('#barMeter i'); if (s) s.style.width = Math.round(clamp(D / DRUNK.blackout, 0, 1) * 100) + '%'; const g = $('barStage'); if (g) g.textContent = stage(D); paintHud(); }
+  function paintHud() {
+    const on = D >= DRUNK.tipsy;
+    hudEl.classList.toggle('on', on);
+    if (!on) return;
+    const stg = stage(D);
+    hudEl.title = stg;
+    hudEl.querySelector('b').textContent = stg === 'blackout' ? 'out' : stg;
+    const fill = hudEl.querySelector('i');
+    if (fill) fill.style.width = Math.round(clamp(D / DRUNK.max, 0, 1) * 100) + '%';
+  }
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function sellBottles(id, want = 1, force = false) {
@@ -229,6 +251,15 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
     const d = DRINKS.find(x => x.id === id); if (!d) return null;
     if (credits() < d.price || !game()?.spend?.(d.price)) { say(`Short on cr: the ${d.name} is ${d.price} cr, you have ${credits()}.`, 'bad'); fx.dry?.(); return { ok: false, why: 'broke' }; }
     hud(); return drink(d.units, `${d.icon} ${d.name}. ${d.line}`, d.price);
+  }
+  function buySober(units) {
+    if (!open || ghost()) return null;
+    const price = units >= 2.5 ? 12 : 8;
+    if (credits() < price || !game()?.spend?.(price)) { say(`Short on cr: that is ${price} cr, you have ${credits()}.`, 'bad'); fx.dry?.(); return { ok: false, why: 'broke' }; }
+    D = clearDrink(D, units); hud(); render();
+    say(sl(price === 12 ? 'Coffee. The room slows down.' : 'Water. The wobble eases.'), 'ok');
+    toast(price === 12 ? '☕ Dock coffee. Head clearing.' : '💧 Dock water. The wobble eases.', 2000);
+    return { ok: true, level: D, stage: stage(D), paid: price };
   }
   function drinkOwn(id, force = false) {
     if (!force && (!open || ghost())) return null;
@@ -276,10 +307,13 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
       t += dt; D = decay(D, dt); const fx2 = effects(D);
       if (D > 0.02 && ctx?.camera) { ctx.camera.rotation.z += Math.sin(t * 0.9) * fx2.roll; ctx.camera.rotateY(Math.sin(t * 0.63 + 1.3) * fx2.yaw); }
       const p = ctx?.player;
-      if (p && !ctx.car && fx2.drift > 0.01 && lastPos && !open) { const dx = p.x - lastPos.x, dz = p.z - lastPos.z, m = Math.hypot(dx, dz); if (m > 1e-4 && m < 0.5) { const s = Math.sin(t * 1.1) * fx2.drift; p.x += -dz * s; p.z += dx * s; } }
+      if (p && !ctx.car && fx2.k > 0.05 && lastPos && !open) { const dx = p.x - lastPos.x, dz = p.z - lastPos.z, m = Math.hypot(dx, dz); if (m > 1e-4 && m < 0.8) { const s = steerSide(fx2.k, t); p.x += -dz * s; p.z += dx * s; } }
       lastPos = p ? { x: p.x, z: p.z } : null;
       const v = fx2.vignette; if (Math.abs(v - lastVeil) > 0.01) { veil.style.opacity = v; lastVeil = v; }
       veil.classList.toggle('heavy', !!fx2.blur);
+      const blur = fx2.blurPx > 0.2 ? `blur(${fx2.blurPx}px)` : '';
+      if (veil.dataset.blur !== blur) { veil.style.backdropFilter = blur; veil.style.webkitBackdropFilter = blur; veil.dataset.blur = blur; }
+      paintHud();
       if (D >= DRUNK.drunk && !open && (slurT -= dt) <= 0) { slurT = 12 + Math.random() * 6; toast('🥴 ' + slur(['I love this place. I love all of you.', 'Is the floor supposed to do that?', 'One more. No. Yes. Maybe.', 'Who put two moons in the sky?'][(Math.random() * 4) | 0], fx2.k), 2200); }
       if (open) meter();
     } catch (e) { /* */ }
@@ -288,6 +322,7 @@ export function clubBar({ surface, toast = () => {}, onTap = (el, fn) => el.addE
   const api = { open: show, close, sell: sellBottles, buy: buyDrink, drinkOwn, drinks: DRINKS, rules: BAR, liquor,
     get isOpen() { return open; }, get level() { return D; }, get stage() { return stage(D); }, get out() { return out; }, get stats() { return { ...stats }; },
     get capLeft() { return left(); }, get day() { return today(); },
+    fx: () => effects(D), sip(units) { D = addDrink(D, units); lastVeil = -1; meter(); return D; }, sober(units) { D = clearDrink(D, units); lastVeil = -1; meter(); return D; },
     debug: { setLevel: v => { D = clamp(+v || 0, 0, DRUNK.max); lastVeil = -1; meter(); }, setDay: d => { dayOverride = d || null; if (open) render(); }, render, blackout } };
   try { window.__bar = api; (window.SSX = window.SSX || {}).bar = api; } catch (e) { /* */ }
   return api;
