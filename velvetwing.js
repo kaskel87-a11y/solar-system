@@ -59,6 +59,18 @@ export function addVelvetWing(api, poses = {}) {
   box(D.x + 0.4, 0.9, D.z - 1.3, 0.5, 0.03, 0.36, mat(0xf7f3ea)); // the books
   box(D.x, 0.3, D.z - 2.4, 0.6, 0.6, 0.6, velvet); box(D.x, 0.85, D.z - 2.75, 0.6, 0.9, 0.12, velvet); api.col(D.x, D.z - 2.5, 0.35, 0.4);
   const nameplate = api.sign('INES \u00b7 MANAGER', 0xffd040, D.x, 1.05, D.z - 0.86, 0, 1.0, { w: 512, h: 96, font: 'bold 56px system-ui, sans-serif' }); nameplate.visible = false;
+  // v7.5.95 boss chair: west wall of this office. Hidden until you own the club (mars/bosslounge.js).
+  // Keep the seat on bossloungecore SEAT { x: 20.2, z: -3.55 } so the hotspot and the cushion agree.
+  const BX = 19.25, BZ = -3.55, leather = mat(0x0c2418, { roughness: 0.85 }), brass = mat(0xc8a24a, { metalness: 0.75, roughness: 0.35 });
+  const bossParts = [];
+  const boss = (m) => { if (m) { m.visible = false; bossParts.push(m); } return m; };
+  boss(box(BX, 0.26, BZ, 0.78, 0.48, 0.72, leather));
+  boss(box(BX - 0.36, 0.72, BZ, 0.14, 0.82, 0.78, leather));
+  boss(box(BX - 0.36, 1.16, BZ, 0.18, 0.08, 0.86, brass));
+  boss(box(BX, 0.52, BZ, 0.7, 0.06, 0.62, mat(0x143028, { roughness: 0.6 })));
+  const bossRing = api.mk(G.cyl, mat(0xffd040, { basic: true }), BX + 0.85, 0.025, BZ, 0.42, 0.015, 0.42); api.g.add(bossRing); boss(bossRing);
+  boss(api.sign('BOSS', 0xffd040, BX - 0.48, 1.72, BZ, -Math.PI / 2, 1.15, { w: 256, h: 96, font: 'bold 72px system-ui, sans-serif' }));
+  const bossCol = api.col(BX - 0.1, BZ, 0.42, 0.4); bossCol.on = false;
   // Ines herself: silver bun, dark dress, gold glow, standing where the open door shows her
   const IN = W.ines;
   const glowM = new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0.75, depthWrite: false }); api.disposables.push(glowM);
@@ -134,6 +146,7 @@ export function addVelvetWing(api, poses = {}) {
   liveSpot({ id: 'velvet-handover', x: W.handover.x, z: W.handover.z, r: W.handover.r, act: 'velvet', run: () => call('handoverSpot'), cond: () => !!call('handoverOn') }, () => call('handoverLabel') || '\u{1F4D2} Hand Thorne the ledger');
   liveSpot({ id: 'velvet-desk', x: D.x, z: D.z, r: D.r, act: 'velvet', run: () => call('deskSpot'), cond: () => !!call('owned') }, () => call('deskLabel') || '\u{1F4BC} The office books');
   liveSpot({ id: 'velvet-safe', x: S.x - 0.5, z: S.z + 0.9, r: S.r, act: 'velvet', run: () => call('safeSpot'), cond: () => !!call('owned') }, () => call('safeLabel') || '\u{1F512} Office safe');
+  liveSpot({ id: 'velvet-boss', x: 20.2, z: -3.55, r: 1.15, act: 'velvet', run: () => { try { return window.SSX?.bosslounge?.sit?.(); } catch (e) { return null; } }, cond: () => !!call('owned') }, () => { try { return window.SSX?.bosslounge?.seatLabel?.() || '\u{1FA91} Sit \u00b7 boss chair'; } catch (e) { return '\u{1FA91} Sit \u00b7 boss chair'; } });
   // ---- state: the office opens when the club is yours, the slate goes dark once it's swiped ----
   let last = null;
   api.ticks.push(() => {
@@ -141,6 +154,7 @@ export function addVelvetWing(api, poses = {}) {
     if (thorneGrp) thorneGrp.visible = th;
     if (k === last) return; last = k;
     officeSign.visible = !own; ownSign.visible = own; nameplate.visible = own; deed.visible = own;
+    for (const p of bossParts) p.visible = own; bossCol.on = own;
     slate.visible = !gone;
   });
   return { wing: W };

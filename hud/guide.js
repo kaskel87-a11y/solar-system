@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { edgePointer, fmtRange, bearingNdc } from './guidecore.js';
 
-const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;min-height:44px;max-width:42vw;box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.15 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%);white-space:nowrap}
-#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;font-style:normal;font-size:18px;line-height:22px;text-align:center}`;
+const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;min-height:44px;max-width:min(58vw,280px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
+#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center}#ssxGuide span{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}`;
 
 let el = null, pin = null, pinAt = 0, last = null;
 const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();

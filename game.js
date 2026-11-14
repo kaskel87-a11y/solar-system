@@ -623,24 +623,28 @@ export function createGame(ctx) {
   // v7.5.15 (Collin): with the Velvet Mack skin on, his jeweled cane is the melee weapon instead of the machete —
   // machete damage and reach, a little more knockback, a thwack instead of a slash (the thermal cleaver, when you pick it, stays the cleaver)
   const caneOn = () => { try { return window.SSX?.skins?.equipped === 'mack' && P.equip.weapon !== 'cleaver'; } catch (_) { return false; } };
+  // v7.5.95: fists work indoors only while a Velvet troublemaker is in reach (mars/bosslounge.js). Guns stay holstered.
+  function loungeFists() { try { return globalThis.SSX?.bosslounge?.fists?.() === true; } catch (e) { return false; } }
   function melee() {
     const st = ctx.st();
+    const bare = loungeFists();
     if (st.driving || H.down > 0 || st.intro > 0 || st.outro > 0 || MEL.cd > 0) return false;
-    if (st.inside) { holster(); return false; }
-    const cane = caneOn(), mk = cane ? 'blade' : meleeKind(), blade = !!mk, heavy = mk === 'cleaver';
+    if (st.inside && !bare) { holster(); return false; }
+    const cane = bare ? false : caneOn(), mk = bare ? null : (cane ? 'blade' : meleeKind()), blade = !!mk, heavy = mk === 'cleaver';
     if (time - MEL.last > 1.1) MEL.combo = 0;
     const step = MEL.combo % 3; MEL.combo++; MEL.last = time;
     const kick = step === 2 && !cane, dmg = heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff
     let yaw = player.faceYaw ?? player.yaw, best = null, bd = range + 2.5;
-    for (const a of agents) { if (a.burrow) continue; const dx = a.x - player.x, dz = a.z - player.z, d = Math.hypot(dx, dz) - a.T.r * 0.7; if (d < bd && Math.abs(a.y + (a.T.cy ?? 0.8) - player.y) < 4) { const ang = Math.abs(Math.atan2(Math.sin(Math.atan2(-dx, -dz) - yaw), Math.cos(Math.atan2(-dx, -dz) - yaw))); if (ang < 1.4 || d < 1.5) { bd = d; best = a; } } }
-    if (!best) { const w = ctx.meleeTarget?.(player.x, player.z, yaw, range + 2); if (w) yaw = Math.atan2(-(w.x - player.x), -(w.z - player.z)); }
-    else yaw = Math.atan2(-(best.x - player.x), -(best.z - player.z));
+    if (bare) { try { const t = globalThis.SSX.bosslounge.fistAt?.(); if (t) yaw = Math.atan2(-(t.x - player.x), -(t.z - player.z)); } catch (e) { /* */ } }
+    else for (const a of agents) { if (a.burrow) continue; const dx = a.x - player.x, dz = a.z - player.z, d = Math.hypot(dx, dz) - a.T.r * 0.7; if (d < bd && Math.abs(a.y + (a.T.cy ?? 0.8) - player.y) < 4) { const ang = Math.abs(Math.atan2(Math.sin(Math.atan2(-dx, -dz) - yaw), Math.cos(Math.atan2(-dx, -dz) - yaw))); if (ang < 1.4 || d < 1.5) { bd = d; best = a; } } }
+    if (!bare) { if (!best) { const w = ctx.meleeTarget?.(player.x, player.z, yaw, range + 2); if (w) yaw = Math.atan2(-(w.x - player.x), -(w.z - player.z)); }
+    else yaw = Math.atan2(-(best.x - player.x), -(best.z - player.z)); }
     player.faceYaw = yaw;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
     let hits = 0;
-    for (const a of [...agents]) {
+    if (!bare) for (const a of [...agents]) {
       if (a.burrow) continue;
       const dx = a.x - player.x, dz = a.z - player.z, d = Math.hypot(dx, dz) - a.T.r * 0.7;
       if (d > range || (dx * fx + dz * fz) < -0.3 || Math.abs(a.y + (a.T.cy ?? 0.8) - player.y) > 4) continue;
@@ -653,7 +657,8 @@ export function createGame(ctx) {
       if (!a.T.still && !a.T.boss) { const n = Math.hypot(dx, dz) || 1, big = kick || (cane && step === 2); a.x += dx / n * knock; a.z += dz / n * knock; a.lunge = 0; a.dive = 0; a.cd = Math.max(a.cd, big ? 1.2 : 0.6); if (!a.T.hover) a.vy = big ? 5 : 2.5; }
       if (a.hp <= 0) killAgent(a);
     }
-    if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
+    if (bare) { try { if (globalThis.SSX.bosslounge.punch(player.x, player.z, fx, fz)) hits++; } catch (e) { /* */ } }
+    else if (!hits && ctx.meleeWorld?.(player.x, player.z, fx, fz, range, dmg, knock)) hits++;
     swing(yaw, blade, kick, heavy, cane); const mt = kick || (cane && step === 2) ? 0.32 : cane ? 0.26 : 0.22; player.melee = { t: mt, max: mt, kick, blade, step, heavy, cane };
     W.recoil = kick ? 1.6 : 1; W.lastShot = time;
     onEvent('melee', { hit: hits > 0, blade, kick, step, heavy, cane });
@@ -674,6 +679,7 @@ export function createGame(ctx) {
   function meleeNear() {
     const st = ctx.st(); if (st.driving) return false;
     for (const a of agents) if (!a.burrow && Math.hypot(a.x - player.x, a.z - player.z) - a.T.r < 7) return true;
+    try { if (globalThis.SSX?.bosslounge?.fistsNear?.()) return true; } catch (e) { /* */ }
     return !!ctx.meleeTarget?.(player.x, player.z, null, 4.5);
   }
 
