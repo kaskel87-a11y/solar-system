@@ -49,6 +49,7 @@ const PRECACHE = [
   `mars/wearfx.js${q}`, `mars/wearfxcore.js${q}`, // v7.5.96 suit effects
   `mars/rideguns.js${q}`, `mars/ridegunscore.js${q}`, // v7.5.96 mounted guns on every car
   `mars/jetpack.js${q}`, `mars/jetpackcore.js${q}`, // Mars jetpack (Pumpkin)
+  `mars/glider.js${q}`, `mars/glidercore.js${q}`, // v7.5.99 hang glider + jets
   `mars/flame.js${q}`, `mars/flamecore.js${q}`, // 🔥 flamethrower (Steve)
   `mars/sniper.js${q}`, `mars/snipercore.js${q}`, // 🎯 sniper scope + contracts (v7.5.19)
   `mars/crane.js${q}`, `mars/cranecore.js${q}`, // 🧲 magnet crane truck (v7.5.22)

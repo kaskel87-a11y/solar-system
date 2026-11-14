@@ -741,6 +741,8 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     return [(k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + input.joy.x, (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) - input.joy.y];
   }
   function walk(dt, input, g) {
+    let gliding = false; try { gliding = window.SSX?.glider?.flying?.() === true; } catch (e) { gliding = false; }
+    if (gliding) { player.moving = 1; player.running = false; return; } // v7.5.99 the hang glider tick owns the move
     let [mvx, mvz] = readMove(input);
     const len = Math.hypot(mvx, mvz);
     if (len > 1) { mvx /= len; mvz /= len; }
