@@ -95,7 +95,7 @@ export function matchBanner(pay) {
 }
 // crowd: idle spot -> packed spot. Each spectator walks in along its own ray until it is PACK[row] m (Chebyshev, i.e. on a
 // square) from the centre: right up against the ropes (half-side 6.6), never inside them.
-export const PACK = [7.35, 8.3];
+export const PACK = [8.05, 9.05]; // v7.5.98: still just outside the bigger ropes (half-side 7.2)
 export function packSpot(c) { const m = Math.max(Math.abs(c.x), Math.abs(c.z)) || 1, k = Math.min(1, PACK[c.row ? 1 : 0] / m); return { x: c.x * k, z: c.z * k }; }
 // late arrivals that run in from the street when the bell rings (they start out of sight, 24-34 m out)
 export function rushers(phone = false) {

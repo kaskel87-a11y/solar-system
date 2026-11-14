@@ -106,6 +106,14 @@ function build(tc) {
   const L = { mat: [], rust: [], rope: [], chain: [], pad: [], head: [], sign: [], beam: [] };
   // stained mat: thin slab, top 3.5 cm above the dirt (under the duel ring decal at +6 cm)
   box(L.mat, K.MAT * 2, 0.06, K.MAT * 2, 0, lift(0, 0) + 0.005, 0);
+  // v7.5.98 bleachers: three banks outside the ropes. The crowd stands on them. Not colliders.
+  for (const s of K.STANDS) {
+    const y = lift(s.x, s.z);
+    box(L.rust, s.w, s.h, s.d, s.x, y + s.h / 2, s.z);
+    box(L.pad, s.w - 0.4, 0.08, s.d - 0.3, s.x, y + s.h + 0.02, s.z);
+    box(L.rust, 0.18, s.h + 0.9, 0.18, s.x - s.w / 2 + 0.2, y + (s.h + 0.9) / 2, s.z - s.d / 2 + 0.2);
+    box(L.rust, 0.18, s.h + 0.9, 0.18, s.x + s.w / 2 - 0.2, y + (s.h + 0.9) / 2, s.z + s.d / 2 - 0.2);
+  }
   // corner posts + turnbuckle pads, three strands per side: two ropes and a chain on top
   const P = K.posts();
   for (const [x, z] of P) { const y = lift(x, z); cyl(L.rust, 0.11, 0.14, K.POST_H, x, y, z, 8); box(L.pad, 0.34, 1.1, 0.34, x, y + 0.85, z, Math.PI / 4); box(L.rust, 0.4, 0.06, 0.4, x, y + K.POST_H, z); }

@@ -4,17 +4,17 @@
 export const PIT_LOCAL = [-40, -9];   // must match city.js PIT_LOCAL / act-pit-fight at_local (test checks)
 export const FLATS_AJ = [-280, -40];  // Flats district origin, AJ-relative (citydata districts.rough)
 export const FIGHT_R = 6;             // world.js duel ring (RingGeometry 5.6..6.0)
-export const ROPE = 6.6;              // half-side of the square rope ring (posts at the corners)
-export const MAT = 7.1;               // half-side of the stained mat (thin, under the duel ring decal)
+export const ROPE = 7.2;              // half-side of the square rope ring (posts at the corners). v7.5.98: a bigger ring
+export const MAT = 7.6;               // half-side of the stained mat (thin, under the duel ring decal)
 export const POST_H = 1.75;
 export const ROPES = [0.55, 0.95, 1.35]; // rope / chain strand heights
 export const SAG = 0.12;              // mid-span sag of each strand
 // Gantry: the sign frame (west) and a floodlight mast (east) carry a wire with a hanging lamp rig over the ring.
-export const SIGN = { at: [-12.6, 0], legs: [[-12.6, -3.7], [-12.6, 3.7]], w: 9.4, h: 2.6, y: 5.4, yaw: Math.PI / 2, text: 'THE PIT' };
-export const MAST = { at: [11.2, 0], h: 8.8 };
+export const SIGN = { at: [-13.2, 0], legs: [[-13.2, -3.2], [-13.2, 3.2]], w: 10.8, h: 2.8, y: 5.8, yaw: Math.PI / 2, text: 'THE PIT' };
+export const MAST = { at: [13.2, 0], h: 9.6 };
 export const RIG_Y = 7.4;             // hanging lamp rig height above the mat
 export const RIG = [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]; // lamp heads hanging from the rig
-export const LAMP_HEADS = [[-12.6, -3.7, 8.6], [-12.6, 3.7, 8.6], [11.2, -0.6, 8.6], [11.2, 0.6, 8.6]]; // floods on the supports [x,z,y]
+export const LAMP_HEADS = [[-13.2, -3.2, 9.4], [-13.2, 3.2, 9.4], [13.2, -0.8, 9.4], [13.2, 0.8, 9.4]]; // floods on the supports [x,z,y]
 export const TOWER = { at: [2, 13], r: 3 }; // mars/dress.js PIT_TOWER [-38,4] relative to the Pit (test checks); the crowd keeps off it
 export const POLE_R = 0.22;           // collider radius of sign legs / mast / posts
 export const MINIMAP = { icon: '\u{1F94A}', color: '#f97316', r: 4 };
@@ -34,7 +34,15 @@ const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI;
 
 // Candidate spectator spots: two staggered rows outside the corner posts, facing the centre, with the east entry left
 // open and nothing within 1.1 m of a ring post / sign leg / mast. Runtime drops any that the world says are blocked.
-export const CROWD_R = [10.3, 11.6];
+export const CROWD_R = [11.8, 12.6];
+// v7.5.98: bleachers the crowd stands on (visual only; not colliders), the betting window, and one marked seat
+export const STANDS = [
+  { x: 0, z: -11.4, w: 18, d: 2.4, h: 0.85 },
+  { x: 0, z: 11.4, w: 16, d: 2.4, h: 0.85 },
+  { x: -11.6, z: 0, w: 2.4, d: 14, h: 1.05 }
+];
+export const BOOK = { x: 9.4, z: 6.4 };   // betting window, beside the east entry
+export const SEAT = { x: -1.2, z: -12.2 }; // a marked chair on the south stand, facing the ring
 export function crowdCandidates(phone = false) {
   const out = [], step = phone ? 0.36 : 0.25, S = solids();
   CROWD_R.forEach((R, row) => {
