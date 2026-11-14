@@ -269,6 +269,8 @@ export function privateShow({ surface, toast = () => {}, onTap = (el, fn) => el.
     // cinematic camera: a shot per beat, slow dolly/arc inside each, always inside the booth
     const cam = ctx.camera; if (S.fovSaved == null) { S.fovSaved = cam.fov; S.cam = cam; }
     const portrait = innerWidth < innerHeight, u = Math.min(1, S.bt / B[1]), e = u * u * (3 - 2 * u), hx = S.x, hz = S.z;
+    if (S.dbg === 'chest') { _cp.set(hx + 0.42, 1.18, hz + 0.72); _cl.set(hx, 1.02, hz); cam.fov = portrait ? 56 : 40;
+      _p.copy(_cp); _l.copy(_cl); b.g.localToWorld(_p); b.g.localToWorld(_l); cam.position.copy(_p); S.camLocal = _cp.clone(); cam.lookAt(_l); cam.updateProjectionMatrix(); cam.updateMatrixWorld(); return; }
     const sz = b.seat.z; let fov;
     switch (B[0]) {
       case 'approach': case 'finish': _cp.set(0.02, 1.12, sz + 0.1); _cl.set(hx * 0.5, 1.05 + e * 0.08, hz); fov = portrait ? 70 - e * 6 : 50 - e * 6; break; // seated POV, slow push

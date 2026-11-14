@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.104: Danny’s top follows her body
+
+In the private dance, the white bikini top is a smooth mini top with fabric shading, not flat blocks. It stays on, it moves a little with the dance, and it does not poke through her. The other dancers use the same top. The Ines arrow on the side of the screen shows the whole label.
+
 ## v7.5.103: fly the Ashfall across Mars
 
 Walk up to the Ashfall and tap **🚀 Take off**. A list of spots on Mars comes up: Ares Junction downtown, the Velvet Airlock, your landing pad, Planum Australe, the Pit, the farm, Red Line Motors, and the trading post. Pick one. The ship lifts, crosses, and sets down, and you step out beside it. **Go to space** is still on that list. At 3 stars, or during a job, the ship stays put. On the map, a place card has **Fly ship here**.
