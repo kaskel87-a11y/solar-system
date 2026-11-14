@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.112: leave Danny’s room
+
+When the private dance ends you are standing, facing the door, and the camera and the stick work again. A big **Leave room** button takes you back onto the club floor. The doorway is open, with a marker on it.
+
 ## v7.5.111: one objective line
 
 The phone shows one short line for what you are doing, in large dark text on a light bar. Moonshine, a payout, and other notices wait behind **▤ More**. Toasts and empire texts show one at a time and fade quickly. They stay out of the middle of the screen. The arrow at the edge stays.
