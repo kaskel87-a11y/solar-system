@@ -22,7 +22,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.96');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.97');
     await G(() => localStorage.clear());
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000));
@@ -40,7 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await G(() => window.SSX.skins.equip('raccoon'));
     await G(() => { const s = window.__app.surface; const c = s.info.colony; s.debugMove(c.x + 8, c.z + 12, Math.PI); const st = document.createElement('style'); st.textContent = '#toast,#radio,#obLine,#ssxGuide,.ssxBark{display:none!important}'; document.head.appendChild(st); window.SSX.skins.open('wardrobe'); });
     await sleep(900);
-    const row = await G(() => { const p = document.getElementById('skPanel'); const t = p?.textContent || ''; const b = p?.querySelector('button'); const r = b?.getBoundingClientRect(); return { open: p?.classList.contains('open'), merc: /Merc with a Mouth/.test(t), raccoon: /Raccoon/.test(t), h: Math.round(r?.height || 0) }; });
+    const row = await G(() => { const p = document.getElementById('skPanel'); const t = p?.textContent || ''; const b = p?.querySelector('button'); const r = b?.getBoundingClientRect(); return { open: p?.classList.contains('open'), merc: /Crimson Mercenary/.test(t), raccoon: /Raccoon/.test(t), h: Math.round(r?.height || 0) }; });
     ok('wardrobe', row.open && row.merc && row.raccoon && row.h >= 48, row);
     await page.screenshot({ path: out + `wear-${tag}.png` });
     await G(() => window.SSX.skins.close());

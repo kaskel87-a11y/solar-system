@@ -1,4 +1,4 @@
-// v7 "GTA in space" layer: frontier colonies (domes, pads, neon, crates, lights), colonists, guards, shady
+// v7 "open-world crime in space" layer: frontier colonies (domes, pads, neon, crates, lights), colonists, guards, shady
 // contacts, a supply shop, parked vehicles you can commandeer, and a 1-5 star wanted level enforced by
 // security drones and patrol buggies. Everything here is game fiction. Cheap by design: shared geometry,
 // no real-time lights except one per colony, small unit caps on phones.

@@ -29,7 +29,7 @@ export const PIECES = {
   // v7.5.72: the two pieces the original "place habitats and landing pads" line never got. The hab is a bunk you rest in
   // (walls on three sides, door open toward +z). The pad is a lit slab you can walk and drive on (no colliders).
   hab: { id: 'hab', name: 'Habitat', icon: '🛏️', cost: 1400, hp: 400, fp: [2, 2], max: 1, colliders: [[0, -1.86, 1.95, 0.2], [-1.86, 0.15, 0.2, 1.7], [1.86, 0.15, 0.2, 1.7]], blurb: 'Pressurized bunk. Walk up to the door and tap Enter. Rest, a locker and the dog are inside.' },
-  pad: { id: 'pad', name: 'Landing pad', icon: '🛬', cost: 700, hp: 250, fp: [3, 3], max: 1, colliders: [], blurb: 'Lit pad. Call your starship down onto it, or call your rover. The rover gets fuel.' }
+  pad: { id: 'pad', name: 'Landing pad', icon: '🛬', cost: 700, hp: 250, fp: [3, 3], max: 1, colliders: [], blurb: 'Lit pad. Call your Ashfall down onto it, or call your rover. The rover gets fuel.' }
 };
 // habitat rest: real-time cooldown, saved on the plot as habRest (ms). A full-health rest does not start it.
 export const REST_MS = 3 * 60 * 1000;
@@ -114,7 +114,7 @@ export function freshSave() { const s = { v: 1, plots: {}, shipPlot: null }; for
 // loads gets its data back: base.js re-runs migrate on its own state after every register call.
 export function migrate(raw) {
   const s = freshSave(); if (!raw || typeof raw !== 'object') return s;
-  s.shipPlot = typeof raw.shipPlot === 'string' && plotById(raw.shipPlot) ? raw.shipPlot : null; // v7.5.94: which lot the starship is parked on
+  s.shipPlot = typeof raw.shipPlot === 'string' && plotById(raw.shipPlot) ? raw.shipPlot : null; // v7.5.94: which lot the Ashfall is parked on
   for (const [id, o] of Object.entries(raw.plots && typeof raw.plots === 'object' ? raw.plots : {})) if (!plotById(id) && o && typeof o === 'object' && /^[\w-]{1,40}$/.test(id) && (o.owned || o.pieces?.length)) s.plots[id] = JSON.parse(JSON.stringify(o));
   for (const p of PLOTS) {
     const o = raw.plots?.[p.id]; if (!o || typeof o !== 'object') continue; const t = s.plots[p.id];

@@ -6,7 +6,7 @@ export const HOW = 'Buy at Threadbare or find one. ☰ → Wardrobe → Wear.';
 // melee is a damage multiplier. jet, when set, replaces the shop jetpack while the suit is on.
 export const FX = {
   raccoon: { speed: 1.28, jump: 1, hover: 0, coast: 0, melee: 1, line: 'You run faster in the raccoon suit.' },
-  merc: { speed: 1.08, jump: 1, hover: 0, coast: 0, melee: 1.65, line: 'Punches hit harder in the merc suit.' },
+  merc: { speed: 1.08, jump: 1, hover: 0, coast: 0, melee: 1.65, line: 'Punches hit harder in the crimson suit.' },
   superjet: { speed: 1, jump: 1, hover: 0, coast: 0, melee: 1, line: 'Hold Jump. This pack flies higher and longer than the shop jetpack.',
     jet: { fuel: 180, burn: 11, thrust: 14, maxUp: 12, ceil: 120, air: 8 } },
   skates: { speed: 1.7, jump: 1, hover: 0, coast: 0.7, melee: 1, line: 'The skates roll. Let go and you coast.' },

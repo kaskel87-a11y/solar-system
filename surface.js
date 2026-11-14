@@ -516,7 +516,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   // ---------- Player, camera, companions ----------
   const player = { x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: -0.05, grounded: false, walked: 0, bob: 0, moving: 0, moveYaw: 0, faceYaw: 0 };
   const VIEW_KEY = 'ssx.view.v1', CAM_MAX = 320, SHIP_HOME = { x: 14, z: -22 }, SHIP = { x: SHIP_HOME.x, z: SHIP_HOME.z };
-  let shipGroup = null; // the surface Starship mesh; base.js moves it onto a landing pad (v7.5.94)
+  let shipGroup = null; // the surface Ashfall mesh; base.js moves it onto a landing pad (v7.5.94)
   const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
   const lerpAngle = (a, b, t) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * Math.min(1, t);
   // on-foot and rover views are remembered separately; the rover defaults to the third-person chase cam
@@ -684,7 +684,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // landing site (v7.5.94: SHIP x/z move when the ship is called onto a base pad; each landing starts at the home site)
     SHIP.x = SHIP_HOME.x; SHIP.z = SHIP_HOME.z;
     const rocketBuilt = buildRocket(), rocketFlames = rocketBuilt.userData.flames; // place() replaces userData; keep the engine glow
-    shipGroup = place(rocketBuilt, SHIP.x, SHIP.z, { name: 'Your Starship', fact: 'Your ride home: a stainless-steel, fully reusable-style starship standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit. Call it down onto a landing pad you own.' });
+    shipGroup = place(rocketBuilt, SHIP.x, SHIP.z, { name: 'Your Ashfall', fact: 'Your ride home: a stainless-steel, fully reusable-style Ashfall standing about 50 m tall on six landing legs. Tap Take off (or press T) to return to orbit. Call it down onto a landing pad you own.' });
     shipGroup.userData.flames = rocketFlames; shipGroup.rotation.y = 0.5;
     const flag = place(buildFlag(), -6, -10, { name: 'Flag', fact: cfg.flagFact }); flag.rotation.y = 0.4;
     const special = place(builders[cfg.poi.kind](cfg.poi.sign), -14, -27, { name: cfg.poi.name, fact: cfg.poi.fact }); special.rotation.y = -0.6;
@@ -815,7 +815,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // blast the ground under you when low
     if (k > 0.3 && dust) { const gh = height(r.x, r.z), alt = r.y - gh; if (alt < 9 && Math.random() < dt * 40 * k * (1 - alt / 9)) { const a = Math.random() * 6.28, d = 1 + Math.random() * 2.5; spawnDust(r.x + Math.cos(a) * d, gh + 0.2, r.z + Math.sin(a) * d, Math.cos(a) * 9, 0.8 + Math.random() * 1.5, Math.sin(a) * 9); } }
   }
-  // ----- v7.2 Roadster kit: a low, sleek two-seater shell over the chassis (generic: no badges, no logos) -----
+  // ----- v7.2 Lowline kit: a low, sleek two-seater shell over the chassis (generic: no badges, no logos) -----
   function setKit(r, on, paint) {
     r.kit = !!on;
     if (on && !r.kitG) {
@@ -1132,7 +1132,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const introY = state.intro > 0 ? Math.pow(state.intro / 1.8, 2) * 40 : 0, introP = state.intro > 0 ? state.intro * 0.35 : 0;
     const first = camDist < 0.8;
     if (driving) {
-      // v7.2 GTA-style: a manual orbit eases back behind the vehicle 1.5 s after the last drag, or as soon as it's moving
+      // v7.2 open-world: a manual orbit eases back behind the vehicle 1.5 s after the last drag, or as soon as it's moving
       const lookIdle = time - lastLook;
       if (lookIdle > 1.5 || (lookIdle > 0.35 && (Math.abs(car.speed) > 2 || car.air))) camYawOff *= Math.exp(-dt * (lookIdle > 1.5 ? 2.2 : 2.8));
       // v7.2: the chase cam swings after the car's heading (softer in the air, so banked turns read)
@@ -1144,7 +1144,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         camera.position.copy(camT); camera.rotation.set(player.pitch + car.pitch * (car.air ? 0.6 : 1), viewYaw, car.roll * (car.air ? 0.5 : 1), 'YXZ');
       } else camT.set(car.x, car.y + 2.0, car.z);
     } else {
-      // v7.2 GTA-style third person: the camera eases round behind the way you face (you turn to face where you walk).
+      // v7.2 open-world third person: the camera eases round behind the way you face (you turn to face where you walk).
       // Drag to orbit any time; it settles back 1.5 s after you let go, or as soon as you move. Desktop mouse-look (pointer lock) is left alone.
       if (!first && state.intro <= 0 && !document.pointerLockElement) {
         const idle = time - lastLook, d = Math.atan2(Math.sin(player.faceYaw - player.yaw), Math.cos(player.faceYaw - player.yaw));
@@ -1177,7 +1177,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
         // v7.4: march the boom against tall interior colliders too (VIP partition, depot shelving) so the lens never ends up inside a wall
         const N = 12, c0 = cd; for (let i = 1; i <= N; i++) { const t = c0 * i / N; if (world.camBlockedIn(camT.x - camDir.x * t, camT.y - camDir.y * t, camT.z - camDir.z * t)) { cd = Math.max(0.3, c0 * (i - 1) / N - 0.2); break; } }
       }
-      else if (cd < 60) { // v7.3: GTA-style pull-in. March the boom from the target outward; stop short of buildings, domes and the Starship
+      else if (cd < 60) { // v7.3: open-world pull-in. March the boom from the target outward; stop short of buildings, domes and the Ashfall
         const sx = SHIP.x, sz = SHIP.z, dS = Math.hypot(camT.x - sx, camT.z - sz), shipNear = dS < cd + 8 && dS > 5;
         const blocked = (x, y, z) => world.camBlocked(x, y, z) || rockAt(x, y, z) || !!window.__race?.camBlocked?.(x, y, z) || (shipNear && y < height(sx, sz) + 52 && Math.hypot(x - sx, z - sz) < 4.6) || !!globalThis.SSX?.heist?.camBlocked?.(x, y, z); // v7.5.4: heist-site walls (Ben)
         const N = 14; let hit = cd;
@@ -1386,7 +1386,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function travelBlocked() { if (!cfg || !rover) return 'no rover here'; if (indoor) leaveBuilding(); if (state.intro > 0 || game.isDown()) return 'busy'; if (game.info.combat) return 'aliens are nearby! Clear them first.'; return null; }
   function dogTo(x, z) { if (!dog || driving) return; dog.mode = 'follow'; dog.sniff = null; dog.x = x + 1.4; dog.z = z + 1.2; dog.y = height(dog.x, dog.z); dog.vy = 0; dog.nextSniff = 12; }
   function dustRing(x, z, n = 70) { if (!dust) return; const y = height(x, z); for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, sp = 3 + (i % 5); spawnDust(x + Math.cos(a) * 2.2, y + 0.4, z + Math.sin(a) * 2.2, Math.cos(a) * sp, 1.5 + (i % 3), Math.sin(a) * sp); } }
-  // v7.5.94: park or fly the surface Starship. yOff is metres above the ground (engine glow while it is up). groundY pins the legs to a pad.
+  // v7.5.94: park or fly the surface Ashfall. yOff is metres above the ground (engine glow while it is up). groundY pins the legs to a pad.
   function placeShip(x, z, yOff = 0, yaw, groundY) {
     if (!shipGroup || !cfg || !Number.isFinite(+x) || !Number.isFinite(+z)) return null;
     SHIP.x = +x; SHIP.z = +z;

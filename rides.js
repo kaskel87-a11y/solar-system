@@ -16,7 +16,7 @@ function glowTexture() {
   g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.45, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
   glowTex = new THREE.CanvasTexture(c); glowTex.userData.shared = true; return glowTex;
 }
-// side profile [z, y] extruded across the width (same trick as the v7.2 Roadster kit)
+// side profile [z, y] extruded across the width (same trick as the v7.2 Lowline kit)
 function extrude(key, pts, depth) {
   return geo(key, () => { const s = new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y))); const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 1 }); g.translate(0, 0, -depth / 2); g.rotateY(-Math.PI / 2); return g; });
 }

@@ -1,7 +1,7 @@
 // v7.6 Velvet Airlock: a private dance from ANY of the stage dancers (Danny keeps her own show in privateshow.js).
 // Walk up to the stage in front of Rhea Nebula or Kiara Quasar: the action button reads 'Private dance' (black button,
 // white text; E on desktop). Pay, and she takes you up to the same sealed VIP booth Danny uses, for one short song.
-// Same house rules as Danny's show: adults only, GTA-style suggestive but non-explicit, outfits stay on, no nudity,
+// Same house rules as Danny's show: adults only, open-world suggestive but non-explicit, outfits stay on, no nudity,
 // no contact. Tips buy extra time; touching her gets you thrown out by Tiny.
 // Hooks (both guarded, so a failure here never breaks the club): interiors.js calls addDancerSpots(api, ...) while
 // building the club; index.html calls clubPrivate(...) once and routes the 'privdance' hotspot to cp.offer(spot).

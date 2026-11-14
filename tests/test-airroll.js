@@ -1,4 +1,4 @@
-// Phone barrel-roll button (airroll.js) + the existing v7.4 rolls: Starship in flight, the rover and a stolen car off a
+// Phone barrel-roll button (airroll.js) + the existing v7.4 rolls: Ashfall in flight, the rover and a stolen car off a
 // launch, button only while airborne, taps with a held joystick finger, clean landings (no roof landing, no damage).
 // Desktop: button never shows; Q/E in the air and double-tap D still roll.
 // BASE=http://localhost:8819/ DEV=393x852 BR=webkit OUT=/workspace/pw-ben-rolls/shots/ node tests/test-airroll.js
@@ -58,7 +58,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
     ok('api', null, await G(() => { const A = window.SSX?.airRoll; return !!A && ['roll', 'isRolling', 'canRoll', 'on'].every(k => typeof A[k] === 'function') && window.__app.airRoll === A; }));
     await G(() => { window.__arEv = []; window.SSX.airRoll.on('*', (e, d) => window.__arEv.push(e + ':' + (d.target || '') + (d.dir ? ':' + d.dir : ''))); });
     ok('api-cantRollInOrbit', null, await G(() => !window.SSX.airRoll.canRoll() && window.SSX.airRoll.roll('left') === false));
-    // ---- Starship in flight
+    // ---- Ashfall in flight
     await G(() => window.__app.setFlying?.(true)); await wait(() => window.__app.state.flying && !window.__app.state.onSurface, 15000); await sleep(600);
     const sr0 = await G(() => window.__app.shipRolls || 0);
     if (touch) {

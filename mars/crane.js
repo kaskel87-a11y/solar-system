@@ -1,4 +1,4 @@
-// v7.5.22 Magnet crane truck ("GTA in space": wrecker theft). Lou's yellow six-wheel wrecker is parked outside HOOK & CROOK
+// v7.5.22 Magnet crane truck ("open-world crime in space": wrecker theft). Lou's yellow six-wheel wrecker is parked outside HOOK & CROOK
 // TOWING in Red Tape Flats with a 🧲 1,800 CR sign: buy it (🧲 Buy crane / G on foot next to it) or just steal it (E: 2★,
 // Lou screams). Either way it lands in ☰ My rides. Driving it, 🧲 Magnet (G) at a crawl drops the electromagnet onto the
 // parked ride under the hook (ring highlight + "🧲 Grab <name>"), latches, lifts it and you drive off with it swinging on

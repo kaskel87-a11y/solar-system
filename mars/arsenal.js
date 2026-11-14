@@ -51,7 +51,7 @@ export const MODS = { suppressor: { name: 'Suppressor', icon: '🤫', blurb: 'No
 export const ARS = {
   pistol: { core: 'ar_pistol', name: 'Kestrel M3 sidearm', icon: '🔫', kind: 'gun', cal: 'light', mag: 12, reload: 1.1, recoil: 0.035, bloom: 0.012, bloomMax: 0.06, knock: 0.35, mods: ['suppressor', 'extmag', 'scope'],
     base: { name: 'Kestrel M3 sidearm', cd: 0.2, dmg: 1.6, speed: 150, color: 0xffe066, size: 0.55, life: 0.8, spread: 0.006 } },
-  smg: { core: 'smg', name: 'Viper SMG', icon: '🔫', kind: 'gun', cal: 'light', mag: 30, reload: 1.6, recoil: 0.018, bloom: 0.006, bloomMax: 0.08, knock: 0.2, mods: ['suppressor', 'extmag'], unlock: 'weapon:smg' },
+  smg: { core: 'smg', name: 'Rattler SMG', icon: '🔫', kind: 'gun', cal: 'light', mag: 30, reload: 1.6, recoil: 0.018, bloom: 0.006, bloomMax: 0.08, knock: 0.2, mods: ['suppressor', 'extmag'], unlock: 'weapon:smg' },
   shotgun: { core: 'shotgun', name: 'Breacher shotgun', icon: '💥', kind: 'gun', cal: 'shell', mag: 6, reload: 2.3, recoil: 0.09, bloom: 0.02, bloomMax: 0.05, knock: 0.25, mods: ['extmag'], unlock: 'weapon:shotgun' },
   rifle: { core: 'ar_rifle', name: 'Longwatch AR-7 battle rifle', icon: '🎯', kind: 'gun', cal: 'heavy', mag: 24, reload: 1.9, recoil: 0.03, bloom: 0.008, bloomMax: 0.06, knock: 0.5, mods: ['suppressor', 'extmag', 'scope'],
     base: { name: 'Longwatch AR-7', cd: 0.12, dmg: 2.2, speed: 170, color: 0xffe066, size: 0.6, life: 0.9, spread: 0.004 } },
@@ -72,17 +72,17 @@ export const ARS = {
   gnasher: { core: 'ar_gnasher', name: 'Gnasher chain-machete', icon: '⛓️', kind: 'melee', mult: 4.2, knockMult: 1.2, mods: [], tier: 3, base: { name: 'Gnasher chain-machete', cd: 0.38, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   thumper: { core: 'ar_thumper', name: 'Thumper drum launcher', icon: '💣', kind: 'gun', cal: 'frag', mag: 6, reload: 3.0, recoil: 0.14, bloom: 0.01, bloomMax: 0.03, knock: 2.2, mods: [], tier: 4,
     base: { name: 'Thumper', cd: 0.55, dmg: 2.4, speed: 34, color: 0xff7a20, size: 1.6, life: 3, splash: 5.5, splashDmg: 10, grav: 14, lob: 0.22, rocket: true } },
-  widowmaker: { core: 'ar_widowmaker', name: 'Widowmaker gauss rifle', icon: '🕷️', kind: 'gun', cal: 'rail', mag: 4, reload: 2.6, charge: 0.9, recoil: 0.14, bloom: 0, bloomMax: 0, knock: 2.0, mods: ['scope'], tier: 4,
-    base: { name: 'Widowmaker', cd: 0.7, dmg: 24, speed: 480, color: 0xff3040, size: 1.6, life: 0.45, pierce: true, beam: true, rail: true } },
+  widowmaker: { core: 'ar_widowmaker', name: 'Longbore gauss rifle', icon: '🎯', kind: 'gun', cal: 'rail', mag: 4, reload: 2.6, charge: 0.9, recoil: 0.14, bloom: 0, bloomMax: 0, knock: 2.0, mods: ['scope'], tier: 4,
+    base: { name: 'Longbore', cd: 0.7, dmg: 24, speed: 480, color: 0xff3040, size: 1.6, life: 0.45, pierce: true, beam: true, rail: true } },
   kingpin: { core: 'ar_kingpin', name: 'Gilded Gutterking', icon: '👑', kind: 'gun', cal: 'heavy', mag: 6, reload: 1.5, recoil: 0.1, bloom: 0.015, bloomMax: 0.04, knock: 1.4, mods: ['scope', 'suppressor'], tier: 5,
     base: { name: 'Gilded Gutterking', cd: 0.36, dmg: 6.2, speed: 200, color: 0xffd700, size: 0.8, life: 0.9, spread: 0.002 } },
   hellhound: { core: 'ar_hellhound', name: 'Hellhound slug-thrower', icon: '🐕', kind: 'gun', cal: 'shell', mag: 8, reload: 2.4, recoil: 0.12, bloom: 0.02, bloomMax: 0.05, knock: 1.0, mods: ['extmag'], tier: 5,
     base: { name: 'Hellhound', cd: 0.6, dmg: 1.45, pellets: 10, spread: 0.07, speed: 95, color: 0xff5020, size: 0.8, life: 0.45 } },
-  skullsplitter: { core: 'ar_skullsplitter', name: 'Skullsplitter warhammer', icon: '🔨', kind: 'melee', mult: 5.5, knockMult: 3.0, mods: [], tier: 5, base: { name: 'Skullsplitter', cd: 0.62, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
+  skullsplitter: { core: 'ar_skullsplitter', name: 'Skullsplitter maul', icon: '🔨', kind: 'melee', mult: 5.5, knockMult: 3.0, mods: [], tier: 5, base: { name: 'Skullsplitter', cd: 0.62, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   // v7.5.31: the Grin Reaper's brass bulb horn (mars/honk.js gives it on first wear, honks + scares on every swing): a weak bonk
   horn: { core: 'ar_horn', name: 'Brass bulb horn', icon: '📯', kind: 'melee', mult: 0.35, knockMult: 0.6, mods: [], base: { name: 'Brass bulb horn', cd: 0.45, dmg: 0, speed: 1, color: 0xffffff, size: 0.01, life: 0.01 } },
   // v7.5.77 street iron: on the gun-counter list and at Bore from the start (not behind a buy-out). Same fire path,
-  // same wheel, same phone FIRE button. Each one is a different cadence from the Kestrel, the Breacher and the Viper.
+  // same wheel, same phone FIRE button. Each one is a different cadence from the Kestrel, the Breacher and the Rattler.
   ash: { core: 'ar_ash', name: 'Ash .38 pocket pistol', icon: '🔫', kind: 'gun', cal: 'light', mag: 7, reload: 0.9, recoil: 0.022, bloom: 0.008, bloomMax: 0.04, knock: 0.22, mods: ['suppressor'],
     base: { name: 'Ash .38', cd: 0.14, dmg: 1.15, speed: 160, color: 0xfff4b0, size: 0.4, life: 0.5, spread: 0.008, voice: 'pistol', recoilKick: 0.5, flash: 0.04 } },
   sawed: { core: 'ar_sawed', name: 'Back-alley sawed-off', icon: '💥', kind: 'gun', cal: 'shell', mag: 2, reload: 1.25, recoil: 0.14, bloom: 0.03, bloomMax: 0.06, knock: 0.85, mods: [],

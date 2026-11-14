@@ -23,7 +23,7 @@ function rawPlaces() {
   tryv(() => { for (const p of X().base?.plots?.() || []) if (p.owned && p.world && p.id !== 'farm' && !/homestead/i.test(p.name || '')) add('base', p.world, { id: 'base:' + p.id, name: `Your base · ${p.name}`, sub: 'Free' }); });
   // farm + trading post: SSX.farm.places() (world coords)
   tryv(() => { for (const p of X().farm?.places?.() || []) add(p.id === 'post' ? 'post' : 'farm', p, { id: p.id === 'post' ? 'post' : 'farm', name: p.name }); });
-  // spaceport: where your Starship sits
+  // spaceport: where your Ashfall sits
   tryv(() => { const s = md()?.ship; add('spaceport', s, { name: 'Spaceport (your ship)' }); });
   // districts: world.districts() kinds downtown / rough / gated, arriving at their fast-travel spot
   tryv(() => { for (const d of world()?.districts?.() || []) if (C.KINDS[d.kind] && ['downtown', 'rough', 'gated'].includes(d.kind)) add(d.kind, d.fast || d, { id: d.kind, name: `${C.KINDS[d.kind].name} · ${d.name}`, district: d.id }); });

@@ -58,7 +58,7 @@ const SHOPS = {
   rtf: [
     { kind: 'guns', key: 'ms_guns_rtf', sign: 'SCRAP & SLUG', color: 0xff7a2a, at: [-20, -10, 7, 4, 4], keeper: 'Mags', items: [
       { id: 'shotgun', name: 'Sawn Breacher', desc: 'Used. Barrel cut down with a grinder. Comes with 12 shells.', price: 110, kind: 'weapon', w: 'shotgun' },
-      { id: 'smg', name: 'Viper SMG (no serial)', desc: 'Serial filed off. Comes with 60 rounds.', price: 200, kind: 'weapon', w: 'smg' },
+      { id: 'smg', name: 'Rattler SMG (no serial)', desc: 'Serial filed off. Comes with 60 rounds.', price: 200, kind: 'weapon', w: 'smg' },
       { id: 'blade', name: 'Hot vibro-machete', desc: 'Fell off a cargo crawler. Melee hits land 3\u00d7 harder.', price: 160, kind: 'melee', w: 'blade' },
       { id: 'shells', name: 'Loose shells \u00d712', desc: 'Some of them are even live.', price: 20, kind: 'ammo', ammo: 'shells', n: 12 },
       { id: 'shells24', name: 'Bulk buckshot \u00d724', desc: 'A coffee can of shells.', price: 36, kind: 'ammo', ammo: 'shells', n: 24 },
@@ -87,7 +87,7 @@ const SHOPS = {
   oly: [
     { kind: 'guns', key: 'ms_guns_oly', sign: 'MERIDIAN ARMS', color: 0x40d0ff, at: [-38, -36, 8, 5, 4], keeper: 'Dana Okafor', items: [
       { id: 'shotgun', name: 'Breacher shotgun', desc: '8-pellet scattergun. Comes with 12 shells.', price: 150, kind: 'weapon', w: 'shotgun' },
-      { id: 'smg', name: 'Viper SMG', desc: 'Compact caseless SMG. Comes with 60 rounds.', price: 260, kind: 'weapon', w: 'smg' },
+      { id: 'smg', name: 'Rattler SMG', desc: 'Compact caseless SMG. Comes with 60 rounds.', price: 260, kind: 'weapon', w: 'smg' },
       { id: 'railrifle', name: 'Scoped rail rifle', desc: 'Punches through a line of anything. Comes with 6 slugs.', price: 420, kind: 'weapon', w: 'railrifle' },
       { id: 'shells', name: 'Shotgun shells \u00d712', price: 30, kind: 'ammo', ammo: 'shells', n: 12 },
       { id: 'rounds', name: 'SMG rounds \u00d760', price: 35, kind: 'ammo', ammo: 'rounds', n: 60 },
@@ -114,7 +114,7 @@ const SHOPS = {
   ],
   hel: [
     { kind: 'guns', key: 'ms_guns_hel', sign: 'AURUM ARMORY', color: 0xffd060, at: [24, 4, 8, 5, 4], keeper: 'Mr. Albrecht', items: [
-      { id: 'smg', name: 'Engraved Viper SMG', desc: 'Gold inlay, same kick. Comes with 60 rounds.', price: 330, kind: 'weapon', w: 'smg' },
+      { id: 'smg', name: 'Engraved Rattler SMG', desc: 'Gold inlay, same kick. Comes with 60 rounds.', price: 330, kind: 'weapon', w: 'smg' },
       { id: 'railrifle', name: 'Bespoke rail rifle', desc: 'Hand-wound coils. Comes with 6 slugs.', price: 504, kind: 'weapon', w: 'railrifle' },
       { id: 'launcher', name: 'Frag launcher, walnut stock', desc: 'Lobs frags, 5 m blast. Comes with 4 frags.', price: 576, kind: 'weapon', w: 'launcher' },
       { id: 'cleaver', name: 'Thermal cleaver', desc: 'Red-hot steel in a velvet case.', price: 360, kind: 'melee', w: 'cleaver' },

@@ -6,7 +6,7 @@ export const BARKS = {
     "You see that guy's eyes? Blue. Glowing. Dust, man.", 'My cousin went to Europa. Now he owes Halvorsen his kidneys.',
     "Security took my bike. Said it was 'evidence.' Of what?", "Don't go past the dunes after dark. Things dig up there.",
     "The Velvet Airlock's got a new DJ. Bass shook my fillings loose.", "Meridian's hiring. Meridian's always hiring. Wonder why.",
-    "Who parks a Starship there? Who does that?", "I'm not drunk. The gravity's just low.",
+    "Who parks an Ashfall there? Who does that?", "I'm not drunk. The gravity's just low.",
     "Saltblood boys outside the Cantina again. Red tape, big guns.", "Rook was asking about you. That's never good.",
     'Tycho bookies have Kestrel at 3-to-1. Fix is in.', "If you see Rusk, I wasn't here.", 'Hey, you dropped something. Oh. Your dignity.'],
   downtown: ['Meridian bonus season. Buy something ugly and expensive.', "Don't touch the glass. It costs more than you.",

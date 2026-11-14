@@ -1,4 +1,4 @@
-// renders the raw gameplay frame for the 1200x630 share card (HUD hidden), Roadster flying + rockets, near the Starship
+// renders the raw gameplay frame for the 1200x630 share card (HUD hidden), Lowline flying + rockets, near the Ashfall
 const { chromium } = require('playwright');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
@@ -8,7 +8,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.goto('http://localhost:8765/?t=' + Date.now()); await p.waitForFunction(() => window.__frames > 3 && !document.getElementById('loading'), null, { timeout: 120000 });
   await G(() => { localStorage.removeItem('ssx.progress.v1'); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
   await p.waitForFunction(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, null, { timeout: 60000 }); await sleep(1500);
-  await G(() => { const g = window.__app.game; g.setAliens(false); g.debug.clear(); g.progress.credits = 9999; for (const k of ['turret2', 'turret3', 'rockets', 'kit:roadster']) g.buy(k); const s = window.__app.surface; s.summonRover(); const i = s.info; s.debugPlace(i.roverX + 3.5, i.roverZ + 2, 0.9); s.interact(); });
+  await G(() => { const g = window.__app.game; g.setAliens(false); g.debug.clear(); g.progress.credits = 9999; for (const k of ['turret2', 'turret3', 'rockets', 'kit:lowline']) g.buy(k); const s = window.__app.surface; s.summonRover(); const i = s.info; s.debugPlace(i.roverX + 3.5, i.roverZ + 2, 0.9); s.interact(); });
   await sleep(1200);
   await p.addStyleTag({ content: 'body > *:not(canvas){visibility:hidden!important}' });
   await G(() => { window.__app.game.switchWeapon('rockets'); window.__app.touchBtns.jump = true; window.__app.joy.y = -0.6; window.__app.joy.x = -0.8; });

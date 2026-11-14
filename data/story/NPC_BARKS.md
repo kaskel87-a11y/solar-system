@@ -11,7 +11,7 @@ Short lines for the radio card and the speech toasts, 65 characters max each. Th
 - "Don't go past the dunes after dark. Things dig up there."
 - "The Velvet Airlock's got a new DJ. Bass shook my fillings loose."
 - "Meridian's hiring. Meridian's always hiring. Wonder why."
-- "Who parks a Starship there? Who does that?"
+- "Who parks an Ashfall there? Who does that?"
 - "Is that a dog in a helmet? Hey, buddy! Hey!"
 - "I'm not drunk. The gravity's just low."
 - "Saltblood boys outside the Cantina again. Red tape, big guns."
@@ -103,15 +103,15 @@ Short lines for the radio card and the speech toasts, 65 characters max each. Th
 - "You are a small warm thing in a large cold place."
 - "Ambient for heists, hearses and long drives home."
 
-**CERES 94.7 (Belt Synthwave): Halo**
+**CERES 94.7 (Belt Synthwave): Lux**
 - "Ceres 94.7. Buy low, sell high, stay pressurized."
-- "Halo here. Bust alert: Freeport pad, ten minutes. You're welcome."
+- "Lux here. Bust alert: Freeport pad, ten minutes. You're welcome."
 - "Somebody robbed the Exchange. I'm not saying who. I'm saying wow."
 - "The Quiet doesn't like this song. Volume up."
 - "Request line's open. Requests are ignored lovingly."
 - "Weather on Ceres: salty. Like me."
 - After `halo-02`: "Bust sweep heading your way. Ditch it or drive it."
-- Burn It Down ending: "This is Halo. Tonight we read a ledger. Out loud."
+- Burn It Down ending: "This is Lux. Tonight we read a ledger. Out loud."
 
 ## Contacts: idle lines (while you stand near them)
 - **Dutch:** "Tab's open. Your credit isn't." / "Wipe your boots. It's red dust, not a souvenir."
@@ -124,7 +124,7 @@ Short lines for the radio card and the speech toasts, 65 characters max each. Th
 - **Gus:** "Low miles! Hardly stolen!" / "Payments? We do payments. And repos."
 - **Voss:** "Walk with me. Don't talk." / "I've read your file. It's short."
 - **Mr. Sable:** "Sit. Everyone sits." / "Patience is cheaper than bullets. Usually."
-- **Halo:** "You're on the air. Kidding. Maybe."
+- **Lux:** "You're on the air. Kidding. Maybe."
 
 ## Frankie (shown as toasts: *action*)
 - *growls low at the sand* (a hive is near)

@@ -1,4 +1,4 @@
-// v7.2 GTA-style third-person camera: eases back behind you on foot, in your rover, in a stolen ride and while flying.
+// v7.2 open-world third-person camera: eases back behind you on foot, in your rover, in a stolen ride and while flying.
 // Manual drag-orbit holds until ~1.5 s after the last drag (or until you move); pinch-zoom distance is kept.
 // BASE=http://localhost:8765/ DEV="iPhone 14" BR=webkit node test-cam.js
 const { chromium, webkit, devices } = require('playwright');

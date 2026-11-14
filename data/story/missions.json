@@ -592,7 +592,7 @@
      ],
      "objectives": [
       "Hire a driller: Ozzie (pricey, solid) or a cantina drunk (cheap)",
-      "Inside help: Penny Okoro (vault engineer) or Halo",
+      "Inside help: Penny Okoro (vault engineer) or Lux",
       "Hire a wheelman: Kestrel, or drive the getaway yourself",
       "Bring the crew to the safehouse"
      ],
@@ -605,7 +605,7 @@
       {
        "type": "choice",
        "id": "hacker",
-       "text": "Inside help: Penny Okoro (vault engineer) or Halo"
+       "text": "Inside help: Penny Okoro (vault engineer) or Lux"
       },
       {
        "type": "choice",
@@ -665,7 +665,7 @@
      "giver": "Rook",
      "title": "The Big Withdrawal",
      "world": "Ceres",
-     "location": "Occator Exchange vault → Starship",
+     "location": "Occator Exchange vault → Ashfall",
      "type": "heist",
      "setup": [
       "Rook: Tonight we rob the Quiet’s bank.",
@@ -678,7 +678,7 @@
       "Grab the vault boxes (and the ledger)",
       "Rook draws on you",
       "Get to the getaway ride (Tether Hopper)",
-      "Reach the Starship with 4★ on you"
+      "Reach the Ashfall with 4★ on you"
      ],
      "steps": [
       {
@@ -732,7 +732,7 @@
        "type": "return",
        "wanted": 4,
        "limit": 150,
-       "text": "Reach the Starship with 4★ on you"
+       "text": "Reach the Ashfall with 4★ on you"
       }
      ],
      "rewards": {
@@ -2719,7 +2719,7 @@
     }
    ]
   },
-  "Halo": {
+  "Lux": {
    "world": "Ceres",
    "hub": "Occator Exchange",
    "at": [
@@ -2735,14 +2735,14 @@
      "id": "halo-01-deadair",
      "chain": "halo-airwaves",
      "order": 1,
-     "giver": "Halo",
+     "giver": "Lux",
      "title": "Dead Air",
      "world": "Ceres",
      "location": "Occator Exchange → Freeport → Ares Junction",
      "type": "deliver",
      "setup": [
-      "Halo: Dust is cheap here. Gold on Mars.",
-      "Halo: Buy five. Sell high. Don’t get searched."
+      "Lux: Dust is cheap here. Gold on Mars.",
+      "Lux: Buy five. Sell high. Don’t get searched."
      ],
      "objectives": [
       "Buy 5 units of glow-dust at the Drift",
@@ -2777,9 +2777,9 @@
       "unlock": "system:trade_routes"
      },
      "dialogue": {
-      "intro": "Halo: Ceres 94.7. Neon, chrome, and logistics.",
-      "success": "Halo: Buy low, sell high. Capitalism, baby.",
-      "fail": "Halo: Customs took it. And your dignity."
+      "intro": "Lux: Ceres 94.7. Neon, chrome, and logistics.",
+      "success": "Lux: Buy low, sell high. Capitalism, baby.",
+      "fail": "Lux: Customs took it. And your dignity."
      },
      "fail_conditions": [
       "Searched at a pad while carrying (wanted 1+)"
@@ -2801,14 +2801,14 @@
      "id": "halo-02-pirate",
      "chain": "halo-airwaves",
      "order": 2,
-     "giver": "Halo",
+     "giver": "Lux",
      "title": "Pirate Broadcast",
      "world": "Ceres",
      "location": "Saltblood relay mast",
      "type": "steal",
      "setup": [
-      "Halo: Mr. Sable runs his deals over my band.",
-      "Halo: Steal his relay. I want the chatter."
+      "Lux: Mr. Sable runs his deals over my band.",
+      "Lux: Steal his relay. I want the chatter."
      ],
      "objectives": [
       "Reach the relay mast",
@@ -2846,9 +2846,9 @@
       "unlock": "radio:bust_alerts"
      },
      "dialogue": {
-      "intro": "Halo: Knowledge is power. Also blackmail.",
-      "success": "Halo: I hear everything now. Bust alerts on your radio.",
-      "fail": "Halo: They fried the splice. Back to guessing."
+      "intro": "Lux: Knowledge is power. Also blackmail.",
+      "success": "Lux: I hear everything now. Bust alerts on your radio.",
+      "fail": "Lux: They fried the splice. Back to guessing."
      },
      "fail_conditions": [
       "Killed",
@@ -2871,18 +2871,18 @@
      "id": "halo-03-signoff",
      "chain": "halo-airwaves",
      "order": 3,
-     "giver": "Halo",
+     "giver": "Lux",
      "title": "Sign-Off",
      "world": "Ceres",
      "location": "CERES 94.7 booth",
      "type": "kill",
      "setup": [
-      "Halo: Mr. Sable knows it was me.",
-      "Halo: His guys are coming. Live on air."
+      "Lux: Mr. Sable knows it was me.",
+      "Lux: His guys are coming. Live on air."
      ],
      "objectives": [
-      "Keep Halo alive for 60 s",
-      "Get Halo to your ship"
+      "Keep Lux alive for 60 s",
+      "Get Lux to your ship"
      ],
      "steps": [
       {
@@ -2899,13 +2899,13 @@
         "goon",
         "enforcer"
        ],
-       "text": "Keep Halo alive for 60 s"
+       "text": "Keep Lux alive for 60 s"
       },
       {
        "type": "escort",
        "convoy": "halo",
        "to_pad": true,
-       "text": "Get Halo to your ship"
+       "text": "Get Lux to your ship"
       }
      ],
      "rewards": {
@@ -2913,30 +2913,30 @@
       "xp": 260
      },
      "dialogue": {
-      "intro": "Halo: Stay tuned. Possibly forever.",
-      "success": "Halo: We’re back after these gunshots.",
-      "fail": "Halo: …[static]"
+      "intro": "Lux: Stay tuned. Possibly forever.",
+      "success": "Lux: We’re back after these gunshots.",
+      "fail": "Lux: …[static]"
      },
      "fail_conditions": [
-      "Halo killed"
+      "Lux killed"
      ],
      "prerequisites": [
       "halo-02-pirate"
      ],
      "choice": {
-      "prompt": "Halo can broadcast the chatter: Mr. Sable’s whole route list.",
+      "prompt": "Lux can broadcast the chatter: Mr. Sable’s whole route list.",
       "options": [
        {
         "id": "broadcast",
         "label": "Broadcast it",
         "effect": "flag:routes_leaked; dust prices +40% (shortage)",
-        "line": "Halo: Ceres 94.7. Breaking news. Ruining a cartel."
+        "line": "Lux: Ceres 94.7. Breaking news. Ruining a cartel."
        },
        {
         "id": "sell",
         "label": "Sell it to Voss",
         "effect": "credits +1500; flag:voss_owes",
-        "line": "Halo: Selling out. Very 94.7 of you."
+        "line": "Lux: Selling out. Very 94.7 of you."
        }
       ]
      },
@@ -3171,7 +3171,7 @@
        {
         "id": "take_over",
         "label": "Take it over",
-        "effect": "ENDING: Kingpin. You run the Quiet; Ines gets the Velvet Airlock outright",
+        "effect": "ENDING: The Quiet. You run the Quiet; Ines gets the Velvet Airlock outright",
         "line": "Mr. Sable: Ah. The child eats the father."
        },
        {
@@ -3183,8 +3183,8 @@
        {
         "id": "burn",
         "label": "Burn it down",
-        "effect": "ENDING: Dead Air. Halo reads the ledger live on CERES 94.7",
-        "line": "Halo: We’re live, baby."
+        "effect": "ENDING: Dead Air. Lux reads the ledger live on CERES 94.7",
+        "line": "Lux: We’re live, baby."
        }
       ]
      },

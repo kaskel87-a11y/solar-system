@@ -1,6 +1,6 @@
 # Mars consequences: WASTED / BUSTED (`mars/consequences.js`, `window.SSX.consequences`)
 
-GTA-style outcomes for dying or getting arrested on Mars. All fiction, M-rated: invented places, invented people.
+open-world outcomes for dying or getting arrested on Mars. All fiction, M-rated: invented places, invented people.
 
 ## One owner for the penalty
 

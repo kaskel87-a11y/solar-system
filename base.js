@@ -2,7 +2,7 @@
 // all saves to localStorage (ssx.base.v1) and comes back on reload. v7.5.72 adds the habitat and the landing pad.
 // v7.5.93 makes the habitat a walk-in room (habinterior.js, the same interiors.js kit as the shops): walk to the
 // door and tap Enter. Inside, Rest (3 min), the locker (same stash) and Leave.
-// v7.5.94: stand on a landing pad you own and tap 🚀 Call ship (or ☰ → 🏠 Mars base → Call ship). The starship
+// v7.5.94: stand on a landing pad you own and tap 🚀 Call ship (or ☰ → 🏠 Mars base → Call ship). The Ashfall
 // descends onto the pad (engine glow, dust, a short rumble on the shared audio context). Board it with ☰ → 🚀 Take off.
 // If you are not on the pad, the edge arrow points at it. 3 stars or a job in progress refuses the call. A clean death
 // (not busted, no stars) with a habitat offers Wake at base. Pure rules live in basecore.js; core
@@ -45,7 +45,7 @@ let build = null;             // { plotId, type, r, tool: 'place'|'remove' }
 let ui = null, actNow = null, inPlotId = null, menuBtn = null, clock = 0;
 let habNav = null;            // plot id while the edge arrow points at that habitat's door
 let padNav = null;            // plot id while the edge arrow points at that landing pad
-let landing = null;           // { plotId, x, z, yaw, ground, t, dur, dusted } while the starship is coming down
+let landing = null;           // { plotId, x, z, yaw, ground, t, dur, dusted } while the Ashfall is coming down
 let wakePlot = null, wakeUntil = 0, wakeBtn = null;
 const LAND_DUR = 2.7, LAND_H = 64;
 const gated = new WeakSet();
@@ -296,7 +296,7 @@ function overview() {
   const anyPad = BC.PLOTS.some(p => plotState(p.id).owned && plotState(p.id).pieces.some(q => q.type === 'pad'));
   const steps = (anyHab ? `<p><b>Your habitat</b><br>1. Tap Go inside. If you are not at the door, follow the arrow.<br>2. At the door, tap Enter.<br>3. Inside: Rest on the bunk (3 min), Locker for your stash, Leave by the door.</p>` : '')
     + (anyPad ? `<p><b>Your landing pad</b><br>1. Tap Call ship. If you are not on the pad, follow the arrow.<br>2. Stand on the pad and tap 🚀 Call ship. The ship comes down.<br>3. Board it: ☰ → 🚀 Take off.</p>` : '');
-  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can walk into, and a landing pad that calls your rover or your starship. You have ${cr} cr.</small>${steps}${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
+  panel(`<h2>🏠 Mars base</h2><small>Buy a lot, then stand on it and tap 🏗️ Build. Walls, a gate, a garage, a stash the cops can't fine, turrets, a habitat you can walk into, and a landing pad that calls your rover or your Ashfall. You have ${cr} cr.</small>${steps}${rows}<div class="row"><div></div><button data-act="close">Close</button></div>`,
     ds => { if (ds.act === 'close') return closePanel(); if (ds.act === 'buy') { const r = api.buy(ds.id); H.toast(r.msg, 2600); overview(); } if (ds.act === 'build') { closePanel(); setBuild(true, ds.id); } if (ds.act === 'hab') goInside(ds.id); if (ds.act === 'ship') goShip(ds.id); });
 }
 function stashUi(id) {
@@ -509,7 +509,7 @@ function restIn(id) {
   g.restore(); s.habRest = Date.now(); persist(); emit('rest', { plotId: id, at: s.habRest });
   H.toast('🛌 Patched up. The hab\u2019s med-bay is filthy, but it works.', 2600);
 }
-// v7.5.94 landing pad: the starship. The mesh and SHIP coords live on the surface (placeShip). This drives the descent.
+// v7.5.94 landing pad: the Ashfall. The mesh and SHIP coords live on the surface (placeShip). This drives the descent.
 const padPiece = id => plotState(id)?.pieces.find(q => q.type === 'pad') || null;
 function padWorld(id, pad) {
   const p = pad || padPiece(id), c0 = centres[id]; if (!p || !c0) return null;
@@ -700,7 +700,7 @@ function wakeAtBase() {
   return { ok: true, x: door.x, z: door.z, plotId: plot };
 }
 // v7.5.72 landing pad: park the rover on the slab, nose toward the approach (+z at r = 0), fuel topped up.
-// When the starship has the slab, the rover sets down beside it.
+// When the Ashfall has the slab, the rover sets down beside it.
 function callRover(id, pad) {
   pad = pad || padPiece(id);
   const rv = C?.rover; if (!rv) { const msg = '🛬 No rover on this rock.'; H.toast(msg, 2000); return { ok: false, why: 'no-rover', msg }; }

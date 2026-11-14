@@ -232,16 +232,16 @@ export const SKINS = [
       ['armL', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'], ['armR', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'],
       ['legL', 'box', [0.12, 0.5, 0.03], [-0.08, -0.4, -0.1], 0, 'stripe'], ['legR', 'box', [0.12, 0.5, 0.03], [0.08, -0.4, -0.1], 0, 'stripe']
     ] }),
-  S('merc', 'Merc with a Mouth', 1800, 'Red and black, full mask. Punches hit harder. ☰ → Wardrobe → Wear.', {
-    icon: '🗡️', face: true, fx: 'merc', how: '☰ → Wardrobe → Wear.',
-    pal: { skin: 0xc49a74, torso: 0xb11218, arms: 0xb11218, legs: 0x141414, pack: null, chest: 0x111111, boots: 0x111111, red: 0xc41218, black: 0x141414, mask: 0xc41218, eye: 0xf2f2f2, blade: { c: 0xd0d4da, r: 0.25, m: 0.7 } },
+  S('merc', 'Crimson Mercenary', 1800, 'Crimson armour and one dark visor. Punches hit harder. ☰ → Wardrobe → Wear.', {
+    icon: '🥊', face: true, fx: 'merc', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xc49a74, torso: 0x8e1a22, arms: 0x8e1a22, legs: 0x3a3034, pack: null, chest: 0x24181c, boots: 0x24181c, red: 0x8e1a22, black: 0x3a3034, mask: 0x6e1420, visor: 0x14080c, stripe: 0xc46a3a, pauldron: 0x4a3034 },
     parts: [
       ['head', 'sph', [0.18, 10, 8], [0, 0.01, 0], 0, 'mask', [1, 1.05, 0.95]],
-      ['head', 'box', [0.07, 0.035, 0.02], [-0.055, 0.03, -0.16], 0, 'eye'], ['head', 'box', [0.07, 0.035, 0.02], [0.055, 0.03, -0.16], 0, 'eye'],
-      ['torso', 'box', [0.22, 0.62, 0.04], [0.12, 0, 0], 0, 'black'],
-      ['torso', 'box', [0.08, 0.5, 0.02], [-0.16, 0.05, 0.2], [0.3, 0, 0], 'blade'], ['torso', 'box', [0.08, 0.5, 0.02], [0.16, 0.05, 0.2], [-0.3, 0, 0], 'blade'],
-      ['armL', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black'], ['armR', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black'],
-      ['legL', 'box', [0.08, 0.4, 0.02], [0.08, -0.4, -0.1], 0, 'red'], ['legR', 'box', [0.08, 0.4, 0.02], [-0.08, -0.4, -0.1], 0, 'red']
+      ['head', 'box', [0.2, 0.05, 0.02], [0, 0.02, -0.16], 0, 'visor'],
+      ['torso', 'box', [0.18, 0.16, 0.06], [-0.22, 0.2, 0.02], 0, 'pauldron'],
+      ['torso', 'box', [0.46, 0.06, 0.02], [0, 0.02, -0.2], 0, 'stripe'],
+      ['armL', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black'],
+      ['armR', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black']
     ] }),
   S('dino', 'Dino Suit', 2000, 'Snout, tail and little arms. Punches bite. ☰ → Wardrobe → Wear.', {
     icon: '🦕', face: true, fx: 'dino', how: '☰ → Wardrobe → Wear.',
@@ -321,7 +321,7 @@ export const SKINS = [
       ['torso', 'box', [0.12, 0.05, 0.07], [0.1, 0.16, 0.3], [0, 0.4, 0], 'cash'],
       ['armL', 'cyl', [0.095, 0.095, 0.12, 8], [0, -0.64, 0], 0, 'glove'], ['armR', 'cyl', [0.095, 0.095, 0.12, 8], [0, -0.64, 0], 0, 'glove']
     ] }),
-  S('kingpin', 'Gold-Chain Kingpin', 3500, 'White suit, fat gold chain, gold shades, fedora and a cigar. Everybody in the Junction owes you.', {
+  S('kingpin', 'Gold-Chain Boss', 3500, 'White suit, fat gold chain, gold shades, fedora and a cigar. Everybody in the Junction owes you.', {
     icon: '💰', face: true,
     pal: { skin: 0x6a4630, torso: 0xf2efe6, arms: 0xf2efe6, legs: 0xf2efe6, pack: null, chest: 0x111111, boots: { c: 0x1a1410, r: 0.2, m: 0.2 }, hat: 0xf2efe6, band: 0x111111, shade: { c: 0x1a1206, r: 0.1, m: 0.6 }, cigar: 0x5a3a1a },
     parts: [

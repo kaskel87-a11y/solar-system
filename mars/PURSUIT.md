@@ -1,6 +1,6 @@
 # Mars pursuit (`mars/pursuit.js`, `window.SSX.pursuit`)
 
-A GTA-style wanted chase that sits on top of the security core in `world.js`. It adds **no second heat counter**:
+A open-world wanted chase that sits on top of the security core in `world.js`. It adds **no second heat counter**:
 `world.wanted` (0-5, raised by `world.crime()`) is the only source of stars. Pursuit reads it, layers extra units
 on top of the core dispatch, and lowers it through `world.setWanted()` when you shake the chase.
 

@@ -198,7 +198,7 @@ export function payout(t, { won, newBest, firstWin, custom, broke }) {
 
 // ---------- storage ----------
 const DEF = () => ({ v: 1, best: {}, wins: {}, runs: {}, tracks: [] });
-export function loadRace(ls) { try { const o = JSON.parse(ls.getItem(RACE_KEY)); if (o && typeof o === 'object') return { ...DEF(), ...o, tracks: Array.isArray(o.tracks) ? o.tracks.filter(validTrack) : [] }; } catch (e) { /* ignore */ } return DEF(); }
+export function loadRace(ls) { try { const o = JSON.parse(ls.getItem(RACE_KEY)); if (o && typeof o === 'object') { const tracks = Array.isArray(o.tracks) ? o.tracks.filter(validTrack) : []; for (const t of tracks) if (t.rival && t.rival.name === 'Pit Viper') t.rival.name = 'Pit Adder'; return { ...DEF(), ...o, tracks }; } } catch (e) { /* ignore */ } return DEF(); }
 export function saveRace(ls, d) { try { ls.setItem(RACE_KEY, JSON.stringify(d)); return true; } catch (e) { return false; } }
 export function validTrack(t) {
   return !!t && typeof t === 'object' && typeof t.id === 'string' && typeof t.name === 'string' && typeof t.world === 'string' && Array.isArray(t.gates) &&
@@ -208,7 +208,7 @@ export function validTrack(t) {
 export function cleanTrack(t) {
   const r1 = v => Math.round(v * 10) / 10;
   return { id: t.id, name: String(t.name || 'My track').slice(0, 28), world: t.world, custom: true, anchor: 'abs', loop: t.loop !== false, laps: t.loop === false ? 1 : clampI(t.laps || 2, 1, 9),
-    par: Math.max(10, Math.round(t.par || 0) || Math.round(trackLength(t.gates, t.loop !== false) / 15)), rival: { name: 'Pit Viper', kind: t.world === 'Moon' ? 'hoverbike' : 'buggy' },
+    par: Math.max(10, Math.round(t.par || 0) || Math.round(trackLength(t.gates, t.loop !== false) / 15)), rival: { name: 'Pit Adder', kind: t.world === 'Moon' ? 'hoverbike' : 'buggy' },
     gates: t.gates.slice(0, MAX_GATES).map(p => ({ x: r1(p.x), z: r1(p.z) })), props: (t.props || []).slice(0, MAX_PROPS).map(p => ({ t: p.t, x: r1(p.x), z: r1(p.z), yaw: Math.round((p.yaw || 0) * 100) / 100 })) };
 }
 // ghost: [t(ms), x, z, yaw] every ~100 ms, packed flat and rounded

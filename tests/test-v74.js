@@ -1,5 +1,5 @@
 // v7.4 test: barrel rolls (desktop Q/E in the air, touch double-flick on the stick), clean-landing stunt bonus,
-// Starship roll, ☰ mouse click on desktop right after landing, the modding API (registerMenuItem / registerVehicle /
+// Ashfall roll, ☰ mouse click on desktop right after landing, the modding API (registerMenuItem / registerVehicle /
 // registerBody), the Titan methane skiff (amphibious) and the planets + race merges loading cleanly.
 // BASE=http://localhost:8765/ BR=chromium DEV=desktop node test-v74.js   (DEV="iPhone 14" BR=webkit for touch)
 const pw = require('playwright');
@@ -25,7 +25,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await page.goto(base + '?t=' + Date.now()); await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000);
     ok('version', await G(() => window.__app.version), (v => /^v7\.\d/.test(v) && (!process.env.VER || v === process.env.VER))(await G(() => window.__app.version))); // any v7.x release; VER=v7.5.3.1 pins it
     ok('modules', await G(() => !!window.__app.planets && window.__app.planets.list.join()), await G(() => window.__app.planets?.list.length === 5));
-    // ---- Starship barrel roll in flight
+    // ---- Ashfall barrel roll in flight
     await G(() => { localStorage.clear(); });
     await G(() => window.__app.setFlying?.(true)); await wait(() => window.__app.state.flying && !window.__app.state.onSurface, 15000); await sleep(600);
     const sr0 = await G(() => window.__app.shipRolls || 0);

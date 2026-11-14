@@ -1,5 +1,5 @@
 /*
- * mars/consequences.js: GTA-style consequences for getting wasted or busted on Mars (v7.5.x, Marsmania). Fiction only, M-rated.
+ * mars/consequences.js: open-world consequences for getting wasted or busted on Mars (v7.5.x, Marsmania). Fiction only, M-rated.
  *
  * ONE OWNER for the outcome penalty. The core game (game.js updateHealth) used to charge a med-evac fee / ColSec fine on
  * respawn, contraband.js bags your stash when progress.stats.busted ticks up, and mars/pursuit.js (#42) only reports the

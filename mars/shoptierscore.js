@@ -24,15 +24,15 @@ const GUN_TIERS = [
   ] },
   { label: 'MILITARY BLACK BOX', items: [
     { id: 'thumper', kind: 'gun', a: 'thumper', ammo: 6, name: 'Thumper drum launcher', price: 1600, desc: 'Six-round revolving grenade drum. 5.5 m blast. Feeds on frag grenades. Comes with 6.' },
-    { id: 'widowmaker', kind: 'gun', a: 'widowmaker', ammo: 8, name: 'Widowmaker gauss rifle', price: 2100, desc: 'Charge, release, punch a hole through a whole squad. Takes coil slugs. Comes with 8.' },
-    { id: 'widowscope', kind: 'mod', a: 'widowmaker', mod: 'scope', name: 'Widowmaker optic', price: 320, desc: 'Fits the Widowmaker. Right mouse / 🔭 to zoom.' },
+    { id: 'widowmaker', kind: 'gun', a: 'widowmaker', ammo: 8, name: 'Longbore gauss rifle', price: 2100, desc: 'Charge, release, punch a hole through a whole squad. Takes coil slugs. Comes with 8.' },
+    { id: 'widowscope', kind: 'mod', a: 'widowmaker', mod: 'scope', name: 'Longbore optic', price: 320, desc: 'Fits the Longbore. Right mouse / 🔭 to zoom.' },
     { id: 'frags6', kind: 'ammo', cal: 'frag', type: 'std', n: 6, name: 'Frag grenades \u00d76', price: 90, desc: 'For the Thumper and the frag launcher.' },
     { id: 'slugs6', kind: 'ammo', cal: 'rail', type: 'slug', n: 6, name: 'Coil slugs \u00d76', price: 80, desc: 'Gauss and coil-lance food.' }
   ] },
   { label: 'COLLECTOR\u2019S VAULT', items: [
     { id: 'kingpin', kind: 'gun', a: 'kingpin', ammo: 24, name: 'Gilded Gutterking', price: 3200, desc: 'Gold-plated .50 with a pearl grip. Hits harder than the original and everyone knows you\u2019re rich. 24 rounds.' },
     { id: 'hellhound', kind: 'gun', a: 'hellhound', ammo: 32, name: 'Hellhound slug-thrower', price: 2800, desc: 'Ten-pellet scattergun that throws red-hot slugs. Comes with 32 shells.' },
-    { id: 'skullsplitter', kind: 'melee', a: 'skullsplitter', name: 'Skullsplitter warhammer', price: 2400, desc: 'Two-handed sledge with a spike. Hits 5.5\u00d7 and sends them flying.' },
+    { id: 'skullsplitter', kind: 'melee', a: 'skullsplitter', name: 'Skullsplitter maul', price: 2400, desc: 'Two-handed sledge with a spike. Hits 5.5\u00d7 and sends them flying.' },
     { id: 'ap36', kind: 'ammo', cal: 'heavy', type: 'ap', n: 36, name: 'AP heavies \u00d736', price: 120, desc: 'Armour-piercing. ColSec hates these.' }
   ] }
 ];

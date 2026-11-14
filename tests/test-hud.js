@@ -67,7 +67,7 @@ function measure() {
         await page.waitForFunction(() => getComputedStyle(document.getElementById('meleeBtn')).display !== 'none', null, { timeout: 8000 }).catch(() => {});
         R.meleeShown = await page.isVisible('#meleeBtn'); await check('melee'); await shot('melee'); await G(() => window.__app.game.debug.clear());
       }
-      // 3b) v7 GTA state: stolen buggy at the colony, 3 wanted stars, radio station toast, security around
+      // 3b) v7 open-world state: stolen buggy at the colony, 3 wanted stars, radio station toast, security around
       if (TAG !== 'before') {
         await G(() => { const s = window.__app.surface, v = s.world.debug.vehicles().find(v => v.parked && v.kind === 'buggy'); s.debugMove(v.x + 3, v.z + 1, 0); });
         await page.waitForFunction(() => window.__app.surface.info.nearVehicle, null, { timeout: 15000 }); await sleep(400);
