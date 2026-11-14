@@ -63,7 +63,7 @@ function groupsOf(p) {
   if (p.cat === 'shops' || p.icon === '$' || /shop|trading post/i.test(blob)) g.add('shops');
   if (p.cat === 'missions' || p.cat === 'races' || /taxi|clinic|race|contact|activity/i.test(blob)) g.add('activities');
   if (p.icon === '🏴' || /your base|your turf|your farm|homestead/i.test(blob) || /^(base|farm|turf):/.test(String(p.ft || p.id || ''))) g.add('owned');
-  if (/contraband|bounty|vigilante|heist|crime|pit|fight/i.test(blob)) g.add('crime');
+  if (p.cat === 'crime' || p.empire || /contraband|bounty|vigilante|heist|crime|pit|fight/i.test(blob)) g.add('crime');
   if (/velvet|club|pit/i.test(blob)) g.add('activities');
   if (!g.size) g.add('activities');
   return g;
@@ -89,7 +89,7 @@ function doLine(p) {
 }
 function showOf(md) {
   const mode = A.S.mapMode || 'all';
-  const items = [...A.pois(true), ...(window.SSX?.fastTravel?.mapPlaces?.() || [])].map(p => ({ ...p, d: Math.hypot(p.x - md.x, p.z - md.z) }));
+  const items = [...A.pois(true), ...(window.SSX?.fastTravel?.mapPlaces?.() || []), ...(window.SSX?.empirePrompt?.mapPlaces?.() || [])].map(p => ({ ...p, d: Math.hypot(p.x - md.x, p.z - md.z) }));
   return items.filter(p => mode === 'all' || groupsOf(p).has(mode)).sort((a, b) => a.d - b.d);
 }
 function setWp(p) {
