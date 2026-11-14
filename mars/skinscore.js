@@ -142,6 +142,16 @@ export const SKINS = [
       ['armL', 'cyl', [0.1, 0.1, 0.14, 8], [0, -0.63, 0], 0, 'glove'], ['armR', 'cyl', [0.1, 0.1, 0.14, 8], [0, -0.63, 0], 0, 'glove'],
       ['legL', 'cyl', [0.13, 0.13, 0.28, 8], [0, -0.74, 0], 0, 'glove'], ['legR', 'cyl', [0.13, 0.13, 0.28, 8], [0, -0.74, 0], 0, 'glove']
     ] }),
+  S('raccoon', 'Raccoon Suit', 900, 'Ears, mask and a ringed tail. You run faster. Buy at Threadbare or find one. ☰ → Wardrobe → Wear.', {
+    icon: '🦝', face: true, fx: 'raccoon', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xc49a74, torso: 0x6a5038, arms: 0x6a5038, legs: 0x4a3828, pack: null, chest: 0x3a2a1c, boots: 0x2a1c12, fur: 0x8a6844, mask: 0x1a120c, ring: 0xc8b090, ear: 0x5a4030, nose: 0x1a120c },
+    parts: [
+      ['head', 'cone', [0.07, 0.16, 5], [-0.12, 0.2, 0.02], [0.2, 0, 0.5], 'ear'], ['head', 'cone', [0.07, 0.16, 5], [0.12, 0.2, 0.02], [0.2, 0, -0.5], 'ear'],
+      ['head', 'box', [0.28, 0.07, 0.04], [0, 0.02, -0.16], 0, 'mask'], ['head', 'sph', [0.028, 6, 4], [0, -0.02, -0.18], 0, 'nose'],
+      ['torso', 'cyl', [0.055, 0.04, 0.5, 6], [0, -0.2, 0.4], [1.15, 0, 0], 'fur'],
+      ['torso', 'cyl', [0.06, 0.045, 0.08, 6], [0, -0.32, 0.58], [1.15, 0, 0], 'ring'],
+      ['torso', 'cyl', [0.055, 0.04, 0.08, 6], [0, -0.42, 0.66], [1.1, 0, 0], 'fur']
+    ] }),
   // prop: palette keys that make up a hand-held prop (the cane): skins.js hides those meshes while a weapon is out
   S('mack', 'Velvet Mack', 1000, 'Crushed purple velvet, fur collar, feathered brim, gold chains and a jeweled cane.', {
     icon: '🪶', face: true, prop: ['cane', 'knob', 'jewel'],
@@ -163,6 +173,15 @@ export const SKINS = [
       ['armR', 'cyl', [0.03, 0.03, 0.03, 8], [0, -0.72, -0.05], 0, 'knob'], ['armR', 'sph', [0.022, 8, 6], [0, -0.66, -0.098], 0, 'jewel'], ['armR', 'sph', [0.02, 8, 6], [0, -0.62, -0.05], 0, 'jewel'],
       ['legL', 'cyl', [0.14, 0.16, 0.16, 8], [0, -0.78, 0], 0, 'velvet'], ['legR', 'cyl', [0.14, 0.16, 0.16, 8], [0, -0.78, 0], 0, 'velvet']
     ] }),
+  S('skates', 'Roller Skates', 1100, 'Wheels on your boots. You roll, and you coast when you let go. ☰ → Wardrobe → Wear.', {
+    icon: '🛼', face: true, fx: 'skates', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xd0a080, torso: 0x1a1a22, arms: 0x1a1a22, legs: 0x1a1a22, pack: null, chest: 0xff2a6a, boots: 0xff2a6a, wheel: { c: 0xf2f2f2, r: 0.3, m: 0.4 }, hub: 0x111111, boot: 0xff2a6a },
+    parts: [
+      ['legL', 'box', [0.16, 0.1, 0.28], [0, -0.82, -0.06], 0, 'boot'], ['legR', 'box', [0.16, 0.1, 0.28], [0, -0.82, -0.06], 0, 'boot'],
+      ['legL', 'cyl', [0.055, 0.055, 0.04, 8], [0, -0.9, -0.02], [0, 0, Math.PI / 2], 'wheel'], ['legR', 'cyl', [0.055, 0.055, 0.04, 8], [0, -0.9, -0.02], [0, 0, Math.PI / 2], 'wheel'],
+      ['legL', 'cyl', [0.055, 0.055, 0.04, 8], [0, -0.9, -0.14], [0, 0, Math.PI / 2], 'wheel'], ['legR', 'cyl', [0.055, 0.055, 0.04, 8], [0, -0.9, -0.14], [0, 0, Math.PI / 2], 'wheel'],
+      ['legL', 'sph', [0.02, 6, 4], [0, -0.9, -0.02], 0, 'hub'], ['legR', 'sph', [0.02, 6, 4], [0, -0.9, -0.02], 0, 'hub']
+    ] }),
   S('hustler', 'Neon Street Hustler', 1200, 'Purple tracksuit, glow stripes, backwards cap, shades at night.', {
     icon: '🕶️', face: true,
     pal: { skin: 0x8a5a3c, torso: 0x4a167a, arms: 0x4a167a, legs: 0x4a167a, pack: null, chest: { c: 0x39ffea, e: 0x0a8a80 }, boots: 0xf0f0f0, neon: { c: 0x39ffea, e: 0x14b0a4, r: 0.5 }, pink: { c: 0xff2ad4, e: 0x8a0a70 }, cap: 0x111111 },
@@ -173,6 +192,24 @@ export const SKINS = [
       ['armL', 'box', [0.025, 0.62, 0.03], [-0.085, -0.33, 0], 0, 'neon'], ['armR', 'box', [0.025, 0.62, 0.03], [0.085, -0.33, 0], 0, 'neon'],
       ['legL', 'box', [0.025, 0.74, 0.03], [-0.12, -0.42, 0], 0, 'neon'], ['legR', 'box', [0.025, 0.74, 0.03], [0.12, -0.42, 0], 0, 'neon'],
       ['torso', 'box', [0.02, 0.6, 0.02], [0, 0, -0.185], 0, 'silver']
+    ] }),
+  S('banana', 'Banana Suit', 1300, 'A yellow peel with you in it. Jump goes higher. ☰ → Wardrobe → Wear.', {
+    icon: '🍌', face: true, fx: 'banana', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xd0a080, torso: 0xf2d23a, arms: 0xf2d23a, legs: 0xe6b020, pack: null, chest: 0xc48a14, boots: 0x6a4a12, peel: 0xf2d23a, tip: 0x6a4a12, shine: 0xfff2a0 },
+    parts: [
+      ['torso', 'cyl', [0.28, 0.22, 0.7, 8], [0, -0.05, 0], [0.15, 0, 0], 'peel'],
+      ['torso', 'cone', [0.12, 0.22, 6], [0, 0.38, 0.02], [0.4, 0, 0], 'tip'],
+      ['torso', 'box', [0.08, 0.4, 0.02], [0.16, 0.05, -0.2], [0, 0, 0.4], 'tip'],
+      ['head', 'sph', [0.06, 6, 4], [0, 0.16, -0.12], 0, 'shine'],
+      ['legL', 'cyl', [0.1, 0.08, 0.3, 6], [0, -0.7, 0], 0, 'tip'], ['legR', 'cyl', [0.1, 0.08, 0.3, 6], [0, -0.7, 0], 0, 'tip']
+    ] }),
+  S('springs', 'Spring Boots', 1450, 'Coils on your boots. Jump is a launch. ☰ → Wardrobe → Wear.', {
+    icon: '🦘', face: true, fx: 'springs', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xd0a080, torso: 0x243044, arms: 0x243044, legs: 0x1a2434, pack: null, chest: 0xc8a24a, boots: 0xc8a24a, coil: { c: 0xd0d4da, r: 0.3, m: 0.7 }, sole: 0x111111 },
+    parts: [
+      ['legL', 'tor', [0.09, 0.018, 6, 10], [0, -0.55, 0], [Math.PI / 2, 0, 0], 'coil'], ['legR', 'tor', [0.09, 0.018, 6, 10], [0, -0.55, 0], [Math.PI / 2, 0, 0], 'coil'],
+      ['legL', 'tor', [0.09, 0.018, 6, 10], [0, -0.68, 0], [Math.PI / 2, 0, 0], 'coil'], ['legR', 'tor', [0.09, 0.018, 6, 10], [0, -0.68, 0], [Math.PI / 2, 0, 0], 'coil'],
+      ['legL', 'box', [0.22, 0.08, 0.32], [0, -0.86, -0.04], 0, 'sole'], ['legR', 'box', [0.22, 0.08, 0.32], [0, -0.86, -0.04], 0, 'sole']
     ] }),
   S('cowboy', 'Mars Cowboy', 1500, 'Long dust-coloured duster, wide hat, bandana up. The Beltway is the new frontier.', {
     icon: '🤠', face: true,
@@ -195,6 +232,27 @@ export const SKINS = [
       ['armL', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'], ['armR', 'cyl', [0.105, 0.1, 0.62, 8], [0, -0.3, 0], 0, 'shell'],
       ['legL', 'box', [0.12, 0.5, 0.03], [-0.08, -0.4, -0.1], 0, 'stripe'], ['legR', 'box', [0.12, 0.5, 0.03], [0.08, -0.4, -0.1], 0, 'stripe']
     ] }),
+  S('merc', 'Merc with a Mouth', 1800, 'Red and black, full mask. Punches hit harder. ☰ → Wardrobe → Wear.', {
+    icon: '🗡️', face: true, fx: 'merc', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xc49a74, torso: 0xb11218, arms: 0xb11218, legs: 0x141414, pack: null, chest: 0x111111, boots: 0x111111, red: 0xc41218, black: 0x141414, mask: 0xc41218, eye: 0xf2f2f2, blade: { c: 0xd0d4da, r: 0.25, m: 0.7 } },
+    parts: [
+      ['head', 'sph', [0.18, 10, 8], [0, 0.01, 0], 0, 'mask', [1, 1.05, 0.95]],
+      ['head', 'box', [0.07, 0.035, 0.02], [-0.055, 0.03, -0.16], 0, 'eye'], ['head', 'box', [0.07, 0.035, 0.02], [0.055, 0.03, -0.16], 0, 'eye'],
+      ['torso', 'box', [0.22, 0.62, 0.04], [0.12, 0, 0], 0, 'black'],
+      ['torso', 'box', [0.08, 0.5, 0.02], [-0.16, 0.05, 0.2], [0.3, 0, 0], 'blade'], ['torso', 'box', [0.08, 0.5, 0.02], [0.16, 0.05, 0.2], [-0.3, 0, 0], 'blade'],
+      ['armL', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black'], ['armR', 'cyl', [0.09, 0.09, 0.16, 8], [0, -0.6, 0], 0, 'black'],
+      ['legL', 'box', [0.08, 0.4, 0.02], [0.08, -0.4, -0.1], 0, 'red'], ['legR', 'box', [0.08, 0.4, 0.02], [-0.08, -0.4, -0.1], 0, 'red']
+    ] }),
+  S('dino', 'Dino Suit', 2000, 'Snout, tail and little arms. Punches bite. ☰ → Wardrobe → Wear.', {
+    icon: '🦕', face: true, fx: 'dino', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0x6aaa40, torso: 0x3d7a32, arms: 0x3d7a32, legs: 0x2f6228, pack: null, chest: 0xc8d24a, boots: 0x2a4a22, hide: 0x3d7a32, belly: 0xc8d24a, tooth: 0xf4f0e0, horn: 0x2a4a22 },
+    parts: [
+      ['head', 'box', [0.16, 0.12, 0.28], [0, -0.02, -0.28], 0, 'hide'], ['head', 'cone', [0.04, 0.1, 4], [0, -0.08, -0.44], [Math.PI / 2, 0, 0], 'tooth'],
+      ['head', 'cone', [0.04, 0.14, 4], [-0.08, 0.16, 0.02], [0.3, 0, 0.4], 'horn'], ['head', 'cone', [0.04, 0.14, 4], [0.08, 0.16, 0.02], [0.3, 0, -0.4], 'horn'],
+      ['torso', 'box', [0.2, 0.28, 0.04], [0, -0.05, -0.2], 0, 'belly'],
+      ['torso', 'cyl', [0.07, 0.04, 0.55, 6], [0, -0.15, 0.42], [1.2, 0, 0], 'hide'],
+      ['armL', 'cone', [0.05, 0.16, 5], [0, -0.35, -0.08], [0.4, 0, 0.6], 'horn'], ['armR', 'cone', [0.05, 0.16, 5], [0, -0.35, -0.08], [0.4, 0, -0.6], 'horn']
+    ] }),
   S('alien', 'Alien-Hide Jacket', 2200, 'Green scaled hide off something that should not exist. Still glows a little.', {
     icon: '👽', face: true,
     pal: { skin: 0xd0a080, torso: 0x2e4a24, arms: 0x2e4a24, legs: 0x161616, pack: null, chest: { c: 0x7dff3a, e: 0x2a7a0a }, boots: 0x111111, scale: { c: 0x5a8a30, r: 0.5 }, glow: { c: 0x9dff5a, e: 0x3aa010 }, spike: { c: 0xb0e070, r: 0.4 }, hair: 0x0e0e0e, fur: 0x4a6a2a },
@@ -206,6 +264,16 @@ export const SKINS = [
       ['torso', 'cone', [0.05, 0.14, 5], [-0.26, 0.34, 0.02], [0, 0, 0.3], 'spike'], ['torso', 'cone', [0.05, 0.14, 5], [0.26, 0.34, 0.02], [0, 0, -0.3], 'spike'], ['torso', 'cone', [0.04, 0.1, 5], [0, 0.2, 0.2], [-1.2, 0, 0], 'spike'],
       ['armL', 'cone', [0.03, 0.09, 4], [-0.09, -0.25, 0], [0, 0, 1.4], 'spike'], ['armR', 'cone', [0.03, 0.09, 4], [0.09, -0.25, 0], [0, 0, -1.4], 'spike'],
       ['armL', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow'], ['armR', 'sph', [0.03, 6, 4], [0, -0.45, -0.08], 0, 'glow']
+    ] }),
+  S('hover', 'Hoverboard', 2300, 'A board under your feet. You float and glide. ☰ → Wardrobe → Wear.', {
+    icon: '🛹', face: true, fx: 'hover', how: '☰ → Wardrobe → Wear.',
+    pal: { skin: 0xd0a080, torso: 0x1a1030, arms: 0x1a1030, legs: 0x1a1030, pack: null, chest: 0x39e1ff, boots: 0x111111, deck: 0x14141c, glow: { c: 0x39e1ff, e: 0x147090, r: 0.4 } },
+    parts: [
+      ['legL', 'box', [0.72, 0.06, 0.28], [0.18, -0.95, -0.02], 0, 'deck'],
+      ['legL', 'box', [0.56, 0.03, 0.08], [0.18, -1.0, -0.02], 0, 'glow'],
+      ['legR', 'box', [0.08, 0.04, 0.16], [0, -0.9, -0.08], 0, 'glow'],
+      ['torso', 'box', [0.16, 0.04, 0.02], [0, 0.1, -0.19], 0, 'glow'],
+      ['head', 'box', [0.12, 0.03, 0.02], [0, 0.08, -0.16], 0, 'glow']
     ] }),
   // v7.5.69 Planum Swag, reshaped v7.5.70. venue 'planum' so Threadbare does not sell it.
   // The astronaut under this is a 0.56 m torso, 0.17 m face and 8 cm arms. A cream recolour of that
@@ -264,6 +332,16 @@ export const SKINS = [
       ['head', 'cyl', [0.013, 0.013, 0.11, 6], [0.05, -0.09, -0.2], [Math.PI / 2 - 0.2, 0, -0.3], 'cigar'], ['head', 'sph', [0.016, 5, 4], [0.068, -0.08, -0.252], 0, 'ember'],
       ['armR', 'cyl', [0.092, 0.092, 0.05, 10], [0, -0.6, 0], 0, 'gold'], ['armL', 'tor', [0.025, 0.01, 4, 8], [0, -0.69, -0.06], 0, 'gold'],
       ['torso', 'box', [0.1, 0.4, 0.02], [-0.12, 0.08, -0.19], [0, 0, 0.22], 'hat'], ['torso', 'box', [0.1, 0.4, 0.02], [0.12, 0.08, -0.19], [0, 0, -0.22], 'hat']
+    ] }),
+  S('superjet', 'Super Jetpack', 4000, 'Big tanks. Hold Jump. Higher and longer than the shop jetpack. ☰ → Wardrobe → Wear.', {
+    icon: '🚀', face: false, fx: 'superjet', how: 'Hold Jump to fly. ☰ → Wardrobe → Wear.',
+    pal: { torso: 0x1a2430, arms: 0x1a2430, legs: 0x141820, helmet: 0xd8e2ea, pack: 0x10161c, chest: { c: 0x3cf0ff, e: 0x146878 }, visor: { c: 0x071018, r: 0.1, m: 0.5 }, boots: 0x101418,
+      tank: { c: 0xd0d6de, r: 0.3, m: 0.65 }, flame: { c: 0x7fe9ff, e: 0x39c8ff, r: 0.4 } },
+    parts: [
+      ['torso', 'cyl', [0.1, 0.1, 0.62, 8], [-0.16, 0.02, 0.32], 0, 'tank'], ['torso', 'cyl', [0.1, 0.1, 0.62, 8], [0.16, 0.02, 0.32], 0, 'tank'],
+      ['torso', 'box', [0.4, 0.16, 0.1], [0, 0.05, 0.28], 0, 'tank'],
+      ['torso', 'cone', [0.07, 0.2, 6], [-0.16, -0.28, 0.32], [Math.PI, 0, 0], 'flame'], ['torso', 'cone', [0.07, 0.2, 6], [0.16, -0.28, 0.32], [Math.PI, 0, 0], 'flame'],
+      ['head', 'box', [0.2, 0.03, 0.02], [0, 0.02, -0.2], 0, 'flame']
     ] }),
   S('chrome', 'Full Chrome Legend', 5000, 'Head-to-toe mirror chrome, black visor, cyan glow. When you walk into a room, the room knows.', {
     icon: '🪩', face: false,

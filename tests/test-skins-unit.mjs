@@ -5,7 +5,7 @@ const ok = (name, cond, info = '') => { n++; if (!cond) { fails++; console.log('
 const fin = Number.isFinite;
 
 // catalogue: 10-12 skins, first is free, the rest 300-5,000 cr, unique ids, cheapest first
-ok('count', C.SKINS.length >= 10 && C.SKINS.length <= 17, C.SKINS.length);
+ok('count', C.SKINS.length >= 25 && C.SKINS.length <= 30, C.SKINS.length);
 ok('freeFirst', C.SKINS[0].price === 0 && C.FREE === C.SKINS[0].id);
 ok('prices', C.SKINS.slice(1).every(k => (k.gift && k.price === 0) || (k.price >= 300 && k.price <= 5000)), C.SKINS.map(k => k.price).join()); // v7.5.31: free gifts (Grin Reaper)
 ok('topIs5000', Math.max(...C.SKINS.map(k => k.price)) === 5000 && C.SKINS.slice(1).some(k => k.price === 300));

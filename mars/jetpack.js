@@ -28,7 +28,8 @@ let save = { owned: false, on: true };
 try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') save = { owned: !!j.owned, on: j.on !== false }; } catch (e) { /* fresh */ }
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* private mode */ } };
 const owned = () => save.owned || !!tryv(() => game()?.flag?.('jetpack'));
-const ready = () => owned() && save.on;
+const superPack = () => { try { return window.SSX?.wear?.jet?.() || null; } catch (e) { return null; } };
+const ready = () => (owned() && save.on) || !!superPack();
 
 function buy() {
   if (owned()) return { ok: false, msg: 'You already own the jetpack.' };
@@ -84,7 +85,8 @@ function tick(dt, tc) {
   if ((infoT -= dt) <= 0) { infoT = 0.25; const i = tryv(() => surf()?.info); if (i) { camDist = +i.camDist || 0; planetG = +i.g || 0.38; } }
   mode = C.normMode(tryv(() => window.SSX?.gravity?.mode, 'MARS'));
   if (!eligible || !p) { // refill while parked / driving / indoors, nothing lit
-    if (s.fuel < C.FUEL_MAX && (!p || p.grounded || tc.car)) s.fuel = Math.min(C.FUEL_MAX, s.fuel + C.REFILL * dt);
+    const cap0 = superPack()?.fuel || C.FUEL_MAX;
+    if (s.fuel < cap0 && (!p || p.grounded || tc.car)) s.fuel = Math.min(cap0, s.fuel + C.REFILL * dt);
     s.lit = false; s.flying = false; if (s.down > 0) s.down = Math.max(0, s.down - dt);
     visuals(tc, false, false); sound(0); syncUi(); return;
   }
@@ -95,7 +97,8 @@ function tick(dt, tc) {
   const feet = p.y - EYE, gy = groundY(tc, p.x, p.z, feet); alt = Math.max(0, feet - gy);
   const airborne = !p.grounded;
   const wasLit = s.lit;
-  p.vy = C.step(s, { jump, dive, airborne, alt, vy: p.vy, g: planetG * 9.81, mode, dt });
+  const pack = superPack();
+  p.vy = C.step(s, { jump, dive, airborne, alt, vy: p.vy, g: planetG * 9.81, mode, dt, ceil: pack?.ceil, thrust: pack?.thrust, burn: pack?.burn, maxUp: pack?.maxUp, fuelMax: pack?.fuel });
   if (s.lit) { p.grounded = false; thrustT += dt; if (!wasLit) { stats.burns++; emit('burn'); } }
   if (s.flying) { stats.airT += dt; maxAlt = Math.max(maxAlt, alt); }
   // air steer: the stick / WASD push you along on top of the walk speed while flying (camera-relative, like surface.js walk)
@@ -103,7 +106,7 @@ function tick(dt, tc) {
     const kb = !!tryv(() => { const k = window.SSX?.controls?.kbOnly; return typeof k === 'function' ? k() : k; }, false); // keyboard only: arrows turn the camera
     const mx = (keys.KeyD || (!kb && keys.ArrowRight) ? 1 : 0) - (keys.KeyA || (!kb && keys.ArrowLeft) ? 1 : 0) + (joy.x || 0);
     const mz = (keys.KeyW || (!kb && keys.ArrowUp) ? 1 : 0) - (keys.KeyS || (!kb && keys.ArrowDown) ? 1 : 0) - (joy.y || 0);
-    const [dx, dz] = C.airSteer(mx, mz, p.yaw, dt, true);
+    const [dx, dz] = C.airSteer(mx, mz, p.yaw, dt, true, superPack()?.air);
     if (dx || dz) { let nx = p.x + dx, nz = p.z + dz; const c = tryv(() => tc.world?.collidePlayer?.(nx, nz, 0.45, p.y - EYE)); if (c) { nx = c.x; nz = c.z; } p.x = nx; p.z = nz; } // v7.5.39: feet height, so you fly over a roof edge and land on it
   }
   // ColSec fire at 3★+
