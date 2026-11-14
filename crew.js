@@ -104,7 +104,9 @@ function memberHtml(m, now, fr) {
   if (st === 'held') { const b = m.bank.slice().reverse().find(x => x.bust)?.bail || 200; btns += `<button data-a="bail" data-id="${m.id}" ${credits() < b ? 'disabled' : ''}>🔓 Bail ${b} cr</button>`; }
   if (m.job) btns += `<button data-a="stop" data-id="${m.id}">⏹ Stand down</button>`;
   if (lv) btns += `<button data-a="lv" data-id="${m.id}" ${credits() < lv.cr || sp < lv.xp ? 'disabled' : ''}>⬆️ Lv${m.lv + 1}: ${lv.cr} cr + ${lv.xp} ⭐</button>`;
-  return `<div class="m"><b>${esc(r.name)}</b> <small>· Lv${m.lv} · bust ${Math.round(C.bustOf(m.job || 'hustle', m.lv) * 100)}%</small><div>${line}</div>${bar}${bank}<div class="btns">${btns}</div><div class="btns">${jobs}</div></div>`;
+  let mood = '';
+  try { const loy = SSX()?.empirePrompt?.loyalty?.(m.id); if (loy) mood = `<small>Loyalty ${Math.round(loy.loyalty)} / 100</small><div class="bar" title="loyalty"><i style="width:${Math.max(0, Math.min(100, Math.round(loy.loyalty)))}%"></i></div>`; } catch (e) { mood = ''; }
+  return `<div class="m"><b>${esc(r.name)}</b> <small>· Lv${m.lv} · bust ${Math.round(C.bustOf(m.job || 'hustle', m.lv) * 100)}%</small>${mood}<div>${line}</div>${bar}${bank}<div class="btns">${btns}</div><div class="btns">${jobs}</div></div>`;
 }
 function render() {
   if (!S.ui) return; const now = S.now(), xp = stars(), fr = fronts(), nx = C.canHire(D, xp), ns = C.nextSlot(xp);

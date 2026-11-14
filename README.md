@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.108: the empire calls, and there is more crime
+
+Owned places and your crew text you every few game hours. One note at a time. Tap it to drop a map marker, or tap the X to clear it. A full till, a hand who wants to talk at the Velvet office, a rival leaning on your bar, a shipment that needs an escort. Each hired hand has a loyalty meter on the Crew sheet. Walk up to them, or to the Velvet door, and tap their name for a short chat and a job. Leave them too long and loyalty drops, and a sulking hand skims a cut of a till. New jobs, all repeatable from those notes and from the map: protection collection, an armored truck, a chop, a shipment past the patrols, holding a door against a raid, and a skim at the Velvet cage. Each one has a plain step, an arrow, and a payout. Active ones show on the map under Crime.
+
 ## v7.5.107: Pit fights you can read
 
 In the Pit the stick moves the way the camera looks, and you turn to face the other fighter. The buttons on the right say Punch, Kick, Block, Dodge, and Special. Punch twice and hold the third for a combo. Block as they swing to parry. A round is about a minute and a quarter. The first time, a card tells you how.

@@ -89,7 +89,7 @@ const PRECACHE = [
   `mars/nocops.js${q}`, `mars/nocopscore.js${q}`, // v7.5.74 no ordinary ColSec at Red Static Gulch (SSX.copFree)
   `mars/crimebreak.js${q}`, `mars/crimebreakcore.js${q}`, // v7.5.76 gulch crime break: meetings, 100 cr → 10 ⭐, gulch market (SSX.crimebreak)
   `perfgov.js${q}`, `hud/hudslim.js${q}`, `copbounty.js${q}`, `hud/cardfit.js${q}`, `hud/keys.js${q}`, // v7.5.12 phone perf governor (SSX.perfGov) + phone HUD declutter (SSX.hudSlim)
-  ...['empire', 'empirecore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids)
+  ...['empire', 'empirecore', 'mars/empireprompt', 'mars/empirepromptcore'].map(n => `${n}.js${q}`), // empire layer (safehouses, fronts, crew raids) + prompts
   ...['crew', 'crewcore'].map(n => `${n}.js${q}`), // v7.5.42 crew (hire at 10k stars, timed jobs, washed through fronts)
   ...['ridestars', 'starmixcore'].map(n => `${n}.js${q}`), // v7.5.46 ride/heist/front stars
   `clubdancers.js${q}`, `privateshow.js${q}`, `dannyroom.js${q}`, `clubprivate.js${q}`, `slots.js${q}`, `bar.js${q}`, `phonetexts.js${q}`, ...['dancer_danny', 'dancer_rhea', 'dancer_kiara'].map(n => `models/dancers/${n}.glb${q}`), ...['loaders/GLTFLoader', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils', 'libs/meshopt_decoder.module'].map(n => `vendor/three/addons/${n}.js`), // club dancers; the GLB url carries ?v= so a refresh cannot keep the old model
