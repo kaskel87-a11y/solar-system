@@ -60,7 +60,8 @@ const after = mod.measureBustDepth(g);
 ok('scaled once', g.userData.ssxBustScale === 1.7);
 const ratio = after.depth / d0;
 ok(`depth ~1.5x (was ${d0.toFixed(4)} now ${after.depth.toFixed(4)}, ratio ${ratio.toFixed(2)})`, ratio > 1.2 && ratio < 1.85);
-ok('top still covers skin', after.topCovers);
+ok('flat bikini cards tucked inside the chest', after.topL <= after.sternumZ + 0.002 && after.topR <= after.sternumZ + 0.002);
+ok('smooth cup anchors', !!(g.userData.ssxCups && g.userData.ssxCups.radius > 0.04 && g.userData.ssxCups.centers.length === 2));
 mod.inflateBustGeometry(g, mod.BUST_SCALE);
 ok('second inflate is no-op', Math.abs(mod.measureBustDepth(g).depth - after.depth) < 1e-6);
 

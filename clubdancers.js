@@ -143,7 +143,7 @@ export function measureBustDepth(geometry) {
     }
   }
   if (sternum < -1e8) return null;
-  return { depthL: L - sternum, depthR: R - sternum, depth: ((L + R) * 0.5 - sternum), sternumZ: sternum, y0, y1, topN, topCovers: topL >= L - 1e-4 && topR >= R - 1e-4 };
+  return { depthL: L - sternum, depthR: R - sternum, depth: ((L + R) * 0.5 - sternum), sternumZ: sternum, y0, y1, topN, topL, topR, topCovers: topL >= L - 1e-4 && topR >= R - 1e-4 };
 }
 function findBreastCenters(pos, gm) {
   let y0 = 1e9, y1 = -1e9, hasTop = false;
@@ -192,6 +192,7 @@ export function inflateBustGeometry(geometry, scale = BUST_SCALE, shared = null)
     if (id !== 0 && !TOP_GIDS.has(id)) continue;
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
     if (y < y0 - 0.05 || y > y1 + 0.08) continue;
+    if (id === 1 || id === 3) { pos.setXYZ(i, x, y, Math.min(z, sternum - 0.012)); continue; } // flat cards, not the visible top
     if (Math.abs(x) < 0.035) continue; // keep cleavage / sternum fixed
     let best = null, bestD = R;
     for (const c of C) {
@@ -211,9 +212,89 @@ export function inflateBustGeometry(geometry, scale = BUST_SCALE, shared = null)
     pos.setXYZ(i, nx, ny, nz);
   }
   pos.needsUpdate = true;
+  if (geometry.index || geometry.attributes.position.count % 3 === 0) geometry.computeVertexNormals?.();
   geometry.boundingSphere = null; geometry.computeBoundingSphere?.();
+  const measured = measureBustDepth(geometry);
+  if (measured && measured.depth > 0.02) {
+    const depth = measured.depth, radius = Math.max(0.086, depth * 1.15);
+    geometry.userData.ssxCups = {
+      radius,
+      centers: C.map(c => ({ x: c.x, y: c.y, z: sternum + depth * 0.42 }))
+    };
+  }
   geometry.userData.ssxBustScale = scale;
   return scale;
+}
+const CUP_GEO = new THREE.SphereGeometry(1, 32, 24);
+CUP_GEO.scale(1.08, 0.9, 0.78); // full ball, flattened toward the chest so there is no cut rim
+const STRAP_GEO = new THREE.CylinderGeometry(0.006, 0.007, 1, 6);
+function fabricMap(hex) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+  const css = '#' + (hex >>> 0).toString(16).padStart(6, '0');
+  g.fillStyle = css; g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 1;
+  for (let i = 0; i < 64; i += 4) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 64); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(64, i); g.stroke(); }
+  const rad = g.createRadialGradient(32, 20, 2, 32, 34, 34);
+  rad.addColorStop(0, 'rgba(255,255,255,0.42)'); rad.addColorStop(0.5, 'rgba(255,255,255,0.05)'); rad.addColorStop(1, 'rgba(0,0,0,0.38)');
+  g.fillStyle = rad; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+function fabricMat(hex) {
+  const tint = hex >>> 0;
+  const map = fabricMap(tint === 0xffffff ? 0xf3f1ee : tint);
+  const m = new THREE.MeshBasicMaterial({ map, color: 0xffffff });
+  m.userData.ssxFabric = true;
+  return m;
+}
+/** Smooth mini-bikini cups on the chest bone, so the top moves with the dance and is not a flat card. */
+function attachCups(root, tint) {
+  let mesh = null;
+  root.traverse(o => { if (!mesh && o.isSkinnedMesh && o.geometry?.userData?.ssxCups) mesh = o; });
+  const bone = []; root.traverse(o => { if (o.isBone && o.name === 'Spine1') bone.push(o); });
+  const spine = bone[0]; if (!mesh || !spine) return null;
+  const info = mesh.geometry.userData.ssxCups;
+  root.updateMatrixWorld(true);
+  const grp = new THREE.Group(); grp.name = 'ssx-cups';
+  const mat = fabricMat(tint);
+  const r = info.radius;
+  const toBone = v => spine.worldToLocal(mesh.localToWorld(v));
+  const origin = toBone(new THREE.Vector3());
+  const ahead = toBone(new THREE.Vector3(0, 0, 1));
+  const fwd = ahead.sub(origin).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), fwd);
+  for (const c of info.centers) {
+    const cup = new THREE.Mesh(CUP_GEO, mat);
+    cup.scale.setScalar(r);
+    cup.position.copy(toBone(new THREE.Vector3(c.x * 0.72, c.y - r * 0.08, c.z)));
+    cup.quaternion.copy(q);
+    cup.name = 'ssx-cup';
+    grp.add(cup);
+  }
+  if (grp.children.length === 2) {
+    const a = grp.children[0].position, b = grp.children[1].position, mid = a.clone().add(b).multiplyScalar(0.5);
+    const band = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), mat);
+    band.scale.set(a.distanceTo(b) * 0.55 + r * 0.35, r * 0.28, r * 0.45);
+    band.position.copy(mid);
+    band.quaternion.copy(q);
+    band.name = 'ssx-band';
+    grp.add(band);
+    for (const cup of [grp.children[0], grp.children[1]]) {
+      const strap = new THREE.Mesh(STRAP_GEO, mat);
+      const up = cup.position.clone().add(new THREE.Vector3(Math.sign(cup.position.x - mid.x) * r * 0.15, r * 1.15, -r * 0.15));
+      strap.position.copy(cup.position).lerp(up, 0.55);
+      strap.scale.set(1, cup.position.distanceTo(up), 1);
+      strap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), up.clone().sub(cup.position).normalize());
+      strap.name = 'ssx-strap';
+      grp.add(strap);
+    }
+  }
+  spine.add(grp);
+  return { group: grp, mat };
+}
+export function pulseCups(group, t) {
+  if (!group) return;
+  const s = 1 + Math.sin(t * 5.1) * 0.016;
+  group.scale.set(s, 1 + Math.sin(t * 5.1 + 0.7) * 0.012, s);
 }
 function enlargeDancerBust(gltf, scale = BUST_SCALE) {
   const meshes = []; gltf.scene.traverse(o => { if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o); });
@@ -453,15 +534,16 @@ function buildModel(gltf, auxTex, D, look, lu) {
     for (let i = 0; i < src.length; i += 3) { const id = Math.round(gm.getX(src[i])); if (id >= 11 || show.has(id)) (id === GID['SSX cardigan'] ? cd : keep).push(src[i], src[i + 1], src[i + 2]); }
     const g = new THREE.BufferGeometry(); for (const n in g0.attributes) g.setAttribute(n, g0.attributes[n]);
     const all = keep.concat(cd); g.setIndex(new THREE.BufferAttribute(gm.count > 65535 ? new Uint32Array(all) : new Uint16Array(all), 1));
-    g.boundingSphere = g0.boundingSphere; if (g0.userData.ssxBustScale) g.userData.ssxBustScale = g0.userData.ssxBustScale; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
+    g.boundingSphere = g0.boundingSphere; if (g0.userData.ssxBustScale) g.userData.ssxBustScale = g0.userData.ssxBustScale; if (g0.userData.ssxCups) g.userData.ssxCups = g0.userData.ssxCups; o.geometry = g; geos.push(g); if (cd.length) { card = g; noCard = keep.length; }
   });
   m.rotation.y = Math.PI; m.scale.setScalar(1.04); // the model faces +Z; rigs and seats face -Z
+  const cups = attachCups(m, tint);
   const mixer = new THREE.AnimationMixer(m), acts = {};
   for (const a of gltf.animations) acts[a.name] = mixer.clipAction(a);
   const clip = re => { const a = gltf.animations.find(c => re.test(c.name)); return a ? acts[a.name] : null; };
   const rest = need.map(n => [B[n], B[n].quaternion.clone()]);
-  const dispose = () => { mixer.stopAllAction(); mixer.uncacheRoot(m); mats.forEach(keepOrDispose); geos.forEach(x => x.dispose()); skel?.dispose(); };
-  return { m, B, mats, skel, geos, mixer, acts, clip, rest, card, noCard, dispose };
+  const dispose = () => { mixer.stopAllAction(); mixer.uncacheRoot(m); mats.forEach(keepOrDispose); geos.forEach(x => x.dispose()); skel?.dispose(); if (cups) { cups.group.removeFromParent(); cups.mat.map?.dispose(); cups.mat.dispose(); } };
+  return { m, B, mats, skel, geos, mixer, acts, clip, rest, card, noCard, cups: cups?.group || null, dispose };
 }
 
 // Swap one blocky dancer for a model. opts: { dancer: 'danny', outfit: 'bikini'|'aqua'|'string'|'crop'|'stage', k, cardigan: () => bool }
@@ -508,6 +590,7 @@ export function dress(api, p, { dancer = 'danny', outfit = 'bikini', k = 0, card
     for (const [b, q] of st.rest) b.quaternion.copy(q); // bones without clip tracks start from rest each frame
     if (st.aDance) { const w = between ? 0 : 1; st.aDance.weight += (w - st.aDance.weight) * Math.min(1, dt * 3); if (st.aIdle) st.aIdle.weight = 1 - st.aDance.weight; } // private dancer idles between songs
     mixer.update(Math.min(dt, 0.1));
+    pulseCups(st.cups, t);
     if (cardigan && st.card) st.card.setDrawRange(0, between ? Infinity : st.noCard);
     if (st.shadow) { const g = p.group.position; st.y0 = Math.min(st.y0, g.y); st.shadow.position.set(g.x, st.y0 + 0.015, g.z); const h = g.y - st.y0; st.shadow.material.opacity = Math.max(0.15, 1 - h * 1.5); st.shadow.scale.setScalar(1 + h * 0.6); }
     p.group.updateMatrixWorld(true);
@@ -619,6 +702,7 @@ export function spawn({ dancer = 'danny', outfit = 'aqua', look = null } = {}) {
     let tot = 0; for (const [a, w] of h.w) { const nw = h.fade > 0 ? Math.min(1, Math.max(0, w + (a === h.cur ? dt : -dt) / h.fade)) : (a === h.cur ? 1 : 0); h.w.set(a, nw); if (nw <= 0 && a !== h.cur) { a.stop(); h.w.delete(a); } else tot += sstep(nw); }
     for (const [a, w] of h.w) a.setEffectiveWeight(tot > 0 ? sstep(w) / tot : 1);
     md.mixer.update(dt);
+    pulseCups(md.cups, h.tt);
     probe(h, dt); // pop meter (tests): peak angular speed of the clip-driven core bones
     group.updateMatrixWorld(true); group.getWorldQuaternion(_gq);
     // lean + hip roll
