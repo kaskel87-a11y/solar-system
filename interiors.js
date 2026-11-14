@@ -457,6 +457,8 @@ export const INTERIORS = {
       if ((o.owner || 'Ines') === 'Ines') api.spot({ id: 'jobs', x: X1 - 3.6, z: -1.6, r: 1.0, label: '📋 Ines\u2019s job board', act: 'jobs', who: 'Ines', cond: () => !!(o.vipNow ? o.vipNow() : o.vip) }); // v7.5 VIP hub
       api.spot({ id: 'stash', x: X0 + 1.0, z: Z1 - 1.0, r: 0.8, label: '📦 Lockbox', act: 'stash', stash: 'club-lockbox', perm: 'maxhp', cond: () => !o.taken?.('club-lockbox') });
       api.spot({ id: 'bar', x: -w / 2 + 2.9, z: 1.5, r: 2.0, label: '🍸 Bar: drinks & rumors', act: 'shop', venue: 'bar', who: 'Bartender' });
+      box(2.4, 0.45, 12.2, 1.8, 0.9, 1.1, mat(0x140c18, { roughness: 0.9 }));
+      api.spot({ id: 'backbooth', x: 2.4, z: 11.2, r: 1.7, label: '🤫 Back booth', act: 'backroom', who: 'Buyer' });
       // v7.5.78 star till at the south end of the bar (clear of drinks at z 1.5 and Nova at z -1.9).
       // The rate is crimebreak's exchange: SSX.crimebreak.exchange() spends EX_COST and grants EX_STARS. No second rate.
       {
