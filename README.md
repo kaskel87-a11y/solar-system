@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.107: Pit fights you can read
+
+In the Pit the stick moves the way the camera looks, and you turn to face the other fighter. The buttons on the right say Punch, Kick, Block, Dodge, and Special. Punch twice and hold the third for a combo. Block as they swing to parry. A round is about a minute and a quarter. The first time, a card tells you how.
+
 ## v7.5.106: a simpler Empire sheet
 
 Open ☰ and tap Empire. One line says what it is for. **Collect** takes every till in one tap and shows the total. Places you own sit above places for sale. Each row is a name, what it earns, and one short grey line for where it is.

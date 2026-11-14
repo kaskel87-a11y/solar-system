@@ -749,7 +749,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     const running = input.run;
     let wear = null; try { wear = window.SSX?.wear?.move?.() || null; } catch (e) { wear = null; }
     const speed = (running ? 9 : 4.2) * (cfg.g < 0.3 ? 0.8 : 1) * (wear?.speed || 1);
-    fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); right.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+    const duelOn = world.duel && world.duel.phase !== 'done';
+    const basis = duelOn ? viewYaw : player.yaw;
+    fwd.set(-Math.sin(basis), 0, -Math.cos(basis)); right.set(Math.cos(basis), 0, -Math.sin(basis));
     const dx = (fwd.x * mvz + right.x * mvx) * speed * dt, dz = (fwd.z * mvz + right.z * mvx) * speed * dt;
     player.moving = Math.min(1, len); player.running = running && len > 0.3;
     if (dx || dz) {
@@ -1046,11 +1048,14 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   let lastCd = 9;
   function updateAstro(dt) {
     const a = astro, P = a.parts;
+    const lock = world.duel && world.duel.phase === 'fight' && world.duel.x != null;
+    if (lock) { const face = Math.atan2(-(world.duel.x - player.x), -(world.duel.z - player.z)); player.faceYaw = lerpAngle(player.faceYaw, face, dt * 8); }
+    else if (player.moving > 0.05) player.faceYaw = lerpAngle(player.faceYaw, player.moveYaw, dt * 10);
     a.group.visible = !driving && camDist > 0.8 && lastCd > 1.0; // v7.4: hide yourself when the boom is squeezed (no head filling the screen)
     if (!a.group.visible) return;
     a.group.position.set(player.x, player.y - EYE, player.z);
-    if (player.moving > 0.05) player.faceYaw = lerpAngle(player.faceYaw, player.moveYaw, dt * 10);
     a.group.rotation.y = player.faceYaw;
+    try { const dn = window.SSX?.pitfight?.downFor?.() || 0; if (dn > 0) player.slump = Math.max(player.slump || 0, Math.min(1, dn)); } catch (e) { /* */ }
     if (player.slump > 0) { a.group.rotation.order = 'YXZ'; a.group.rotation.x = -Math.min(1, player.slump) * 1.42; } else if (a.group.rotation.x) a.group.rotation.x = 0; // v7.5.29 the Pit: knocked down (mars/pitshow.js)
     const sw = Math.sin(player.bob) * 0.6 * player.moving;
     if (!player.grounded) { P.legL.rotation.x = 0.45; P.legR.rotation.x = -0.25; P.armL.rotation.x = -0.6; P.armR.rotation.x = -0.6; }
@@ -1213,6 +1218,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       if (camera.position.y < gy) camera.position.y = gy;
       if (!indoor && cfg.water !== undefined && camera.position.y < cfg.water + 0.6) camera.position.y = cfg.water + 0.6;
       camera.lookAt(camT.x, camT.y + introY * 0.8, camT.z);
+      try { const sh = window.SSX?.pitfight?.shake?.() || 0; if (sh > 0) { camera.position.x += (Math.random() - 0.5) * sh; camera.position.y += (Math.random() - 0.5) * sh * 0.6; } } catch (e) { /* */ }
     }
     if (scene.fog && baseFog && indoor) { if (scene.fog.isFogExp2) scene.fog.density = 0; else { scene.fog.near = 300; scene.fog.far = 600; } }
     else if (scene.fog && baseFog) {

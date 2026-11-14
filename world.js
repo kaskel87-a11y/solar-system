@@ -1001,7 +1001,8 @@ export function createWorld(ctx) {
     if (D.pit) { // v7.5.29: they can slip it or take it on the gloves; a clean one staggers them back
       const h = pitHit(D.pit.ai); D.pit.ev++; D.pit.last = h.slipped ? 'slip' : h.blocked ? 'block' : 'hit';
       if (h.slipped) { onEvent('duelSwing', { hit: false, slip: true }); return; }
-      D.them = Math.max(0, D.them - h.dmg); D.hits++; onEvent('duelHit', { who: 'them', them: D.them, blocked: h.blocked });
+      const kind = globalThis.__pitHit, mul = kind === 'finisher' ? 2.2 : kind === 'special' ? 2.8 : kind === 'kick' ? 1.3 : 1;
+      D.them = Math.max(0, D.them - h.dmg * mul); D.hits++; onEvent('duelHit', { who: 'them', them: D.them, blocked: h.blocked, kind: kind || 'punch' });
       D.p.flee = 0; if (!h.blocked) { const dx = D.p.x - player.x, dz = D.p.z - player.z, l = Math.hypot(dx, dz) || 1; D.p.x += dx / l * PITT.knock; D.p.z += dz / l * PITT.knock; }
       if (D.them <= 0) endDuel('ko-win'); return;
     }
@@ -1024,9 +1025,15 @@ export function createWorld(ctx) {
         if (s.move === 'in' && d > PITT.reach) { const sp = Math.min(d - 0.9, PITT.walk * dt); p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
         else if (s.move === 'circle') { const dir = D.pit.ai.dir, out = d < 3.2 ? 1 : 0, sp = PITT.circle * dt; p.x += (dz / d * dir - dx / d * out) * sp; p.z += (-dx / d * dir - dz / d * out) * sp; moving = true; }
         const cd = Math.hypot(p.x - D.cx, p.z - D.cz); if (cd > 5.3) { p.x = D.cx + (p.x - D.cx) * 5.3 / cd; p.z = D.cz + (p.z - D.cz) * 5.3 / cd; } // stay inside the ropes
-        if (s.swing) { onEvent('duelSwing', { hit: !!s.land }); if (s.land && d <= PITT.reach + 0.2) duelHurt(pitDmg(D.dmgK)); }
+        if (s.swing && !(D.pit.tel > 0)) { const wind = globalThis.SSX?.pitfight?.windup?.() || 0.5; D.pit.tel = wind; D.pit.telLand = !!s.land; onEvent('duelSwing', { hit: false, telegraph: true }); }
+        if (D.pit.tel > 0) { D.pit.tel -= dt; if (D.pit.tel <= 0) { const land = D.pit.telLand && d <= PITT.reach + 0.2; D.pit.telLand = false; onEvent('duelSwing', { hit: land }); if (land) { let n = pitDmg(D.dmgK); let take = null; try { take = globalThis.SSX?.pitfight?.absorb?.(n); } catch (e) { take = null; } if (take?.parry) { D.pit.ai.stagger = 0.8; onEvent('duelHit', { who: 'them', them: D.them, parry: true }); } else if (!take?.dodge) duelHurt(take ? take.dmg : n); } } }
       }
       else if (D.type === 'pistol') { if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.8 : 1); const hitP = ((D.t * 7.3 + p.temper) % 1) < (p.fighter ? 0.75 : 0.6); onEvent('duelShot', { x: p.x, z: p.z, hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.2 : 1))); } }
+      else if (D.tag?.fc && D.type === 'fists') {
+        if (D.ocd <= 0 && !(D.tel > 0)) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); D.tel = globalThis.SSX?.pitfight?.windup?.() || 0.5; D.telLand = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: false, telegraph: true }); }
+        if (D.tel > 0) { D.tel -= dt; if (D.tel <= 0 && D.telLand && d <= D.T.reach) { D.telLand = false; const n = D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1)); let take = null; try { take = globalThis.SSX?.pitfight?.absorb?.(n); } catch (e) { take = null; } if (take?.parry) onEvent('duelHit', { who: 'them', them: D.them, parry: true }); else if (!take?.dodge) duelHurt(take ? take.dmg : n); } }
+        if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
+      }
       else if (d > D.T.reach) { const sp = 3.3 * dt; p.x += dx / d * sp; p.z += dz / d * sp; moving = true; }
       else if (D.ocd <= 0) { D.ocd = D.T.cd * (p.fighter ? 0.75 : 1); const hitP = ((D.t * 5.7 + p.temper) % 1) < 0.72; onEvent('duelSwing', { hit: hitP }); if (hitP) duelHurt(D.T.dmg * (D.dmgK || (p.fighter ? 1.4 : 1))); }
     }
@@ -1051,7 +1058,7 @@ export function createWorld(ctx) {
     lastDuel = res; return res;
   }
   let lastDuel = null;
-  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil((duel.countS || 3) - duel.t)), t: duel.t, pit: duel.pit ? { round: duel.pit.round, mode: duel.pit.ai.mode, guard: !!duel.pit.guard, ev: duel.pit.ev, last: duel.pit.last } : null, me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
+  const duelState = () => duel ? { name: duel.p.name, type: duel.type, icon: duel.T.icon, label: duel.T.name, tag: duel.tag, phase: duel.phase, count: Math.max(0, Math.ceil((duel.countS || 3) - duel.t)), t: duel.t, tel: duel.tel || duel.pit?.tel || 0, pit: duel.pit ? { round: duel.pit.round, mode: duel.pit.ai.mode, guard: !!duel.pit.guard, ev: duel.pit.ev, last: duel.pit.last, tel: duel.pit.tel || 0 } : null, me: Math.round(duel.me), them: Math.round(duel.them), pot: duel.pot, champion: !!duel.p.fighter, x: duel.p.x, z: duel.p.z, cx: duel.cx, cz: duel.cz } : null;
   function shotFired() { if (C && distC() < 80 && !ctx.game().combat && !duel) crime(1, 'discharging a weapon in the colony'); }
   function nearContact() { if (!C) return null; for (const p of people) if (p.kind === 'contact' && Math.hypot(p.x - player.x, p.z - player.z) < 4.5) return p; return null; }
   // v7.3: stores are walk-in. Near any store door (7 m around the supply store, 4.5 m elsewhere) you get the 🛒 Shop button
@@ -1146,7 +1153,7 @@ export function createWorld(ctx) {
     // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
     vehicleGround: car => roofGround(car), playerGround, addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), endPit: (why) => (duel && (duel.pit || duel.tag?.fc) ? endDuel(why || 'ko-lose') : null), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
     colonyAt: p => C ? toW(p) : null,
