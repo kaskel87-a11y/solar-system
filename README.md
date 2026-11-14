@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.100: the ship stays the Ashfall
+
+The ship you fly, and the one Call ship brings down, is the Ashfall. The old product name is gone from the screen and from the code that builds the mesh.
+
 ## v7.5.99: hang glider
 
 Buy it from ☰ → **Hang glider**. Run and tap **Glide**, or tap **Glide** while you are falling from somewhere high. It goes much faster than you can sprint. **Left** and **Right** steer it. Jets are on that same page. Once they are fitted, hold **Boost** to climb.

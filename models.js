@@ -27,7 +27,7 @@ function getSteelTex() {
   return steelTex;
 }
 /** Ship is 50 units tall and 9 wide, base at y=0 (or legs' pads at y=0), nose up, heat tiles face +X. */
-export function buildStarship({ legs = false, seg = 28 } = {}) {
+export function buildAshfall({ legs = false, seg = 28 } = {}) {
   const group = new THREE.Group();
   const lift = legs ? 4 : 0;
   const steel = mat(0xffffff, { map: getSteelTex(), roughness: 0.32, metalness: 0.2 });

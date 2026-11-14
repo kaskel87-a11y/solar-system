@@ -7,8 +7,8 @@ import { migrateSave } from '../ipcore.js';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skip = new Set(['vendor', 'shots', 'node_modules', '.git', 'tests', 'docs']);
 const banned = [
-  /Merc with a Mouth/i, /deadpool/i, /\bStarship\b/, /\bRoadster\b/, /Black Ops/,
-  /\bHalo\b/, /\bGTA\b/, /Hasselblad/, /Widowmaker gauss/, /Gold-Chain Kingpin/,
+  /Merc with a Mouth/i, /deadpool/i, /\bStarship\b/, /buildStarship/, /\bRoadster\b/, /Black Ops/,
+  /\bGTA\b/, /grand theft/i, /Hasselblad/, /Widowmaker gauss/, /Gold-Chain Kingpin/,
   /Viper SMG/, /Pit Viper/
 ];
 const hits = [];

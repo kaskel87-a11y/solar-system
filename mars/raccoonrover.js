@@ -9,7 +9,7 @@
 //   buy()            -> { ok, msg }  1200 cr at the junkyard (on foot, next to it)
 //   pickpocket()     -> { ok, msg }  send Rocket at the nearest NPC (the 🦝 dock button; Enter-family key on desktop)
 //   on(fn)           -> unsubscribe; fn({ type: 'buy'|'steal'|'loot'|'pick'|'bark', ... })
-// Buy or steal: getting in without paying is grand theft (heat via world.setWanted). Either way the ride is granted
+// Buy or steal: getting in without paying counts as theft (heat via world.setWanted). Either way the ride is granted
 // to the garage with SSX.garage.grantVehicle (feature-detected; stolen = noPlates). Loot and pickpocket pause while
 // SSX.gravity.floating is true, indoors, during races and during jobs. SSX.gravity / SSX.airRoll are optional.
 import * as THREE from 'three';

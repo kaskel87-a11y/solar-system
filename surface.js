@@ -1,6 +1,6 @@
 // Surface exploration: streaming procedural terrain + first-person walking.
 import * as THREE from 'three';
-import { buildStarship, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js';
+import { buildAshfall, buildAstronaut, buildDog, buildRover as buildBuggy, DISCOVERY_BUILDERS } from './models.js';
 import { createGame } from './game.js';
 import { createWorld, VEHICLES } from './world.js';
 import { raceTick } from './race.js';
@@ -454,7 +454,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     obj.position.set(x, height(x, z) + yOff, z); obj.userData = { poi: true, ...info }; scene.add(obj); poiObjects.push(obj); return obj;
   }
   function buildRocket() {
-    const { group, flames } = buildStarship({ legs: true, seg: isMobile ? 22 : 30 });
+    const { group, flames } = buildAshfall({ legs: true, seg: isMobile ? 22 : 30 });
     group.userData.flames = flames; return group;
   }
   function buildFlag() {

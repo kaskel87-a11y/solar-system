@@ -1,6 +1,6 @@
 // v7.5.22 Magnet crane truck: pure rules + numbers (no DOM, no THREE). Unit-tested by tests/test-crane-unit.mjs.
 // mars/crane.js does the truck model, the magnet, the swing, the HUD button and the game wiring.
-// Fiction only. M-rated: swearing and grand theft auto, nothing sexual.
+// Fiction only. M-rated: swearing and stealing rides, nothing sexual.
 export const KIND = 'magnet_crane';
 export const PRICE = 1800;
 export const SAVE_KEY = 'ssx.crane.v1';

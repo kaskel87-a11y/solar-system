@@ -2,7 +2,7 @@
 // TOWING in Red Tape Flats with a 🧲 1,800 CR sign: buy it (🧲 Buy crane / G on foot next to it) or just steal it (E: 2★,
 // Lou screams). Either way it lands in ☰ My rides. Driving it, 🧲 Magnet (G) at a crawl drops the electromagnet onto the
 // parked ride under the hook (ring highlight + "🧲 Grab <name>"), latches, lifts it and you drive off with it swinging on
-// the cable. 🧲 again lowers it and lets go. Lifting a ride is grand theft: seen = +1★ (world.take / crime), the owner
+// the cable. 🧲 again lowers it and lets go. Lifting a ride counts as theft: seen = +1★ (world.take / crime), the owner
 // screams at you, and an unseen lift may get called in ~12 s later. Drop it on Lou's lot (the yard drop zone; waypoint
 // set while you carry) and a panel offers Sell whole / Strip for parts (SSX.street.tow.fence, Lou's own prices + heat cut)
 // or Keep it (SSX.garage.grantVehicle, no plates, into My rides). Reuses world.js vehicles + wanted, street-tow payouts,

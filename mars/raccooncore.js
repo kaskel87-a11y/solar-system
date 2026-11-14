@@ -44,7 +44,7 @@ export const LINES = {
   raccoon_pick_ok: ['🦝 Wallet. Got it. Drive. DRIVE.', '🦝 Easy. Humans keep it all in one pocket.', '🦝 Cash and a sticky mint. Sharing the cash.'],
   raccoon_pick_fail: ['🦝 He saw me. RUN. Well, drive.', '🦝 Abort! Abort! Damn, he grabs fast.', '🦝 Okay that was on me. Mostly.'],
   raccoon_buy: ['🦝 You PAID? For this? Sucker. Welcome aboard.', '🦝 Bought fair and square. Weird flex.'],
-  raccoon_steal: ['🦝 Hell yeah, grand theft junker. I like you.', '🦝 Stealing my own house. Bold. Respect.']
+  raccoon_steal: ['🦝 Hell yeah, you took the junker. I like you.', '🦝 Stealing my own house. Bold. Respect.']
 };
 
 // loot tables: credits weighted, plus small junk items for progress.raccoonStash
