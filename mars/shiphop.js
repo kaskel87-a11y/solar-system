@@ -85,12 +85,39 @@ function stand(x, z) {
   if (c && Number.isFinite(c.x) && Number.isFinite(c.z)) { px = c.x; pz = c.z; }
   return { x: px, z: pz, yaw: Math.atan2(-(x - px), -(z - pz)) };
 }
-function begin(dest) {
-  const c = ctx(), w = H.hopBlock(c);
-  if (w) { toast('🚀 ' + w); return { ok: false, why: w }; }
-  if (!dest || !Number.isFinite(dest.x)) return { ok: false, why: 'unknown' };
-  if (c.here && Math.hypot(dest.x - c.here.x, dest.z - c.here.z) < H.HERE_M) { toast('🚀 You are already here.'); return { ok: false, why: 'here' }; }
-  const s = surf(); if (!s?.placeShip || !c.pose) return { ok: false, why: 'no-ship' };
+function mapLine(w) {
+  const s = String(w || '');
+  if (/3 stars/.test(s)) return "Can't fly with 3 stars. Lose the heat first.";
+  if (/job/.test(s)) return "Can't fly during a job. Finish it first.";
+  if (/outside|open sky/.test(s)) return "Can't fly from indoors. Step outside first.";
+  if (/down/i.test(s)) return "Can't fly while you are down. Get up first.";
+  if (/ride/.test(s)) return "Get out of the ride first.";
+  if (/already in the air/.test(s)) return "The ship is already in the air. Wait until it lands.";
+  if (/Land on Mars/.test(s)) return "Land on Mars first.";
+  if (s === 'no-ship') return "The ship is not ready yet. Wait a moment, then try again.";
+  if (s === 'unknown') return "That place has no spot to land.";
+  if (s === 'here') return "You are already here.";
+  return s;
+}
+function showFlyWhy(text) {
+  const n = document.getElementById('hxFlyWhy');
+  if (!n) return;
+  n.textContent = text || '';
+  n.classList.toggle('on', !!text);
+}
+function refuse(why, map) {
+  const line = map ? mapLine(why) : why;
+  toast('🚀 ' + line);
+  if (map) showFlyWhy(line);
+  return { ok: false, why };
+}
+function begin(dest, opts) {
+  const map = !!(opts && opts.map);
+  const c = ctx(), w = map ? H.skyBlock(c) : H.hopBlock(c);
+  if (w) return refuse(w, map);
+  if (!dest || !Number.isFinite(dest.x)) return refuse('unknown', map);
+  if (c.here && Math.hypot(dest.x - c.here.x, dest.z - c.here.z) < H.HERE_M) return refuse('here', map);
+  const s = surf(); if (!s?.placeShip || !c.pose) return refuse('no-ship', map);
   tryv(() => X().base?.releaseShip?.());
   close();
   tryv(() => X().hudx?.closeMap?.());
@@ -181,10 +208,8 @@ function board() {
   return open();
 }
 function fromMap(p) {
-  if (!p || !Number.isFinite(+p.x) || !Number.isFinite(+p.z)) return { ok: false, why: 'unknown' };
-  const w = H.hopBlock(ctx());
-  if (w) { toast('🚀 ' + w); return { ok: false, why: w }; }
-  return begin({ x: +p.x, z: +p.z, name: String(p.name || 'that spot').replace(/^[^\w]+/, '').trim() || 'that spot' });
+  if (!p || !Number.isFinite(+p.x) || !Number.isFinite(+p.z)) return refuse('unknown', true);
+  return begin({ x: +p.x, z: +p.z, name: String(p.name || 'that spot').replace(/^[^\w]+/, '').trim() || 'that spot' }, { map: true });
 }
 
 const API = {
