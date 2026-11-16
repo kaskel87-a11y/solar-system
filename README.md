@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.115: map bottom bar
+
+The full-screen map keeps a solid black strip under the picture. Place names, the legend (Drag to move. Pinch to zoom. You, Objective, Shop), and the waypoint buttons are white, at least 15px, and 44px tall. Beam there and Close sit behind More so nothing shrinks. The strip stays above the iPhone bottom safe area and does not cover the map.
+
 ## v7.5.114: Graphics quality
 
 ☰ → 🎨 Graphics. Three buttons: Low, Medium, High. The one you are on is marked. The choice is saved on this device and takes effect without a reload. Medium is the starting point on a phone and on a desktop. Low is lighter (softer resolution, shorter view, no shadows). High adds sun shadows on nearby things, a sharper picture, and a bit more shine. A phone never switches itself to High.
