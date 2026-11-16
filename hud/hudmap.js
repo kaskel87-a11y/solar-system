@@ -5,29 +5,34 @@ let el = null, cv = null, X = null, raf = 0, zoom = 1, center = null;
 const MODES = [['all', 'All'], ['activities', 'Activities'], ['crime', 'Crime'], ['owned', 'Owned'], ['shops', 'Shops']];
 const css = `
 #hxMap{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;background:#05070f;color:#fff;font:600 15px/1.35 system-ui,sans-serif;
- padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));box-sizing:border-box;gap:6px}
+ padding:calc(6px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px));box-sizing:border-box;gap:6px}
 #hxMap.on{display:flex}
 body.hxMapOpen :is(#fireBtn,#meleeBtn,#joy,#surfBtns,#petBtn,#driveBtn){visibility:hidden}
 #hxMap button{min-height:48px;min-width:48px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 15px system-ui,sans-serif;touch-action:manipulation;padding:0 10px}
-#hxMap .hd{display:flex;gap:6px;align-items:center} #hxMap .hd h2{flex:1;margin:0;font-size:18px}
-#hxMap .chips{display:flex;gap:6px;flex-wrap:wrap} #hxMap .chips button{flex:1 1 30%;padding:0 6px}
-#hxMap .chips button[aria-pressed="false"]{border-color:#555;color:#bbb}
+#hxMap .hd{display:flex;gap:6px;align-items:center;flex:none} #hxMap .hd h2{flex:1;margin:0;font-size:18px}
+#hxMap .chips{display:flex;gap:6px;flex-wrap:wrap;flex:none} #hxMap .chips button{flex:1 1 30%;padding:0 8px;background:#000;color:#fff;border-color:#fff}
+#hxMap .chips button[aria-pressed="true"]{background:#fff;color:#000}
 #hxMap .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
-#hxMap .cvw{position:relative;flex:1 1 auto;min-height:42vh;border-radius:12px;overflow:hidden;border:1px solid #334}
+#hxMap .cvw{position:relative;flex:1 1 auto;min-height:0;border-radius:12px;overflow:hidden;border:1px solid #334}
 #hxMap canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;z-index:auto}
 #hxMap .zm{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:6px}
-#hxMap .lg{font:600 12px/1.4 system-ui,sans-serif;color:#cbd5e1;display:flex;flex-wrap:wrap;gap:2px 10px}
-#hxMap .lst{flex:0 1 30%;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:5px;-webkit-overflow-scrolling:touch}
-#hxMap .it{display:flex;align-items:center;gap:8px;text-align:left;min-height:48px;width:100%;padding:4px 10px}
-#hxMap .it .ic{font-size:18px;width:24px;text-align:center;flex:none} #hxMap .it .nm{flex:1;min-width:0} #hxMap .it small{display:block;font-weight:500;color:#aab;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#hxMap .it .ds{font-size:12px;color:#9fe8ff;flex:none}
-#hxMap .it.act{border-color:#38e1ff;background:#06222b} #hxMap .it.wp{border-color:#facc15}
-#hxLoc{position:absolute;left:8px;right:8px;bottom:8px;z-index:4;display:none;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff}
-#hxLoc.on{display:flex} #hxLoc .nm{font:800 17px system-ui,sans-serif} #hxLoc .do,#hxLoc .pay{margin:0;font-size:14px}
+#hxMap .lg{flex:none;min-height:44px;box-sizing:border-box;font:700 15px/1.35 system-ui,sans-serif;color:#fff;background:#000;border:2px solid #fff;border-radius:10px;padding:8px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+#hxMap .lg span{color:#fff}
+#hxMap .lst{flex:1 1 0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;-webkit-overflow-scrolling:touch}
+#hxMap .it{display:flex;align-items:center;gap:8px;text-align:left;min-height:48px;width:100%;padding:6px 10px;background:#000;color:#fff}
+#hxMap .it .ic{font-size:18px;width:24px;text-align:center;flex:none} #hxMap .it .nm{flex:1;min-width:0;font-size:15px} #hxMap .it small{display:block;font-weight:600;color:#fff;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hxMap .it .ds{font-size:15px;color:#fff;flex:none}
+#hxMap .it.act{border-color:#fff;background:#111} #hxMap .it.wp{border-color:#fff}
+#hxLoc{position:static;display:none;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;flex:none}
+#hxLoc.on{display:flex} #hxLoc .nm{font:800 17px/1.3 system-ui,sans-serif;color:#fff} #hxLoc .do,#hxLoc .pay{margin:0;font-size:15px;color:#fff}
 #hxLoc #hxLocFly{width:100%}
 #hxLoc .row{display:flex;gap:8px;flex-wrap:wrap} #hxLoc .row button{flex:1 1 120px}
-@media (orientation:landscape){#hxMap .body{flex-direction:row} #hxMap .cvw{height:auto;flex:0 0 min(55vw,calc(100vh - 140px));min-height:0;aspect-ratio:1} #hxMap .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px} #hxMap .lst{flex:1;max-height:none}}
-@media (orientation:portrait){#hxMap .side{flex:0 1 32%;min-height:0;display:flex;flex-direction:column;gap:6px}}
+#hxLoc .more[hidden]{display:none}
+#hxLoc .more{display:flex;gap:8px;flex-wrap:wrap} #hxLoc .more button{flex:1 1 120px}
+#hxLoc:has(.more:not([hidden])) .row{display:none}
+#hxMap .side{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+@media (orientation:landscape){#hxMap .body{flex-direction:row} #hxMap .cvw{height:auto;flex:0 0 min(55vw,calc(100vh - 140px));min-height:0;aspect-ratio:1} #hxMap .side{flex:1;min-width:0;overflow:hidden} #hxMap .lst{flex:1 1 0;min-height:0;max-height:none}}
+@media (orientation:portrait){#hxMap .cvw{min-height:120px} #hxMap .side{flex:1 1 0;max-height:48%;overflow:hidden} #hxMap .side:has(#hxLoc.on){flex:0 0 auto;max-height:none;overflow:visible} #hxMap .side:has(#hxLoc.on) .lst,#hxMap .side:has(#hxLoc.on) .lg{display:none}}
 `;
 let A = null; // api from hudx.js
 function build() {
@@ -35,10 +40,11 @@ function build() {
   el = document.createElement('div'); el.id = 'hxMap'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Map');
   el.innerHTML = `<div class="hd"><h2>🗺️ Map</h2><button id="hxMapMini" type="button"></button><button id="hxMapMenu" type="button" aria-label="Menu">☰</button><button id="hxMapClose" type="button" aria-label="Close map">✕</button></div>
 <div class="chips">${MODES.map(([k, l]) => `<button type="button" data-mode="${k}">${l}</button>`).join('')}</div>
-<div class="body"><div class="cvw"><canvas></canvas><div class="zm"><button type="button" data-z="1.6" aria-label="Zoom in">＋</button><button type="button" data-z="0.625" aria-label="Zoom out">－</button><button type="button" id="hxMapMe" data-z="0" aria-label="Recenter on me">Me</button></div>
-<div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><button type="button" id="hxLocFly">Fly ship here</button><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX" aria-label="Close place">✕</button></div></div></div>
-<div class="side"><div class="lg"><span>Drag to move. Pinch or scroll to zoom.</span><span>➤ you</span><span>◆ objective</span><span>$ shop</span></div>
-<div class="lst" role="list"></div></div></div>`;
+<div class="body"><div class="cvw"><canvas></canvas><div class="zm"><button type="button" data-z="1.6" aria-label="Zoom in">＋</button><button type="button" data-z="0.625" aria-label="Zoom out">－</button><button type="button" id="hxMapMe" data-z="0" aria-label="Recenter on me">Me</button></div></div>
+<div class="side"><div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><button type="button" id="hxLocFly">Fly ship here</button><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocMore">More</button></div><div class="more" id="hxLocExtra" hidden><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX">Close</button></div></div>
+<div class="lst" role="list"></div>
+<div class="lg"><span>Drag to move. Pinch to zoom.</span><span>You</span><span>Objective</span><span>Shop</span></div>
+</div></div>`;
   document.body.appendChild(el); cv = el.querySelector('canvas'); X = cv.getContext('2d');
   A.onTap(el.querySelector('#hxMapClose'), () => closeMap());
   A.onTap(el.querySelector('#hxMapMenu'), () => { closeMap(); setTimeout(() => A.app()?.toggleMenu?.(true), 350); });
@@ -49,6 +55,7 @@ function build() {
   A.onTap(el.querySelector('#hxLocWp'), () => { if (cardP) setWp(cardP); });
   A.onTap(el.querySelector('#hxLocBeam'), () => { if (cardP) window.SSX?.fastTravel?.offer?.(cardP); });
   A.onTap(el.querySelector('#hxLocX'), () => hideCard());
+  A.onTap(el.querySelector('#hxLocMore'), () => { const x = el.querySelector('#hxLocExtra'); if (x) x.hidden = !x.hidden; });
   wirePan();
 }
 function paintHead() {
@@ -99,7 +106,7 @@ function setWp(p) {
   closeMap();
   if (busy) A.app()?.toast?.(`📍 Waypoint set: ${p.name}. Your mission marker still wins until it is done.`, 2600);
 }
-function hideCard() { cardP = null; el?.querySelector('#hxLoc')?.classList.remove('on'); }
+function hideCard() { cardP = null; el?.querySelector('#hxLoc')?.classList.remove('on'); const x = el?.querySelector('#hxLocExtra'); if (x) x.hidden = true; }
 function openCard(p) {
   if (!p || p.active) { if (p?.active) closeMap(); return; }
   cardP = p;
