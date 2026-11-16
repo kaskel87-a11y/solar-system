@@ -199,6 +199,7 @@ addEventListener('pointerup', e => {
   const g = gest.get(e.pointerId); gest.delete(e.pointerId);
   if (g && C.isRealTap(g, { id: e.pointerId, x: e.clientX, y: e.clientY }, g.max)) return;
   if (sheet && sheet.contains(e.target)) return; // the sheet's own buttons count it themselves
+  if (e.target?.closest?.('#hxLoc, button')) return; // a drifted finger on Fly ship here still reaches the button
   e.stopPropagation(); swallowUntil = performance.now() + 700; guard.swallowed++;
 }, true);
 addEventListener('click', e => { if (performance.now() < swallowUntil && inMap(e) && e.isTrusted) { e.stopPropagation(); e.preventDefault(); swallowUntil = 0; } }, true);

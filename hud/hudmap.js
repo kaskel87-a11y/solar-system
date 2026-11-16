@@ -24,8 +24,11 @@ body.hxMapOpen :is(#fireBtn,#meleeBtn,#joy,#surfBtns,#petBtn,#driveBtn){visibili
 #hxMap .it .ds{font-size:15px;color:#fff;flex:none}
 #hxMap .it.act{border-color:#fff;background:#111} #hxMap .it.wp{border-color:#fff}
 #hxLoc{position:static;display:none;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;flex:none}
-#hxLoc.on{display:flex} #hxLoc .nm{font:800 17px/1.3 system-ui,sans-serif;color:#fff} #hxLoc .do,#hxLoc .pay{margin:0;font-size:15px;color:#fff}
-#hxLoc #hxLocFly{width:100%}
+#hxLoc.on{display:flex;position:relative;z-index:6} #hxLoc .nm{font:800 17px/1.3 system-ui,sans-serif;color:#fff} #hxLoc .do,#hxLoc .pay{margin:0;font-size:15px;color:#fff}
+#hxLoc .why{display:none;margin:0;font:800 15px/1.3 system-ui,sans-serif;color:#fff;background:#000;border:2px solid #fff;border-radius:10px;padding:8px 10px}
+#hxLoc .why.on{display:block}
+#hxLoc:has(.why.on) :is(.do,.pay){display:none}
+#hxLoc #hxLocFly{width:100%;position:relative;z-index:2}
 #hxLoc .row{display:flex;gap:8px;flex-wrap:wrap} #hxLoc .row button{flex:1 1 120px}
 #hxLoc .more[hidden]{display:none}
 #hxLoc .more{display:flex;gap:8px;flex-wrap:wrap} #hxLoc .more button{flex:1 1 120px}
@@ -41,7 +44,7 @@ function build() {
   el.innerHTML = `<div class="hd"><h2>🗺️ Map</h2><button id="hxMapMini" type="button"></button><button id="hxMapMenu" type="button" aria-label="Menu">☰</button><button id="hxMapClose" type="button" aria-label="Close map">✕</button></div>
 <div class="chips">${MODES.map(([k, l]) => `<button type="button" data-mode="${k}">${l}</button>`).join('')}</div>
 <div class="body"><div class="cvw"><canvas></canvas><div class="zm"><button type="button" data-z="1.6" aria-label="Zoom in">＋</button><button type="button" data-z="0.625" aria-label="Zoom out">－</button><button type="button" id="hxMapMe" data-z="0" aria-label="Recenter on me">Me</button></div></div>
-<div class="side"><div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><button type="button" id="hxLocFly">Fly ship here</button><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocMore">More</button></div><div class="more" id="hxLocExtra" hidden><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX">Close</button></div></div>
+<div class="side"><div id="hxLoc" role="dialog" aria-label="Place"><div class="nm"></div><p class="do"></p><p class="pay"></p><p class="why" id="hxFlyWhy"></p><button type="button" id="hxLocFly">Fly ship here</button><div class="row"><button type="button" id="hxLocWp">Set waypoint</button><button type="button" id="hxLocMore">More</button></div><div class="more" id="hxLocExtra" hidden><button type="button" id="hxLocBeam">Beam there</button><button type="button" id="hxLocX">Close</button></div></div>
 <div class="lst" role="list"></div>
 <div class="lg"><span>Drag to move. Pinch to zoom.</span><span>You</span><span>Objective</span><span>Shop</span></div>
 </div></div>`;
@@ -120,6 +123,8 @@ function openCard(p) {
   const fly = box.querySelector('#hxLocFly');
   const mars = A.app()?.surface?.info?.name === 'Mars' && Number.isFinite(p.x);
   fly.style.display = mars ? '' : 'none';
+  const why = box.querySelector('#hxFlyWhy');
+  if (why) { why.textContent = ''; why.classList.remove('on'); }
   box.classList.add('on');
 }
 function choose(p) {
@@ -222,5 +227,13 @@ if (typeof window !== 'undefined') window.__hxMapDebug = {
   pan(dx, dy) { const md = A?.mapData?.(); if (!md) return null; if (!center) center = { x: md.x, z: md.z }; const k = view?.k || 1; center.x -= dx / k; center.z -= dy / k; return { ...center }; },
   recenter() { center = null; zoom = 1.4; return true; },
   openCard() { const p = shown.find(x => x.ft) || shown.find(x => !x.active); if (p) openCard(p); return cardP?.name || ''; },
+  marker() {
+    const p = shown.find(x => !x.active && x.d > 80) || shown.find(x => !x.active);
+    if (!p || !view || !cv) return null;
+    const q = view.toS(p.x, p.z), r = cv.getBoundingClientRect();
+    const inside = q[0] > 24 && q[1] > 24 && q[0] < cv.clientWidth - 24 && q[1] < cv.clientHeight - 24;
+    if (!inside) { center = { x: p.x, z: p.z }; zoom = 1.6; return { name: p.name, d: p.d, inside: false }; }
+    return { x: r.left + q[0], y: r.top + q[1], name: p.name, d: p.d, inside: true };
+  },
   waypoint() { if (!cardP) return false; setWp(cardP); return true; }
 };
