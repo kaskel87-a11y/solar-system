@@ -652,6 +652,7 @@ export function createGame(ctx) {
     const kick = step === 2 && !cane && !plasma, base = plasma ? [4, 5, 8][step] : heavy ? [5, 5, 8][step] : blade ? [3, 3, 5][step] : [1, 1, 2][step], range = (plasma ? 3.6 : heavy ? 3.5 : blade ? 3.3 : 2.6) + (step === 2 ? 0.3 : 0), knock = (step === 2 ? (heavy ? 3.2 : 2.4) : (plasma ? 1.5 : heavy ? 1.6 : 0.9)) * (cane ? 1.3 : 1);
     let suit = 1; try { suit = window.SSX?.wear?.melee?.() || 1; } catch (e) { suit = 1; }
     try { const b = window.SSX?.backroom?.buff?.(); if (b?.kind === 'strong') suit *= b.phase === 'on' ? 1.55 : 0.65; } catch (e) { /* */ }
+    try { const m = +globalThis.SSX?.prison?.meleeMul?.(); if (m > 1 && m <= 1.6) suit *= m; } catch (e) { /* no prison crew */ }
     const dmg = base * suit;
     MEL.cd = kick ? (heavy ? 0.7 : 0.55) : heavy ? 0.55 : blade ? 0.36 : 0.42;
     // snap to the nearest thing in front so a phone thumb can't whiff

@@ -629,6 +629,7 @@ export function createWorld(ctx) {
   // v7.5.11 mission ease: SSX.policeEase() is 0.5 while a mission is running (mars/missionheat.js), else 1. Scales heat gain
   // (rises that carry a reason; a bare setWanted(n) or 'debug' sets the level as-is), dispatch, fire rate, damage, bust time and decay below; footK slows chasers when you're on foot
   const ease = () => { try { const f = globalThis.SSX?.policeEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
+  const umbraEase = () => { try { const f = globalThis.SSX?.prison?.heatEase; const v = typeof f === 'function' ? +f() : 1; return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } };
   const footK = () => { const E = ease(); return E < 1 && !ctx.st().driving ? (1 + E) / 2 : 1; };
   const ezN = n => { const E = ease(); return E < 1 ? Math.floor(n * E + 0.25) : n; };
   let easeCarry = 0;
@@ -778,7 +779,7 @@ export function createWorld(ctx) {
       const lyingLow = !st.driving && (player.moving || 0) < 0.05;
       if (inside) evade += dt * 1.5; // hiding indoors: the heat cools off (faster at low stars)
       else if (nearest > 95 && distC() > 90) evade += dt * (lyingLow ? 2 : 1); else if (nearest > 60 && lyingLow && distC() > 70) evade += dt; else if (CP.lowHeatCools(wanted, nearest)) evade += dt; else evade = Math.max(0, evade - dt * 0.5); // v7.5.28: 1-2★ cool off out of sight, even in town
-      if (evade > CP.evadeNeed(wanted) * E) setWanted(0); // mission ease: heat cools twice as fast
+      if (evade > CP.evadeNeed(wanted) * E * umbraEase()) setWanted(0); // mission ease, and Umbra hacker Sato, cool heat faster
     }
     for (const s of [...shots]) {
       s.life -= dt; s.m.position.addScaledVector(s.v, dt);

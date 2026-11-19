@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.119: Umbra Hold
+
+A penal colony in Nadir Crater, southwest of Freeport on the Moon. Open ☰ → Umbra Hold, or walk to the amber beam. Bribe the sentry or turn yourself in. Talk to the inmates, do the favor on the card, then parole them or cut the fence and walk them to the shuttle pad. The shuttle lifts for Mars. They wait there as crew: faster rides, faster cool-off on stars, harder punches, better prices on street goods. Bribe the guard, move glint-salt, drop Bram Holt, and take the warden's chair. The till pays you. On Earth, Quell Transfer (Ada Brin) points you at the Moon and pays the same till.
+
 ## v7.5.118: mission steps you can follow
 
 Each mission, side job, contact chain, and crew job says what to do and names the place or the target. The tracker under the minimap keeps that sentence. A cyan arrow at the edge of the screen names the same objective and the distance. A long name no longer collapses to a distance on its own. The beam still marks the spot in the world.
