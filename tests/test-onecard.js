@@ -18,7 +18,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.117');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.118');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000));
     await sleep(600);
@@ -53,7 +53,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         statOff: !stat || stat.height < 2 || !hit(or, stat),
         oneClear: !center(or),
         more: /moonshine/i.test(more),
-        guideShort: (document.querySelector('#ssxGuide span')?.textContent || '').length < 24
+        guideShort: (() => { const t = (document.querySelector('#ssxGuide span')?.textContent || '').replace(/\s+/g, ' ').trim(); return t.length > 2 && t.length < 42 && /[A-Za-z]/.test(t) && /\d+\s*m/.test(t) && !/^◆\s*\d/.test(t); })()
       };
     });
     R.box = box;

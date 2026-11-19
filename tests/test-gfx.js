@@ -79,7 +79,7 @@ async function runOne(cfg) {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading') && window.SSX?.gfx?.get, 120000));
     ok('rebooted', true);
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.117');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.118');
     const rules = await G(() => window.SSX.gfx.rules());
     ok('rules', rules, rules && rules.def === 'medium' && rules.key === 'ssx.gfx.v1' && rules.low.cap < rules.med.start && rules.low.fog < 1 && rules.low.shadow === false && rules.high.cap > rules.med.cap && rules.highDesk.cap > rules.medDesk.cap && rules.high.shadow === true && rules.high.ibl === true && rules.med.shadow === false);
     ok('defaultMedium', await G(() => window.SSX.gfx.get()) === 'medium');

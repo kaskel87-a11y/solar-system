@@ -87,11 +87,17 @@ body.cinematic #hud > :not(#joy,#flyBtns){display:none!important}
 function colony() { const i = info(); return i?.colony ? { x: i.colony.x, z: i.colony.z } : null; }
 function rel(at) { const c = colony(); if (!c || !at) return null; const a = Array.isArray(at) ? at : [at.x, at.z]; return { x: c.x + a[0], z: c.z + a[1] }; }
 function mapData() { try { return surf()?.mapData?.() || null; } catch (e) { return null; } }
+function questAim(q) {
+  if (!q) return '';
+  const p = plainStep(q.text || '', q.type);
+  return String(p.text || q.text || q.title || '').replace(/\s+/g, ' ').trim();
+}
 export function objective(md = mapData()) {
   if (!md) return null;
-  if (md.gate) return { x: md.gate.x, z: md.gate.z, label: 'Next race ring', kind: 'race' };
   const q = surf()?.game?.info?.quest;
-  if (md.wp) return { x: md.wp.x, z: md.wp.z, label: q?.title || 'Objective', kind: 'quest' };
+  const step = questAim(q);
+  if (md.gate) return { x: md.gate.x, z: md.gate.z, label: step || 'Next race ring', kind: 'race' };
+  if (md.wp) return { x: md.wp.x, z: md.wp.z, label: step || q?.title || 'Objective', kind: 'quest' };
   try { const j = window.SSX?.jobs?.active?.(); const p = j?.target && rel(j.target); if (p) return { ...p, label: j.text || 'Job', kind: 'job' }; } catch (e) { /* no jobs */ }
   try { const f = window.SSX?.turf?.fight?.(); if (f) { const b = window.SSX.turf.blocks().find(b => b.id === f.block); const p = b && rel(b.flag); if (p) return { ...p, label: `Defend ${b.name}`, kind: 'turf' }; } } catch (e) { /* no turf */ }
   if (S.wp && S.wp.world === info()?.name) return { x: S.wp.x, z: S.wp.z, label: S.wp.label, kind: 'waypoint' };

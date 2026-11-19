@@ -37,7 +37,7 @@ export default {
       reward: { xp: 170, credits: 320, badge: 'Ice Singer' }, fact: 'Real science: Europa\u2019s ocean is thought to touch a rocky seafloor, where hydrothermal vents could supply energy and chemistry, one reason it\u2019s a top target in the search for life.' },
     { id: 'europa-iceroad', world: 'Europa', contact: 'Foreman Brask', title: 'Ice road', fiction: true,
       intro: 'Brask: Team-building exercise. Six gates down the ice road, seventy seconds. Winners get a bonus. Losers get a fine. Everybody gets a fine, actually.',
-      steps: [{ type: 'take', text: 'Grab a sled (or anything with grip)' }, { type: 'race', pts: [[-50, -60], [-130, -50], [-170, 20], [-120, 90], [-40, 80], [0, 40]], limit: 70, text: 'Hit every gate' }],
+      steps: [{ type: 'take', text: 'Grab a sled (or anything with grip)' }, { type: 'race', pts: [[-50, -60], [-130, -50], [-170, 20], [-120, 90], [-40, 80], [0, 40]], limit: 70, text: 'Drive the Europa ice loop through every yellow ring' }],
       reward: { xp: 130, credits: 260 } },
     { id: 'europa-transfer', world: 'Europa', contact: 'Nadia Reyes', title: 'Transfer papers', fiction: true,
       intro: 'Nadia: They shipped my brother to the Loki Forge on Io. I forged you a visitor transfer. Pick it up from the infirmary and get to the outbound pad. Then go get him out.',

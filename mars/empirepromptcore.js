@@ -67,10 +67,10 @@ export function noteText(kind, name) {
     case 'shakedown':
     case 'defend': return `A rival crew is shaking down ${n}.`;
     case 'escort':
-    case 'smuggle': return `A shipment needs an escort.`;
-    case 'racket': return `Protection money is due. Go collect it.`;
-    case 'truck': return `An armored truck is on the belt. Hit it.`;
-    case 'chop': return `A ride is sitting. Chop it before patrol does.`;
+    case 'smuggle': return `A shipment at ${n} needs an escort.`;
+    case 'racket': return `Protection money is due at ${n}. Go collect it.`;
+    case 'truck': return `An armored truck is on the belt near ${n}. Hit it.`;
+    case 'chop': return `A ride is sitting near ${n}. Chop it before patrol does.`;
     case 'skim': return `The cage at the Velvet is fat. Skim it.`;
     default: return `Come check ${n}.`;
   }
@@ -132,14 +132,14 @@ export function startJob(kind, spot = {}, world = {}) {
   const pay = PAY[key] || 500;
   const money = `Pays ${pay.toLocaleString('en-US')} cr.`;
   let steps = [];
-  if (kind === 'racket') steps = [step(`Collect the protection money. ${money}`, here.x, here.z), step('Take the envelope to the drop.', drop.x, drop.z)];
-  else if (kind === 'truck') steps = [step(`Hit the armored truck. ${money}`, truck.x, truck.z), step('Haul the take to the wash.', here.x, here.z)];
-  else if (kind === 'chop') steps = [step(`Strip the parked ride. ${money}`, truck.x, truck.z), step(`Drop the parts at ${here.name}.`, here.x, here.z)];
-  else if (kind === 'smuggle' || kind === 'escort') steps = [step(`Pick up the shipment. ${money}`, truck.x, truck.z), step('Hand the shipment over at the drop.', drop.x, drop.z)];
+  if (kind === 'racket') steps = [step(`Collect the protection money at ${here.name}. ${money}`, here.x, here.z), step(`Take the envelope to the drop spot by ${here.name}.`, drop.x, drop.z)];
+  else if (kind === 'truck') steps = [step(`Hit the armored truck near ${here.name}. ${money}`, truck.x, truck.z), step(`Haul the take back to ${here.name}.`, here.x, here.z)];
+  else if (kind === 'chop') steps = [step(`Strip the parked ride near ${here.name}. ${money}`, truck.x, truck.z), step(`Drop the parts at ${here.name}.`, here.x, here.z)];
+  else if (kind === 'smuggle' || kind === 'escort') steps = [step(`Pick up the shipment near ${here.name}. ${money}`, truck.x, truck.z), step(`Hand the shipment over at the drop by ${here.name}.`, drop.x, drop.z)];
   else if (kind === 'defend' || kind === 'shakedown') steps = [step(`Hold the door at ${here.name}. ${money}`, here.x, here.z, 8)];
-  else if (kind === 'skim') steps = [step(`Skim the Velvet cage. ${money}`, v.x, v.z), step('Walk the skim out to the drop.', drop.x, drop.z)];
+  else if (kind === 'skim') steps = [step(`Skim the cage at the Velvet. ${money}`, v.x, v.z), step(`Walk the skim from the Velvet out to the drop.`, drop.x, drop.z)];
   else return null;
-  return { kind: key, step: 0, held: 0, steps, pay };
+  return { kind: key, step: 0, held: 0, steps, pay, place: here.name };
 }
 
 export function nearJob(job, x, z, dt = 0, reach = REACH) {
@@ -161,7 +161,7 @@ export function mapMarks(state) {
   if (j && j.steps[j.step]) {
     const s = j.steps[j.step];
     const icon = { racket: '💵', truck: '🚛', chop: '🔧', smuggle: '📦', defend: '🛡️', skim: '🎰' }[j.kind] || '💰';
-    out.push({ id: 'crime:' + j.kind, icon, name: noteText(j.kind).replace(/\.$/, ''), sub: 'crime · ' + s.text, x: s.x, z: s.z, cat: 'crime', empire: true });
+    out.push({ id: 'crime:' + j.kind, icon, name: noteText(j.kind, j.place).replace(/\.$/, ''), sub: 'crime · ' + s.text, x: s.x, z: s.z, cat: 'crime', empire: true });
   } else if (state.prompt && Number.isFinite(state.prompt.x)) {
     const p = state.prompt;
     out.push({ id: 'emp:' + p.kind, icon: '📱', name: p.from || 'Empire', sub: 'crime · ' + p.text, x: p.x, z: p.z, cat: 'crime', empire: true });

@@ -41,7 +41,7 @@ export default {
       reward: { xp: 170, credits: 300, badge: 'Haze Walker' } },
     { id: 'venus-drag', world: 'Venus', contact: 'Skids', title: 'Gate 9 drag', fiction: true,
       intro: 'Skids: Lava-field drag, five gates, sixty-five seconds. Crawlers are slow but they don\u2019t flip. Buggies flip. Your funeral, man.',
-      steps: [{ type: 'take', text: 'Grab a ride' }, { type: 'race', pts: [[-30, 60], [-110, 80], [-160, 20], [-110, -60], [-20, -50]], limit: 65, text: 'Hit every gate' }],
+      steps: [{ type: 'take', text: 'Grab a ride' }, { type: 'race', pts: [[-30, 60], [-110, 80], [-160, 20], [-110, -60], [-20, -50]], limit: 65, text: 'Drive the Gate 9 lava-field drag through every yellow ring' }],
       reward: { xp: 130, credits: 260 } }
   ],
   radio: ['Gate Radio. It\u2019s 465 degrees and somehow the coffee\u2019s still cold.', 'Shift change in ten. Still on the surface after that? You\u2019re overtime or you\u2019re dead.', 'Local 9 reminds you: scabs float. Acid\u2019s hungry.', 'Weather: orange. Tomorrow: orange. The day after: you guessed it.'],

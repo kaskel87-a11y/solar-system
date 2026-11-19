@@ -36,7 +36,7 @@ export default {
       reward: { xp: 260, credits: 600, badge: 'Jailbreaker', unlock: 'bandana:convict' } },
     { id: 'io-pardon', world: 'Io', contact: 'Warden Okafor', title: 'Pardon money', fiction: true,
       intro: 'Okafor: I have a wager with the night shift. You, a lava runner, six gates round the forge, sixty seconds. Win and I lose your file. Lose and I lose you. In the lava. Metaphorically. Mostly.',
-      steps: [{ type: 'take', text: 'Grab a lava runner' }, { type: 'race', pts: [[50, 50], [130, 40], [170, -30], [120, -100], [40, -90], [0, -40]], limit: 60, text: 'Hit every gate' }],
+      steps: [{ type: 'take', text: 'Grab a lava runner' }, { type: 'race', pts: [[50, 50], [130, 40], [170, -30], [120, -100], [40, -90], [0, -40]], limit: 60, text: 'Drive the Io lava loop through every yellow ring' }],
       reward: { xp: 140, credits: 300, badge: 'Pardoned' } }
   ],
   radio: ['Loki Penal Radio. You\u2019re listening because you have no choice.', 'Lights out in the cellblock at twenty-one hundred. Lights out permanently for anyone near the fence.', 'The warden\u2019s quote of the day: lava doesn\u2019t negotiate. Neither do I.', 'Volcano update: yes.'],

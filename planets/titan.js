@@ -28,7 +28,7 @@ export default {
   quests: [
     { id: 'titan-shore', world: 'Titan', contact: 'Lark', title: 'Shore sprint', fiction: true,
       intro: 'Lark: Tank-farm loop, six gates, sixty-five seconds. Kestrel says you\u2019re fast. Kestrel says a lot of shit. Take a skiff and prove it.',
-      steps: [{ type: 'take', text: 'Grab a skiff (or anything fast)' }, { type: 'race', pts: [[50, -50], [120, -60], [160, 10], [120, 80], [40, 90], [0, 40]], limit: 65, text: 'Hit every gate' }],
+      steps: [{ type: 'take', text: 'Grab a skiff (or anything fast)' }, { type: 'race', pts: [[50, -50], [120, -60], [160, 10], [120, 80], [40, 90], [0, 40]], limit: 65, text: 'Drive the Kraken Mare loop through every yellow ring' }],
       reward: { xp: 130, credits: 280, unlock: 'paint:kraken' } },
     { id: 'titan-ethane', world: 'Titan', contact: 'Saint Teodor', title: 'Spiked fuel', fiction: true,
       intro: 'Teodor: One drum of my finest ethane, extra spicy. Rig out in the dunes paid up front. The port militia didn\u2019t get their cut, so they\u2019ll be on you. Don\u2019t crash. Seriously. It\u2019ll take the whole block with it.',
