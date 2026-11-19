@@ -18,12 +18,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.116');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.117');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0, 120000));
     await sleep(600);
     await G(() => {
       window.SSX.onboard?.skip?.();
+      const r = document.getElementById('radio'); if (r) { r.style.display = 'none'; r.classList.remove('mission', 'hxOffer'); }
       window.__app.surface.world.setWanted(2, 'debug');
       window.__app.toast('💵 Picked 31 cr off the Rae Okoro.', 4000);
       window.SSX.guide.aim({ id: 'lounge', label: 'Cole is loud at the bar. Throw him out. Punch him. 31 m', nx: -0.2, ny: 0.4 });

@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { edgePointer, fmtRange, bearingNdc } from './guidecore.js';
 
-const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;width:max-content;max-width:min(88vw,320px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
-#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center}#ssxGuide span{display:block;white-space:nowrap}#ssxGuide.hxShort span{max-width:7.2em;overflow:hidden;text-overflow:ellipsis}#ssxGuide .hxFull{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}`;
+const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;width:max-content;max-width:min(88vw,320px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #38e1ff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
+#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center;color:#38e1ff}#ssxGuide span{display:block;white-space:nowrap}#ssxGuide.hxShort span{max-width:7.2em;overflow:hidden;text-overflow:ellipsis}#ssxGuide .hxFull{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}`;
 
 let el = null, pin = null, pinAt = 0, last = null;
 const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();
@@ -30,20 +30,27 @@ function shove(node) {
   if (r.top < 58) y += 58 - r.top;
   if (r.bottom > floor) y -= r.bottom - floor;
   place(x, y); r = node.getBoundingClientRect();
-  if (!(r.right > L && r.left < Rg && r.bottom > T && r.top < B)) return;
-  const ny = Math.max(58 + r.height / 2, T - 8 - r.height / 2);
-  const nx = margin + r.width / 2;
-  place(nx, ny);
+  if (r.right > L && r.left < Rg && r.bottom > T && r.top < B) {
+    const ny = Math.max(58 + r.height / 2, T - 8 - r.height / 2);
+    const nx = margin + r.width / 2;
+    place(nx, ny); r = node.getBoundingClientRect();
+  }
+  // Keep the arrow off the mission card. Park it under the minimap, on the left.
+  const stack = document.getElementById('stackR')?.getBoundingClientRect();
+  if (stack && stack.width > 8 && r.right > stack.left + 4 && r.left < stack.right - 4 && r.bottom > stack.top + 4 && r.top < stack.bottom - 4) {
+    const y2 = Math.min(Math.max(stack.bottom + 8 + r.height / 2, 168), floor - r.height / 2);
+    place(margin + r.width / 2, y2);
+  }
 }
 function show(spec) {
   const node = ensure(); if (!node || !spec) { node?.classList.remove('on'); last = null; return null; }
   const spot = edgePointer(spec.nx, spec.ny, innerWidth, innerHeight);
   const label = spec.label || '';
   node.classList.add('on');
-  node.classList.toggle('hxShort', label.length > 28);
+  node.classList.toggle('hxShort', label.length > 46);
   node.dataset.full = label;
   const dist = String(label).match(/(\d+(?:\.\d+)?\s*(?:m|km))\s*$/);
-  const short = label.length > 28 ? (dist ? dist[1] : label.slice(0, 26).trim()) : label;
+  const short = label.length > 46 ? (dist ? '◆ ' + dist[1] : label.slice(0, 26).trim()) : label;
   const sp = node.querySelector('span'); if (sp.textContent !== short) sp.textContent = short;
   let full = node.querySelector('.hxFull'); if (!full) { full = document.createElement('b'); full.className = 'hxFull'; node.appendChild(full); }
   if (full.textContent !== label) full.textContent = label;
@@ -59,6 +66,8 @@ function hide() { el?.classList.remove('on'); last = null; }
 function aim(spec) {
   if (!spec) return clear();
   pin = spec; pinAt = performance.now();
+  // A live mission owns the arrow. A side hint can record itself, but it must not paint over the objective.
+  if (typeof missionPointer === 'function' && (missionPointer() || offerUp())) return last;
   return show(spec);
 }
 function clear(id) {
@@ -96,10 +105,27 @@ function groundFallback() {
   let ob = null;
   try { ob = window.SSX?.hudx?.objective?.(); } catch (e) { ob = null; }
   if (!ob) return null;
-  return groundSpec({ id: 'objective', x: ob.x, z: ob.z, label: '' });
+  return groundSpec({ id: 'objective', x: ob.x, z: ob.z, label: ob.label || 'Objective' });
+}
+function missionPointer() {
+  // A live quest, job, turf fight or race outranks a side hint (a back-room "pack a street good" pin was
+  // refreshing every frame and hiding the mission arrow on iPhone).
+  let ob = null;
+  try { ob = window.__app?.state?.onSurface && window.SSX?.hudx?.objective?.(); } catch (e) { ob = null; }
+  if (!ob || ob.kind === 'waypoint') return null;
+  if (document.body.classList.contains('indoors')) return null;
+  return groundSpec({ id: 'objective', x: ob.x, z: ob.z, label: ob.label || 'Objective' });
+}
+function offerUp() {
+  const r = document.getElementById('radio'), b = document.getElementById('radioBtns');
+  return !!r && r.classList.contains('mission') && r.style.display !== 'none' && !!b && getComputedStyle(b).display !== 'none';
 }
 function tick() {
-  if (pin && performance.now() - pinAt < 400) show(pin);
+  // An offer card is the call. A stray arrow (a side hint) stays off it. Once you accept, the objective arrow comes back.
+  if (offerUp()) { hide(); requestAnimationFrame(tick); return; }
+  const mission = missionPointer();
+  if (mission) show(mission);
+  else if (pin && performance.now() - pinAt < 400) show(pin);
   else { const g = groundFallback(); if (g) show(g); else hide(); }
   requestAnimationFrame(tick);
 }

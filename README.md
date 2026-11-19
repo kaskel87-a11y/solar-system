@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.117: Control's mission card
+
+When Control calls with a job, the card is on screen with the mission name and the plain step, and it stays until you tap Accept, Later, or the X. The active objective stays in the tracker under the minimap, with the step and how to do it, and a cyan arrow at the edge of the screen points at it.
+
 ## v7.5.116: Fly ship here
 
 Tap Fly ship here on a map place and the Ashfall lifts off toward it. If it cannot, the card says why in plain words, such as "Can't fly with 3 stars. Lose the heat first." You do not have to be standing next to the ship. The button stays on screen and at least 44px tall.

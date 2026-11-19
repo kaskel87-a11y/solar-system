@@ -1786,6 +1786,11 @@ export function createGame(ctx) {
     setVoice(on) { P.settings.voice = !!on; save(); }, save: () => save(),
     reload() { P = loadProgress(); applyCosmetics(); },
     get progress() { return P; },
+    brief(id) {
+      const def = QUESTS.find(q => q.id === id); if (!def) return null;
+      const s = def.steps && def.steps[0];
+      return { id: def.id, title: def.title, step: s ? s.text : '', type: s ? (s.type || '') : '', pay: (def.reward && def.reward.credits) || 0, contact: def.contact || 'Control' };
+    },
     questList(w = world) {
       return QUESTS.filter(q => q.world === w).map(q => ({ id: q.id, world: q.world, title: q.title, fiction: !!q.fiction, limit: q.limit || 0, steps: q.steps.length, reward: q.reward,
         done: !!P.quests[q.id]?.everDone, active: quest?.def.id === q.id, needsAliens: q.steps.some(s => s.type === 'defeat' && s.wave.includes('boss')) }));
@@ -1796,7 +1801,7 @@ export function createGame(ctx) {
         hp: Math.round(H.hp), hpMax: H.max, shield: Math.round(H.shield), shieldMax: H.smax, down: H.down > 0,
         combat: combat(), aliens: agents.length, aliensOn: aliensOn(), xp: P.xp, credits: P.credits, rank: r.name, rankNext: r.next, rankBase: r.base,
         heat: Math.round(W.heat), overheat: W.over, turret: !!turret && !!st.driving && !!st.own, turretYaw: turret?.yaw ?? 0, turretPitch: turret?.pitch ?? 0, recoil: W.recoil,
-        quest: quest ? { id: quest.def.id, title: quest.def.title, step: quest.step, steps: quest.def.steps.length, text: stepText(), fiction: !!quest.def.fiction, timer: questTimer() } : null,
+        quest: quest ? { id: quest.def.id, title: quest.def.title, step: quest.step, steps: quest.def.steps.length, text: stepText(), type: stepDef()?.type || '', fiction: !!quest.def.fiction, timer: questTimer() } : null,
         boss: bossRef ? { name: bossRef.T.name, hp: Math.max(0, bossRef.hp), max: bossRef.T.hp } : null,
         rares: rareCount(), raresHere: rares.length, kills: P.stats.kills, deaths: P.stats.deaths, badges: P.badges.length, busted: P.stats.busted,
         weapon: st.driving ? (st.own && turret ? 'rover:' + roverId() : null) : P.equip.weapon, rover: (() => { const w = roverWpn(); return { id: w.id, name: w.name, short: w.short, icon: w.icon, tier: roverTier(), owned: roverOwned(), lastEmp: W.lastEmp || null }; })(), kit: P.equip.kit, weaponName: (!st.driving && (P.equip.weapon === 'blade' || P.equip.weapon === 'cleaver')) ? wName(P.equip.weapon) : curWeapon()?.name || '', shells: P.inv.shells, ammo: (() => { const w = !st.driving && WEAPONS[P.equip.weapon]; return w?.ammo ? { type: w.ammo, n: P.inv[w.ammo] || 0, cap: ammoCap(w.ammo) } : null; })(), inv: { ...P.inv }, maxhp: P.maxhp || 0, maxammo: P.maxammo || 0, hasCleaver: hasCleaver(), meleeKind: meleeKind(), medkits: P.inv.medkits, hasShotgun: P.unlocks.includes('weapon:shotgun'),

@@ -22,7 +22,7 @@ body.hxSlim #surfInfo .gv,body.hxSlim.driving #surfInfo b,body.hxSlim #surfInfo 
 body.hxSlim #puHud,body.hxSlim #mhChip,body.hxSlim #dirTag{display:none!important}
 body.hxSlim.surface:not(.indoors) #stackR{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 body.hxSlim #hxStuck:not(.hxShow){display:none!important}
-body.hxSlim.wanted #hxCard :is(#hxJob .l2,#questTrack .hxTx,#questTrack .hxHow,#questTrack br){display:none!important}
+body.hxSlim.wanted #hxCard :is(#hxJob .l2,#questTrack .hxHow,#questTrack br){display:none!important} /* v7.5.117: the plain step (.hxTx) stays while wanted */
 body.hxSlim.wanted #hxCard.box{padding-top:2px;padding-bottom:2px} body.hxSlim.wanted #hxCard :is(#hxQuit,#hxStuck){min-height:32px;min-width:40px} body.hxSlim.wanted #hxQuit .i{display:none}
 `;
 const S = { on: false, idle: 0, anchor: null, key: '', last: 0, forceT: 0, stat: null };
