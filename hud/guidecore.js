@@ -7,6 +7,35 @@ export function fmtRange(d) {
   return Math.round(d) + ' m';
 }
 
+// The edge chip names the objective and then the distance. A long line used to collapse to "◆ 120 m".
+export function chipLabel(label) {
+  const raw = String(label || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const dm = raw.match(/(\d+(?:\.\d+)?\s*(?:m|km))\s*$/i);
+  const dist = dm ? dm[1].replace(/\s+/g, ' ') : '';
+  let name = dm ? raw.slice(0, dm.index) : raw;
+  name = name.replace(/[◆➤]/g, ' ').replace(/\s*\([^)]*\)\s*/g, ' ');
+  name = name.replace(/\s+/g, ' ').trim().replace(/[.,;:·\-–—]+$/g, '').trim();
+  const stop = name.search(/[.!?]/);
+  if (stop >= 8) name = name.slice(0, stop).trim();
+  name = name.replace(/^(?:please\s+)?(?:go|walk|drive|head|fly|run|sneak|get)\s+(?:back\s+)?(?:to|into|inside)\s+/i, '');
+  name = name.replace(/^(?:follow(?:\s+the\s+arrow)?\s+to\s+)/i, '');
+  name = name.replace(/\s+\b(?:at|to|in|on|of|near)(?:\s+the)?$/i, '').trim();
+  if (name.length > 28) {
+    const parts = name.split(/\b(?:at|to|inside|outside|behind|near|on|of|in)\s+/i);
+    let place = '';
+    for (let i = 1; i < parts.length; i++) {
+      let phrase = parts[i].split(/[,.]/)[0].replace(/\s+and\b.*$/i, '').replace(/\s+before\b.*$/i, '').trim();
+      if (/^(?:with|a|an|your|every|each|order)\b/i.test(phrase)) continue;
+      phrase = phrase.replace(/^(?:the\s+)(?![A-Z])/i, '');
+      if (phrase.length >= 3) place = phrase;
+    }
+    name = place ? (place.length > 28 ? place.slice(0, 26).trim() + '…' : place) : name.slice(0, 26).trim() + '…';
+  }
+  if (!/[A-Za-z]/.test(name)) return dist ? '◆ ' + dist : raw.slice(0, 28);
+  return dist ? `${name} ${dist}` : name;
+}
+
 export function edgePointer(nx, ny, W, H) {
   let x = Number.isFinite(nx) ? nx : 0, y = Number.isFinite(ny) ? ny : 1;
   const ang = Math.atan2(x, y);

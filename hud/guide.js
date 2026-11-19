@@ -4,10 +4,10 @@
 // If nobody aims this frame, the pointer follows SSX.hudx.objective() on the ground.
 // The pill stays out of the middle of the screen and off the joystick.
 import * as THREE from 'three';
-import { edgePointer, fmtRange, bearingNdc } from './guidecore.js';
+import { edgePointer, fmtRange, bearingNdc, chipLabel } from './guidecore.js';
 
-const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;width:max-content;max-width:min(88vw,320px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #38e1ff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
-#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center;color:#38e1ff}#ssxGuide span{display:block;white-space:nowrap}#ssxGuide.hxShort span{max-width:7.2em;overflow:hidden;text-overflow:ellipsis}#ssxGuide .hxFull{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}`;
+const CSS = `#ssxGuide{position:fixed;z-index:20;display:none;align-items:center;gap:4px;width:max-content;max-width:min(78vw,280px);box-sizing:border-box;padding:4px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #38e1ff;font:800 13px/1.2 system-ui,sans-serif;pointer-events:none;transform:translate(-50%,-50%)}
+#ssxGuide.on{display:flex}#ssxGuide i{display:block;width:22px;flex:none;font-style:normal;font-size:18px;line-height:22px;text-align:center;color:#38e1ff}#ssxGuide span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(62vw,240px)}#ssxGuide .hxFull{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}`;
 
 let el = null, pin = null, pinAt = 0, last = null;
 const _w = new THREE.Vector3(), _to = new THREE.Vector3(), _fwd = new THREE.Vector3();
@@ -47,10 +47,9 @@ function show(spec) {
   const spot = edgePointer(spec.nx, spec.ny, innerWidth, innerHeight);
   const label = spec.label || '';
   node.classList.add('on');
-  node.classList.toggle('hxShort', label.length > 46);
   node.dataset.full = label;
-  const dist = String(label).match(/(\d+(?:\.\d+)?\s*(?:m|km))\s*$/);
-  const short = label.length > 46 ? (dist ? '◆ ' + dist[1] : label.slice(0, 26).trim()) : label;
+  // v7.5.118: keep the objective's name. A long line used to become only "◆ 120 m".
+  const short = chipLabel(label) || label;
   const sp = node.querySelector('span'); if (sp.textContent !== short) sp.textContent = short;
   let full = node.querySelector('.hxFull'); if (!full) { full = document.createElement('b'); full.className = 'hxFull'; node.appendChild(full); }
   if (full.textContent !== label) full.textContent = label;
@@ -131,7 +130,7 @@ function tick() {
 }
 
 const api = {
-  aim, clear, aimGround, aimMars, fmtRange,
+  aim, clear, aimGround, aimMars, fmtRange, chipLabel,
   get state() { return last; }
 };
 if (typeof window !== 'undefined') {

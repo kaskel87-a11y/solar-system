@@ -60,8 +60,8 @@ export const MISSIONS2 = [
     reward: { xp: 500, credits: 5000, badge: 'Withdrawal Slip' },
     steps: [
       { type: 'goto', at: [18, -416], r: 4, text: 'Meet your crew in the Red Planet Noodle back booth' },
-      { type: 'heist', heist: 'rook', advanceOn: 'crack', text: 'Hit the First Junction Trust vault' },
-      { type: 'crack', building: BANK, id: 'bank-vault', difficulty: 3, loot: 0, text: 'Crack the vault' },
+      { type: 'heist', heist: 'rook', advanceOn: 'crack', at: [-18, -452], text: 'Hit the First Junction Trust vault in Olympus Row' },
+      { type: 'crack', building: BANK, id: 'bank-vault', difficulty: 3, loot: 0, text: 'Crack the vault inside First Junction Trust' },
       { type: 'hold', at: 'bankdoor', r: 12, seconds: 30, wave: ['guard', 'guard', 'squad'], text: 'Hold the bank steps while the crew loads the van' },
       { type: 'goto', at: FLATS(-26, -24), r: 6, vehicle: 'any', wanted: 3, text: 'Drive the take to the Red Tape Flats lockup' },
       { type: 'pick', who: 'Rook', text: 'Decide what happens with Rook and the ledger', prompt: 'Under the cash: the Quiet\u2019s black ledger. Then Rook raises his gun. He\u2019s worked for Mr. Sable all along.',
@@ -75,7 +75,7 @@ export const MISSIONS2 = [
     success: 'Doc Grieve: He\u2019ll live. He\u2019ll owe me. Everybody owes me.', failLine: 'Doc Grieve: Great. Now I need a shovel, not a needle.',
     reward: { xp: 120, credits: 500 },
     steps: [
-      { type: 'goto', at: FLATS(-37, 7), r: 3, item: 'medbag', text: 'Grab Doc\u2019s surgical bag' },
+      { type: 'goto', at: FLATS(-37, 7), r: 3, item: 'medbag', text: 'Grab Doc Grieve\u2019s surgical bag at his clinic in Red Tape Flats' },
       { type: 'goto', at: FLATS(28, 30), r: 5, text: 'Get the bag to the kid behind the ration plant' },
       { type: 'hold', at: FLATS(28, 30), r: 12, seconds: 30, wave: ['jacker', 'jacker', 'jacker'], bark: 'Doc Grieve: Hold still. Somebody shoot those idiots.', text: 'Keep the jackers off while Doc stitches' }] }),
   M({ id: 'grieve-02-cold-chain', contact: 'Doc Grieve', title: 'Cold Chain', district: DIST.flats, requires: ['grieve-01-house-call'],
@@ -86,7 +86,7 @@ export const MISSIONS2 = [
       { type: 'goto', at: ROW(-46, -18), r: 9, text: 'Get to the Olympus Row impound row' },
       { type: 'take', text: 'Hotwire a ride off the impound row' },
       { type: 'goto', at: FLATS(-36, 8), r: 6, vehicle: 'stolen', wanted: 2, text: 'Drive it to Doc\u2019s back door' },
-      { type: 'clean', text: 'Lose ColSec' }],
+      { type: 'clean', text: 'Lose ColSec: stay out of sight until the stars fade' }],
     onDone: app => { if (addItem('lowg', 3)) toast(app, '\ud83c\udf88 Doc Grieve: Three Low-G caps, on the house. I\u2019m a doctor.', 3600); } }),
   M({ id: 'grieve-03-bad-batch', contact: 'Doc Grieve', title: 'Bad Batch', district: DIST.flats, requires: ['grieve-02-cold-chain'],
     intro: 'Doc Grieve: Three kids on my table tonight, lips blue, all on the same Low-G. Somebody\u2019s cutting it with rover coolant. Follow the courier, find the cook, make it stop.',
@@ -95,7 +95,7 @@ export const MISSIONS2 = [
     steps: [
       { type: 'goto', at: FLATS(14, 20), r: 5, text: 'Find the courier at the Flats noodle cart' },
       { type: 'tail', vehicle: 'buggy', speed: 6, path: [FLATS(12, 14), FLATS(20, -6), FLATS(34, -18), FLATS(36, -28)], close: 6, lose: 50, text: 'Tail the courier\u2019s buggy (not too close)' },
-      { type: 'defeat', at: FLATS(36, -28), r: 8, wave: ['jacker', 'jacker', 'hitter'], text: 'Take out the cook\u2019s crew' },
+      { type: 'defeat', at: FLATS(36, -28), r: 8, wave: ['jacker', 'jacker', 'hitter'], text: 'Take out the cook\u2019s crew at the end of the tail in Red Tape Flats' },
       { type: 'pick', who: 'Doc Grieve', text: 'Decide what happens to the cook', prompt: 'The cook is on his knees in a puddle of coolant, begging.',
         options: [
           { id: 'execute', label: 'Execute him', flag: 'sm2:cook_dead', wanted: 2, line: 'Doc Grieve: \u2026Good. I\u2019ll sleep. Eventually.' },
@@ -127,7 +127,7 @@ export const MISSIONS2 = [
     success: 'Counselor Wolde: No drive, no case. Justice is blind, and now she\u2019s deaf too.', failLine: 'Counselor Wolde: You set off every alarm in the Row. Subtle as a brick.',
     reward: { xp: 240, credits: 1500 },
     steps: [
-      { type: 'heist', heist: 'impound', text: 'Lift the evidence drive from the ColSec impound locker' },
+      { type: 'heist', heist: 'impound', at: [-48, -440], text: 'Lift the evidence drive from the ColSec impound locker in Olympus Row' },
       { type: 'clean', text: 'Lose the heat' }],
     onDone: app => { if (addItem('ledger_chip', 2)) toast(app, '\ud83d\udcce Two Quiet ledger chips were taped behind the drive. Rook will want those.', 4200); } }),
   M({ id: 'wolde-03-verdict', contact: 'Counselor Wolde', title: 'Not Guilty', district: DIST.row, requires: ['wolde-02-discovery'],
@@ -148,8 +148,8 @@ export const MISSIONS2 = [
     reward: { xp: 140, credits: 700 },
     steps: [
       { type: 'goto', at: FLATS(-6, -36), r: 10, text: 'Find the jackers\u2019 lot in Red Tape Flats' },
-      { type: 'defeat', at: FLATS(-6, -36), r: 8, wave: ['jacker', 'jacker', 'jacker'], text: 'Teach the jackers some manners' },
-      { type: 'take', text: 'Grab a ride off their lot' },
+      { type: 'defeat', at: FLATS(-6, -36), r: 8, wave: ['jacker', 'jacker', 'jacker'], text: 'Beat the jackers at their lot in Red Tape Flats' },
+      { type: 'take', text: 'Steal a ride off the jackers\u2019 lot in Red Tape Flats. Not your rover' },
       { type: 'goto', at: HTS(10, 18), r: 6, vehicle: 'stolen', wanted: 1, text: 'Bring it back to Cassius in Helios Heights' }],
     onDone: app => giveRide(app, 'Cassius Thorne: Keep the bike. I\u2019ve got four. Dad thinks it\u2019s three.') }),
   M({ id: 'thorne-02-party', contact: 'Cassius Thorne', title: 'House Party', district: DIST.heights, requires: ['thorne-01-repo'],
@@ -159,15 +159,15 @@ export const MISSIONS2 = [
     steps: [
       { type: 'goto', at: ROW(30, -30), r: 3, item: 'contraband', text: 'Pick up the Void Honey at the Meridian 1 dock' },
       { type: 'goto', at: HTS(44, 8), r: 6, limit: 150, text: 'Get it to the Thorne villa before the guests sober up' },
-      { type: 'raid', at: HTS(44, 8), r: 16, attackers: 'gang', waves: 2, wave: ['jacker', 'jacker', 'hitter'], seconds: 35, text: 'Bounce the gatecrashers' }],
+      { type: 'raid', at: HTS(44, 8), r: 16, attackers: 'gang', waves: 2, wave: ['jacker', 'jacker', 'hitter'], seconds: 35, text: 'Bounce the gatecrashers at the Thorne villa in Helios Heights' }],
     onDone: app => { if (addItem('voidhoney', 1)) toast(app, '\ud83c\udf6f Cassius slips you a vial of Void Honey. \u201cParty favour, bro.\u201d', 3600); } }),
   M({ id: 'thorne-03-ransom', contact: 'Cassius Thorne', title: 'Kidnap Myself', district: DIST.heights, requires: ['thorne-02-party'],
     intro: 'Cassius Thorne: Dad cut my allowance, so I\u2019ve been kidnapped. Tragic. The ransom drops on a bench in Olympus Row. Grab it, lose whoever he sends, we split it. This is basically a business degree.',
     success: 'Cassius Thorne: Best kidnapping ever. Five stars. Would get kidnapped again.', failLine: 'Cassius Thorne: Dad found out. I\u2019m grounded. I\u2019m twenty-six.',
     reward: { xp: 300, credits: 1800 },
     steps: [
-      { type: 'goto', at: ROW(24, 30), r: 3, item: 'contraband', wanted: 2, text: 'Grab the ransom bag off the bench (it\u2019s watched)' },
-      { type: 'race', pts: [ROW(60, 60), ROW(140, 180), HTS(-90, -190), HTS(-20, -60)], pursuers: ['sbuggy', 'sbuggy'], text: 'Shake the Thorne family\u2019s hired guns' },
+      { type: 'goto', at: ROW(24, 30), r: 3, item: 'contraband', wanted: 2, text: 'Grab the ransom bag off the bench in Olympus Row. It is watched' },
+      { type: 'race', pts: [ROW(60, 60), ROW(140, 180), HTS(-90, -190), HTS(-20, -60)], pursuers: ['sbuggy', 'sbuggy'], text: 'Shake the Thorne family\u2019s hired guns from Olympus Row to Helios Heights' },
       { type: 'pick', who: 'Cassius Thorne', text: 'Settle the ransom with Cassius', prompt: 'Cassius at the villa gate, grinning: \u201cFifty-fifty, partner?\u201d',
         options: [
           { id: 'split', label: 'Split it fifty-fifty (+1500 cr)', credits: 1500, flag: 'sm2:thorne_split', line: 'Cassius Thorne: Partners! I\u2019m getting us matching jackets.' },

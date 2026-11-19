@@ -93,48 +93,48 @@ export const SHOP = [
 // Step extras: limit (seconds for this step), vehicle ('stolen' = must be driving a non-rover), wanted (stars at start).
 export const QUESTS = [
   { id: 'moon-camera', world: 'Moon', title: 'Recover the lost Apollo camera', intro: 'Control. Apollo crews left their cameras behind to save weight. One of ours walked off near the old landing zone, and I doubt it walked on its own. Go get it back before some scavenger pawns it in Freeport.',
-    steps: [{ type: 'goto', a: 60, d: 95, item: 'camera', text: 'Find the lost camera' }, { type: 'return', text: 'Bring the camera back to the ship' }],
+    steps: [{ type: 'goto', a: 60, d: 95, item: 'camera', text: 'Find the lost camera near the old Moon landing zone' }, { type: 'return', text: 'Bring the camera back to the ship' }],
     reward: { xp: 60, credits: 50, badge: 'Shutterbug', unlock: 'bandana:stars' }, fact: 'Apollo astronauts left about a dozen film cameras on the Moon and brought home only the film, saving weight for Moon rocks.' },
   { id: 'moon-ice', world: 'Moon', title: 'Scan 3 ice deposits in Shackleton', intro: 'Control. The shadowed crater ahead is our stand-in for Shackleton. Scan three ice deposits. Water is worth more than gold up here, and everybody knows it.',
-    steps: [{ type: 'collect', a: -100, d: 150, spread: 16, n: 3, item: 'icecore', text: 'Scan ice deposits' }],
+    steps: [{ type: 'collect', a: -100, d: 150, spread: 16, n: 3, item: 'icecore', text: 'Scan the ice deposits on the floor of Shackleton crater' }],
     reward: { xp: 80, credits: 60, unlock: 'paint:lunar' }, fact: 'Shackleton crater sits almost exactly on the Moon\u2019s south pole. Parts of its floor never see sunlight, which makes it a top target in the hunt for ice.' },
   { id: 'moon-drones', world: 'Moon', title: 'Seekers at the crater rim', fiction: true, intro: 'Control. Something with wings and teeth is circling the crater rim. It already took apart a survey team. Clear them out, and don\u2019t let them dive on you.',
-    steps: [{ type: 'defeat', a: -20, d: 120, wave: ['drone', 'drone', 'drone', 'crawler'], text: 'Kill the seekers' }],
+    steps: [{ type: 'defeat', a: -20, d: 120, wave: ['drone', 'drone', 'drone', 'crawler'], text: 'Kill the seekers circling the crater rim' }],
     reward: { xp: 100, credits: 80, badge: 'Moon Defender' } },
   { id: 'mars-rescue', world: 'Mars', title: 'Rescue a stranded rover', fiction: true, intro: 'Control. A science rover went dark and its last frames show stalkers crawling all over it. Get out there, kill them, and reboot the damn thing. Watch the sand, they hide in it.',
-    steps: [{ type: 'goto', a: -40, d: 130, r: 12, item: 'stuckrover', keep: true, text: 'Reach the stranded rover' }, { type: 'defeat', a: -40, d: 130, wave: ['crawler', 'crawler', 'crawler', 'hunter'], ambush: true, text: 'Kill the stalkers' }, { type: 'goto', a: -40, d: 130, r: 5, text: 'Reboot the rover' }],
+    steps: [{ type: 'goto', a: -40, d: 130, r: 12, item: 'stuckrover', keep: true, text: 'Reach the stranded rover' }, { type: 'defeat', a: -40, d: 130, wave: ['crawler', 'crawler', 'crawler', 'hunter'], ambush: true, text: 'Kill the stalkers around the stranded rover' }, { type: 'goto', a: -40, d: 130, r: 5, text: 'Reboot the rover' }],
     reward: { xp: 120, credits: 100, unlock: 'paint:rust' }, fact: 'For real: NASA\u2019s Spirit rover got stuck in soft sand on Mars in 2009. Engineers tried for months to free it, then turned it into a stationary science station.' },
   { id: 'mars-signal', world: 'Mars', title: 'Find the signal source', fiction: true, intro: 'Control. There\u2019s a repeating signal coming out of the badlands. The last team that went looking stopped answering. Follow the shards, find the source, and if it\u2019s a hive, burn it.',
-    steps: [{ type: 'goto', a: 100, d: 120, r: 10, text: 'Triangulate the signal' }, { type: 'collect', a: 125, d: 170, spread: 14, n: 3, item: 'artifact', text: 'Collect resonant shards' },
-      { type: 'goto', a: 160, d: 240, r: 14, outpost: true, text: 'Follow the signal to its source' }, { type: 'defeat', a: 160, d: 240, wave: ['nest', 'drone', 'crawler', 'crawler', 'hunter'], text: 'Purge the hive' },
-      { type: 'defeat', a: 160, d: 240, wave: ['boss'], text: 'Kill the Hive Queen' }],
+    steps: [{ type: 'goto', a: 100, d: 120, r: 10, text: 'Triangulate the signal in the Mars badlands' }, { type: 'collect', a: 125, d: 170, spread: 14, n: 3, item: 'artifact', text: 'Collect the resonant shards in the Mars badlands' },
+      { type: 'goto', a: 160, d: 240, r: 14, outpost: true, text: 'Follow the signal to its source in the Mars badlands' }, { type: 'defeat', a: 160, d: 240, wave: ['nest', 'drone', 'crawler', 'crawler', 'hunter'], text: 'Purge the hive in the Mars badlands' },
+      { type: 'defeat', a: 160, d: 240, wave: ['boss'], text: 'Kill the Hive Queen in the Mars badlands' }],
     reward: { xp: 300, credits: 250, badge: 'Xeno Hunter', unlock: 'bandana:galaxy' }, fact: 'The hive is pure fiction. Real scientists do listen for signals from space, though: SETI searches have run since 1960.' },
   { id: 'venus-capsule', world: 'Venus', title: 'Retrieve the Venera data capsule', limit: 100, intro: 'Control. A Venera-style data capsule is out there cooking. Your suit can take this hell for 100 seconds. Grab it and get back. Don\u2019t sightsee.',
-    steps: [{ type: 'goto', a: 150, d: 140, item: 'capsule', text: 'Grab the data capsule' }, { type: 'return', text: 'Back to the ship before your suit cooks' }],
+    steps: [{ type: 'goto', a: 150, d: 140, item: 'capsule', text: 'Grab the Venera data capsule on the Venus plain' }, { type: 'return', text: 'Back to the ship before your suit cooks' }],
     reward: { xp: 130, credits: 120, badge: 'Heatproof', unlock: 'paint:gold' }, fact: 'Venus\u2019s surface is about 465 \u00b0C, hot enough to melt lead. The toughest Soviet Venera landers lasted only about two hours.' },
   { id: 'venus-drones', world: 'Venus', title: 'Things in the haze', fiction: true, intro: 'Control. Something is moving in the haze west of you. It\u2019s not weather. Find it and put it down.',
-    steps: [{ type: 'defeat', a: -90, d: 130, wave: ['drone', 'drone', 'hunter', 'crawler'], text: 'Clear the haze' }],
+    steps: [{ type: 'defeat', a: -90, d: 130, wave: ['drone', 'drone', 'hunter', 'crawler'], text: 'Kill the haze creatures west of the landing site' }],
     reward: { xp: 100, credits: 80 } },
   { id: 'mercury-sunrise', world: 'Mercury', title: 'Outrun the sunrise', limit: 55, intro: 'Control. Sunrise in 55 seconds and the day side hits 430 \u00b0C. Reach the shadow line or we scrape you off the regolith. Take the rover.',
     steps: [{ type: 'goto', a: 0, d: 380, r: 16, text: 'Reach the shadow line before sunrise' }],
     reward: { xp: 140, credits: 120, badge: 'Shadow Runner', unlock: 'paint:shadow' }, fact: 'A solar day on Mercury lasts 176 Earth days. At the equator the dawn line creeps along at only about 3.5 km/h, slow enough to walk ahead of it.' },
   { id: 'mercury-ice', world: 'Mercury', title: 'Map polar ice', intro: 'Control. MESSENGER spotted ice in Mercury\u2019s shadowed craters. Scan three deposits. Easy money, for once.',
-    steps: [{ type: 'collect', a: -30, d: 120, spread: 16, n: 3, item: 'icecore', text: 'Scan polar ice' }],
+    steps: [{ type: 'collect', a: -30, d: 120, spread: 16, n: 3, item: 'icecore', text: 'Scan the polar ice in Mercury’s shadowed craters' }],
     reward: { xp: 80, credits: 60 }, fact: 'Mercury may hold roughly 100 billion to 1 trillion tonnes of water ice in permanently shadowed craters near its poles.' },
   { id: 'earth-fetch', world: 'Earth', title: 'Fetch: the lost tennis balls', dog: true, intro: 'Control. Your dog has filed a formal complaint: three tennis balls missing. Honestly the most reasonable request I\u2019ve had all week.',
-    steps: [{ type: 'collect', a: 30, d: 60, spread: 22, n: 3, item: 'ball', text: 'Find the tennis balls' }],
+    steps: [{ type: 'collect', a: 30, d: 60, spread: 22, n: 3, item: 'ball', text: 'Find the tennis balls in the grass near the landing site' }],
     reward: { xp: 60, credits: 40, badge: 'Good Dog', unlock: 'bandana:red' }, fact: 'A dog\u2019s nose has up to about 300 million scent receptors. Ours have about 6 million.' },
   { id: 'earth-picnic', world: 'Earth', title: 'Something in the treeline', fiction: true, intro: 'Control. A campsite down the hill went quiet an hour ago. Their beacon is still on. Go see. Take the rifle.',
-    steps: [{ type: 'goto', a: -60, d: 80, r: 12, item: 'picnic', keep: true, text: 'Find the abandoned camp' }, { type: 'defeat', a: -60, d: 80, wave: ['crawler', 'crawler', 'crawler'], ambush: true, text: 'Kill whatever did this' }],
+    steps: [{ type: 'goto', a: -60, d: 80, r: 12, item: 'picnic', keep: true, text: 'Find the abandoned camp' }, { type: 'defeat', a: -60, d: 80, wave: ['crawler', 'crawler', 'crawler'], ambush: true, text: 'Kill whatever wrecked the camp' }],
     reward: { xp: 90, credits: 60, unlock: 'bandana:green' } },
   { id: 'io-sample', world: 'Io', title: 'Sulfur sample sprint', limit: 80, intro: 'Control. Jupiter\u2019s radiation is cooking your suit as we speak. Grab a sulfur sample and get back in 80 seconds.',
-    steps: [{ type: 'goto', a: -60, d: 150, item: 'sample', text: 'Grab a sulfur sample' }, { type: 'return', text: 'Back to the ship, fast' }],
+    steps: [{ type: 'goto', a: -60, d: 150, item: 'sample', text: 'Grab a sulfur sample on Io' }, { type: 'return', text: 'Back to the ship, fast' }],
     reward: { xp: 120, credits: 100, unlock: 'paint:neon' }, fact: 'Io orbits inside Jupiter\u2019s intense radiation belts. An unprotected person there would get a deadly dose in about a day.' },
   { id: 'europa-ice', world: 'Europa', title: 'Ice samples for the ocean hunters', intro: 'Control. The Europa Clipper team wants ground truth. Collect three ice samples near the cracks. Mind your footing.',
-    steps: [{ type: 'collect', a: 30, d: 90, spread: 20, n: 3, item: 'sample', text: 'Collect ice samples' }],
+    steps: [{ type: 'collect', a: 30, d: 90, spread: 20, n: 3, item: 'sample', text: 'Collect ice samples by the cracks in Europa’s ice' }],
     reward: { xp: 90, credits: 80 }, fact: 'Europa Clipper is planned to fly past Europa about 49 times, measuring how thick the ice is and studying the ocean below.' },
   { id: 'titan-sea', world: 'Titan', title: 'Sample a methane sea', fiction: true, intro: 'Control. Scoop a sample from the methane shore. Sensors also show movement in the haze. Big movement. Stay sharp.',
-    steps: [{ type: 'goto', a: 60, d: 90, r: 14, item: 'sample', text: 'Scoop a methane sample' }, { type: 'defeat', a: 60, d: 90, wave: ['drone', 'drone', 'hunter'], text: 'Kill the haze hunters' }],
+    steps: [{ type: 'goto', a: 60, d: 90, r: 14, item: 'sample', text: 'Scoop a methane sample on the Titan shore' }, { type: 'defeat', a: 60, d: 90, wave: ['drone', 'drone', 'hunter'], text: 'Kill the haze hunters over the Titan shore' }],
     reward: { xp: 110, credits: 90 }, fact: 'Titan\u2019s seas are liquid methane and ethane at about \u2212179 \u00b0C. Kraken Mare, the biggest, is larger than the Caspian Sea.' },
   // ----- colony contacts (fiction): talk to them at Ares Junction (Mars) and Freeport Tranquility (Moon) -----
   { id: 'mars-smuggle', world: 'Mars', contact: 'Rook', title: 'Smuggling run', fiction: true,
@@ -154,11 +154,11 @@ export const QUESTS = [
     reward: { xp: 200, credits: 400, badge: 'Exterminator' } },
   { id: 'mars-race', world: 'Mars', contact: 'Vesna', title: 'Canyon sprint', fiction: true,
     intro: 'Vesna: Kids here race the junction loop for money. You look like you need money. Six gates, 70 seconds. Grab something quick. Bikes are fast, and they also flip.',
-    steps: [{ type: 'take', text: 'Grab a fast vehicle' }, { type: 'race', pts: [[-40, -60], [-120, -60], [-170, 10], [-130, 90], [-50, 80], [0, 30]], limit: 70, text: 'Hit every gate' }],
+    steps: [{ type: 'take', text: 'Grab a fast vehicle' }, { type: 'race', pts: [[-40, -60], [-120, -60], [-170, 10], [-130, 90], [-50, 80], [0, 30]], limit: 70, text: 'Drive the Ares Junction canyon loop through every yellow ring' }],
     reward: { xp: 120, credits: 250, unlock: 'bandana:blaze' } },
   { id: 'moon-race', world: 'Moon', contact: 'Kestrel', title: 'Crater run', fiction: true,
     intro: 'Kestrel: Freeport\u2019s fastest lap is 52 seconds and it\u2019s mine. You get 60. Six gates round the crater. Steal a hover bike if you want a prayer.',
-    steps: [{ type: 'take', text: 'Grab a fast vehicle (try a hover bike)' }, { type: 'race', pts: [[50, -40], [120, -20], [150, 50], [100, 120], [20, 100], [0, 35]], limit: 60, text: 'Hit every gate' }],
+    steps: [{ type: 'take', text: 'Grab a fast vehicle (try a hover bike)' }, { type: 'race', pts: [[50, -40], [120, -20], [150, 50], [100, 120], [20, 100], [0, 35]], limit: 60, text: 'Drive the Freeport crater loop through every yellow ring' }],
     reward: { xp: 120, credits: 250, unlock: 'paint:hazard' } }
 ];
 const ALIEN_ZONES = { Moon: { a: -150, d: 220, wave: ['drone', 'drone', 'crawler'] }, Mars: { a: 40, d: 260, wave: ['nest', 'crawler', 'crawler', 'drone'] }, Venus: { a: -120, d: 230, wave: ['drone', 'hunter'] }, Mercury: { a: 80, d: 230, wave: ['crawler', 'drone', 'crawler'] },
@@ -1257,14 +1257,21 @@ export function createGame(ctx) {
   function stepTarget(s) {
     if (s.type === 'return') { const S = ctx.SHIP; return { x: S.x - 8, z: S.z + 8, r: 12 }; }
     if (s.type === 'enter' || s.type === 'crack') { const d = ctx.doorFor?.(s.building); return d ? { x: d.x, z: d.z, r: 2.5, door: d.kind } : { x: player.x, z: player.z, r: 0 }; }
-    if (s.type === 'choice' && !s.at) return { x: player.x, z: player.z, r: 0 };
-    if (s.at) { let p = ctx.colonyAt?.(s.at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2);
+    if (s.type === 'choice' && !Array.isArray(s.at)) return { x: player.x, z: player.z, r: 0 };
+    const at = Array.isArray(s.at) && s.at.length >= 2 && Number.isFinite(+s.at[0]) && Number.isFinite(+s.at[1]) ? s.at : null;
+    if (at) { let p = ctx.colonyAt?.(at); if (p && quest?.def.city && ctx.freeSpot) p = ctx.freeSpot(p.x, p.z, 1.2);
       // v7.5.16: never inside a dome / building / prop footprint (Pad to Plaza's drop was the middle of the plaza dome)
       const W = ctx.gateWorld?.(); if (p && W?.collide) p = reachSpot(p, (x, z, r) => !!W.collide(x, z, r));
-      if (p) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) return { x: p.x, z: p.z, r: s.r ?? 4 }; }
+    // a tail or convoy with no stand-alone pin still starts on its first point, so the beam is not NaN
+    if (Array.isArray(s.path) && Array.isArray(s.path[0])) {
+      const p = ctx.colonyAt?.(s.path[0]);
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) return { x: p.x, z: p.z, r: s.r ?? 8 };
+    }
     if (s.type === 'take') { const v = ctx.nearestVehicle?.(); return v ? { x: v.x, z: v.z, r: 3 } : { x: player.x, z: player.z, r: 3 }; }
     if (s.type === 'clean') return { x: player.x, z: player.z, r: 0 };
-    if (s.type === 'race') { const p = ctx.colonyAt?.(s.pts[0]) || ctx.safePoint(0, 60); return { x: p.x, z: p.z, r: 6 }; }
+    if ((s.type === 'race' || s.type === 'rrace') && Array.isArray(s.pts) && s.pts.length) { const p = ctx.colonyAt?.(s.pts[0]) || ctx.safePoint(0, 60); if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) return { x: p.x, z: p.z, r: 6 }; }
+    if (!Number.isFinite(+s.a) || !Number.isFinite(+s.d)) return { x: player.x, z: player.z, r: 0 };
     const p = ctx.safePoint(s.a, s.d); return { x: p.x, z: p.z, r: s.r ?? 4 };
   }
   let gate = null;

@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.118: mission steps you can follow
+
+Each mission, side job, contact chain, and crew job says what to do and names the place or the target. The tracker under the minimap keeps that sentence. A cyan arrow at the edge of the screen names the same objective and the distance. A long name no longer collapses to a distance on its own. The beam still marks the spot in the world.
+
 ## v7.5.117: Control's mission card
 
 When Control calls with a job, the card is on screen with the mission name and the plain step, and it stays until you tap Accept, Later, or the X. The active objective stays in the tracker under the minimap, with the step and how to do it, and a cyan arrow at the edge of the screen points at it.
