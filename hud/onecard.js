@@ -7,13 +7,20 @@ body.hxOne #hxOne.on{display:flex}
 #hxOne .hxDist{flex:none}
 body.hxOne #hxStat{order:-2} body.hxOne #hxOne{order:-1}
 body.hxOne.hudx #stackR{max-height:calc(25vh - 62px - var(--sat,0px))!important;overflow:hidden}
-body.hxOne #stackR > #radio:not(.hxOffer){display:none!important}
-body.hxOne #hxCard :is(.hxTx,.hxHow,#hxJob .l2){display:none!important}
-body.hxOne #hxCard.on{background:rgba(255,255,255,.9);color:#111;border:1px solid rgba(0,0,0,.45);text-shadow:none;max-width:min(100%,320px)}
-body.hxOne #hxCard.on :is(#hxJob .l1,#questTrack,#questTrack b){color:#111;font:800 16px/1.2 system-ui,sans-serif}
-body.hxOne #hxCard.on #questTrack{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:22px}
-body.hxOne #hxOne.on ~ #hxCard .hxCol{display:none!important}
-body.hxOne #hxCard.on ~ #hxWay{display:none!important}
+/* v7.5.117: a Control call and the objective card need the stack tall enough to read. The short cap was clipping them. */
+body.hxOne.hudx #stackR:has(> #radio.mission),
+body.hxOne.hudx #stackR:has(#hxCard.on){max-height:calc(100dvh - 112px - var(--sat,0px) - var(--sab,0px))!important;overflow-x:hidden;overflow-y:auto}
+#stackR > #radio.mission{order:-6}
+#stackR > #hxCard.on{order:-5}
+/* Chatter can stay hidden. A mission call (class mission) and an offer you opened (hxOffer) stay on screen. */
+body.hxOne #stackR > #radio:not(.hxOffer):not(.mission){display:none!important}
+body.hxOne #stackR > #radio.mission{display:block!important;opacity:1!important;visibility:visible!important}
+body.hxOne #hxCard.on{background:rgba(255,255,255,.94);color:#111;border:1px solid rgba(0,0,0,.55);text-shadow:none;max-width:min(100%,340px)}
+body.hxOne #hxCard.on :is(#hxJob .l1,#hxJob .l2,#questTrack,#questTrack b,.hxTx){color:#111;text-shadow:none}
+body.hxOne #hxCard.on #questTrack{white-space:normal;overflow:visible;text-overflow:clip;max-height:none}
+body.hxOne #hxCard.on .hxTx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;white-space:normal;font:700 15px/1.28 system-ui,sans-serif;color:#111}
+body.hxOne #hxCard.on .hxHow{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:normal;font:600 13px/1.28 system-ui,sans-serif;color:#0c4a6e}
+body.hxOne #hxCard.on .hxQw{color:#0369a1}
 body.hxOne :is(#stillCap,#farmGuide,#f2Cap).on{display:none!important}
 body.hxOne.hxBusy #obLine{display:none!important}
 body.hxOne #empPing,body.hxOne #dealCard{z-index:40}
@@ -75,8 +82,10 @@ function tick() {
   if (radio) radio.classList.toggle('hxOffer', !!(btns && getComputedStyle(btns).display !== 'none' && radio.style.display !== 'none'));
   const box = ensure();
   const cardOn = document.getElementById('hxCard')?.classList.contains('on');
+  const call = !!(radio && radio.classList.contains('mission') && radio.style.display !== 'none');
   const guide = list.find(n => n.id === 'guide');
-  const top = guide || (cardOn ? null : list[0]);
+  // A mission call or the objective card already says the step. Don't lay another line over it.
+  const top = (cardOn || call) ? null : (guide || list[0]);
   const rest = list.filter(n => n !== top && !(cardOn && n.id === 'card'));
   if (top) {
     const t = lineOf(top.text);

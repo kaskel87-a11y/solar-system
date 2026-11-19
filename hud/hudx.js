@@ -124,17 +124,14 @@ export function pois(force) {
 }
 
 // ---------- 📜 card: plain words ----------
-// the "how" line (what to actually do) shows for HOW_MS after each new step, then the card shrinks back to 2 lines
-const HOW_MS = 8000; let howKey = '', howAt = 0;
+// v7.5.117: the how-to stays for the whole step. It used to vanish after 8 s, so the phone only kept the title.
 // v7.6: phones have no keyboard, so drop "(E)" / "(T)" style key hints on touch (index.html's toast does the same)
 export const KEY_HINT = /\s*\((?:[A-Z0-9]|Esc|Space|Tab|Shift|Enter)\)/g;
 export const noKeys = s => (typeof document !== 'undefined' && document.body?.classList.contains('touch') ? String(s).replace(KEY_HINT, '') : s);
 export function questHtml(q) {
   if (!q) return '';
-  const p0 = plainStep(q.text, q.type), p = { ...p0, text: noKeys(p0.text), how: p0.how && noKeys(p0.how) }, key = `${q.title}|${String(q.text).replace(/\s*\([^)]*\d[^)]*\)\s*$/, '')}`, now = performance.now();
-  if (key !== howKey) { howKey = key; howAt = now; }
-  const how = p.how && (now - howAt < HOW_MS || p.type);
-  return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx">${esc(p.text)}</span>${how ? `<span class="hxHow">${esc(p.how)}</span>` : ''}`;
+  const p0 = plainStep(q.text, q.type), p = { ...p0, text: noKeys(p0.text), how: p0.how && noKeys(p0.how) };
+  return `<span class="hxQh"><b>📜 ${esc(q.title)}</b>${q.timer != null ? `<span class="tm">⏱ ${Math.ceil(q.timer)} s</span>` : ''}<span class="hxQw"></span></span><span class="hxTx">${esc(p.text)}</span>${p.how ? `<span class="hxHow">${esc(p.how)}</span>` : ''}`;
 }
 
 // ---------- lite minimap (index.html drawMiniMap calls this first; true = drawn) ----------

@@ -31,8 +31,12 @@ const OUT = process.env.OUT || (process.env.SHOTS_DIR || require('path').join(__
     const offer = () => G(id => window.SSX.city.radio('Control: test job. Want it?', 'Control', id), offerId);
     const radioShown = () => wait(() => getComputedStyle(document.getElementById('radio')).display !== 'none', 4000);
     // 1) unrequested offer arrives as the pill; a held tap opens it; a held tap on ✅ Accept accepts
-    await offer(); ok('radioShown', await radioShown()); ok('arrivesMini', await G(() => document.getElementById('radio').classList.contains('mini')));
-    await held('#radio'); ok('pillOpensHeld', await wait(() => !document.getElementById('radio').classList.contains('mini'), 2000));
+    await offer(); ok('radioShown', await radioShown());
+    ok('arrivesOpen', await G(() => {
+      const r = document.getElementById('radio'), t = document.getElementById('radioText'), a = document.getElementById('radioAccept');
+      const ar = a.getBoundingClientRect(), rr = r.getBoundingClientRect();
+      return !r.classList.contains('mini') && r.classList.contains('mission') && getComputedStyle(r).display !== 'none' && getComputedStyle(t).display !== 'none' && t.textContent.trim().length > 8 && ar.height >= 40 && ar.bottom <= innerHeight + 2 && rr.top >= 0 && rr.right <= innerWidth + 2;
+    }));
     await page.screenshot({ path: `${OUT}v752-accept-${BR}-${DEV.replace(/\W+/g, '')}-card.png` });
     R.acceptTap = await held('#radioAccept'); ok('acceptHeld', await wait(id => window.__ev.includes('accepted:' + id), 4000, offerId));
     ok('radioClosedAfterAccept', await G(() => getComputedStyle(document.getElementById('radio')).display === 'none'));
