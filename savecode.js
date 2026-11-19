@@ -44,7 +44,8 @@
     'ssx.spacebank.v1', // v7.5.82 Cinder Vault (spacebank.js)
     'ssx.duckblind.v1', // v7.5.86 Duck Blind (duckblind.js)
     'ssx.mobboss.v1', // v7.5.88 Mob Boss (mobboss.js)
-    'ssx.garagetheme.v1' // v7.5.91 lock-up looks, per garage (dealership.js)
+    'ssx.garagetheme.v1', // v7.5.91 lock-up looks, per garage (dealership.js)
+    'ssx.umbra.v1' // v7.5.118 Umbra Hold, the lunar prison (moon/prisoncore.js)
   ];
   const PREFIXES = ['ssx.race.ghost.'];
   const DEVICE = ['ssx-quality', 'ssx-gfx-tier', 'ssx.a2hs.seen', 'ssx.dancerq', 'ssx.perfgov', 'ssx.fps', 'ssx.firehint.v1', 'ssx.view.v1', 'ssx.view.rover.v1', 'ssx.bright.v1', 'ssx.mouth.tts', 'ssx.muted'];

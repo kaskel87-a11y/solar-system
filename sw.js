@@ -43,6 +43,7 @@ const PRECACHE = [
   `mars/smuggle.js${q}`, `mars/smugglecore.js${q}`, // ship smuggling runs (Pumpkin)
   `spacebank.js${q}`, `spacebankcore.js${q}`, // v7.5.82 Cinder Vault orbital bank job (SSX.spacebank)
   `duckblind.js${q}`, `duckblindcore.js${q}`, // v7.5.86 Duck Blind marsh shoot on Earth (SSX.duckblind)
+  `moon/prison.js${q}`, `moon/prisoncore.js${q}`, // v7.5.119 Umbra Hold lunar prison (SSX.prison)
   `mobboss.js${q}`, `mobbosscore.js${q}`, // v7.5.88 Mob Boss respect (SSX.mobboss)
   `mars/fasttravel.js${q}`, `mars/fasttravelcore.js${q}`, `mars/shiphop.js${q}`, `mars/shiphopcore.js${q}`, // fast travel on Mars (Pumpkin) + Ashfall hops
   `mars/skins.js${q}`, `mars/skinscore.js${q}`, // Mars player skins (Pumpkin)

@@ -1,4 +1,4 @@
-// v7.5.117 Control mission card. On an iPhone the call used to play audio and hide the card.
+// v7.5.118 Control mission card. On an iPhone the call used to play audio and hide the card.
 // The card must show the plain step, stay until Accept, and the objective arrow must sit on screen.
 // BASE=http://127.0.0.1:8765/ node tests/test-missioncall.js
 const pw = require('playwright');
@@ -30,7 +30,7 @@ const SIZES = [
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading')));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.118');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.119');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0));
     await sleep(400);

@@ -911,7 +911,9 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
     // v7.2: hold Jump (Thrust on touch, Space on keys) for cold-gas lift; works on your rover and on a stolen hover bike
     const wantThr = me && canThrust(r) && !!input.jump && state.intro <= 0 && r.fuel > 0.5;
     r.thrusting = wantThr; r.thrFwd = me ? thr : 0; thrustFuel(r, wantThr, dt);
-    const boost = me && input.run, vmax = boost ? sp.boost : sp.vmax, grip = r.air ? (wantThr ? 0.65 : 0.22) : 1;
+    const boost = me && input.run;
+    let driveMul = 1; try { const m = +globalThis.SSX?.prison?.driveMul?.(); if (m > 1 && m <= 1.4) driveMul = m; } catch (e) { /* no prison crew */ }
+    const vmax = (boost ? sp.boost : sp.vmax) * driveMul, grip = r.air ? (wantThr ? 0.65 : 0.22) : 1;
     if (me) { r.boosting = !!boost; r.vcap = vmax; } // v7.3: every drivable vehicle boosts (per-vehicle boost top speed in VEHICLES)
     if (thr * r.speed < -0.1) r.speed += thr * 26 * dt * grip;
     else if (Math.abs(thr) > 0.05) r.speed += thr * (boost ? sp.bacc : sp.acc) * dt * grip;
