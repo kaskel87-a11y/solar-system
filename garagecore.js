@@ -131,7 +131,7 @@ export function meetId(nowMs, offsetMin = 0) { const m = nowMs / 60000 + offsetM
 export const fmtHour = h => { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); };
 
 // ---------- save data (stored inside the game's own progress save, ssx.progress.v1 → progress.garage) ----------
-export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1, partner: freshPartner(), fenced: 0, dome: freshDome() }; }
+export function freshGarage() { return { v: SAVE_VERSION, rides: [newRide('stock', 'rover')], active: 'stock', rep: 0, clock: 0, meet: null, wins: 0, races: 0, nextId: 1, partner: freshPartner(), fenced: 0, dome: freshDome(), hangar: freshHangar() }; }
 export function newRide(id, kind) { return { id, kind, paint: 'factory', kit: 'stock', wheels: 'stock', glow: 'none', up: { engine: 0, handling: 0, brakes: 0, boost: 0 }, owned: { paint: ['factory'], kit: ['stock'], wheels: ['stock'], glow: ['none'] }, spent: 0 }; }
 // accepts anything (undefined from an old save, a partial or corrupt object) and returns a valid garage
 export function migrateGarage(g) {
@@ -162,6 +162,7 @@ export function migrateGarage(g) {
   out.partner = migratePartner(out.partner);
   out.fenced = Math.max(0, out.fenced | 0);
   out.dome = migrateDome(out.dome);
+  out.hangar = migrateHangar(out.hangar);
   return out;
 }
 export const MAX_RIDES = 6; // garage slots (stock rover included)
@@ -323,6 +324,17 @@ export function domeCheck(g, offerId, { cr = 0, stars = 0 } = {}) {
 }
 // is a dealer-local point (lx, lz) under the dome? (centre = the lot centre)
 export function underDome(lx, lz, cx = -12, cz = 2) { const a = (lx - cx) / DOME.rx, b = (lz - cz) / DOME.rz; return a * a + b * b <= 1; }
+
+// Walk-in hangar. Only after the dome. Credits only. Same progress.garage save.
+export const HANGAR = { price: 100000, w: 36, d: 26, h: 16, bay: 16 };
+export function freshHangar() { return { on: false, at: null }; }
+export function migrateHangar(h) { if (!h || typeof h !== 'object') return freshHangar(); return { on: !!h.on, at: Number.isFinite(+h.at) && h.at != null ? +h.at : null }; }
+export function hangarCheck(g, { cr = 0 } = {}) {
+  if (!g?.dome?.on) return { ok: false, why: 'dome' };
+  if (g?.hangar?.on) return { ok: false, why: 'owned' };
+  const short = Math.max(0, HANGAR.price - (+cr || 0));
+  return short ? { ok: false, why: 'funds', short } : { ok: true, price: HANGAR.price };
+}
 
 // ---------- themed lock-ups (v7.5.91) ----------
 // A look is bought with credits and stored per garage id in localStorage (THEME_KEY), not in the progress save.

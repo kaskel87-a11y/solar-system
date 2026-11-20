@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.128: Red Line hangar
+
+After the showroom dome, Red Line Motors can become a walk-in hangar for 100,000 cr. Follow the arrow to the buy spot. The dome comes down. You walk in through the open bay. The cars sit on the floor. Walk up to one for the price, Buy, and Test drive. A stock board out front lists what is on the floor.
+
 ## v7.5.127: the chicken uses the board
 
 The bingo table is the board. Numbers 1 to 16 are on the squares. You pick a number, then the block chicken walks the board, squats, and drops on one square. That square is the winner. A short line says which number. The drop stays until the next round.
