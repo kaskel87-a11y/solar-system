@@ -84,7 +84,7 @@ const PRECACHE = [
   `mars/harvest.js${q}`, `mars/harvestcore.js${q}`, // hands-on harvest: sickle, silo, harvester (SSX.harvest)
   `mars/sandworm.js${q}`, `mars/sandwormcore.js${q}`, // the sandworm fight at the farm (SSX.sandworm; v7.5.74 weak-point crits)
   `mars/still.js${q}`, `mars/stillcore.js${q}`, // moonshine still: bottles, crates, Xen-7 sales (SSX.still / SSX.liquor)
-  `mars/farm2.js${q}`, `mars/farm2core.js${q}`, // Red Static Gulch grow op (SSX.farm2)
+  `mars/farm2.js${q}`, `mars/farm2core.js${q}`, `mars/gulchroom.js${q}`, // Red Static Gulch grow op and its walk-in shed (SSX.farm2)
   `mars/control.js${q}`, `mars/controlcore.js${q}`, // Control's Mars job offers (SSX.control)
   `mars/consequences.js${q}`, // Mars wasted/busted consequences (SSX.consequences)
   `mars/starshop.js${q}`, `mars/starshopcore.js${q}`, // ⭐ Star Shop (SSX.stars / SSX.starshop)
