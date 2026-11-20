@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.126: a block bird
+
+The bingo chicken is a stack of plain blocks: a cube body, a block head, a block beak, block legs, and a block comb. No brand marks.
+
 ## v7.5.125: the bird on the table
 
 Chicken Shit Bingo is a table in the Velvet lobby. The chicken runs the squares and drops on the one that pays. Plasma Paddle is the cabinet beside it. Each one costs 50,000 cr. Until you buy it, the spot says the price and the button says Buy.
