@@ -73,7 +73,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // panel screenshot at the door with stock
     await G(() => { const L = window.SSX.lab; L.debug.reset(); window.__app.game.progress.credits = 20000; L.buy({ force: true }); L.buySupplies(6); L.hire('cook'); L.hire('runner'); L.hire('guard'); L.upgrade('speed'); L.debug.advance(300); L.debug.heat(48); L.debug.goto(); }); await sleep(800);
     if (desk) { await page.keyboard.press('BracketLeft'); await sleep(400); ok('hotkey', await G(() => document.getElementById('labPanel').classList.contains('show'))); }
-    else await tapSel('#labAct');
+    else await G(() => window.SSX.lab.open());
     await sleep(1200); await page.screenshot({ path: `${out}lab-${tag}.png` }); R.shot = `${out}lab-${tag}.png`;
     ok('noSecondDock', await G(() => document.querySelectorAll('#ssxDock').length <= 1));
     ok('persist', await G(() => !!localStorage.getItem('ssx.lab.v1')));

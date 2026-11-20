@@ -39,6 +39,7 @@
 //                         grant(credits), reset(), state(), engine()
 // Also window event 'ssx:lab' and SSX.emit('lab:<event>'). Persistence: localStorage 'ssx.lab.v1'.
 import * as THREE from 'three';
+import { LAB_KIND } from './labinterior.js';
 
 const KEY = 'ssx.lab.v1', HOTKEY = 'BracketLeft';
 const OWN_AT = [-330, 12];                 // standalone Vat House door (AJ), inside Red Tape Flats, clear of roads and contacts
@@ -102,6 +103,8 @@ function emit(type, extra = {}) {
 }
 function on(a, b) { const [k, f] = typeof a === 'function' ? ['*', a] : [String(a), b]; if (typeof f !== 'function') return () => {}; if (!subs.has(k)) subs.set(k, new Set()); subs.get(k).add(f); return () => subs.get(k)?.delete(f); }
 function here() { const i = surf()?.info; if (!i || i.name !== 'Mars' || !i.colony) return null; return { x: i.x - i.colony.x, z: i.z - i.colony.z, info: i, cx: i.colony.x, cz: i.colony.z }; }
+function inRoom() { try { return surf()?.info?.inside?.kind === LAB_KIND; } catch (e) { return false; } }
+function present(r = R_RAID) { return inRoom() || nearDoor(r); }
 
 // site: Ben's lot when SSX.base is around (or you bought it there), else the standalone building
 const site = () => S.site || (BASE() ? 'base' : 'own');
@@ -255,9 +258,10 @@ function payCrew() {
 }
 function collect(opts = {}) {
   if (!S.owned) return { ok: false, msg: 'Get the Vat House first.' };
-  if (!opts.force && !nearDoor(R_DOOR + 4)) return { ok: false, msg: 'Collect in person at the Vat House.' };
+  if (!opts.force && !present(R_DOOR + 4)) return { ok: false, msg: 'Collect in person at the Vat House.' };
+  const takeLocker = opts.what !== 'till', takeTill = opts.what !== 'locker';
   const C = CB(), moved = {}, fr = PURITY_FRESH[lvl('purity')];
-  if (C?.add) {
+  if (takeLocker && C?.add) {
     // purity 2+: press Glow-dust into bricks (10 → 1) when the brick item exists (barter.json glow_dust_brick)
     if (S.bricks && lvl('purity') >= 2 && (S.locker.glowdust | 0) >= 10 && itemDef('glow_dust_brick')) {
       const b = Math.floor(S.locker.glowdust / 10); S.locker.glowdust -= b * 10; S.locker.glow_dust_brick = (S.locker.glow_dust_brick | 0) + b; if (!S.locker.glowdust) delete S.locker.glowdust;
@@ -268,7 +272,7 @@ function collect(opts = {}) {
         const m = S.inStash[id] || { qty: 0, q: 1 }, qm = PURITY_MULT[lvl('purity')]; m.q = (m.q * m.qty + qm * q) / (m.qty + q); m.qty += q; S.inStash[id] = m; }
     }
   }
-  const till = Math.floor(S.till); if (till > 0) { S.till -= till; pay(till); }
+  let till = 0; if (takeTill) { till = Math.floor(S.till); if (till > 0) { S.till -= till; pay(till); } }
   save(); const n = Object.values(moved).reduce((a, b) => a + b, 0), left = lockerUsed();
   emit('collect', { moved, till, left });
   const parts = Object.entries(moved).map(([id, q]) => `${q} ${itemName(id)}`);
@@ -357,7 +361,7 @@ function arrive() {
   if (r.engine !== 'raids' && site() === 'base' && typeof BASE()?.raid === 'function') {
     try { const b = BASE().raid(BASE_PLOT, { s: 900, why: 'Vat House raid', attackers: r.kind === 'colsec' ? 'colsec' : 'gang', waves: r.waves }); if (b?.ok) r.baseRaid = b.id; } catch (e) { console.warn('lab base raid', e); }
   }
-  toast(`🛡️ Hold the Vat House: ${r.waves} waves of ${r.name}.`, 2600);
+  toast(`🛡️ Hold the Vat House: ${r.waves} waves of ${r.name}.${inRoom() ? ' Step outside to fight.' : ''}`, 2800);
 }
 function stepRaid(dt, h) {
   const r = raid, at = raidAt(), d = Math.hypot(h.x - at[0], h.z - at[1]);
@@ -433,7 +437,7 @@ function loop() { requestAnimationFrame(loop); const now = performance.now(); if
 export function labTick(dt) {
   const wall = Date.now();
   if (S.owned) {
-    const el = (wall - S.lastAt) / 1000; if (el > 20) catchUp(); else if (el > 0) { S.lastAt = wall; produce(el, nearDoor(R_RAID)); coolHeat(el); }
+    const el = (wall - S.lastAt) / 1000; if (el > 20) catchUp(); else if (el > 0) { S.lastAt = wall; produce(el, present()); coolHeat(el); }
     if (wall >= S.runAt + RUN_EVERY * 1000) { S.runAt = wall; runnerSale(); }
     if (wall >= S.payAt + PAY_EVERY * 1000) { S.payAt = wall; payday(false); }
     if ((saveT += dt) > 5) { saveT = 0; save(); }
@@ -441,14 +445,14 @@ export function labTick(dt) {
   const st = app()?.state, h = here(), s = surf();
   if (!h || !st?.onSurface || st.transitioning) { if (G && (!s || G.parent !== s.scene || !h)) teardown(); if (raid && raid.phase !== 'alert' && !st?.transitioning) loseRaid('fled'); setNear(false); renderHud(); return; }
   if (!G || G.parent !== s.scene || beaconSite !== site()) { teardown(); build(h); }
-  const d = doorAt(), dist = Math.hypot(h.x - d[0], h.z - d[1]), i = h.info, now = performance.now();
-  if (!beacon.ground && dist < 180) { const y = groundY(h.cx + d[0], h.cz + d[1], null); if (y != null) { beacon.g.position.y = y; beacon.ground = true; } }
-  const u = beacon.g.userData, hot = !!raid, running = S.owned && !whyIdle(dist < R_RAID);
+  const d = doorAt(), insideLab = inRoom(), feet = insideLab ? { ...h, x: d[0], z: d[1] } : h, dist = Math.hypot(feet.x - d[0], feet.z - d[1]), i = h.info, now = performance.now();
+  if (!beacon.ground && Math.hypot(h.x - d[0], h.z - d[1]) < 180) { const y = groundY(h.cx + d[0], h.cz + d[1], null); if (y != null) { beacon.g.position.y = y; beacon.ground = true; } }
+  const u = beacon.g.userData, hot = !!raid, running = S.owned && !whyIdle(insideLab || dist < R_RAID);
   u.ring.material.opacity = (hot ? 0.6 : 0.3) + 0.25 * Math.sin(now / (hot ? 160 : 320)); u.beam.material.opacity = hot ? 0.6 : S.owned ? 0.22 : 0.3;
   for (const g of u.glow) g.material.color.setHex(running ? (Math.sin(now / 400) > 0 ? 0x7cffd0 : 0x46c9a0) : 0x2a2f33);
   syncBeacon();
   setNear(!i.inside && (!i.driving || Math.abs(i.speed) < 4) && dist < R_DOOR);
-  if (raid) stepRaid(dt, h);
+  if (raid) stepRaid(dt, feet);
   else if ((checkT -= dt) <= 0) { checkT = CHECK_EVERY; rollRaids(); }
   renderHud();
 }
@@ -485,7 +489,7 @@ function ui() {
   panel = document.createElement('div'); panel.id = 'labPanel';
   panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Vat House"><div id="labBody"></div><div class="msg" id="labMsg" aria-live="polite"></div><div class="foot"><button id="labClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); body = panel.querySelector('#labBody'); msgEl = panel.querySelector('#labMsg'); tap(panel.querySelector('#labClose'), close);
-  actBtn = document.createElement('button'); actBtn.id = 'labAct'; actBtn.type = 'button'; actBtn.setAttribute('aria-label', 'Vat House'); document.body.appendChild(actBtn); tap(actBtn, () => open());
+  actBtn = document.createElement('button'); actBtn.id = 'labAct'; actBtn.type = 'button'; actBtn.setAttribute('aria-label', 'Vat House'); document.body.appendChild(actBtn); tap(actBtn, () => { if (S.owned) enterRoom(); else open(); });
   hud = document.createElement('div'); hud.id = 'labHud'; hud.innerHTML = '<div class="tx"><div class="l1"></div><div class="l2"></div></div><button id="labHudBtn" type="button">Lab</button>'; document.body.appendChild(hud);
   hudTx = [hud.querySelector('.l1'), hud.querySelector('.l2')]; hudBtn = hud.querySelector('#labHudBtn'); tap(hud.querySelector('.tx'), () => open()); tap(hudBtn, () => open());
   dockButton('dockLab', '🛢️\nLab', 'Vat House ([)', 7, toggle);
@@ -497,11 +501,34 @@ function ui() {
 function toggle() { panel?.classList.contains('show') ? close() : open(); }
 function open() { ui(); lastMsg = ''; panel.classList.add('show'); if (document.pointerLockElement) document.exitPointerLock(); render(); }
 function close() { panel?.classList.remove('show'); }
-function setNear(v) { if (!actBtn) return; if (v !== near) { near = v; actBtn.textContent = `🛢️ Vat House${isTouch() ? '' : ' ([)'}`; actBtn.classList.toggle('show', !!v); } }
+function setNear(v) {
+  if (!actBtn) return; near = v;
+  const label = S.owned ? '🚪 Enter' : `🛢️ Vat House${isTouch() ? '' : ' ([)'}`;
+  if (actBtn.textContent !== label) actBtn.textContent = label;
+  actBtn.setAttribute('aria-label', S.owned ? 'Enter the Vat House' : 'Vat House');
+  actBtn.classList.toggle('show', !!v);
+}
+function enterRoom() {
+  if (!S.owned) { open(); return { ok: false, why: 'buy' }; }
+  if (inRoom()) { toast('You are inside. Tap Leave by the door.'); return { ok: false, why: 'inside' }; }
+  const h = here(); if (!h) return { ok: false, why: 'away' };
+  const d = doorAt(), s = surf();
+  if (typeof s?.enterBuilding !== 'function') { toast('The door is stuck.'); return { ok: false, why: 'no-door' }; }
+  let r = null;
+  try {
+    r = s.enterBuilding({
+      i: 'vathouse', kind: LAB_KIND, name: 'Vat House', title: 'VAT HOUSE', home: true,
+      x: h.cx + d[0], z: h.cz + d[1], exit: { x: h.cx + d[0], z: h.cz + d[1] + 2.4, yaw: 0 }
+    });
+  } catch (e) { console.warn('lab enter', e); r = null; }
+  if (!r?.ok) { toast(r?.msg || 'Get out of the car, then tap Enter.'); return r || { ok: false }; }
+  toast('Inside. Crates on the left, vats on the back wall, locker and till on the right. Leave is the door behind you.', 3600);
+  return r;
+}
 function renderHud() {
   if (!hud) return; if (panel?.classList.contains('show')) renderThrottled();
   if (!raid) { if (hud.classList.contains('show')) { hud.classList.remove('show'); hudKey = ''; } return; }
-  const r = raid, h = here(), at = raidAt(), d = h ? Math.round(Math.hypot(h.x - at[0], h.z - at[1])) : null; let l1, l2, warn = false;
+  const r = raid, h = here(), at = raidAt(), pos = inRoom() ? doorAt() : (h && [h.x, h.z]), d = h && pos ? Math.round(Math.hypot(pos[0] - at[0], pos[1] - at[1])) : null; let l1, l2, warn = false;
   if (r.phase === 'alert') { l1 = `🚨 ${r.name.toUpperCase()} → VAT HOUSE`; l2 = `Get there · ⏱ ${fmtT(r.t)}${d != null ? ` · ${d} m ${dirTo([h.x, h.z], at)}` : ''}`; warn = r.t < 20; }
   else { l1 = `🛡️ VAT HOUSE · Wave ${Math.max(1, r.wave)}/${r.waves}`; l2 = r.phase === 'raid' ? `${r.name} inbound` : r.out > 0 ? `Back in the ring! ${fmtT(LEASH_T - r.out)}` : r.phase === 'gap' ? 'Reload. Next wave.' : `${(r.alive ?? 0) + Math.max(0, r.pending)} ${r.name} left`; warn = r.out > 0; }
   const k = l1 + l2 + warn; if (k !== hudKey) { hudKey = k; hudTx[0].textContent = l1; hudTx[1].textContent = l2; hudTx[0].classList.toggle('warn', warn); hudBtn.textContent = r.phase === 'alert' && r.kind === 'colsec' ? 'Hide it' : 'Lab'; }
@@ -550,7 +577,7 @@ function render() {
 
 // ---------- API ----------
 function status() {
-  const why = whyIdle(nearDoor(R_RAID)), bs = batchSec(), rate = crewOn('cook') ? 1 : 0.5;
+  const why = whyIdle(present()), bs = batchSec(), rate = crewOn('cook') ? 1 : 0.5;
   const ups = {}; for (const [id, U] of Object.entries(UPGRADES)) ups[id] = { level: S.up[id] | 0, damaged: !!S.damaged[id], next: (S.up[id] | 0) < U.prices.length ? U.prices[S.up[id] | 0] : null };
   const crew = {}; for (const r of Object.keys(CREW)) crew[r] = { hired: !!S.crew[r].hired, owed: S.crew[r].owed | 0, mood: !S.crew[r].hired ? null : S.crew[r].owed >= 2 ? 'skimming' : S.crew[r].owed ? 'grumbling' : 'ok' };
   return { owned: S.owned, site: site(), at: doorAt(), product: S.product, products: Object.keys(PRODUCTS).map(id => ({ id, name: itemName(id), units: PRODUCTS[id].units, sec: Math.round(PRODUCTS[id].sec * SPEED[lvl('speed')]), locked: !!(PRODUCTS[id].needs && lvl('purity') < PRODUCTS[id].needs) })),
@@ -560,7 +587,7 @@ function status() {
     downtime: Math.max(0, Math.round((S.downUntil - Date.now()) / 1000)), perHour: Math.round(3600 / (bs / rate) * PRODUCTS[S.product].units), defence: Math.round(defence() * 100) / 100, turrets: turrets(), stats: { ...S.stats } };
 }
 const API = {
-  status, qualityMult, buy, buySupplies, setProduct, upgrade, repair, hire, fire, payCrew, collect, layLow, greaseBeat, on, open, close,
+  status, qualityMult, buy, buySupplies, setProduct, upgrade, repair, hire, fire, payCrew, collect, layLow, greaseBeat, on, open, close, enter: enterRoom, inside: inRoom,
   products: PRODUCTS, upgrades: UPGRADES, crewRoles: CREW,
   debug: {
     goto() { const h = here(), s = surf(); if (!h) return false; const d = doorAt(); s.debugMove(h.cx + d[0] + 2, h.cz + d[1] + 2, 0); return true; },

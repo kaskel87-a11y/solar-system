@@ -12,8 +12,10 @@ The feature is a single module loaded from one `<script type="module">` line in 
 
 Once you've bought it, the site is saved, so it doesn't move if `SSX.base` turns up later.
 
+Once you own it, that same door's button reads **Enter** and puts you in a small back room (the shop interior kit): supply rack, three vats, a locker, a till, a heat board, and Pipes, Tuli, and Skitter. Stand on a floor marker and tap the context button. The old panel stays on ☰ and the **[** key.
+
 You get there in three ways:
-- the white beacon with its **🛢️ VAT HOUSE** label, whose context button reads "🛢️ Vat House" within 6 m;
+- the white beacon with its **🛢️ VAT HOUSE** label, whose context button reads "🚪 Enter" once you own it (or "🛢️ Vat House" before that) within 6 m;
 - ☰ → **🛢️ Vat House**;
 - the **[** key (BracketLeft; it was free on main and on every open branch).
 
