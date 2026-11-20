@@ -13,6 +13,8 @@ import { addDancerSpots } from './clubprivate.js'; // v7.6 private dances from t
 import { addSlotBank } from './slotfloor.js'; // v7.5.36 slot bank + Olympus Mega on the Velvet gaming floor (was addSlotMachines in the old south-west corner)
 import { addPokerRoom } from './clubpoker.js'; // v7.5.33 Hold'em room in the club's new west wing
 import { addClubGames } from './clubgames.js'; // v7.5.34 Blackjack + Roulette tables in the club lobby
+import { addChickenBingo } from './chickenbingo.js';
+import { addPlasmaCabinet } from './plasmapaddle.js';
 import { addClubFloor } from './clubfloor.js'; // v7.5.35 cocktail waitresses + gamblers on the gaming floor
 import { addVelvetWing } from './velvetwing.js'; // Velvet expansion: the east wing (Dome Lounge, high-roller table, Ines's office) where the small dome used to be
 import { addSnackBar } from './snackbar.js'; // snack counter on the empty floor west of Ines's office
@@ -497,6 +499,8 @@ export const INTERIORS = {
       try { addVelvetWing?.(api, { sit: sitPose, idle, guard, o, human: buildHuman }); } catch (e) { console.warn('velvet wing', e); } // Velvet expansion: east wing x 11..25 (the old east wall is now a partition, below)
       try { addSnackBar(api, { sit: sitPose, idle }); } catch (e) { console.warn('snack bar', e); } // empty floor west of the office: counter, cook, EAT menu
       try { addBarCounter?.(api); } catch (e) { console.warn('bar', e); } // v7.6 space liquor (bar.js): north end of the west bar (-8.2, -1.9), clear of the 'bar' spot, Danny, private dances, slots, upstairs
+      try { addChickenBingo(api, { idle }); } catch (e) { console.warn('chicken bingo', e); }
+      try { addPlasmaCabinet(api); } catch (e) { console.warn('plasma paddle', e); }
       api.openRope = () => { ropeCol.on = false; rope.visible = false; };
       if (o.vip) api.openRope();
       // light show

@@ -87,6 +87,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
+- [x] **Velvet games.** **v7.5.123:** Chicken Shit Bingo and Plasma Paddle in the Velvet Airlock lobby. New save keys, old saves still load.
 - [x] **Playtest pass.** **v7.5.122:** the objective arrow yields the back-booth lesson to a live job. The mission card stays off FIRE, Drive, and Taxi duty. Death and arrest say FLATLINED and PINCHED.
 - [x] **Solar Syndicate.** **v7.5.121:** the title screen, menu, home-screen name, and share sheet say Solar Syndicate. The address stays `/solar-system/` and saves stay on `ssx.*`.
 - [x] Rocks/boulders as obstacles for the rover and player (playtest p1). **v7.5.41 (Nov 1, 2026):** big boulders out in the wastes stop you on foot and stop your rides (glancing hits slide round, head-on at speed is a crash); jet or fly over the top and they don't count; auto-unstick won't hop you through a rock; colony districts and the Beltway are swept clear of boulders. `tests/test-boulders.js`.

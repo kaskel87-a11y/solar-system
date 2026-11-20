@@ -109,7 +109,7 @@ const phone = pw.devices['iPhone 14'];
       ...phone, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2
     });
     ok('boot-chromium', chromium.booted);
-    ok('version', await chromium.G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.122');
+    ok('version', await chromium.G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.123');
     ok('land-chromium', await land(chromium));
     await objective(chromium, 'iphone-portrait-chromium', true);
     await chromium.page.setViewportSize({ width: 844, height: 390 });
