@@ -11,9 +11,10 @@ const toast = (t, ms) => { try { window.__app?.toast?.(t, ms); } catch (e) { /* 
 const credits = () => game()?.progress?.credits | 0;
 
 let save = K.fresh(), round = null, ui = null, bird = null, splat = null, poop = null;
-let pick = 'B2', stake = 500, drop = null;
+let pick = '7', stake = 500, rims = {};
 const club = () => window.SSX?.velvetclub;
 const TOP = 0.96;
+const RIM = 0x6b3a1a, MINE = 0x8ec8f0, WIN = 0xf0c43a;
 
 function load() { try { save = K.load(localStorage.getItem(KEY)); } catch (e) { save = K.fresh(); } }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* */ } }
@@ -31,7 +32,7 @@ const CSS = `#csbSheet{position:fixed;left:0;right:0;bottom:0;z-index:64;display
 #csbSheet .row button,#csbSheet .go{min-height:48px;flex:1 1 100px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 15px/1.15 system-ui,sans-serif}
 #csbSheet .row button.on{background:#fff;color:#000}
 #csbSheet .x{position:absolute;top:8px;right:8px;width:44px;height:44px;border-radius:10px;border:2px solid #fff;background:#000;color:#fff;font:700 20px system-ui,sans-serif}
-#csbBanner{position:fixed;z-index:30;left:8px;right:8px;top:calc(58px + env(safe-area-inset-top));display:none;padding:8px 10px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 15px/1.3 system-ui,sans-serif;text-align:center}
+#csbBanner{position:fixed;z-index:30;left:50%;top:calc(108px + env(safe-area-inset-top));transform:translateX(-50%);display:none;width:max-content;max-width:min(260px,84vw);box-sizing:border-box;padding:8px 14px;border-radius:999px;background:#000;color:#fff;border:2px solid #fff;font:800 16px/1.2 system-ui,sans-serif;text-align:center;pointer-events:none}
 #csbBanner.on{display:block}`;
 
 function ensureCss() {
@@ -50,21 +51,56 @@ function ensureUi() {
 }
 function squareOf(id) {
   const at = K.cellAt(id); if (!at) return { x: K.PIT.x, z: K.PIT.z };
-  const x0 = K.PIT.x - 0.72, z0 = K.PIT.z - 0.72;
-  return { x: x0 + at.c * 0.48, z: z0 + at.r * 0.48 };
+  return { x: K.PIT.x - 0.69 + at.c * 0.46, z: K.PIT.z - 0.69 + at.r * 0.46 };
+}
+function numTex(n) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#f4efe2';
+  x.fillRect(0, 0, 128, 128);
+  x.fillStyle = '#1a120c';
+  x.font = '800 72px system-ui, sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(String(n), 64, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function frameTable() {
+  const s = window.__app?.surface;
+  if (!s?.debugInside) return false;
+  try { s.setView?.('first'); s.debugInside(K.PIT.x, K.PIT.z + 3.45, 0, -0.52); } catch (e) { return false; }
+  return true;
+}
+function paintRims() {
+  const mine = round?.player?.square, win = round?.landed;
+  for (const id in rims) {
+    const hex = win === id ? WIN : mine === id ? MINE : RIM;
+    rims[id].material.color.setHex(hex);
+  }
+}
+function showPill(text) {
+  const b = ensureUi().banner;
+  b.textContent = text;
+  b.classList.add('on');
 }
 function stakesNow() { return club()?.perk?.().bingoStakes || K.STAKES; }
 
 export function addChickenBingo(api, poses = {}) {
   const { box, mat } = api;
   const wood = mat(0x6b3a1a, { roughness: 0.75 }), felt = mat(0x1c140e, { roughness: 0.95 }), leg = mat(0x2a160c, { roughness: 0.8 });
-  box(K.PIT.x, 0.9, K.PIT.z, 2.2, 0.1, 2.2, wood);
-  box(K.PIT.x, 0.96, K.PIT.z, 2.05, 0.02, 2.05, felt);
-  for (const [dx, dz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) box(K.PIT.x + dx, 0.44, K.PIT.z + dz, 0.08, 0.88, 0.08, leg);
+  box(K.PIT.x, 0.9, K.PIT.z, 2.3, 0.1, 2.3, wood);
+  box(K.PIT.x, 0.96, K.PIT.z, 2.12, 0.02, 2.12, felt);
+  for (const [dx, dz] of [[-0.95, -0.95], [0.95, -0.95], [-0.95, 0.95], [0.95, 0.95]]) box(K.PIT.x + dx, 0.44, K.PIT.z + dz, 0.08, 0.88, 0.08, leg);
   K.squares().forEach(id => {
     const p = squareOf(id);
-    box(p.x, 0.98, p.z, 0.42, 0.015, 0.42, felt);
-    api.sign(id, 0xfff0c0, p.x, 1.01, p.z, 0, 0.36, { h: 64, font: 'bold 40px system-ui, sans-serif' });
+    const rim = new THREE.MeshBasicMaterial({ color: RIM });
+    const pad = box(p.x, 0.985, p.z, 0.42, 0.02, 0.42, rim);
+    rims[id] = pad;
+    const face = new THREE.Mesh(api.G.plane, new THREE.MeshBasicMaterial({ map: numTex(id), transparent: true, depthWrite: false }));
+    face.rotation.x = -Math.PI / 2;
+    face.position.set(p.x, 1.002, p.z);
+    face.scale.set(0.36, 0.36, 1);
+    api.g.add(face);
   });
   const sale = api.sign('50,000 CR', 0xffd040, K.PIT.x, 1.85, K.PIT.z + 1.2, Math.PI, 2.4, { w: 512, h: 96, font: 'bold 64px system-ui, sans-serif' });
   const title = api.sign('CHICKEN SHIT BINGO', 0xffd040, K.PIT.x, 1.85, K.PIT.z + 1.2, Math.PI, 2.6, { w: 640, h: 96, font: 'bold 42px system-ui, sans-serif' });
@@ -82,12 +118,15 @@ export function addChickenBingo(api, poses = {}) {
   g.add(cube(toy, -0.2, 0.3, 0, 0.08));
   g.add(cube(toy, 0.2, 0.3, 0, 0.08));
   g.add(cube(toy, 0, 0.36, 0.2, 0.1));
-  g.scale.setScalar(1.7);
+  g.scale.setScalar(1.15);
   api.g.add(g);
   bird = g;
-  const home = squareOf('B2');
+  const home = squareOf('7');
   g.position.set(home.x, TOP, home.z);
-  poop = api.mk(api.G.box, mat(0xc48a32, { basic: true }), 0, 1.2, 0, 0.12, 0.1, 0.12);
+  poop = new THREE.Group();
+  const dung = mat(0x5c3414, { basic: true });
+  poop.add(api.mk(api.G.box, dung, 0, 0.06, 0, 0.22, 0.12, 0.18));
+  poop.add(api.mk(api.G.box, dung, 0.06, 0.14, 0.03, 0.12, 0.1, 0.12));
   api.g.add(poop); poop.visible = false;
   splat = box(home.x, 0.995, home.z, 0.46, 0.025, 0.36, mat(0xd09040, { basic: true }));
   splat.visible = false;
@@ -109,7 +148,7 @@ export function addChickenBingo(api, poses = {}) {
   const boothSign = api.sign('VIP BOOTH', 0xffd040, K.PIT.x + 3.1, 1.5, K.PIT.z + 0.4, Math.PI, 1.8, { h: 72, font: 'bold 40px system-ui, sans-serif' });
   booth.visible = false; boothSign.visible = false;
   const spot = api.spot({ id: 'chickenbingo', x: K.PIT.x, z: K.PIT.z + 1.7, r: 1.45, label: 'Buy bingo table', act: 'velvet', run: () => open() });
-  Object.defineProperty(spot, 'label', { configurable: true, get() { return club()?.owns?.('bingo') ? 'Bet the bingo grid' : 'Buy bingo table · 50,000 cr'; } });
+  Object.defineProperty(spot, 'label', { configurable: true, get() { return club()?.owns?.('bingo') ? 'Bet a number' : 'Buy bingo table · 50,000 cr'; } });
   api.spot({ id: 'velvetvip', x: K.PIT.x + 3.1, z: K.PIT.z + 0.9, r: 1.1, label: 'Sit the VIP booth', act: 'velvet', cond: () => !!club()?.perk?.().vipBooth, run: () => { toast('VIP booth. The house pours. You watch the bird.', 2600); return { ok: true }; } });
   api.ticks.push((t, dt) => {
     const owned = !!club()?.owns?.('bingo');
@@ -122,31 +161,63 @@ export function addChickenBingo(api, poses = {}) {
   });
 }
 
+const BIRD = 1.15;
+function restBird(t) {
+  bird.scale.setScalar(BIRD);
+  bird.rotation.x = 0;
+  bird.position.y = TOP + Math.abs(Math.sin(t * 8)) * 0.03;
+}
+function squatBird(k) {
+  const u = Math.max(0, Math.min(1, k));
+  bird.scale.setScalar(BIRD);
+  bird.position.y = TOP - 0.05 * u;
+  bird.rotation.x = 1.05 * u;
+}
+function clearMark() {
+  if (poop) poop.visible = false;
+  if (splat) splat.visible = false;
+  for (const id in rims) rims[id].material.color.setHex(RIM);
+}
 function moveBird(t, dt) {
   if (!bird) return;
-  const id = round ? round.path[Math.min(round.path.length - 1, Math.floor((K.ROUND_S - round.left) / K.ROUND_S * round.path.length))] : 'B2';
-  const p = squareOf(id || 'B2');
-  bird.position.x += (p.x - bird.position.x) * 0.12;
-  bird.position.z += (p.z - bird.position.z) * 0.12;
-  bird.position.y = TOP + Math.abs(Math.sin(t * 9)) * 0.06;
-  bird.rotation.y = Math.atan2(p.x - bird.position.x, p.z - bird.position.z);
-  if (drop && poop) {
-    drop.t += dt;
-    const k = Math.min(1, drop.t / 0.7);
-    poop.visible = true;
-    poop.position.set(drop.x + (drop.to.x - drop.x) * k, drop.y + (TOP + 0.02 - drop.y) * k * k, drop.z + (drop.to.z - drop.z) * k);
-    if (k >= 1 && !drop.landed) {
-      if (splat) { splat.position.set(drop.to.x, 0.995, drop.to.z); splat.visible = true; }
-      poop.position.set(drop.to.x, TOP + 0.08, drop.to.z);
-      poop.visible = true;
-      drop.landed = true;
-      drop.hold = 2.4;
-    } else if (drop.landed) {
-      drop.hold -= dt;
-      if (drop.hold <= 0) poop.visible = false;
+  if (!round) { restBird(t); return; }
+  const destId = round.hops[round.hop];
+  const dest = squareOf(destId);
+  if (round.hold) return;
+  const dx = dest.x - bird.position.x, dz = dest.z - bird.position.z, dist = Math.hypot(dx, dz) || 0.0001;
+  if (round.phase === 'walk') {
+    restBird(t);
+    if (dist < 0.06) {
+      bird.position.x = dest.x; bird.position.z = dest.z;
+      round.phase = round.hop === round.hops.length - 1 ? 'squat' : 'pause';
+      round.phaseT = 0;
+    } else {
+      const step = Math.min(dist, dt * 1.05);
+      bird.position.x += dx / dist * step;
+      bird.position.z += dz / dist * step;
+      bird.rotation.y = Math.atan2(dx, dz);
     }
+  } else if (round.phase === 'pause') {
+    restBird(t);
+    bird.position.y = TOP;
+    round.phaseT += dt;
+    if (round.phaseT > 0.5) { round.hop++; round.phase = 'walk'; round.phaseT = 0; }
+  } else if (round.phase === 'squat') {
+    round.phaseT += dt;
+    squatBird(Math.min(1, round.phaseT / 0.65));
+    bird.position.x = dest.x; bird.position.z = dest.z;
+    if (round.phaseT > 0.7) { round.phase = 'drop'; round.phaseT = 0; round.dropFrom = { x: bird.position.x, z: bird.position.z, y: bird.position.y + 0.28 }; }
+  } else if (round.phase === 'drop') {
+    squatBird(1);
+    round.phaseT += dt;
+    const k = Math.min(1, round.phaseT / 0.45);
+    const from = round.dropFrom || { x: dest.x, z: dest.z, y: TOP + 0.4 };
+    if (poop) {
+      poop.visible = true;
+      poop.position.set(from.x + (dest.x - from.x) * k, from.y + (TOP + 0.07 - from.y) * k * k, from.z + (dest.z - from.z) * k);
+    }
+    if (k >= 1 && !round.landed) markWinner(destId);
   }
-  if (round && ui?.banner.classList.contains('on')) ui.banner.textContent = `Bird is on ${id}. ${Math.ceil(round.left)}s. Your square: ${round.player.square}.`;
 }
 
 function paintBuy() {
@@ -160,10 +231,9 @@ function paint() {
   const { sheet } = ensureUi();
   const list = stakesNow();
   if (!list.includes(stake)) stake = list[0];
-  const cells = K.squares().map(id => `<button type="button" data-a="sq" data-id="${id}" class="${pick === id ? 'on' : ''}">${id}</button>`).join('');
+  if (!K.squares().includes(pick)) pick = '7';
   const stakes = list.map(n => `<button type="button" data-a="stake" data-n="${n}" class="${stake === n ? 'on' : ''}">${n} cr</button>`).join('');
-  const note = round ? `Round is live. ${Math.ceil(round.left)}s left.` : `Pick a square. Watch the bird. The square it shits on pays ${K.PAY} to 1. You have ${credits()} cr.`;
-  sheet.innerHTML = `<button type="button" class="x" data-a="close" aria-label="Close">✕</button><h2>Chicken Shit Bingo</h2><p>${club()?.line?.() || ''}</p><p>${note}</p><div class="grid">${cells}</div><div class="row">${stakes}</div><div class="row"><button type="button" class="go" data-a="bet">Bet ${stake} cr on ${pick}</button></div>`;
+  sheet.innerHTML = `<button type="button" class="x" data-a="close" aria-label="Close">✕</button><h2>Chicken Shit Bingo</h2><p>${club()?.line?.() || ''}</p><p>Look at the board. Pick a number. It pays ${K.PAY} to 1. You have ${credits()} cr.</p><p>Your number: ${pick}</p><div class="row"><button type="button" data-a="num" data-d="-1">Lower</button><button type="button" data-a="num" data-d="1">Higher</button></div><div class="row">${stakes}</div><div class="row"><button type="button" class="go" data-a="bet">Bet ${stake} cr on ${pick}</button></div>`;
   sheet.classList.add('on');
 }
 function open() {
@@ -178,7 +248,10 @@ function onTap(e) {
   const b = e.target?.closest?.('button'); if (!b) return;
   if (b.dataset.a === 'close') { close(); return; }
   if (b.dataset.a === 'buy') { const r = club()?.buy?.('bingo'); if (r?.ok) paint(); return; }
-  if (b.dataset.a === 'sq') { pick = b.dataset.id; paint(); return; }
+  if (b.dataset.a === 'num') {
+    const n = Math.max(1, Math.min(K.squares().length, (+pick || 1) + (+b.dataset.d || 0)));
+    pick = String(n); paint(); return;
+  }
   if (b.dataset.a === 'stake') { stake = +b.dataset.n; paint(); return; }
   if (b.dataset.a === 'bet') place();
 }
@@ -189,45 +262,38 @@ function place() {
   if (!list.includes(stake) || !K.squares().includes(pick)) return;
   if (credits() < stake) { toast(`You need ${stake} cr.`, 2200); return; }
   if (!spend(stake)) { toast(`You need ${stake} cr.`, 2200); return; }
-  const end = K.squares()[Math.floor(Math.random() * 16)];
+  const all = K.squares();
+  const end = all[Math.floor(Math.random() * all.length)];
   const npcs = K.npcBets(Math.random, club()?.perk?.().extraNpc || 0);
+  const hops = [];
+  for (let i = 0; i < 3; i++) hops.push(all[Math.floor(Math.random() * all.length)]);
+  hops.push(end);
   persist();
-  drop = null;
-  round = { player: { square: pick, stake }, npcs, end, path: K.path(Math.random, 8, end), left: K.ROUND_S, t: 0 };
-  if (splat) splat.visible = false;
-  if (poop) poop.visible = false;
+  clearMark();
+  round = { player: { square: pick, stake }, npcs, end, hops, hop: 0, phase: 'walk', phaseT: 0, hold: false, landed: null };
+  paintRims();
   ensureUi();
   ui.sheet.classList.remove('on');
-  ui.banner.classList.add('on');
-  ui.banner.textContent = `Bets are in. ${npcs.map(n => n.name + ' ' + n.square).join('. ')}. ${K.ROUND_S}s.`;
-  toast(`${npcs.map(n => n.name + ' ' + n.square).join('. ')}.`, 2800);
+  ui.banner.classList.remove('on');
+  frameTable();
 }
-function finish() {
-  const r = round; if (!r) return;
-  const result = K.settle(r.end, r.player, r.npcs);
+function markWinner(id) {
+  if (!round || round.landed) return;
+  round.landed = id;
+  const p = squareOf(id);
+  if (bird) { bird.scale.setScalar(BIRD); bird.rotation.set(0.35, Math.PI, 0); bird.position.set(p.x, TOP, p.z - 0.2); }
+  if (poop) { poop.visible = true; poop.position.set(p.x, 1.01, p.z + 0.06); }
+  if (splat) { splat.visible = true; splat.position.set(p.x, 1.0, p.z); }
+  paintRims();
+  const result = K.settle(id, round.player, round.npcs);
   if (result.hit) { pay(result.pay); save.won++; save.net += result.pay - result.stake; }
   else { save.lost++; save.net -= result.stake; }
   save.played++; persist();
-  try { club()?.play?.(r.player.stake); } catch (e) { /* */ }
-  const p = squareOf(r.end);
-  if (!drop?.landed && splat) { splat.position.set(p.x, 0.995, p.z); splat.visible = true; }
-  if (!(drop && drop.landed)) { if (poop) poop.visible = false; drop = null; }
-  const you = result.hit ? `You win ${result.pay} cr.` : `You lose ${result.stake} cr.`;
-  const line = result.reactions.find(x => x.win)?.line || result.reactions[0].line;
-  if (ui) { ui.banner.classList.add('on'); ui.banner.textContent = `${r.end} hits. ${you} ${line}`; }
-  toast(`${r.end}. ${you}`, 3600);
-  round = null;
-  setTimeout(() => ui?.banner.classList.remove('on'), 6000);
+  try { club()?.play?.(round.player.stake); } catch (e) { /* */ }
+  showPill(`Plopped on ${id}!`);
+  round.phase = 'done';
 }
-function tick(dt) {
-  if (!round) return;
-  round.left -= dt;
-  if (!drop && round.left <= 1.15) {
-    const to = squareOf(round.end);
-    drop = { x: bird?.position.x || to.x, z: bird?.position.z || to.z, y: (bird?.position.y || TOP) + 0.35, to, t: 0, landed: false };
-  }
-  if (round.left <= 0) finish();
-}
+function tick() { /* the bird runs on the room tick, so the board and the drop stay in step */ }
 
 function boot() {
   if (!window.SSX?.registerSurfaceTick) { setTimeout(boot, 300); return; }
@@ -237,10 +303,42 @@ function boot() {
     open, close, PIT: K.PIT, STAKES: K.STAKES, squares: K.squares,
     state: () => ({ ...save, live: !!round, owned: !!club()?.owns?.('bingo') }),
     debug: {
-      rush() { if (round) round.left = 0.2; return !!round; },
+      frame: () => frameTable(),
+      stand(id = '6') {
+        if (!bird) return false;
+        const p = squareOf(String(id));
+        if (round) { round.hold = true; round.phase = 'pause'; round.hops = [String(id)]; round.hop = 0; }
+        bird.scale.setScalar(BIRD);
+        bird.rotation.set(0, Math.PI, 0);
+        bird.position.set(p.x, TOP, p.z);
+        frameTable();
+        return true;
+      },
+      phase: () => round?.phase || 'idle',
+      squat() {
+        if (!bird) return false;
+        const id = '11';
+        if (!round) round = { hops: [id], hop: 0, phase: 'squat', phaseT: 0.4, hold: true, player: { square: pick, stake }, end: id };
+        else { round.hops = [id]; round.hop = 0; round.phase = 'squat'; round.hold = true; }
+        const p = squareOf(id);
+        bird.position.set(p.x, TOP, p.z - 0.06);
+        bird.rotation.y = Math.PI;
+        squatBird(0.85);
+        frameTable();
+        return true;
+      },
+      plop(id) {
+        const n = String(id || round?.end || '7');
+        if (!round) round = { player: { square: pick, stake }, npcs: [], end: n, hops: [n], hop: 0, phase: 'drop', hold: false, landed: null };
+        round.end = n; round.hold = false;
+        markWinner(n);
+        frameTable();
+        return n;
+      },
       splat: () => !!splat?.visible,
       poop: () => !!poop?.visible,
-      bird: () => bird ? { x: bird.position.x, y: bird.position.y, z: bird.position.z } : null
+      bird: () => bird ? { x: bird.position.x, y: bird.position.y, z: bird.position.z, squat: bird.rotation.x > 0.4 } : null,
+      pill: () => document.getElementById('csbBanner')?.textContent || ''
     }
   };
   window.SSX.registerSurfaceTick((dt) => { try { tick(dt); } catch (e) { /* */ } });

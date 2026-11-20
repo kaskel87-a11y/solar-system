@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.127: the chicken uses the board
+
+The bingo table is the board. Numbers 1 to 16 are on the squares. You pick a number, then the block chicken walks the board, squats, and drops on one square. That square is the winner. A short line says which number. The drop stays until the next round.
+
 ## v7.5.126: a block bird
 
 The bingo chicken is a stack of plain blocks: a cube body, a block head, a block beak, block legs, and a block comb. No brand marks.
