@@ -63,11 +63,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await goal(); ok('taxiDone', await wait(() => window.SSX.jobs.stats().taxi.done === 5, 8000));
     ok('taxiPaid', (await C()) - c0, (await C()) > c0);
     ok('taxiL2', await G(() => window.SSX.jobs.level('taxi')), (await G(() => window.SSX.jobs.level('taxi'))) === 2);
-    ok('taxiNextFare', (await J())?.stage, (await J())?.stage === 'pickup' && (await J())?.level === 2);
+    ok('taxiNextFare', (await J())?.stage, (await J())?.stage === 'paid' && (await J())?.level === 2);
+    ok('nextBtn', await wait(() => /Next fare/.test(document.getElementById('jobAct').textContent) && getComputedStyle(document.getElementById('jobAct')).display !== 'none', 4000));
+    await tapSel('#jobAct'); ok('taxiNextStarted', (await J())?.stage, (await J())?.stage === 'pickup');
     await tapSel(STOP); ok('taxiStopped', (await J()) === null);
 
     // ---- vehicle toggle (in any vehicle with no job)
-    ok('vehicleToggle', await wait(() => { const b = document.getElementById('jobAct'); return getComputedStyle(b).display !== 'none' && /Taxi duty/.test(b.textContent); }, 4000));
+    ok('vehicleToggle', await wait(() => { const b = document.getElementById('jobAct'); return getComputedStyle(b).display !== 'none' && /Start Taxi/.test(b.textContent); }, 4000));
     const ab = await center('#jobAct'); ok('actBtn44', ab?.h, ab?.h >= 44);
     await tapSel('#jobAct'); ok('toggleStarts', (await J())?.type, (await J())?.type === 'taxi');
     if (desk) { await page.keyboard.press('KeyJ'); ok('keyJ', await wait(() => document.getElementById('jobPanel').classList.contains('show'), 2000)); await page.keyboard.press('KeyJ'); }

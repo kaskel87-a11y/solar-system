@@ -87,6 +87,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
+- [x] **Taxi overhaul.** **v7.5.124:** Start Taxi in any car, a named pickup arrow, auto-stop, fare and tip, then Next fare or Quit. Gunpoint, VIP, drunk, chase, and gang fares. Same save key.
 - [x] **Velvet games.** **v7.5.123:** Chicken Shit Bingo and Plasma Paddle in the Velvet Airlock lobby. New save keys, old saves still load.
 - [x] **Playtest pass.** **v7.5.122:** the objective arrow yields the back-booth lesson to a live job. The mission card stays off FIRE, Drive, and Taxi duty. Death and arrest say FLATLINED and PINCHED.
 - [x] **Solar Syndicate.** **v7.5.121:** the title screen, menu, home-screen name, and share sheet say Solar Syndicate. The address stays `/solar-system/` and saves stay on `ssx.*`.

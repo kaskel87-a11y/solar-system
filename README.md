@@ -4,6 +4,12 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.124: taxi you can actually follow
+
+Get in a car and tap Start Taxi. The arrow and the step name the passenger and the district. The car eases to a stop beside them. Tap Let them in, or just sit there. The drop-off shows the place, the distance, and the clock. On arrival you see the fare and the tip, then Next fare or Quit.
+
+Some fares are quiet. A VIP pays if you drive clean. A drunk pukes. One wants the cops behind you. A Dustjaw rider moves your rep. A gunpoint fare pulls a pistol in the seat: Comply, Floor it, or Slam brakes. That changes your credits, your stars, and your rep.
+
 ## v7.5.123: Chicken Shit Bingo and Plasma Paddle
 
 Both are in the Velvet Airlock lobby. Walk up to the lettered grid, bet a square, and watch the bird. The cabinet next to it is Plasma Paddle: drag the left side, first to 5. Optional credit bet against Nix. Old saves still load.

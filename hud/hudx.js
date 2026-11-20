@@ -98,8 +98,8 @@ export function objective(md = mapData()) {
   const q = surf()?.game?.info?.quest;
   const step = questAim(q);
   if (md.gate) return { x: md.gate.x, z: md.gate.z, label: step || 'Next race ring', kind: 'race' };
-  if (md.wp) return { x: md.wp.x, z: md.wp.z, label: step || q?.title || 'Objective', kind: 'quest' };
   try { const j = window.SSX?.jobs?.active?.(); const p = j?.target && rel(j.target); if (p) return { ...p, label: j.text || 'Job', kind: 'job' }; } catch (e) { /* no jobs */ }
+  if (md.wp) return { x: md.wp.x, z: md.wp.z, label: step || q?.title || 'Objective', kind: 'quest' };
   try { const f = window.SSX?.turf?.fight?.(); if (f) { const b = window.SSX.turf.blocks().find(b => b.id === f.block); const p = b && rel(b.flag); if (p) return { ...p, label: `Defend ${b.name}`, kind: 'turf' }; } } catch (e) { /* no turf */ }
   if (S.wp && S.wp.world === info()?.name) return { x: S.wp.x, z: S.wp.z, label: S.wp.label, kind: 'waypoint' };
   return null;
