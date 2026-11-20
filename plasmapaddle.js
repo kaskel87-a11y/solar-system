@@ -2,13 +2,15 @@
 // Optional credit bet against Nix. Original neon-plasma look. Credits only.
 import * as K from './plasmapaddlecore.js';
 import { panelTap } from './racehooks.js';
+import './velvetclub.js';
 
 const KEY = K.KEY;
 const game = () => window.__app?.surface?.game || window.__app?.game;
 const toast = (t, ms) => { try { window.__app?.toast?.(t, ms); } catch (e) { /* */ } };
 const credits = () => game()?.progress?.credits | 0;
 
-let save = K.fresh(), root = null, live = null, raf = 0, stake = 0, last = 0;
+let save = K.fresh(), root = null, buy = null, live = null, raf = 0, stake = 0, last = 0;
+const club = () => window.SSX?.velvetclub;
 const meY = { v: 50 };
 
 function load() { try { save = K.load(localStorage.getItem(KEY)); } catch (e) { save = K.fresh(); } }
@@ -24,7 +26,11 @@ const CSS = `#ppGame{position:fixed;inset:0;z-index:66;display:none;background:#
 #ppGame canvas{flex:1 1 0;width:100%;min-height:0;height:100%;display:block;touch-action:none}
 #ppGame .ppStakes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box}
 #ppGame .ppStakes button{flex:1 1 42%}
-#ppGame .hint{padding:0 10px 6px;font:700 13px/1.3 system-ui,sans-serif;color:#d8c8ff}`;
+#ppGame .hint{padding:0 10px 6px;font:700 13px/1.3 system-ui,sans-serif;color:#d8c8ff}
+#ppBuy{position:fixed;left:0;right:0;bottom:0;z-index:67;display:none;box-sizing:border-box;padding:12px calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));background:#000;color:#fff;border-top:2px solid #fff;font:15px/1.3 system-ui,sans-serif}
+#ppBuy.on{display:block}
+#ppBuy h2{margin:0 48px 6px 0;font-size:18px}
+#ppBuy button{min-height:48px;width:100%;margin-top:8px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 16px system-ui,sans-serif}`;
 
 function ensure() {
   if (root) return root;
@@ -50,10 +56,25 @@ function ensure() {
   cv.addEventListener('pointercancel', () => { down = false; });
   return root;
 }
+function stakesNow() { return club()?.perk?.().paddleStakes || K.STAKES; }
 function paintStakes() {
   const box = root.querySelector('#ppStakes');
   const cr = credits();
-  box.innerHTML = K.STAKES.map(n => `<button type="button" data-a="stake" data-n="${n}">${n ? n + ' cr vs Nix' : 'Just play'}</button>`).join('') + `<span style="flex:1 1 100%;font:700 13px system-ui,sans-serif">${cr} cr. A win pays double.</span>`;
+  box.innerHTML = stakesNow().map(n => `<button type="button" data-a="stake" data-n="${n}">${n ? n + ' cr vs Nix' : 'Just play'}</button>`).join('') + `<span style="flex:1 1 100%;font:700 13px system-ui,sans-serif">${club()?.line?.() || ''} ${cr} cr. A win pays double.</span>`;
+}
+function showBuy() {
+  ensure();
+  if (!buy) {
+    buy = document.createElement('div'); buy.id = 'ppBuy'; buy.setAttribute('role', 'dialog'); buy.setAttribute('aria-label', 'Buy Plasma Paddle');
+    document.body.appendChild(buy);
+    panelTap(buy, e => {
+      const b = e.target?.closest?.('button'); if (!b) return;
+      if (b.dataset.a === 'close') buy.classList.remove('on');
+      if (b.dataset.a === 'buy') { const r = club()?.buy?.('paddle'); if (r?.ok) { buy.classList.remove('on'); open(); } }
+    });
+  }
+  buy.innerHTML = `<h2>Plasma Paddle</h2><p>A cabinet in the lobby. Drag the scoop, first to ${K.WIN}. Locked until you buy it.</p><p>${club()?.line?.() || ''}</p><p>Price 50,000 cr. You have ${credits()} cr.</p><button type="button" data-a="buy">Buy · 50,000 cr</button><button type="button" data-a="close">Close</button>`;
+  buy.classList.add('on');
 }
 function draw() {
   const cv = root.querySelector('canvas');
@@ -105,8 +126,9 @@ function frame(t) {
   raf = requestAnimationFrame(frame);
 }
 function start(n) {
+  if (!club()?.owns?.('paddle')) return showBuy();
   if (live && !live.over) return;
-  if (!K.STAKES.includes(n)) return;
+  if (!stakesNow().includes(n)) return;
   if (n && credits() < n) { toast(`You need ${n} cr.`, 2200); return; }
   if (n && !spend(n)) { toast(`You need ${n} cr.`, 2200); return; }
   stake = n;
@@ -123,6 +145,7 @@ function endMatch() {
   if (youWin) { save.won++; if (stake) { pay(stake * 2); save.net += stake; } }
   else { save.lost++; save.net -= stake; }
   persist();
+  try { club()?.play?.(stake); } catch (e) { /* */ }
   const msg = youWin ? (stake ? `You beat Nix. Paid ${stake * 2} cr.` : 'You beat Nix.') : (stake ? `Nix takes it. You lose ${stake} cr.` : 'Nix takes it.');
   toast(msg, 3200);
   root.querySelector('#ppTitle').textContent = msg;
@@ -130,6 +153,7 @@ function endMatch() {
   stake = 0;
 }
 function open() {
+  if (!club()?.owns?.('paddle')) { showBuy(); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } return { ok: true, buy: true }; }
   ensure(); root.classList.add('on'); paintStakes(); live = null;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ }
   last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
@@ -142,20 +166,31 @@ export function addPlasmaCabinet(api) {
   const body = mat(0x14081c, { roughness: 0.5, metalness: 0.4 });
   const glow = mat(0x7af0ff, { emissive: 0x7af0ff, emissiveIntensity: 0.8 });
   const hot = mat(0xff4ad8, { emissive: 0xff4ad8, emissiveIntensity: 0.7 });
-  box(A.x, 0.7, A.z, 0.7, 1.4, 0.55, body);
-  box(A.x, 1.15, A.z + 0.28, 0.5, 0.42, 0.04, glow);
-  box(A.x, 1.55, A.z, 0.74, 0.16, 0.58, hot);
+  const shell = box(A.x, 0.7, A.z, 0.7, 1.4, 0.55, body);
+  const screen = box(A.x, 1.15, A.z + 0.28, 0.5, 0.42, 0.04, glow);
+  const marquee = box(A.x, 1.55, A.z, 0.74, 0.16, 0.58, hot);
   api.col(A.x, A.z, 0.4, 0.35);
-  api.sign('PLASMA PADDLE', 0x7af0ff, A.x, 2.15, A.z + 0.4, 0, 2.2, { w: 512, h: 96, font: 'bold 40px system-ui, sans-serif' });
+  const sale = api.sign('50,000 CR', 0xffd040, A.x, 2.15, A.z + 0.4, 0, 2.2, { w: 512, h: 96, font: 'bold 64px system-ui, sans-serif' });
+  const title = api.sign('PLASMA PADDLE', 0x7af0ff, A.x, 2.15, A.z + 0.4, 0, 2.2, { w: 512, h: 96, font: 'bold 40px system-ui, sans-serif' });
   api.sign('DRAG TO SCOOP', 0xff4ad8, A.x, 1.75, A.z + 0.4, 0, 1.8, { h: 72, font: 'bold 36px system-ui, sans-serif' });
-  api.spot({ id: 'plasmapaddle', x: A.x, z: A.z + 1.15, r: 1.25, label: 'Play Plasma Paddle', act: 'velvet', run: () => open() });
+  const spot = api.spot({ id: 'plasmapaddle', x: A.x, z: A.z + 1.15, r: 1.25, label: 'Buy Plasma Paddle', act: 'velvet', run: () => open() });
+  Object.defineProperty(spot, 'label', { configurable: true, get() { return club()?.owns?.('paddle') ? 'Play Plasma Paddle' : 'Buy Plasma Paddle · 50,000 cr'; } });
+  api.ticks.push(() => {
+    const owned = !!club()?.owns?.('paddle');
+    sale.visible = !owned; title.visible = owned;
+    shell.visible = true;
+    const heat = club()?.perk?.().skin === 'heat';
+    glow.emissive?.setHex(heat ? 0xffb020 : 0x7af0ff); glow.color?.setHex(heat ? 0xffb020 : 0x7af0ff);
+    hot.emissive?.setHex(heat ? 0xff3030 : 0xff4ad8); hot.color?.setHex(heat ? 0xff3030 : 0xff4ad8);
+    screen.visible = owned; marquee.visible = owned;
+  });
 }
 
 function boot() {
   if (!window.SSX) { setTimeout(boot, 300); return; }
   if (window.SSX.plasmapaddle) return;
   load();
-  window.SSX.plasmapaddle = { open, close, AT: K.AT, state: () => ({ ...save }) };
+  window.SSX.plasmapaddle = { open, close, AT: K.AT, state: () => ({ ...save, owned: !!club()?.owns?.('paddle') }) };
   try { window.SSX.registerMenuItem?.({ id: 'rmPaddle', label: '🟢 Plasma Paddle', onTap: () => { if (window.__app?.surface?.info?.inside?.kind === 'club') open(); else toast('Plasma Paddle is a cabinet in the Velvet lobby.', 3200); } }); } catch (e) { /* */ }
 }
 boot();
