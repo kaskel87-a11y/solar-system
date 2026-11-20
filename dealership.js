@@ -198,10 +198,11 @@ function buildLot() {
   lot.apron = put(a.box, a.mConc, LOT.w, 1.2, LOT.d, LOT.cx, -0.5, LOT.cz); d.add(lot.apron);
   for (let i = 0; i < 9; i++) d.add(put(a.box, a.mNeonC, 0.12, 0.03, 4, LOT.cx - LOT.w / 2 + 3 + i * (LOT.w - 6) / 8, 0.12, LOT.rowB + 4.4)); // bay lines
   d.add(put(a.box, a.mNeonR, 0.08, 0.08, LOT.d - 0.2, LOT.cx - LOT.w / 2 + 0.05, 0.14, LOT.cz));
-  for (const s of [-1, 1]) d.add(put(a.box, a.mSteel, 0.4, 7, 0.4, s * 7.5, 3.5, -7.5));
-  d.add(put(a.box, a.mDark, 15.4, 0.6, 0.5, 0, 7, -7.5));
-  const sign = signMesh(CFG.name, 0xff2a4a, 14, 2.4); sign.position.set(0, 8.6, -7.5); d.add(sign);
-  const sub = signMesh('NEW RIDES · TRADE-INS · NO QUESTIONS', 0x38e1ff, 12, 0.9); sub.position.set(0, 6.2, -7.45); d.add(sub);
+  lot.roadGantry = new THREE.Group(); d.add(lot.roadGantry);
+  for (const s of [-1, 1]) lot.roadGantry.add(put(a.box, a.mSteel, 0.4, 7, 0.4, s * 7.5, 3.5, -7.5));
+  lot.roadGantry.add(put(a.box, a.mDark, 15.4, 0.6, 0.5, 0, 7, -7.5));
+  const sign = signMesh(CFG.name, 0xff2a4a, 14, 2.4); sign.position.set(0, 8.6, -7.5); lot.roadGantry.add(sign);
+  const sub = signMesh('NEW RIDES · TRADE-INS · NO QUESTIONS', 0x38e1ff, 12, 0.9); sub.position.set(0, 6.2, -7.45); lot.roadGantry.add(sub);
   d.add(put(a.box, a.mNeonR, LOT.w - 0.2, 0.08, 0.08, LOT.cx, 0.14, LOT.cz + LOT.d / 2 - 0.05));
   for (const fx of [-36, -12, 12]) for (const fz of [-6, LOT.cz + LOT.d / 2 - 0.6]) { d.add(put(a.box, a.mSteel, 0.25, 6, 0.25, fx, 3, fz)); d.add(put(a.box, a.mFlood, 0.9, 0.3, 0.5, fx, 6, fz - 0.4)); }
   for (const px of [-28, -12, 4]) for (const pz of [LOT.rowA + 2.5, LOT.rowB + 2.5]) d.add(put(a.disc, a.mPool, 5.5, 1, 5.5, px, 0.13, pz));
@@ -212,6 +213,8 @@ function buildLot() {
   for (const sg of lot.waveSigns) { sg.position.set(-28, 6.7, -7.5); d.add(sg); }
   lot.podG = new THREE.Group(); d.add(lot.podG); rebuildPodiums();
   applyDome(); // Showroom Dome upgrade (no-op on a roadside lot)
+  lot.buyMark = buildBuyMark(); d.add(lot.buyMark);
+  applyHangar();
   // --- garage: quonset lock-up with a roller door and a work bay in front ---
   const g = new THREE.Group(); g.position.set(S.garage.x, H(S.garage.x, S.garage.z), S.garage.z); g.rotation.y = CFG.yaw; root.add(g); lot.garage = g;
   g.add(put(a.half, a.mShut, 3.4, 4.2, 9, 0, 0, -5)); // quonset arch, 9 m deep
@@ -331,7 +334,7 @@ const onLot = (p, pad = 2) => onApron(p, pad) || onDomeFloor(p, Math.max(0, pad 
 let fenceHot = false;
 function rebuildPodiums() {
   if (!lot) return; const stock = dealerStock().slice(0, isMobile ? 8 : 12), key = stock.map(s => s.kind).join(',');
-  if (lot.waveSigns) { const full = TC.shared().dealer.wave >= TC.DEALER_WAVES.length; lot.waveSigns[0].visible = !full; lot.waveSigns[1].visible = full; }
+  if (lot.waveSigns) { const full = TC.shared().dealer.wave >= TC.DEALER_WAVES.length, hang = hangarOn(); lot.waveSigns[0].visible = !full && !hang; lot.waveSigns[1].visible = full && !hang; }
   if (key === lot.stockKey) return; lot.stockKey = key;
   // detach showroom FX first so disposeRoot doesn't kill the shared beam/pool materials
   if (showFX?.G?.parent) showFX.G.parent.remove(showFX.G);
@@ -340,12 +343,15 @@ function rebuildPodiums() {
   stock.forEach((s, i) => {
     const row = i < per ? 0 : 1, k = row ? i - per : i, n = row ? stock.length - per : per;
     const pg = new THREE.Group(); pg.position.set(LOT.cx + (k - (n - 1) / 2) * gap, 0, row ? LOT.rowB : LOT.rowA); lot.podG.add(pg);
-    pg.add(put(a.cyl, a.mDark, 2.9, 0.35, 2.9, 0, 0.17, 0)); pg.add(put(a.cyl, a.mNeonC, 2.95, 0.05, 2.95, 0, 0.35, 0));
+    const floorCars = hangarOn();
+    if (!floorCars) { pg.add(put(a.cyl, a.mDark, 2.9, 0.35, 2.9, 0, 0.17, 0)); pg.add(put(a.cyl, a.mNeonC, 2.95, 0.05, 2.95, 0, 0.35, 0)); }
+    else pg.add(put(a.box, a.mDark, 3.4, 0.05, 5.4, 0, 0.04, 0));
     let v = null; try { v = buildVehicle(s.kind); } catch (e) { v = null; }
-    if (v) { const sc = Math.min(1, (gap - 0.4) / 6.2); v.group.scale.setScalar(Math.max(0.55, sc)); v.group.position.y = 0.38; v.group.rotation.y = 0.6; decorate(v, GC.newRide('show', s.kind), { wheelScale: false }); pg.add(v.group); }
+    if (v) { const sc = Math.min(1, (gap - 0.4) / 6.2); v.group.scale.setScalar(Math.max(0.55, sc)); v.group.position.y = floorCars ? 0.1 : 0.38; v.group.rotation.y = floorCars ? Math.PI : 0.6; decorate(v, GC.newRide('show', s.kind), { wheelScale: false }); pg.add(v.group); }
     const tag = signMesh(`${WAVE_KINDS.has(s.kind) ? '🆕 ' : ''}${s.name} · ${s.price} cr`, WAVE_KINDS.has(s.kind) ? 0xffb020 : s.rep > 0 ? 0xffd25a : 0x3cff8a, 5, 0.6); tag.position.set(0, 0.4, 2.2); tag.rotation.x = -0.9; tag.scale.setScalar(Math.min(1, gap / 5.6)); pg.add(tag);
     lot.podiums.push({ g: pg, v, kind: s.kind });
   });
+  paintStockBoard(lot.stockBoard);
   applyDealerFocus();
 }
 
@@ -475,7 +481,15 @@ function updateCtx() {
   const mr = MR.ctxAction(); if (mr) return setCtx(mr.label, mr.act);
   const m = meet?.ctxAction(me); if (m) return setCtx(m.label, m.act);
   if (dist(me, S.garage) < 11) return setCtx('🔧 Garage', () => openGarage());
-  if (onLot(me)) return setCtx(domeOn() ? '🚗 Dealer · Dome' : '🚗 Dealer', () => openDealer());
+  if (domeOn() && !hangarOn() && nearHangarBuy(me)) return setCtx('Buy hangar · 100,000 cr', () => { const r = buyHangar(); toast(r.msg, 3600); });
+  if (hangarOn()) {
+    const pod = nearPodium(me);
+    if (pod) {
+      const s = dealerStock().find(x => x.kind === pod.kind);
+      if (s) return setCtx(`${s.name} · ${GC.partnerSellPrice(s, garage().rep, partnerOf().on)} cr`, () => { dSel = s.kind; camA = 0; openDealer(); });
+    }
+  }
+  if (onLot(me)) return setCtx(hangarOn() ? '🚗 Dealer · Hangar' : domeOn() ? '🚗 Dealer · Dome' : '🚗 Dealer', () => openDealer());
   setCtx(null);
 }
 
@@ -542,10 +556,11 @@ function renderDealer() {
     `<div class="chips dchips">${st.map(x => `<button data-dsel="${esc(x.kind)}" class="${x.kind === s.kind ? 'on' : ''}">${x.icon} ${esc(x.name)}${G.rep < x.rep ? ' 🔒' : ''}</button>`).join('')}</div>
     <b>${s.icon} ${esc(s.name)}</b> · Class ${'★'.repeat(s.tier)} · ${price < s.price ? `<s>${s.price}</s> ` : ''}<b>${price} cr</b>${P.on && price < s.price ? ' · partner' : ''}${owned ? ` · you own ${owned}` : ''}${s.modded ? ' · <i>custom build</i>' : ''}
     ${why ? `<div class="warn">${esc(why)}</div>` : ''}
-    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>💳 Buy · ${price} cr</button><button data-togarage="1">🔧 Garage</button><button data-theme="1">🎨 Restyle</button></div>
+    <div class="row"><button class="go" data-buy="${esc(s.kind)}" ${why ? 'disabled' : ''}>Buy · ${price} cr</button>${hangarOn() ? `<button data-testdrive="1">Test drive</button>` : ''}<button data-togarage="1">🔧 Garage</button><button data-theme="1">🎨 Restyle</button></div>
     <div class="blurb">${esc(s.blurb)}</div>${statBars(spec)}
     ${partnerBlock}
     ${domeBlock()}
+    ${hangarBlock()}
     <div class="blurb">${esc(waveLine())}</div>
     <div class="sub">💸 Steal a world car and drive it onto this lot to fence it for cash. Heat cuts the payout.</div>`;
 }
@@ -553,6 +568,14 @@ handlers.dsel = k => { dSel = k; camA = 0; applyDealerFocus(); rerender(); };
 handlers.buy = k => { const r = buy(k); toast(r.msg, 3200); if (r.ok) closeSheet(); else rerender(); };
 handlers.partner = id => { const r = buyPartner(id); toast(r.msg, 3600); rerender(); };
 handlers.dome = (id, b) => { if (!b.dataset.armed) { for (const x of sheet.el.querySelectorAll('[data-dome]')) delete x.dataset.armed; b.dataset.armed = '1'; b.textContent = `Sure? Tap again · ${b.dataset.lbl}`; return; } const r = buyDome(id); toast(r.msg, 4200); rerender(); };
+handlers.testdrive = () => { camA = 0; const s = dealerStock().find(x => x.kind === dSel); toast(s ? `${s.name}: look it over. Buy stays on this car.` : 'Pick a car.', 2400); };
+handlers.hangar = () => {
+  if (hangarOn()) return;
+  if (!domeOn()) { toast('Build the showroom dome first.', 2800); return; }
+  if (nearHangarBuy(meOf())) { const r = buyHangar(); toast(r.msg, 3600); if (r.ok) rerender(); return; }
+  aimHangar(true);
+  toast('Buy the hangar. 100,000 cr. Follow the arrow.', 3600);
+};
 handlers.pcollect = () => { const r = collectPartner(); toast(r.msg, 2800); rerender(); };
 handlers.togarage = () => { closeSheet(true); const m = meOf(), S = spots(); if (dist(m, S.garage) < 40) openGarage(); else navTo('garage'); };
 export function buy(kind) {
@@ -597,9 +620,155 @@ export function buyDome(offerId = 'cr') {
   if (!spend(o.cr)) return { ok: false, msg: 'Payment failed.' };
   if (!spendStars(o.stars, 'Red Line showroom dome')) { give(o.cr); return { ok: false, msg: '⭐ Stars payment failed. Credits refunded.' }; }
   const D = domeOf(); D.on = true; D.at = Date.now(); save();
-  applyDome(); rockDone = new WeakSet(); rockT = 0; // re-tuck boulders under the bigger footprint
+  applyDome(); applyHangar(); rockDone = new WeakSet(); rockT = 0; // re-tuck boulders under the bigger footprint
   try { window.dispatchEvent(new CustomEvent('ssx:dealerdome', { detail: { offer: o.id, cr: o.cr, stars: o.stars } })); } catch (e) { }
   return { ok: true, msg: `🏟️ ${CFG.name} moved into the Showroom Dome. Same lot, same deals — now under glass.` };
+}
+const hangarOf = () => garage().hangar || (garage().hangar = GC.freshHangar());
+const hangarOn = () => !!(app()?.game?.progress && domeOn() && hangarOf().on);
+function hangarBlock() {
+  if (!domeOn()) return '';
+  if (hangarOn()) return `<div class="blurb">🏭 <b>Walk-in hangar</b>. The cars are on the floor. Walk up to one.</div>`;
+  const ok = credits() >= GC.HANGAR.price;
+  return `<div class="blurb"><b>Upgrade to the hangar.</b> 100,000 cr. The dome comes down. You walk in through the bay and the cars sit on the floor.</div>
+    <div class="row"><button data-hangar="1" ${ok ? '' : 'disabled'}>Buy hangar · 100,000 cr</button></div>`;
+}
+function dealerWorld(lx, lz) {
+  const S = spots(), c = Math.cos(CFG.yaw), s = Math.sin(CFG.yaw);
+  return { x: S.dealer.x + lx * c + lz * s, z: S.dealer.z - lx * s + lz * c };
+}
+function hangarBuyLocal() { return { lx: LOT.cx, lz: LOT.cz + GC.HANGAR.d / 2 + 8 }; }
+function nearHangarBuy(p) {
+  if (!p || !here()) return false;
+  const { lx, lz } = lotLocal(p), b = hangarBuyLocal();
+  return Math.hypot(lx - b.lx, lz - b.lz) < 8;
+}
+function nearPodium(p) {
+  if (!lot || !p) return null;
+  const { lx, lz } = lotLocal(p);
+  let best = null, bd = 5;
+  for (const pod of lot.podiums) {
+    const d = Math.hypot(lx - pod.g.position.x, lz - pod.g.position.z);
+    if (d < bd) { bd = d; best = pod; }
+  }
+  return best;
+}
+let hangarPtr = false;
+function aimHangar(on) {
+  const g = window.SSX?.guide; if (!g) return;
+  try {
+    if (!on) { if (hangarPtr) { g.clear?.('hangar'); hangarPtr = false; } return; }
+    const b = hangarBuyLocal(), w = dealerWorld(b.lx, b.lz);
+    g.aimGround?.({ id: 'hangar', x: w.x, z: w.z, label: 'Buy the hangar, 100,000 cr' });
+    hangarPtr = true;
+  } catch (e) { /* guide missing */ }
+}
+export function buyHangar() {
+  const chk = GC.hangarCheck(garage(), { cr: credits() });
+  if (!chk.ok) {
+    if (chk.why === 'dome') return { ok: false, msg: 'Build the showroom dome first.' };
+    if (chk.why === 'owned') return { ok: false, msg: 'The hangar is already up.' };
+    return { ok: false, msg: `The hangar is 100,000 cr. You need ${chk.short} more.` };
+  }
+  if (!spend(GC.HANGAR.price)) return { ok: false, msg: 'Payment failed.' };
+  const Hn = hangarOf(); Hn.on = true; Hn.at = Date.now(); save();
+  if (lot) lot.stockKey = '';
+  rebuildPodiums();
+  applyHangar();
+  aimHangar(false);
+  return { ok: true, msg: 'Red Line Motors is a walk-in hangar. The cars are on the floor.' };
+}
+function foodTruck(g, x, z, title) {
+  const a = assets();
+  const body = new THREE.MeshStandardMaterial({ color: 0xc4552a, roughness: 0.7 });
+  const cab = new THREE.MeshStandardMaterial({ color: 0x241810, roughness: 0.6 });
+  g.add(put(a.box, body, 2.4, 2.2, 5.2, x, 1.2, z));
+  g.add(put(a.box, cab, 2.2, 1.3, 1.4, x, 1.7, z - 2.2));
+  g.add(put(a.box, a.mSteel, 0.3, 0.7, 0.3, x - 0.8, 0.35, z - 1.6));
+  g.add(put(a.box, a.mSteel, 0.3, 0.7, 0.3, x + 0.8, 0.35, z - 1.6));
+  g.add(put(a.box, a.mSteel, 0.3, 0.7, 0.3, x - 0.8, 0.35, z + 1.8));
+  g.add(put(a.box, a.mSteel, 0.3, 0.7, 0.3, x + 0.8, 0.35, z + 1.8));
+  const sg = signMesh(title, 0xfff1cc, 2.2, 0.6); sg.position.set(x, 2.6, z + 2.7); g.add(sg);
+}
+function blockPerson(g, x, z) {
+  const a = assets();
+  const suit = new THREE.MeshBasicMaterial({ color: 0xd8d2c4 });
+  const head = new THREE.MeshBasicMaterial({ color: 0xe6c2a0 });
+  g.add(put(a.box, suit, 0.42, 0.7, 0.28, x, 0.85, z));
+  g.add(put(a.box, head, 0.28, 0.28, 0.28, x, 1.4, z));
+}
+function makeStockBoard() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 640;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 5.4), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+  mesh.userData.canvas = c; mesh.userData.tex = tex; mesh.name = 'stock-board';
+  return mesh;
+}
+function paintStockBoard(mesh) {
+  if (!mesh?.userData?.canvas) return;
+  const c = mesh.userData.canvas, x = c.getContext('2d');
+  x.fillStyle = '#10140f'; x.fillRect(0, 0, 512, 640);
+  x.strokeStyle = '#3dff8a'; x.lineWidth = 8; x.strokeRect(10, 10, 492, 620);
+  x.fillStyle = '#3dff8a'; x.font = '800 40px system-ui, sans-serif'; x.textAlign = 'center';
+  x.fillText("TODAY'S STOCK", 256, 62);
+  x.font = '700 28px system-ui, sans-serif';
+  dealerStock().slice(0, 8).forEach((s, i) => {
+    x.textAlign = 'left'; x.fillStyle = '#f4efe2'; x.fillText(s.name, 36, 130 + i * 58);
+    x.textAlign = 'right'; x.fillStyle = '#3dff8a'; x.fillText(`${s.price} cr`, 476, 130 + i * 58);
+  });
+  mesh.userData.tex.needsUpdate = true;
+}
+function buildBuyMark() {
+  const a = assets(), g = new THREE.Group(); g.name = 'hangar-buy';
+  const b = hangarBuyLocal(); g.position.set(b.lx, 0, b.lz);
+  g.add(put(a.box, a.mSteel, 0.28, 3.4, 0.28, 0, 1.7, 0));
+  const sg = signMesh('HANGAR · 100,000 CR', 0x3dff8a, 8.4, 1.5); sg.position.set(0, 3.8, 0); g.add(sg);
+  g.traverse(o => { if (o.raycast) o.raycast = () => {}; });
+  return g;
+}
+function buildHangar() {
+  const a = assets(), g = new THREE.Group(); g.name = 'dealer-hangar';
+  g.position.set(LOT.cx, 0, LOT.cz);
+  const { w, d, h, bay } = GC.HANGAR;
+  const rock = new THREE.MeshStandardMaterial({ color: 0x8d4634, roughness: 0.9 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x2c3036, roughness: 0.55, metalness: 0.35 });
+  const floorM = new THREE.MeshStandardMaterial({ color: 0x171a20, roughness: 0.28, metalness: 0.4 });
+  const green = new THREE.MeshBasicMaterial({ color: 0x3dff8a });
+  g.add(put(a.box, floorM, w - 1.2, 0.16, d - 1.2, 0, 0.08, 0));
+  g.add(put(a.box, rock, w, h, 1.4, 0, h / 2, -d / 2));
+  g.add(put(a.box, steel, 1.2, h, d, -w / 2, h / 2, 0));
+  g.add(put(a.box, steel, 1.2, h, d, w / 2, h / 2, 0));
+  g.add(put(a.box, steel, w, 0.45, d, 0, h, 0));
+  g.add(put(a.box, steel, w, 2.4, 1.3, 0, h - 1.2, d / 2));
+  const pier = (w - bay) / 2;
+  g.add(put(a.box, rock, pier, h - 2.4, 1.4, -w / 2 + pier / 2, (h - 2.4) / 2, d / 2));
+  g.add(put(a.box, rock, pier, h - 2.4, 1.4, w / 2 - pier / 2, (h - 2.4) / 2, d / 2));
+  g.add(put(a.box, green, w - 3, 0.16, 0.2, 0, h - 0.55, -d / 2 + 1.6));
+  g.add(put(a.box, green, 0.18, 0.12, d - 2, -w / 2 + 1.5, 0.22, 0));
+  g.add(put(a.box, green, 0.18, 0.12, d - 2, w / 2 - 1.5, 0.22, 0));
+  for (const z of [-8, -2, 4]) g.add(put(a.box, green, w - 6, 0.12, 0.35, 0, h - 0.4, z));
+  const ramp = put(a.box, floorM, bay - 1.5, 0.18, 7, 0, 0.16, d / 2 + 3);
+  ramp.rotation.x = -0.06; g.add(ramp);
+  const sg = signMesh('RED LINE MOTORS', 0x3dff8a, 16, 2.4); sg.position.set(0, h + 0.4, d / 2 + 0.3); g.add(sg);
+  const board = makeStockBoard(); board.position.set(-bay / 2 - 1.2, 3.2, d / 2 + 1.4); g.add(board); lot.stockBoard = board; paintStockBoard(board);
+  foodTruck(g, -w / 2 - 5, d / 2 + 7, 'GRIT CART');
+  foodTruck(g, w / 2 + 5, d / 2 + 6, 'DUST DOGS');
+  blockPerson(g, -w / 2 - 1.5, d / 2 + 4);
+  blockPerson(g, w / 2 + 1.6, d / 2 + 3.4);
+  g.traverse(o => { if (o.raycast) o.raycast = () => {}; });
+  return g;
+}
+function applyHangar() {
+  if (!lot?.dealer) return;
+  const on = hangarOn();
+  if (on && !lot.hangar) { lot.hangar = buildHangar(); lot.dealer.add(lot.hangar); }
+  if (lot.hangar) lot.hangar.visible = on;
+  if (lot.buyMark) lot.buyMark.visible = domeOn() && !on;
+  if (on && lot.dome) lot.dome.visible = false;
+  else if (lot.dome) lot.dome.visible = domeOn();
+  if (lot.apron) lot.apron.visible = !domeOn();
+  if (lot.roadGantry) lot.roadGantry.visible = !on;
+  if (lot.waveSigns) for (const sg of lot.waveSigns) sg.visible = sg.visible && !on;
 }
 // the dome itself: a NEW half-ellipsoid of glass over the Red Line lot (dealer-local, centred on the lot). Built lazily, shown only when owned.
 function buildDome() {
@@ -867,6 +1036,7 @@ export function dealerTick(dt, ctx) {
   tickTheme(dt);
   const showPtr = themeNav && here() && !sheet && dist(meOf(), spots().garage) >= 12;
   aimLockup(showPtr);
+  aimHangar(!showPtr && here() && domeOn() && !hangarOn() && !sheet);
   if ((themeCamHold || (sheet?.kind === 'garage' && gTab === 'look')) && lot?.inside) frameThemeCam();
   else if (sheet && sheetCam) { const t = sheetCam(); if (t) showroomCam(t, dt); }
   tickShowFX(dt);
@@ -991,7 +1161,7 @@ window.__dealer = {
   get fenceOn() { return wantFence(); },
   get ctx() { return ui ? { label: ui.btn.textContent, shown: ui.btn.style.display === 'block' } : null; },
   get ride() { const rv = C?.rover; return rv ? { kind: rv.__dlrKind, spec: { ...rv.spec }, skin: !!rv.__dlr?.skin, stockHidden: rv.stockParts?.[0]?.visible === false } : null; },
-  buy, buyPartner, buyDome, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
+  buy, buyPartner, buyDome, buyHangar, collectPartner, fenceRide, upgrade, customise, setActive, sell, openDealer, openGarage, openHub, closeSheet, skipToMeet, navTo, specOf, rideById, cfg: () => ({ ...CFG }),
   buyTheme, pointAtLockup, startRestyle,
   get theme() {
     const id = GC.themeIdOf(readThemes(), GC.LOCKUP_ID), t = GC.GARAGE_THEMES[id], M = THEME_MATS[id];
@@ -1015,6 +1185,17 @@ window.__dealer = {
   },
   get partner() { return { ...partnerOf() }; },
   get dome() { return { ...domeOf(), built: !!lot?.dome, visible: !!lot?.dome?.visible, apron: lot?.apron ? lot.apron.visible : null }; }, applyDome,
+  get hangar() {
+    let buy = null;
+    if (here() && lot?.buyMark) { const w = new THREE.Vector3(); lot.buyMark.getWorldPosition(w); buy = { x: w.x, z: w.z }; }
+    return { on: hangarOn(), visible: !!lot?.hangar?.visible, dome: lot?.dome ? lot.dome.visible : null, buy };
+  },
+  podiumAt(i = 0) {
+    const p = lot?.podiums?.[i]; if (!p) return null;
+    const w = new THREE.Vector3(); p.g.getWorldPosition(w);
+    const s = dealerStock().find(x => x.kind === p.kind);
+    return { x: w.x, z: w.z, kind: p.kind, name: s?.name || p.kind, price: s?.price || 0 };
+  },
   get myrides() { return MR; }, get wave() { return { ...TC.shared().dealer, lot: LOT_KINDS, line: waveLine() }; }, get showroom() { return { on: !!showFX?.G.visible, kind: dSel || null, sheet: sheet?.kind || null }; }, noteBought, rebuildPodiums, applyDealerFocus,
   heightAt: (x, z) => H(x, z), tp(n, dz = 0) { const p = spots()[n]; app().surface.debugMove(p.x, p.z + dz, 0); }, get meet() { return meet?.debug || null; }
 };
