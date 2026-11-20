@@ -32,7 +32,9 @@ function measure() {
 }
 (async () => {
   for (const bn of browsers) for (const dk of devs) for (const ori of oris) {
-    const d = strip(devices[DEV[dk] + (ori === 'landscape' ? ' landscape' : '')]); const vp = d.viewport;
+    const key = DEV[dk] + (ori === 'landscape' ? ' landscape' : '');
+    const alt = dk === 'se' ? ('iPhone SE' + (ori === 'landscape' ? ' landscape' : '')) : key;
+    const d = strip(devices[key] || devices[alt]); const vp = d.viewport;
     const name = `${dk}-${ori}-${bn}`;
     const browser = await (bn === 'webkit' ? webkit : chromium).launch({ args: bn === 'chromium' ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] });
     const page = await (await browser.newContext(d)).newPage();

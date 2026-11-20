@@ -57,7 +57,8 @@ body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!impo
 #hxWay .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
 #hxWay .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #hxWay .d{color:#9fe8ff}
 body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{left:auto!important;top:auto!important;right:var(--hx-ctx-right,8px)!important;bottom:var(--hx-ctx-bottom,190px)!important;max-width:min(150px,36vw);min-width:96px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (orientation:portrait){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{max-width:84px;min-width:64px!important;white-space:normal;line-height:1.1;font-size:12px;padding:4px 6px}}
+@media (orientation:portrait){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{max-width:84px;min-width:64px!important;white-space:normal;line-height:1.1;font-size:12px;padding:4px 6px;bottom:calc(250px + var(--sab,0px))!important}}
+@media (orientation:landscape) and (max-height:500px){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{left:calc(8px + var(--sal,0px))!important;right:auto!important;bottom:calc(128px + var(--sab,0px))!important;max-width:120px}}
 body.hudx .hxCtxOff{display:none!important}
 #hxCtxNext{position:fixed;z-index:13;display:none;min-height:44px;min-width:48px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.1 system-ui,sans-serif;touch-action:manipulation;padding:0 4px}
 body.surface:not(.indoors):not(.cinematic) #hxCtxNext.show{display:block}

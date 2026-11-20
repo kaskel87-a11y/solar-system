@@ -54,6 +54,7 @@ const CSS = `#cbGulch{position:fixed;inset:0;z-index:80;display:none;align-items
 #cbGulch .sub{margin:4px 0;font-size:13px}
 #cbGulch .sum,#cbGulch .wallet{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}#cbGulch .sum b,#cbGulch .wallet b{padding:4px 8px;border-radius:8px;border:1px solid #555;font-size:12px}
 #cbGulch .tabs,#cbGulch .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#cbGulch .tabs{padding-right:48px}
 #cbGulch button{min-height:48px;min-width:64px;flex:1 1 120px;padding:8px 10px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 14px/1.15 system-ui,sans-serif;touch-action:manipulation}
 #cbGulch button:disabled{opacity:.45}#cbGulch button.on{border-width:3px}
 #cbGulch .row{padding:8px 0;border-top:1px solid #444}#cbGulch .row b{font-size:15px}#cbGulch .row small{display:block;font-size:12px;margin-top:2px}

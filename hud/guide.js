@@ -62,16 +62,27 @@ function show(spec) {
 }
 function hide() { el?.classList.remove('on'); last = null; }
 
+const HINTS = new Set(['backroom']); // the back-booth lesson. It never outranks a live job.
+const pins = new Map();
+function lessonLabel(t) { return /street good|back booth/i.test(String(t || '')); }
 function aim(spec) {
   if (!spec) return clear();
+  const id = spec.id || 'pin';
+  pins.set(id, { spec, at: performance.now() });
   pin = spec; pinAt = performance.now();
-  // A live mission owns the arrow. A side hint can record itself, but it must not paint over the objective.
-  if (typeof missionPointer === 'function' && (missionPointer() || offerUp())) return last;
-  return show(spec);
+  if (offerUp()) return last;
+  const next = pick();
+  return next ? show(next) : (hide(), null);
 }
 function clear(id) {
-  if (id && pin && pin.id !== id) return last;
-  pin = null; pinAt = 0; hide(); return null;
+  if (id) {
+    if (!pins.has(id)) return last;
+    pins.delete(id);
+    if (pin?.id === id) { pin = null; pinAt = 0; }
+  } else { pins.clear(); pin = null; pinAt = 0; }
+  if (offerUp()) { hide(); return null; }
+  const next = pick();
+  return next ? show(next) : (hide(), null);
 }
 function groundSpec(spec) {
   const i = window.__app?.surface?.info; if (!spec || !i || !Number.isFinite(i.x)) return null;
@@ -98,33 +109,58 @@ function aimMars(mp, pos, label, dist, id) {
   if (behind) { nx = -nx; ny = -ny; }
   return aim({ id: id || 'space', label, nx, ny, dist });
 }
+function objectiveNow() {
+  try { return window.__app?.state?.onSurface && window.SSX?.hudx?.objective?.() || null; } catch (e) { return null; }
+}
+function realObjective(ob) {
+  if (!ob) return null;
+  // The back-booth lesson used to plant itself as the map waypoint. That is not the player's objective.
+  if (ob.kind === 'waypoint' && lessonLabel(ob.label)) return null;
+  return ob;
+}
 function groundFallback() {
   const app = window.__app, on = app?.state?.onSurface;
-  if (!on || document.body.classList.contains('indoors')) return null;
-  let ob = null;
-  try { ob = window.SSX?.hudx?.objective?.(); } catch (e) { ob = null; }
+  if (!on) return null;
+  const ob = realObjective(objectiveNow());
   if (!ob) return null;
   return groundSpec({ id: 'objective', x: ob.x, z: ob.z, label: ob.label || 'Objective' });
 }
 function missionPointer() {
-  // A live quest, job, turf fight or race outranks a side hint (a back-room "pack a street good" pin was
-  // refreshing every frame and hiding the mission arrow on iPhone).
-  let ob = null;
-  try { ob = window.__app?.state?.onSurface && window.SSX?.hudx?.objective?.(); } catch (e) { ob = null; }
-  if (!ob || ob.kind === 'waypoint') return null;
-  if (document.body.classList.contains('indoors')) return null;
+  // Quest, job, turf, race, or a waypoint the player (or a job) set. Indoors too: the staff room and the Pit still count.
+  const ob = realObjective(objectiveNow());
+  if (!ob) return null;
   return groundSpec({ id: 'objective', x: ob.x, z: ob.z, label: ob.label || 'Objective' });
+}
+function freshPin(hint) {
+  let best = null;
+  const now = performance.now();
+  for (const [id, p] of pins) {
+    if (HINTS.has(id) !== hint) continue;
+    if (now - p.at > (hint ? 900 : 900)) continue;
+    if (!best || p.at > best.at) best = p;
+  }
+  return best?.spec || null;
+}
+function pick() {
+  const live = freshPin(false);
+  const indoors = document.body.classList.contains('indoors');
+  // Indoors, the room's own arrow (staff room, Pit seat) is in room space. A world waypoint would point the wrong way.
+  if (indoors && live) return live;
+  const mission = missionPointer();
+  if (mission && !indoors) return mission;
+  if (live) return live;
+  if (realObjective(objectiveNow())) return null;
+  return freshPin(true);
 }
 function offerUp() {
   const r = document.getElementById('radio'), b = document.getElementById('radioBtns');
   return !!r && r.classList.contains('mission') && r.style.display !== 'none' && !!b && getComputedStyle(b).display !== 'none';
 }
 function tick() {
-  // An offer card is the call. A stray arrow (a side hint) stays off it. Once you accept, the objective arrow comes back.
+  // An offer card is the call. A side hint stays off it. Once you accept, the objective arrow comes back.
   if (offerUp()) { hide(); requestAnimationFrame(tick); return; }
-  const mission = missionPointer();
-  if (mission) show(mission);
-  else if (pin && performance.now() - pinAt < 400) show(pin);
+  const next = pick();
+  if (next) show(next);
   else { const g = groundFallback(); if (g) show(g); else hide(); }
   requestAnimationFrame(tick);
 }

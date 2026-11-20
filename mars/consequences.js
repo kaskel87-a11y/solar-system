@@ -178,8 +178,8 @@ function onDown(d) {
     if (custody) custody = null;
     pending.contraband = seizeContraband(); pending.weapons = seizeWeapons();
     emit('seized', { contraband: pending.contraband.n, weapons: pending.weapons.n });
-    screen('BUSTED', pending.stars ? '★'.repeat(pending.stars) + ' · Deimos Lockup' : 'Deimos Lockup', '#1aa3ff', 15000);
-  } else screen('WASTED', 'Helios Mercy', '#ff2a2a', 15000); // held until the respawn (then ~1 s more), 15 s cap
+    screen('PINCHED', pending.stars ? '★'.repeat(pending.stars) + ' · Deimos Lockup' : 'Deimos Lockup', '#1aa3ff', 15000);
+  } else screen('FLATLINED', 'Helios Mercy', '#ff2a2a', 15000); // held until the respawn (then ~1 s more), 15 s cap
   emit('down', { why: why === 'busted' ? 'busted' : 'wasted', stars: pending.stars });
 }
 function ownsOutcome(why) { return !!pending && (why === 'busted' ? 'busted' : 'killed') === pending.why; }
