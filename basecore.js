@@ -24,7 +24,7 @@ export const PIECES = {
   wall:   { id: 'wall',   name: 'Wall',   icon: '🧱', cost: 60,   hp: 100, fp: [1, 1], max: 48, colliders: [[0, 0, 1.0, 0.25]], blurb: '2 m reinforced regolith panel.' },
   gate:   { id: 'gate',   name: 'Gate',   icon: '🚪', cost: 150,  hp: 120, fp: [1, 1], max: 8,  colliders: [[-0.9, 0, 0.12, 0.25], [0.9, 0, 0.12, 0.25]], blurb: 'Opens for you, nobody else.' },
   garage: { id: 'garage', name: 'Garage', icon: '🚗', cost: 800,  hp: 300, fp: [2, 3], max: 1,  colliders: [[0, -2.85, 2.0, 0.2], [-1.85, 0, 0.2, 3.0], [1.85, 0, 0.2, 3.0]], blurb: 'Your rover comes home here when you land.' },
-  stash:  { id: 'stash',  name: 'Stash',  icon: '💰', cost: 300,  hp: 150, fp: [1, 1], max: 1,  colliders: [[0, 0, 0.65, 0.5]], blurb: 'Credits and medkits in here don\u2019t get fined when you\u2019re busted.' },
+  stash:  { id: 'stash',  name: 'Stash',  icon: '💰', cost: 300,  hp: 150, fp: [1, 1], max: 1,  colliders: [[0, 0, 0.65, 0.5]], blurb: 'Credits and medkits in here don\u2019t get fined when you\u2019re pinched.' },
   turret: { id: 'turret', name: 'Turret', icon: '🔫', cost: 1000, hp: 200, fp: [1, 1], max: 4,  colliders: [[0, 0, 0.45, 0.45]], blurb: 'Auto-fires at security and raiders inside 32 m.', range: 32, rate: 0.9, dmg: 1 },
   // v7.5.72: the two pieces the original "place habitats and landing pads" line never got. The hab is a bunk you rest in
   // (walls on three sides, door open toward +z). The pad is a lit slab you can walk and drive on (no colliders).

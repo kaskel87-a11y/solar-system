@@ -61,13 +61,17 @@ function ownedBar() {
   try { return !!window.SSX?.empire?.prop?.('fr-bar')?.owned; } catch (e) { return false; }
 }
 
+function lessonLabel(t) { return /street good|back booth/i.test(String(t || '')); }
+function dropLessonWaypoint() {
+  try {
+    const ob = window.SSX?.hudx?.objective?.();
+    if (ob?.kind === 'waypoint' && lessonLabel(ob.label)) window.SSX.hudx.setWaypoint(null, true);
+  } catch (e) { /* */ }
+}
 function pin(x, z, label) {
   if (!Number.isFinite(+x)) return;
-  const k = `${Math.round(x)}:${Math.round(z)}:${label}`;
-  if (pinKey !== k) {
-    pinKey = k;
-    try { window.SSX?.hudx?.setWaypoint?.({ x: +x, z: +z, label }, true); } catch (e) { /* */ }
-  }
+  // A hint only. It must not replace the map waypoint a job already set.
+  dropLessonWaypoint();
   try { window.SSX?.guide?.aimGround?.({ id: 'backroom', x: +x, z: +z, label }); } catch (e) { /* */ }
 }
 
@@ -215,7 +219,7 @@ function paintFx() {
   }
 }
 function lessonTick() {
-  if (state.seen || state.deal) return;
+  if (state.seen || state.deal) { dropLessonWaypoint(); try { window.SSX?.guide?.clear?.('backroom'); } catch (e) { /* */ } return; }
   const where = boothWorld('velvet') || boothWorld('thin');
   if (!where) return;
   const step = B.lesson(state.pack, where);

@@ -1,4 +1,4 @@
-# Mars consequences: WASTED / BUSTED (`mars/consequences.js`, `window.SSX.consequences`)
+# Mars consequences: FLATLINED / PINCHED (`mars/consequences.js`, `window.SSX.consequences`)
 
 open-world outcomes for dying or getting arrested on Mars. All fiction, M-rated: invented places, invented people.
 

@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.122: the arrow follows your job
+
+The objective arrow stays on the job you are doing. The back-booth lesson waits until nothing else is active. Control’s mission card sits clear of FIRE, Drive, and Taxi duty, including in landscape. Death says FLATLINED. Arrest says PINCHED.
+
 ## v7.5.121: Solar Syndicate
 
 The name on the title screen, the menu, the home-screen icon, and the share sheet is Solar Syndicate. The address is still /solar-system/, and saves stay where they were.

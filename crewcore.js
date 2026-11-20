@@ -14,7 +14,7 @@ export const ROSTER = [
   { id: 'vee', name: 'Vee Okonkwo', look: { body: 0x2c3340, coat: 0x6b2f2f, hat: 0x3a3a3a, skin: 0x7a5236 },
     intro: 'Vee. I hear you\'re building something. I can get into anything with a lock and out before the alarm finishes its first word.' },
   { id: 'soren', name: 'Soren "Static" Pell', look: { body: 0x2f3a2f, coat: 0x444444, hat: 0x5a5a20, skin: 0xd8b08c },
-    intro: 'Static. I hear the ColSec bands, I know the shifts. Your people get busted less with me around.' },
+    intro: 'Static. I hear the ColSec bands, I know the shifts. Your people get pinched less with me around.' },
   { id: 'mags', name: 'Mags Ferro', look: { body: 0x3a2f3a, coat: 0x1f2a3a, hat: 0x6a1f1f, skin: 0xb07a58 },
     intro: 'Mags. I ran a crew in the Flats before Saltblood ate it. Give me a front and I\'ll make it look legal.' },
 ];

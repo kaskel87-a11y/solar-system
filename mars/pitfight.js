@@ -78,7 +78,7 @@ function frame(dt) {
   const on = pitOn();
   U.pad.classList.toggle('on', on && d.phase === 'fight');
   U.bars.classList.toggle('on', on);
-  if (!on) { S = null; U.cheer.classList.remove('on'); return; }
+  if (!on) { S = null; U.cheer.classList.remove('on'); U.pad.classList.remove('on'); U.bars.classList.remove('on'); U.tips.classList.remove('on'); return; }
   ensure(d);
   F.tick(S, dt, S.block > 0);
   if (d.phase === 'fight' && F.timeLeft(S) <= 0) { try { window.__app?.surface?.world?.endPit?.(d.me >= d.them ? 'ko-win' : 'ko-lose'); } catch (e) { /* */ } }
@@ -90,11 +90,12 @@ function frame(dt) {
   U.sta.style.width = Math.round(S.sta) + '%';
   if (S.cheer) { U.cheer.textContent = S.cheer === 'PARRY' ? 'PARRY' : S.cheer === 'COMBO' ? 'COMBO' : S.cheer === 'FINISH' ? 'FINISH' : 'OHH!'; U.cheer.classList.add('on'); }
   else U.cheer.classList.remove('on');
-  if (d.phase === 'fight' && !seen) {
+  const inRing = !!(d && d.pit);
+  if (inRing && d.phase === 'fight' && !seen) {
     seen = true; let had = false; try { had = localStorage.getItem(KEY) === '1'; } catch (e) { had = false; }
     if (!had) U.tips.classList.add('on');
   }
-  if (d.phase !== 'fight') U.tips.classList.remove('on');
+  if (!inRing || d.phase !== 'fight') U.tips.classList.remove('on');
 }
 
 function boot() {

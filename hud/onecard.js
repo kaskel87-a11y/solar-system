@@ -9,7 +9,11 @@ body.hxOne #hxStat{order:-2} body.hxOne #hxOne{order:-1}
 body.hxOne.hudx #stackR{max-height:calc(25vh - 62px - var(--sat,0px))!important;overflow:hidden}
 /* v7.5.117: a Control call and the objective card need the stack tall enough to read. The short cap was clipping them. */
 body.hxOne.hudx #stackR:has(> #radio.mission),
-body.hxOne.hudx #stackR:has(#hxCard.on){max-height:calc(100dvh - 112px - var(--sat,0px) - var(--sab,0px))!important;overflow-x:hidden;overflow-y:auto}
+body.hxOne.hudx #stackR:has(#hxCard.on){max-height:min(42vh,calc(100dvh - 300px - var(--sat,0px) - var(--sab,0px)))!important;overflow-x:hidden;overflow-y:auto}
+@media (orientation:landscape) and (max-height:500px){
+body.hxOne.hudx #stackR:has(> #radio.mission),
+body.hxOne.hudx #stackR:has(#hxCard.on){left:auto!important;right:calc(8px + var(--sar,0px))!important;width:min(188px,22vw)!important;max-height:calc(100dvh - 210px - var(--sat,0px) - var(--sab,0px))!important;overflow:hidden!important}
+}
 #stackR > #radio.mission{order:-6}
 #stackR > #hxCard.on{order:-5}
 /* Chatter can stay hidden. A mission call (class mission) and an offer you opened (hxOffer) stay on screen. */
