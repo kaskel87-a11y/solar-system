@@ -56,8 +56,23 @@ const STANDS = [[-24, 40]];                       // 🚕 taxi stand (Ares Junct
 const CLINICS = [{ name: 'Ares Mercy Clinic', at: [46, 30] }, { name: 'Olympus Trauma Bay', at: [-24, -404] }, { name: 'Heights Med Spa', at: [296, 98] }, { name: 'Flats Free Clinic', at: [-304, -14] }];
 const BOARDS = [[-2, -52]];                       // 🎯 ColSec bounty board (behind the security office)
 const R_BEACON = 6, R_DROP = 8, R_PICK = 7;
-const FARES = ['Moss', 'Dee', 'Quill', 'Hatch', 'Ora', 'Bram', 'Tilly', 'Rook Jr.', 'Sable', 'Inez', 'Corwin', 'Pip'];
-const FARE_LINES = ['Olympus Row, and step on it. My shift supervisor eats people.', 'Take the scenic route and I\u2019m not tipping.', 'Drive like you stole it. Did you steal it?', 'Easy on the bumps, I just had dinner.', 'I\u2019m late for my own divorce. Go.'];
+const PASSENGERS = [
+  { name: 'Vex', line: 'Ares Junction was a mistake. Drive.', kind: 'quiet' },
+  { name: 'Moss', line: 'I paid for a seat, not a sermon.', kind: 'quiet' },
+  { name: 'Dee', line: 'Crash this heap and I will haunt the wreck.', kind: 'quiet' },
+  { name: 'Quill', line: 'Quiet car. I am thinking about a bad idea.', kind: 'quiet' },
+  { name: 'Hatch', line: 'Floor it. I like the noise.', kind: 'quiet' },
+  { name: 'Ora', line: 'Easy on the ruts. My back is older than this town.', kind: 'quiet' },
+  { name: 'Rook Jr.', line: 'My old man said never trust a driver. Prove him wrong.', kind: 'quiet' },
+  { name: 'Sable', line: 'Don\u2019t talk. The tip is the conversation.', kind: 'vip' },
+  { name: 'Inez', line: 'Get me there before every light on Mars turns red.', kind: 'vip' },
+  { name: 'Pip', line: 'One drink. Then six. Then the floor moved.', kind: 'drunk' },
+  { name: 'Bram', line: 'Make the cops earn it. I want them on our bumper.', kind: 'chase' },
+  { name: 'Corwin', line: 'Dustjaw colors on my boots. Drive like you didn\u2019t see them.', kind: 'gang' },
+  { name: 'Kel', line: 'Hand on the wheel. Eyes front. This is not a request.', kind: 'gun' },
+  { name: 'Shiv', line: 'Smile. The pistol in my coat likes you.', kind: 'gun' }
+];
+const KIND_BAG = [['quiet', 46], ['vip', 14], ['drunk', 12], ['chase', 10], ['gang', 8], ['gun', 10]];
 const MARKS = [['Gutter Vance', 'armed robbery'], ['Two-Tone Rizzo', 'O2 theft'], ['Mother Kask', 'running a chop shop'], ['Lenny Shiv', 'knifing a guard'], ['The Dentist', 'extortion'], ['Saltblood Kel', 'arson in the Flats'], ['Hollow Jim', 'hijacking a hauler'], ['Vex Marlow', 'airlock tampering']];
 
 // ---------- persistence ----------
@@ -127,13 +142,117 @@ function makeBeacon(col, text, r, beamH = 70) {
   g.userData = { ring, sp, text }; return g;
 }
 function setLabel(g, text, col) { if (g.userData.text === text) return; g.userData.text = text; const m = g.userData.sp.material; m.map?.dispose(); m.map = labelTex(text, hex(col)); m.needsUpdate = true; }
-function makePerson(col) { // simple low-poly colonist in a pressure suit
+function makePerson(col) { // simple low-poly colonist in a pressure suit, plus a pistol that only shows on a gunpoint fare
   const g = new THREE.Group(), suit = new THREE.MeshLambertMaterial({ color: col }), dark = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  g.userData.suit = suit; g.userData.suitCol = col;
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 1.0, 10), suit); torso.position.y = 1.25; g.add(torso);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 10), suit); head.position.y = 1.98; g.add(head);
   const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8, 0, Math.PI), dark); visor.position.set(0, 2.0, -0.12); visor.rotation.y = Math.PI; g.add(visor);
   for (const s of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8), dark); l.position.set(s * 0.15, 0.4, 0); g.add(l); }
-  const body = new THREE.Group(); body.add(...g.children.splice(0)); g.add(body); g.userData.body = body; return g;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.62), new THREE.MeshBasicMaterial({ color: 0xd0d0d8 })); arm.position.set(0.05, 1.5, -0.42); arm.rotation.x = -1.2; arm.visible = false; g.add(arm);
+  const gun = new THREE.Group();
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 1.05), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.14), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+  grip.position.set(0, -0.18, 0.28); gun.add(barrel, grip); gun.position.set(0.02, 1.58, -0.95); gun.rotation.x = -0.15; gun.visible = false; g.add(gun);
+  const body = new THREE.Group(); body.add(...g.children.splice(0)); g.add(body); g.userData.body = body; g.userData.gun = gun; g.userData.arm = arm; return g;
+}
+let gunVig = null, gunCard = null;
+let pendingKind = null;
+function rollKind() {
+  const forced = run?.forceKind || pendingKind;
+  if (run) run.forceKind = null;
+  pendingKind = null;
+  if (forced) return forced;
+  let r = Math.random() * 100;
+  for (const [k, w] of KIND_BAG) { if ((r -= w) < 0) return k; }
+  return 'quiet';
+}
+function drivenCar() { const s = surf()?.st?.(); return s?.driving ? s.rover : null; }
+function easeStop(full) {
+  const car = drivenCar(); if (!car || car.speed == null) return;
+  car.speed = full ? 0 : car.speed * 0.45;
+}
+function seatFare(npc, gun) {
+  const car = drivenCar(); if (!car?.body) return false;
+  car.group?.updateMatrixWorld?.(true);
+  car.body.updateMatrixWorld(true);
+  // gun fares face the driver from the right of the windshield, pistol raised
+  const p = gun ? new THREE.Vector3(0.02, 0.15, -2.45) : new THREE.Vector3(0.55, 0.42, -0.85);
+  car.body.localToWorld(p);
+  npc.position.copy(p); npc.rotation.set(0, gun ? Math.PI - (car.yaw || 0) : (car.yaw || 0) - Math.PI / 2, 0); npc.scale.setScalar(gun ? 0.95 : 1);
+  if (npc.userData.suit) npc.userData.suit.color.setHex(gun ? 0x14141c : (npc.userData.suitCol || 0xe0a030));
+  if (npc.userData.gun) npc.userData.gun.visible = !!gun;
+  if (npc.userData.arm) npc.userData.arm.visible = !!gun;
+  if (npc.userData.gunOn !== !!gun) {
+    npc.userData.gunOn = !!gun;
+    npc.traverse(o => { if (!o.isMesh) return; o.renderOrder = gun ? 12 : 0; const mats = [].concat(o.material || []); for (const m of mats) if (m) { m.depthTest = !gun; m.needsUpdate = true; } });
+  }
+  return true;
+}
+function showGunUi(on, name, line) {
+  ui();
+  if (!gunVig) return;
+  gunVig.classList.toggle('on', !!on);
+  const choosing = !!on && run?.event?.phase === 'choice';
+  gunCard.classList.toggle('on', choosing);
+  document.body.classList.toggle('taxiGun', choosing);
+  if (on && line) gunCard.querySelector('p').textContent = `${name} has a gun on you. "${line}"`;
+}
+function takeCash(n) {
+  try { const g = game(), have = g?.progress?.credits || 0, cut = Math.max(0, Math.min(n, have)); if (cut > 0) g.spend(cut); return cut; } catch (e) { return 0; }
+}
+function boardFare(h) {
+  const f = run.fare; easeStop(true);
+  run.rideT = 0; run.smooth = 100; run.crashes = 0; run.event = { id: f.kind, phase: 'ride' };
+  const time = Math.max(28, f.dd / (9 + 1.1 * run.L) + 22 - run.L);
+  if (f.kind === 'gun') {
+    run.event = { id: 'gun', phase: 'choice', left: 18 };
+    toast(`🔫 ${f.name}: "${f.line}"`, 4200);
+    setStage('drop', time, { text: `${f.name} has a gun on you. Choose.` });
+    showGunUi(true, f.name, f.line);
+    return;
+  }
+  let extra = '';
+  if (f.kind === 'chase') {
+    const w = world(), n = Math.min(5, (w?.wanted || 0) + 1);
+    w?.setWanted?.(n, `${f.name} wanted a chase`);
+    extra = ' They want the cops on your tail.';
+    run.event.phase = 'chase';
+  } else if (f.kind === 'drunk') extra = ' They smell like the Velvet floor.';
+  else if (f.kind === 'vip') extra = ' Big tip if the ride stays smooth.';
+  else if (f.kind === 'gang') extra = ' Dustjaw colors. Your rep rides with them.';
+  toast(`🚕 ${f.name}: "${f.line}" → ${dname(f.toD)}.${extra}`, 3600);
+  setStage('drop', time, { text: `Drop ${f.name} at ${dname(f.toD)}` });
+  showGunUi(false);
+}
+function gunChoice(which) {
+  if (!run || run.type !== 'taxi' || run.event?.phase !== 'choice') return false;
+  const f = run.fare, name = f.name;
+  if (which === 'comply') {
+    run.event.phase = 'comply';
+    run.text = `Drive ${name} to ${dname(f.toD)}. Keep it smooth or they take the till.`;
+    showGunUi(true, name, f.line);
+    toast(`🔫 You keep driving. ${name} stays on you.`, 2800);
+  } else if (which === 'floor') {
+    run.event.phase = 'throw'; run.event.left = 15;
+    run.text = `Floor it. Crash hard to throw ${name}.`;
+    showGunUi(true, name, f.line);
+    toast(`You floor it. Dump ${name} before they shoot.`, 2800);
+  } else if (which === 'brake') {
+    f.mod = { payMul: 0.4, tipMul: 0, wanted: 1, rep: ['dustjaws', -3], why: 'fought a fare', note: `You slammed the brakes. ${name} ate the dash. Partial fare.` };
+    run.event.phase = 'done'; showGunUi(false); complete();
+  } else return false;
+  renderHud(); return true;
+}
+function endGun(mod) {
+  if (!run?.fare) return;
+  run.fare.mod = mod; run.event = { id: 'gun', phase: 'done' }; showGunUi(false); complete();
+}
+function nextFare() {
+  if (!run || run.type !== 'taxi' || run.stage !== 'paid') return false;
+  const h = here(); if (!h) return false;
+  clearRunNpc(); run.smooth = 100; run.crashes = 0; run.receipt = null; run.event = null;
+  newFare(h); renderHud(); return true;
 }
 function build(h) {
   const s = surf(); G = new THREE.Group(); G.name = 'mars-jobs'; s.scene.add(G); beacons = []; npcs = []; marker = null;
@@ -180,14 +299,17 @@ function newFare(h) {
   let c = POINTS.filter(q => q.d !== pickup.d && dist(q.at, from) >= minD);
   if (!c.length) c = POINTS.filter(q => q.d !== pickup.d).sort((a, b) => dist(b.at, from) - dist(a.at, from)).slice(0, 3);
   const drop = pick(c), dd = dist(drop.at, from);
-  run.fare = { name: pick(FARES), line: pick(FARE_LINES), from, fromD: pickup.d, to: drop.at, toD: drop.d, dd };
+  const kind = rollKind(), pool = PASSENGERS.filter(p => p.kind === kind), who = pick(pool.length ? pool : PASSENGERS);
+  run.fare = { name: who.name, line: who.line, kind: who.kind, from, fromD: pickup.d, to: drop.at, toD: drop.d, dd };
+  run.event = null; run.rideT = 0;
   run.base = Math.round((20 + dd * 0.22) * (1 + 0.2 * (L - 1)));
   run.target = from; run.smooth = 100; run.crashes = 0;
-  setStage('pickup', 60 + dist(from, [h.x, h.z]) / 6, { text: `Pick up ${run.fare.name}` });
+  setStage('pickup', 75 + dist(from, [h.x, h.z]) / 6, { text: `Pick up ${who.name} at ${dname(pickup.d)}` });
+  showGunUi(false);
 }
 // PARAMEDIC
 function newPatient(h) {
-  const L = run.L; let at = null, src = 'spawn', name = pick(FARES);
+  const L = run.L; let at = null, src = 'spawn', name = pick(PASSENGERS).name;
   while (downedQueue.length && !at) { const q = downedQueue.shift(); if (Date.now() - q.t < 120000 && dist([q.x, q.z], [h.x, h.z]) < 400) { at = [q.x, q.z]; src = q.src || 'event'; name = q.name || name; } }
   if (!at) { try { const L2 = window.SSX?.danger?.downed?.(); if (Array.isArray(L2) && L2.length) { const d = L2[0]; at = [d.x - h.cx, d.z - h.cz]; src = 'danger'; name = d.name || name; } } catch (e) { /* optional */ } }
   if (!at) at = spotNear(h, 40 + L * 12, 120 + L * 25).at;
@@ -218,7 +340,19 @@ function complete(opts = {}) {
   if (type === 'taxi') { const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5, over = Math.max(0, -run.t);
     pay = Math.max(5, Math.round(run.base * (over ? Math.max(0.3, 1 - over / 40) : 1)));
     tip = over ? 0 : Math.round(run.base * (0.3 + 0.05 * L) * frac * Math.max(0, run.smooth) / 100);
-    note = `${run.fare.name}: ${run.crashes ? `${run.crashes} crash${run.crashes > 1 ? 'es' : ''}` : 'smooth ride'}${tip ? `, +${boost(tip)} tip` : over ? ', late, no tip' : ''}.`; }
+    const kind = run.fare?.kind, phase = run.event?.phase;
+    if (kind === 'vip' && run.smooth >= 70) tip = Math.round(tip * 2.5);
+    if (kind === 'drunk') tip = Math.round(tip * 0.35);
+    if (kind === 'chase') tip = Math.round(tip + run.base * 0.5);
+    if (kind === 'gang') { try { window.SSX?.rep?.add?.('dustjaws', 4, 'drove their rider home'); } catch (e) { /* no rep */ } tip += 40; }
+    if (kind === 'gun' && phase === 'comply') {
+      if (run.smooth >= 50) { tip = Math.round(tip + run.base * 0.8); note = `${run.fare.name} paid extra to keep you quiet.`; }
+      else { pay = Math.max(5, pay - 120); tip = 0; note = `${run.fare.name} robbed the till on the way out.`; }
+    }
+    const mod = run.fare?.mod;
+    if (mod) { pay = Math.max(0, Math.round(pay * (mod.payMul ?? 1)) + (mod.flat || 0)); tip = Math.round(tip * (mod.tipMul ?? 1)); if (mod.note) note = mod.note; if (mod.wanted) { const w = world(); w?.setWanted?.(Math.min(5, (w.wanted || 0) + mod.wanted), mod.why || 'taxi'); } if (mod.rep) { try { window.SSX?.rep?.add?.(mod.rep[0], mod.rep[1], mod.why || 'taxi'); } catch (e) { /* */ } } }
+    if (!note) note = `${run.fare.name}: ${run.crashes ? `${run.crashes} crash${run.crashes > 1 ? 'es' : ''}` : 'smooth ride'}${tip ? `, +${boost(tip)} tip` : over ? ', late, no tip' : ''}.`;
+    else if (tip) note += ` Tip ${boost(tip)} cr.`; }
   else if (type === 'paramedic') { const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.5 * frac); note = `${run.patient.name} made it to ${run.clinic?.name || 'the clinic'}${tip ? `, +${boost(tip)} speed bonus` : ''}.`; }
   else { const coll = Math.max(0, (world()?.wanted || 0) - run.wanted0); const frac = run.tMax ? Math.max(0, run.t / run.tMax) : 0.5; tip = Math.round(run.base * 0.4 * frac);
     if (coll) { pay = Math.round(pay * 0.6); note = ' Collateral cut your bounty.'; } else { const w = world(); if (w?.wanted > 0) w.setWanted?.(w.wanted - 1, 'bounty paid'); }
@@ -232,12 +366,19 @@ function complete(opts = {}) {
   if (after > before) { try { game()?.setFlag?.(`jobs:${type}:L${after}`); } catch (e) { /* optional */ } emit('levelup', { job: type, level: after }); setTimeout(() => toast(`⬆️ ${META[type].name} level ${after}! Better pay, harder runs.`, 3600), 1800); }
   // keep the shift going: next fare / call / bounty
   const keep = opts.keep !== false; run.L = after;
-  if (keep && h) { clearRunNpc(); run.smooth = 100; run.crashes = 0; run.wanted0 = world()?.wanted || 0; if (type === 'taxi') newFare(h); else if (type === 'paramedic') newPatient(h); else newMark(h); }
+  if (type === 'taxi' && keep && h) {
+    run.receipt = { total, tip: boost(tip), name: run.fare?.name || 'Fare', note };
+    run.L = after; run.stage = 'paid'; run.target = null; run.event = null;
+    run.text = `Paid ${total} cr${tip ? `, tip ${boost(tip)} cr` : ''}. Next fare or quit.`;
+    clearRunNpc(); if (marker) marker.visible = false; showGunUi(false); renderHud();
+    return { pay: total, level: after };
+  }
+  if (keep && h) { clearRunNpc(); run.smooth = 100; run.crashes = 0; run.wanted0 = world()?.wanted || 0; if (type === 'paramedic') newPatient(h); else newMark(h); }
   else endRun('stop', { quiet: true });
   return { pay: total, level: after };
 }
 function fail(reason) {
-  if (!run) return; const type = run.type; S[type].fails++; save();
+  if (!run) return; showGunUi(false); const type = run.type; S[type].fails++; save();
   emit('fail', { job: type, reason }); toast(`${META[type].icon} ${reason}`, 3400);
   const h = here(); clearRunNpc();
   if (h && !game()?.isDown?.()) { run.smooth = 100; run.crashes = 0; if (type === 'taxi') newFare(h); else if (type === 'paramedic') newPatient(h); else newMark(h); }
@@ -245,6 +386,7 @@ function fail(reason) {
 }
 function endRun(why = 'stop', o = {}) {
   if (!run) return { ok: false }; const type = run.type; clearRunNpc(); run = null; if (marker) { marker.parent?.remove(marker); marker = null; }
+  showGunUi(false);
   emit('stop', { job: type, reason: why }); if (!o.quiet) toast(`${META[type].icon} Off duty.`, 2000); renderHud(); return { ok: true };
 }
 function clearRunNpc() { if (run?.npc) { run.npc.parent?.remove(run.npc); run.npc = null; } }
@@ -254,11 +396,13 @@ function syncRunMeshes(h) { // npc + objective marker for the current stage
   if (!marker) { marker = makeBeacon(col, '', R_DROP, 120); G.add(marker); }
   marker.userData.ring.material.color.setHex(col); marker.children[0].material.color.setHex(col);
   let label = '';
-  if (run.type === 'taxi') label = run.stage === 'pickup' ? '🚕 FARE' : '🏁 DROP-OFF';
+  if (run.type === 'taxi') label = run.stage === 'pickup' ? `🚕 ${run.fare?.name || 'FARE'}` : run.stage === 'drop' ? `🏁 ${dname(run.fare?.toD)}` : '';
+  if (run.type === 'taxi' && marker?.userData?.sp) marker.userData.sp.scale.set(5.4, 1.35, 1);
   else if (run.type === 'paramedic') label = run.stage === 'transport' ? '✚ CLINIC' : '🩺 PATIENT';
   else label = '🎯 ' + run.mark.name.toUpperCase();
   setLabel(marker, label, col);
-  const wantNpc = (run.type === 'taxi' && run.stage === 'pickup') || (run.type === 'paramedic' && run.stage !== 'transport') || run.type === 'vigilante';
+  if (marker) marker.visible = !(run.type === 'taxi' && run.stage === 'paid');
+  const wantNpc = (run.type === 'taxi' && (run.stage === 'pickup' || run.stage === 'drop')) || (run.type === 'paramedic' && run.stage !== 'transport') || run.type === 'vigilante';
   if (wantNpc && !run.npc) { run.npc = makePerson(run.type === 'vigilante' ? 0x7a1f7a : run.type === 'paramedic' ? 0xd8d8d8 : 0xe0a030); G.add(run.npc); run.npc.userData.at = null; }
   if (!wantNpc) clearRunNpc();
 }
@@ -318,25 +462,44 @@ function tickJobs(dt /* , ctx */) {
 }
 function stepRun(dt, h) {
   const i = h.info, p = [h.x, h.z], r = run, L = r.L;
-  if (game()?.isDown?.()) { fail(r.type === 'paramedic' ? 'You went down. Dispatch sent someone else.' : 'You went down. Shift over.'); endRun('down', { quiet: true }); return; }
+  if (game()?.isDown?.()) { showGunUi(false); fail(r.type === 'paramedic' ? 'You went down. Dispatch sent someone else.' : 'You went down. Shift over.'); endRun('down', { quiet: true }); return; }
+  if (r.type === 'taxi' && r.stage === 'paid') { if (marker) marker.visible = false; showGunUi(false); renderHud(); return; }
   r.t -= dt;
   // smooth-driving meter (taxi): a sudden speed loss is a crash, big air scares the fare
-  const sp = Math.abs(i.speed || 0);
-  if (i.driving) { if (r.lastSpeed > 8 && r.lastSpeed - sp > 6) { r.crashes++; r.smooth -= 22; r.crashT = 1.5; if (r.type === 'taxi' && r.stage === 'drop') toast(pick(['😖 “Are you TRYING to kill me?”', '😖 “My spine! I\u2019m docking your tip.”', '😖 “Eyes on the road!”']), 1800); }
+  const sp = Math.abs(i.speed || 0); r.justCrash = false;
+  if (i.driving) { if (r.lastSpeed > 8 && r.lastSpeed - sp > 6) { r.crashes++; r.smooth -= 22; r.crashT = 1.5; r.justCrash = true; if (r.type === 'taxi' && r.stage === 'drop' && r.event?.phase !== 'throw' && r.event?.phase !== 'choice') toast(pick(['😖 “Are you trying to kill me?”', '😖 “My spine. I am docking your tip.”', '😖 “Eyes on the road.”']), 1800); }
     if (i.air) { r.air += dt; if (r.air > 0.8 && !r.airHit) { r.airHit = true; r.smooth -= 8; } } else { r.air = 0; r.airHit = false; } }
   r.lastSpeed = i.driving ? sp : 0;
   const npc = r.npc;
   if (r.type === 'taxi') {
+    const phase = r.event?.phase;
+    if (phase === 'choice') r.t += dt;
     if (r.stage === 'pickup') {
-      r.target = r.fare.from; r.text = i.driving ? `Pick up ${r.fare.name}` : 'Get in any vehicle';
-      if (npc) { settle(npc, r.fare.from, h); npc.rotation.y = Math.atan2(h.x - r.fare.from[0], h.z - r.fare.from[1]); }
-      if (i.driving && dist(p, r.fare.from) < R_PICK && sp < 5) { const dd = r.fare.dd; toast(`🚕 ${r.fare.name}: “${r.fare.line}” → ${dname(r.fare.toD)}`, 3400); setStage('drop', Math.max(25, dd / (9 + 1.1 * L) + 22 - L), { text: `Drop ${r.fare.name} in ${dname(r.fare.toD)}`, target: r.fare.to }); r.smooth = 100; r.crashes = 0; }
+      r.target = r.fare.from;
+      r.text = i.driving ? `Pick up ${r.fare.name} at ${dname(r.fare.fromD)}` : `Get in a car. Pick up ${r.fare.name} at ${dname(r.fare.fromD)}`;
+      if (npc) { settle(npc, r.fare.from, h); npc.rotation.y = Math.atan2(h.x - r.fare.from[0], h.z - r.fare.from[1]); if (npc.userData.gun) npc.userData.gun.visible = false; }
+      const nearP = dist(p, r.fare.from);
+      if (i.driving && nearP < 12) easeStop(nearP < R_PICK + 1);
+      if (i.driving && nearP < R_PICK && sp < 5) boardFare(h);
       else if (r.t <= 0) fail(`${r.fare.name} got tired of waiting and walked.`);
     } else if (r.stage === 'drop') {
-      r.target = r.fare.to;
-      if (!i.driving) { r.offFoot = (r.offFoot || 0) + dt; r.text = `Get back in! ${r.fare.name} is leaving`; if (r.offFoot > 8) { fail(`${r.fare.name} bailed on your ride. No fare.`); return; } } else r.offFoot = 0;
-      if (i.driving && dist(p, r.fare.to) < R_DROP && sp < 6) { complete(); return; }
-      if (r.t < -40) fail(`${r.fare.name} jumped out at a red light. No fare.`);
+      r.target = r.fare.to; r.rideT = (r.rideT || 0) + dt;
+      if (npc) seatFare(npc, phase === 'choice' || phase === 'comply' || phase === 'throw');
+      if (phase === 'choice') { easeStop(true); r.text = `${r.fare.name} has a gun on you. Choose.`; showGunUi(true, r.fare.name, r.fare.line); }
+      else if (phase === 'throw') {
+        r.event.left -= dt; r.text = `Floor it. Crash hard to throw ${r.fare.name}.`;
+        if (r.justCrash) { endGun({ payMul: 0, tipMul: 0, flat: 180, wanted: 1, rep: ['dustjaws', -2], why: 'threw a gun fare', note: `${r.fare.name} went out the door. You found 180 cr in the seat.` }); return; }
+        if (r.event.left <= 0) { const cut = takeCash(150); try { game()?.hurtPlayer?.(22, { x: i.x, z: i.z }); } catch (e) { /* */ } endGun({ payMul: 0, tipMul: 0, wanted: 2, rep: ['dustjaws', -6], why: 'a fare shot you', note: `${r.fare.name} shot you${cut ? ` and took ${cut} cr` : ''}.` }); return; }
+      } else if (r.fare.kind === 'drunk' && r.rideT > 4 && !r.event?.puked) {
+        r.event = r.event || { id: 'drunk', phase: 'ride' }; r.event.puked = true; r.smooth = Math.max(0, r.smooth - 30);
+        toast(`🤢 ${r.fare.name} pukes in the footwell. The tip just died.`, 2800);
+        r.text = `Drop ${r.fare.name} at ${dname(r.fare.toD)}. They puked.`;
+      }
+      if (!i.driving && phase !== 'choice') { r.offFoot = (r.offFoot || 0) + dt; if (phase !== 'throw') r.text = `Get back in. ${r.fare.name} is leaving`; if (r.offFoot > 8) { fail(`${r.fare.name} bailed on your ride. No fare.`); return; } } else if (phase !== 'choice' && phase !== 'throw') r.offFoot = 0;
+      const nearD = dist(p, r.fare.to);
+      if (i.driving && phase !== 'choice' && phase !== 'throw' && nearD < 12) easeStop(nearD < R_DROP + 1);
+      if (i.driving && phase !== 'choice' && phase !== 'throw' && nearD < R_DROP && sp < 6) { complete(); return; }
+      if (phase !== 'choice' && r.t < -40) fail(`${r.fare.name} jumped out. No fare.`);
     }
   } else if (r.type === 'paramedic') {
     const P = r.patient;
@@ -404,6 +567,19 @@ body.surface #jobHud.show{display:flex} #jobHud .tx{min-width:0} #jobHud .l1{fon
 #jobPanel .bar{height:8px;border:1px solid #fff;border-radius:4px;margin:6px 0;overflow:hidden} #jobPanel .bar i{display:block;height:100%;background:#fff}
 #jobPanel button{width:100%;min-height:46px;margin-top:6px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 14px system-ui,sans-serif;touch-action:manipulation} #jobPanel button.on{background:#fff;color:#000}
 #jobPanel .msg{min-height:1.2em;margin:8px 0;font-weight:700} #jobPanel .foot{display:flex;gap:8px}
+#taxiVig{position:fixed;inset:0;z-index:11;display:none;pointer-events:none;background:radial-gradient(ellipse at center, transparent 26%, rgba(160,0,0,.78) 100%)}
+#taxiVig.on{display:block}
+body.taxiGun #ssxGuide{visibility:hidden}
+#taxiChoice{position:fixed;z-index:14;display:none;left:calc(8px + env(safe-area-inset-left));bottom:calc(236px + env(safe-area-inset-bottom));width:min(220px,56vw);box-sizing:border-box;padding:8px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:700 13px/1.3 system-ui,sans-serif;pointer-events:auto}
+#taxiChoice.on{display:flex;flex-direction:column;gap:6px}
+#taxiChoice .who{display:flex;gap:8px;align-items:flex-start} #taxiChoice svg{flex:none;width:52px;height:52px} #taxiChoice p{margin:0}
+#taxiChoice .btns{display:flex;flex-direction:column;gap:6px}
+#taxiChoice button{min-height:48px;width:100%;padding:6px 8px;border-radius:10px;background:#000;color:#fff;border:2px solid #fff;font:800 15px/1.15 system-ui,sans-serif;touch-action:manipulation}
+@media (orientation:landscape){
+  #taxiChoice{left:50%;top:calc(8px + env(safe-area-inset-top));bottom:auto;transform:translateX(-50%);width:min(440px,52vw)}
+  #taxiChoice .btns{flex-direction:row}
+  #taxiChoice button{flex:1;min-width:0;font-size:14px}
+}
 `;
 let hud, hudTx, hudStop, actBtn, panel, body, msgEl, near = null, lastMsg = '', lastTouchAct = 0, hudKey = '';
 // window.__onTap (iOS-safe pointer binding from index.html). Re-rendered panels swallow the ghost click for 700 ms.
@@ -432,6 +608,11 @@ function ui() {
   tap(hud.querySelector('.tx'), () => open());
   actBtn = document.createElement('button'); actBtn.id = 'jobAct'; actBtn.type = 'button'; document.body.appendChild(actBtn);
   tap(actBtn, () => doAction());
+  gunVig = document.createElement('div'); gunVig.id = 'taxiVig'; document.body.appendChild(gunVig);
+  gunCard = document.createElement('div'); gunCard.id = 'taxiChoice';
+  gunCard.innerHTML = '<div class="who"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="14" r="8" fill="#e0a030"/><rect x="22" y="24" width="20" height="26" rx="6" fill="#e0a030"/><rect x="14" y="28" width="22" height="6" rx="2" fill="#111" transform="rotate(-28 24 31)"/><rect x="6" y="18" width="16" height="5" rx="1" fill="#d8dce4" transform="rotate(-48 14 20)"/></svg><p></p></div><div class="btns"><button type="button" data-g="comply">Comply</button><button type="button" data-g="floor">Floor it</button><button type="button" data-g="brake">Slam brakes</button></div>';
+  document.body.appendChild(gunCard);
+  gunCard.querySelectorAll('button').forEach(b => tap(b, () => gunChoice(b.dataset.g)));
   panel = document.createElement('div'); panel.id = 'jobPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Jobs"><div id="jobBody"></div><div class="msg" id="jobMsg"></div><div class="foot"><button id="jobClose" type="button">Close</button></div></div>';
   document.body.appendChild(panel); body = panel.querySelector('#jobBody'); msgEl = panel.querySelector('#jobMsg');
   tap(panel.querySelector('#jobClose'), close);
@@ -446,8 +627,11 @@ function actionFor() {
   const h = here(); if (!h) return null; const i = h.info;
   if (run?.type === 'paramedic' && run.stage === 'stabilise') return dist([h.x, h.z], run.patient.at) <= STAB_R // v7.5.3: on foot or in a vehicle; far = a hint button
     ? { id: 'stab', label: `🩺 Stabilise ${run.taps}/${run.patient.need}` } : { id: 'stabhint', label: `🩺 Get close to ${run.patient.name}` };
+  if (run?.type === 'taxi' && run.stage === 'paid') return { id: 'next', label: 'Next fare' };
+  if (run?.type === 'taxi' && run.event?.phase === 'choice') return null;
+  if (run?.type === 'taxi' && run.stage === 'pickup' && i.driving && dist([h.x, h.z], run.fare.from) < 14) return { id: 'board', label: `Let ${run.fare.name} in` };
   if (near) { const t = near.kind; return run?.type === t ? { id: 'stop', label: `${META[t].icon} Stop ${META[t].name}` } : { id: 'start:' + t, label: `${META[t].icon} Start ${META[t].name}` }; }
-  if (i.driving && !run) return { id: 'start:taxi', label: '🚕 Taxi duty' }; // vehicle toggle
+  if (i.driving && !run) return { id: 'start:taxi', label: '🚕 Start Taxi' };
   if (i.driving && run?.type === 'taxi') return null; // HUD has Stop
   return null;
 }
@@ -455,6 +639,8 @@ function doAction() {
   const a = actionFor(); if (!a) return;
   if (a.id === 'stab' || a.id === 'stabhint') actStabilise();
   else if (a.id === 'stop') endRun('stop');
+  else if (a.id === 'board') { const h = here(); if (h && dist([h.x, h.z], run.fare.from) < 16) boardFare(h); }
+  else if (a.id === 'next') nextFare();
   else { const r = startRun(a.id.slice(6)); if (!r.ok) toast(r.msg, 2600); }
   refreshAct(true);
 }
@@ -466,7 +652,9 @@ function renderHud() {
   if (!run) { if (hud.classList.contains('show')) { hud.classList.remove('show'); hudKey = ''; } if (panel?.classList.contains('show')) renderPanelThrottled(); return; }
   const h = here(), M = META[run.type], d = h && run.target ? Math.round(dist([h.x, h.z], run.target)) : null;
   const pay = boost(run.base || 0), warn = run.t < 10;
-  const l1 = `${M.icon} ${M.name.toUpperCase()} · L${run.L} · ⏱ ${run.t < 0 ? '+' + fmtT(-run.t) : fmtT(run.t)} · 💰 ${pay} cr${run.type === 'taxi' && run.stage === 'drop' ? ` · ${Math.max(0, Math.round(run.smooth))}% smooth` : ''}`;
+  const l1 = run.stage === 'paid'
+    ? `${M.icon} ${M.name.toUpperCase()} · ${run.receipt?.total || 0} cr${run.receipt?.tip ? ` · tip ${run.receipt.tip} cr` : ''}`
+    : `${M.icon} ${M.name.toUpperCase()} · L${run.L} · ⏱ ${run.t < 0 ? '+' + fmtT(-run.t) : fmtT(run.t)} · 💰 ${pay} cr${run.type === 'taxi' && run.stage === 'drop' ? ` · ${Math.max(0, Math.round(run.smooth))}% smooth` : ''}`;
   const l2 = `${run.text || ''}${d != null && h ? ` · ${d} m ${dirTo([h.x, h.z], run.target)}` : ''}`;
   const k = l1 + '|' + l2 + warn;
   if (k !== hudKey) { hudKey = k; hudTx[0].textContent = l1; hudTx[1].textContent = l2; hudTx[0].classList.toggle('warn', warn); }
@@ -484,7 +672,7 @@ function render() {
     const M = META[t], L = levelOf(t), done = S[t].done, into = L >= MAXL ? PER : done % PER, act = run?.type === t;
     html += `<div class="it"><b>${M.icon} ${M.name} · Level ${L}${L >= MAXL ? ' (max)' : ''}</b><small>${esc(M.blurb)}</small><div class="bar"><i style="width:${into / PER * 100}%"></i></div><small>${done} done · ${S[t].fails} failed · ${S[t].earned} cr earned${L < MAXL ? ` · ${PER - into} to level ${L + 1}` : ''}</small>${act ? `<small>On shift: ${esc(run.text || '')}</small>` : ''}<button type="button" data-job="${t}" class="${act ? 'on' : ''}">${act ? 'Stop' : 'Start'} ${M.name}</button></div>`;
   }
-  html += `<p class="sub" style="margin-top:8px">Find them in town: 🚕 taxi stand by Ares Supply, ✚ clinics in every district, 🎯 bounty board behind Colony Security. In any vehicle: “🚕 Taxi duty”. Keys: J jobs, G action.</p>`;
+  html += `<p class="sub" style="margin-top:8px">In any car: “🚕 Start Taxi”. The arrow names the fare. Some of them lie, puke, run from cops, or pull a gun. Keys: J jobs, G action.</p>`;
   body.innerHTML = html; msgEl.textContent = lastMsg;
   body.querySelectorAll('button[data-job]').forEach(b => tap(b, () => { const t = b.dataset.job; if (run?.type === t) { endRun('stop'); lastMsg = 'Off duty.'; } else { const r = startRun(t); lastMsg = r.msg; if (r.ok) { close(); return; } } render(); }));
 }
@@ -494,7 +682,7 @@ const API = {
   types: [...TYPES],
   start: type => startRun(String(type || '').toLowerCase()),
   stop: reason => endRun(reason || 'stop'),
-  active: () => run ? { type: run.type, level: run.L, stage: run.stage, text: run.text || '', timeLeft: Math.round(run.t * 10) / 10, pay: run.base || 0, smooth: run.type === 'taxi' ? Math.round(run.smooth) : undefined, dist: (() => { const h = here(); return h && run.target ? Math.round(dist([h.x, h.z], run.target)) : null; })(), target: run.target ? { x: run.target[0], z: run.target[1] } : null } : null,
+  active: () => run ? { type: run.type, level: run.L, stage: run.stage, text: run.text || '', timeLeft: Math.round(run.t * 10) / 10, pay: run.base || 0, smooth: run.type === 'taxi' ? Math.round(run.smooth) : undefined, fare: run.fare?.name, kind: run.fare?.kind, phase: run.event?.phase || null, receipt: run.receipt || null, dist: (() => { const h = here(); return h && run.target ? Math.round(dist([h.x, h.z], run.target)) : null; })(), target: run.target ? { x: run.target[0], z: run.target[1] } : null } : null,
   level: type => TYPES.includes(type) ? levelOf(type) : null,
   stats: () => { const o = { earned: S.earned, active: run ? run.type : null }; for (const t of TYPES) { const L = levelOf(t); o[t] = { ...S[t], level: L, next: L >= MAXL ? null : PER - (S[t].done % PER) }; } return o; },
   on, open, close, reportDowned, stabilise: actStabilise,
@@ -505,7 +693,23 @@ const API = {
     setDone(type, n) { if (!S[type]) return false; S[type].done = Math.max(0, n | 0); save(); emit('change', { what: 'debug' }); return levelOf(type); },
     reset() { if (run) endRun('stop', { quiet: true }); S = fresh(); save(); emit('change', { what: 'reset' }); },
     target: () => run ? JSON.parse(JSON.stringify({ type: run.type, stage: run.stage, t: run.t, target: run.target, fare: run.fare, patient: run.patient, mark: run.mark, clinic: run.clinic })) : null,
-    hit: dmg => hitMark(dmg || 99, 'debug')
+    hit: dmg => hitMark(dmg || 99, 'debug'),
+    forceEvent(kind) { pendingKind = kind || null; if (run) run.forceKind = kind || null; return kind || null; },
+    next: () => nextFare(),
+    pin(name) {
+      const who = PASSENGERS.find(p => p.name === name); if (!who || !run?.fare) return false;
+      run.fare.name = who.name; run.fare.line = who.line; run.fare.kind = who.kind;
+      if (run.stage === 'pickup') run.text = `Pick up ${who.name} at ${dname(run.fare.fromD)}`;
+      const h = here(); if (h && G) syncRunMeshes(h);
+      renderHud(); return true;
+    },
+    armGun() {
+      const h = here(); if (!run || run.type !== 'taxi' || !h?.info?.driving || !run.fare) return false;
+      const who = PASSENGERS.find(p => p.kind === 'gun');
+      run.fare.name = who.name; run.fare.line = who.line; run.fare.kind = 'gun';
+      boardFare(h); return true;
+    },
+    choice: which => gunChoice(which)
   }
 };
 (function boot() {

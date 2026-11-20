@@ -1534,6 +1534,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
   function debugPlace(x, z, yaw = player.yaw) { if (indoor) leaveBuilding(true); if (driving) interact(); player.x = x; player.z = z; player.y = height(x, z) + EYE; player.yaw = yaw; player.faceYaw = yaw; updateChunks(x, z, true); }
   return {
     scene, camera, enter, exit, update, look, tap, resize, takeOff, nearestPoi, interact, pet, setView, cycleView, zoom, discoveryLog, debugTeleport, debugPlace, game, world,
+    st: () => ({ driving, car, rover: driving ? car : rover, ownRover: rover }),
     aim(nx, ny, has = true) { game.setAim(nx, ny, has); },
     chopVehicle() { // v7.5.1: chop shops scrap your stolen ride (Marsmania's barter 'chop'); never your own rover
       let v = driving && car !== rover ? car : null; if (v) interact(); else { const n = world.nearestVehicle?.(); if (n && n.taken && n !== rover && Math.hypot(n.x - player.x, n.z - player.z) < 7) v = n; }
