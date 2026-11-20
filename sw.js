@@ -66,7 +66,7 @@ const PRECACHE = [
   `mars/bosslounge.js${q}`, `mars/bossloungecore.js${q}`, // v7.5.95 boss lounge in the office once you own the Velvet (SSX.bosslounge)
   `snackbar.js${q}`, `snackbarcore.js${q}`, // 🍗 Velvet snack bar on the empty floor west of Ines's office
   `clubpoker.js${q}`, // 🃏 Velvet Airlock Hold'em room (v7.5.33)
-  `chickenbingo.js${q}`, `chickenbingocore.js${q}`, `plasmapaddle.js${q}`, `plasmapaddlecore.js${q}`, // Velvet lobby: Chicken Shit Bingo + Plasma Paddle
+  `chickenbingo.js${q}`, `chickenbingocore.js${q}`, `plasmapaddle.js${q}`, `plasmapaddlecore.js${q}`, `velvetclub.js${q}`, `velvetclubcore.js${q}`, // Velvet lobby: bingo table, paddle cabinet, club level
   `slotfloor.js${q}`, // 🎰 Velvet slot bank + Olympus Mega (v7.5.36)
   `clubfloor.js${q}`, // 🍸 Velvet cocktail waitresses + gamblers (v7.5.35)
   `clubgames.js${q}`, `clubgamescore.js${q}`, // 🂡🎡 Velvet Blackjack + Roulette (v7.5.34)

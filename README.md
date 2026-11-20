@@ -4,6 +4,12 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.125: the bird on the table
+
+Chicken Shit Bingo is a table in the Velvet lobby. The chicken runs the squares and drops on the one that pays. Plasma Paddle is the cabinet beside it. Each one costs 50,000 cr. Until you buy it, the spot says the price and the button says Buy.
+
+Playing either game raises the Velvet level. The level sits on screen while you are in the club. Level 2 opens bigger bets. Level 3 adds two bettors. Level 4 changes the cabinet colors. Level 5 opens a VIP booth. The level and the purchases stay in the save.
+
 ## v7.5.124: taxi you can actually follow
 
 Get in a car and tap Start Taxi. The arrow and the step name the passenger and the district. The car eases to a stop beside them. Tap Let them in, or just sit there. The drop-off shows the place, the distance, and the clock. On arrival you see the fare and the tip, then Next fare or Quit.

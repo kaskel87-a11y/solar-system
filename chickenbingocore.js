@@ -12,6 +12,10 @@ export const NPCS = [
   { id: 'bex', name: 'Bex' },
   { id: 'harlo', name: 'Harlo' }
 ];
+export const EXTRA = [
+  { id: 'juno', name: 'Juno' },
+  { id: 'peck', name: 'Peck' }
+];
 
 export const squares = () => COLS.flatMap(c => ROWS.map(r => c + r));
 export const fresh = () => ({ v: 1, played: 0, won: 0, lost: 0, net: 0 });
@@ -19,9 +23,10 @@ export function load(raw) {
   try { const o = JSON.parse(raw || ''); if (o && o.v === 1) return { ...fresh(), played: o.played | 0, won: o.won | 0, lost: o.lost | 0, net: o.net | 0 }; } catch (e) { /* new */ }
   return fresh();
 }
-export function npcBets(rng = Math.random) {
+export function npcBets(rng = Math.random, extra = 0) {
   const all = squares();
-  return NPCS.map(n => ({ id: n.id, name: n.name, square: all[Math.floor(rng() * all.length)], stake: STAKES[Math.floor(rng() * STAKES.length)] }));
+  const crew = NPCS.concat(EXTRA.slice(0, Math.max(0, extra | 0)));
+  return crew.map(n => ({ id: n.id, name: n.name, square: all[Math.floor(rng() * all.length)], stake: STAKES[Math.floor(rng() * STAKES.length)] }));
 }
 export function path(rng, steps, end) {
   const all = squares(), out = [];
