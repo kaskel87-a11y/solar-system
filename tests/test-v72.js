@@ -38,12 +38,12 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       const m = document.querySelector('link[rel=manifest]'), at = document.querySelector('link[rel=apple-touch-icon]');
       const man = m ? await (await fetch(m.href)).json() : null;
       const icons = man ? await Promise.all(man.icons.map(async i => (await fetch(new URL(i.src, m.href))).ok)) : [];
-      return { man: !!man, name: man?.name, display: man?.display, scope: man?.scope, start: man?.start_url, icons: icons.every(Boolean) && icons.length >= 4, maskable: !!man?.icons.some(i => i.purpose === 'maskable'),
+      return { man: !!man, name: man?.name, short: man?.short_name, display: man?.display, scope: man?.scope, start: man?.start_url, icons: icons.every(Boolean) && icons.length >= 4, maskable: !!man?.icons.some(i => i.purpose === 'maskable'),
         apple: !!at && (await fetch(at.href)).ok, cap: document.querySelector('meta[name=apple-mobile-web-app-capable]')?.content, bar: document.querySelector('meta[name=apple-mobile-web-app-status-bar-style]')?.content,
         title: document.querySelector('meta[name=apple-mobile-web-app-title]')?.content, sw: 'serviceWorker' in navigator };
     });
     R.pwa = JSON.stringify(pwa);
-    ok('manifest', pwa.man && pwa.name === 'Solar System Explorer' && /fullscreen|standalone/.test(pwa.display) && pwa.scope === '/solar-system/' && pwa.icons && pwa.maskable);
+    ok('manifest', pwa.man && pwa.name === 'Solar Syndicate' && pwa.short === 'Solar Syndicate' && pwa.title === 'Solar Syndicate' && /fullscreen|standalone/.test(pwa.display) && pwa.scope === '/solar-system/' && pwa.icons && pwa.maskable);
     ok('iosMeta', pwa.apple && pwa.cap === 'yes' && pwa.bar === 'black-translucent' && !!pwa.title);
     if (BR === 'chromium') ok('serviceWorker', null, await G(async () => { const r = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 15000))]); return !!r?.active; }));
     // ---------- share with friends: OG/Twitter meta + share sheet / copy-link fallback ----------
@@ -62,7 +62,7 @@ const tag = DEV.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + BR;
       return { inMenu: true, sheet, copied, last: window.__lastShare, toast: document.getElementById('toast')?.textContent || '' };
     });
     R.share = JSON.stringify(shareRes);
-    ok('shareSheet', null, shareRes.inMenu && shareRes.sheet.got?.url === 'https://kaskel87-a11y.github.io/solar-system/' && /Solar System/.test(shareRes.sheet.got?.title) && shareRes.sheet.got?.text?.length > 10 && shareRes.sheet.last === 'shared');
+    ok('shareSheet', null, shareRes.inMenu && shareRes.sheet.got?.url === 'https://kaskel87-a11y.github.io/solar-system/' && /Solar Syndicate/.test(shareRes.sheet.got?.title) && /Solar Syndicate/.test(shareRes.sheet.got?.text || '') && shareRes.sheet.got?.text?.length > 10 && shareRes.sheet.last === 'shared');
     ok('shareCopyFallback', null, shareRes.copied === 'https://kaskel87-a11y.github.io/solar-system/' && shareRes.last === 'copied');
     await G(() => { localStorage.removeItem('ssx.progress.v1'); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
     await land();

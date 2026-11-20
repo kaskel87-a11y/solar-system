@@ -1,8 +1,12 @@
-# Solar System Explorer
+# Solar Syndicate
 
 Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or click a planet (or use the planet bar) for facts, and press **F** or tap **🚀 Fly** to pilot a rocket.
 
 Live: https://kaskel87-a11y.github.io/solar-system/
+
+## v7.5.121: Solar Syndicate
+
+The name on the title screen, the menu, the home-screen icon, and the share sheet is Solar Syndicate. The address is still /solar-system/, and saves stay where they were.
 
 ## v7.5.120: walk into the Vat House
 
@@ -441,7 +445,7 @@ The rover turret now works with **hostiles off** and **while flying**. When you'
 **Lowline kit (shop → "Rover body", 350).** A low, sleek two-seater shell in deep red (or your chosen paint) over the six-wheel chassis, with a rear spoiler, light bars and bigger thruster pods. It gives +30% fuel (130) and faster recharge. Tap it again in the shop to go back to the stock hull. The styling is generic, with no badges or logos.
 
 **Install it as an app (PWA).**
-- The app ships with `manifest.webmanifest` (name "Solar System Explorer", full-screen, any orientation), gritty Ashfall-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
+- The app ships with `manifest.webmanifest` (name "Solar Syndicate", full-screen, any orientation), gritty Ashfall-over-Mars icons (192/512, maskable variants, and a 180 apple-touch-icon), and iOS meta tags.
 - `sw.js` keeps the app shell, three.js and textures cached, so the game launches offline after the first run. Cache names carry the release version (`sw.js?v=7.3`, the same number as the module `?v` cache bust), and old caches are deleted on update. `index.html` and the game's own modules are fetched network-first, with the cache as the offline fallback, so new releases and hotfixes still land. three.js, textures and icons are served cache-first.
 - The HUD already respects the notch and home-bar safe areas in standalone mode.
 - **On iPhone:** open https://kaskel87-a11y.github.io/solar-system/ in Safari, tap **Share (□↑) → Add to Home Screen → Add**. On iOS 16.4+ Chrome works too: **Share → Add to Home Screen**. Launch it from the home-screen icon for full screen with no browser bars.

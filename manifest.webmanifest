@@ -1,7 +1,7 @@
 {
   "id": "/solar-system/",
-  "name": "Solar System Explorer",
-  "short_name": "Solar System",
+  "name": "Solar Syndicate",
+  "short_name": "Solar Syndicate",
   "description": "Fly the solar system, land on worlds, drive, fly and fight on the surface. A gritty three.js space sandbox.",
   "start_url": "/solar-system/?source=pwa",
   "scope": "/solar-system/",

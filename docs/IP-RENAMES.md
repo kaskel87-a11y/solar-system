@@ -27,7 +27,7 @@ These came up in the pass and are not someone else's product name.
 
 - Real places: Olympus Mons, Planum Australe, Ares Junction uses Ares as a Mars district, Mare-style Freeport Tranquility, Occator, Shackleton, Ceres.
 - History and science named as history: Apollo crews, Venera-style capsule, MESSENGER ice, Europa Clipper, SETI. No logos.
-- App name: Solar System Explorer. Manifest description does not name a real ship or car.
+- App name: Solar Syndicate (was Solar System Explorer). The address, save keys, and SSX stay. Manifest description does not name a real ship or car.
 - Fonts: `system-ui` only. No bundled commercial fonts.
 - Music: PIT 66.6, DUST 98.3, and the other stations are synthesized in the page. No lyrics, no samples. MY MUSIC plays files the player picks on their own device and does not upload them. See `RADIO-EXTRA.md`.
 - Planet textures: Solar System Scope, CC BY 4.0. Credit stays in the corner.
