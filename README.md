@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.123: Chicken Shit Bingo and Plasma Paddle
+
+Both are in the Velvet Airlock lobby. Walk up to the lettered grid, bet a square, and watch the bird. The cabinet next to it is Plasma Paddle: drag the left side, first to 5. Optional credit bet against Nix. Old saves still load.
+
 ## v7.5.122: the arrow follows your job
 
 The objective arrow stays on the job you are doing. The back-booth lesson waits until nothing else is active. Control’s mission card sits clear of FIRE, Drive, and Taxi duty, including in landscape. Death says FLATLINED. Arrest says PINCHED.
