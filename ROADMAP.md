@@ -87,7 +87,8 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
-- [x] **Red Line hangar.** **v7.5.128:** after the dome, 100,000 cr turns the lot into a walk-in hangar. Cars on the floor, stock board out front.
+- [x] **Gulch shed.** **v7.5.129:** Red Static Gulch is a walk-in shed. Racks and Skiv are inside. The Grow op sheet stays on the menu.
+- [x] **Red Line hangar.** **v7.5.129:** after the dome, 100,000 cr turns the lot into a walk-in hangar. Cars on the floor, stock board out front.
 - [x] **Bingo board.** **v7.5.127:** the table is the numbered board. The chicken walks it, squats, and drops on the winning square.
 - [x] **Block bird.** **v7.5.126:** the bingo chicken is plain cubes: body, head, beak, legs, and comb.
 - [x] **Velvet table.** **v7.5.125:** Chicken Shit Bingo is a table with a chicken that runs and drops. The table and the Plasma Paddle cabinet are 50,000 cr each. Club level saves and opens bigger bets, more bettors, a cabinet skin, and a VIP booth.

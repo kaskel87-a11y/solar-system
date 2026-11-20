@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import * as K from './farm2core.js';
 import { addCrop, sway as swayCrops } from './cropscape.js';
+import { GULCH_KIND, setGulchStep } from './gulchroom.js';
 
 const app = () => window.__app, surf = () => app()?.surface, game = () => app()?.game || surf()?.game, world = () => surf()?.world;
 const FARM = () => window.SSX?.farm, STARS = () => window.SSX?.stars;
@@ -50,7 +51,11 @@ const me = () => { const i = surf()?.info; return i && fin(i.x) && fin(i.z) ? i 
 const dist = (a, b) => (a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity);
 function inPit() { try { return !!FARM()?.debug?.inPit?.(); } catch (e) { return false; } }
 function postW() { try { const p = FARM()?.places?.().find(q => q.id === 'post'); return p && fin(p.x) ? p : null; } catch (e) { return null; } }
-const atGulch = () => onMars() && dist(me(), siteW()) < NEAR_R;
+const DOOR_OFF = { x: 0, z: -11 };
+function inRoom() { try { return surf()?.info?.inside?.kind === GULCH_KIND; } catch (e) { return false; } }
+const doorW = () => { const p = siteW(); return p ? { x: p.x + DOOR_OFF.x, z: p.z + DOOR_OFF.z } : null; };
+const atGulch = () => onMars() && (inRoom() || dist(me(), siteW()) < NEAR_R);
+const atDoor = () => onMars() && !inRoom() && dist(me(), doorW()) < 5;
 const atPost = () => onMars() && dist(me(), postW()) < POST_R;
 function ground(x, z) { try { const h = lastTc?.height?.(x, z); if (fin(h)) return h; } catch (e) { /* */ } try { const h = FARM()?.debug?.ground?.(x, z); if (fin(h)) return h; } catch (e) { /* */ } return 0; }
 function blocked() { if (inPit()) return 'No grow-op business in the Rust Pit.'; if (!onMars()) return `${K.SITE.name} is out in the Mars dunes.`; return null; }
@@ -196,6 +201,10 @@ function build(sc) {
   for (const [x, z] of [[-8.5, -4], [8.5, -4], [-8.5, 7.5], [8.5, 7.5]]) box(0.2, 4.4, 0.2, mat(0x4d4d40), x, 0.2, z, G);
   const net = box(17.6, 0.05, 12, mat(0x6b7a42, { t: 0.5, ds: true }), 0, 4.6, 1.75, G); net.name = 'farm2-net';
   for (let k = 0; k < 7; k++) { const rag = box(1.6 + (k % 3) * 0.5, 0.06, 1.2, mat(k % 2 ? 0x6b5a3a : 0x3b4a2a, { ds: true }), -7 + k * 2.3, 4.62, -3 + ((k * 37) % 11), G); rag.rotation.y = k * 0.7; }
+  const shed = new THREE.Group(); shed.name = 'farm2-shed'; shed.position.set(DOOR_OFF.x, 0, DOOR_OFF.z - 1.2); G.add(shed);
+  box(5.2, 3.2, 3.4, mat(0x5a3424, { m: 0.35 }), 0, 0.2, 0, shed);
+  box(1.8, 2.4, 0.2, mat(0x1a1410), 0, 0.15, -1.8, shed);
+  const ds = sign('SHED', '#c8ff6a', '#1a120c', 3.2); ds.position.set(0, 3.5, -1.9); shed.add(ds);
   rackG = new THREE.Group(); G.add(rackG);
   drones = new THREE.Group(); drones.visible = false; G.add(drones);
   for (let k = 0; k < 2; k++) { const d = new THREE.Group(); box(1.2, 0.3, 1.2, mat(0x222831, { m: 0.7 }), 0, 0, 0, d); const l = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), mat(k ? 0x3b82f6 : 0xff3b30, { e: k ? 0x3b82f6 : 0xff3b30, ei: 2 })); l.position.y = -0.1; d.add(l); drones.add(d); }
@@ -239,7 +248,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 function ui() {
   if (actBtn) return; const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   actBtn = document.createElement('button'); actBtn.id = 'f2Act'; actBtn.type = 'button'; actBtn.textContent = '🏴 Gulch'; actBtn.setAttribute('aria-label', 'Open the grow op'); document.body.appendChild(actBtn);
-  tap(actBtn, () => open(raid ? 'op' : 'op'));
+  tap(actBtn, () => { if (atDoor()) enterRoom(); else open('op'); });
   capEl = document.createElement('div'); capEl.id = 'f2Cap'; capEl.setAttribute('role', 'status'); document.body.appendChild(capEl);
   panel = document.createElement('div'); panel.id = 'f2Panel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Grow op"><div id="f2Body"></div><div class="msg" id="f2Msg" aria-live="polite"></div></div>'; document.body.appendChild(panel);
   pBody = panel.querySelector('#f2Body'); pMsg = panel.querySelector('#f2Msg');
@@ -312,15 +321,39 @@ function act(d) {
   if (panel.classList.contains('show')) { const m = pMsg.textContent; if (!r?.dup) openedAt = performance.now(); render(); pMsg.textContent = r?.dup ? m : (r?.msg || ''); }
 }
 const OPEN_GUARD_MS = 400; let openedAt = -1e9;
-function open(mode = 'op') { if (!panel) return; openedAt = performance.now(); pMode = mode === 'post' ? 'post' : 'op'; plantFor = null; pMsg.textContent = ''; render(); panel.classList.add('show'); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ } emit('open', { mode: pMode }); }
+function open(mode = 'op') {
+  if (!panel) return; openedAt = performance.now(); pMode = mode === 'post' ? 'post' : 'op'; plantFor = null; pMsg.textContent = ''; render(); panel.classList.add('show');
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { /* */ }
+  if (!atGulch() && !inRoom()) { const d = doorW(); if (d) { try { window.SSX?.guide?.aimGround?.({ id: 'gulchdoor', x: d.x, z: d.z, label: 'Walk into the shed' }); } catch (e) { /* */ } } }
+  emit('open', { mode: pMode });
+}
+function enterRoom() {
+  if (inRoom()) return { ok: false, msg: 'You are inside. Leave is the door behind you.' };
+  const p = siteW(), s = surf();
+  if (!p || typeof s?.enterBuilding !== 'function') return { ok: false, msg: 'The shed door is stuck.' };
+  let r = null;
+  try {
+    r = s.enterBuilding({
+      i: 'gulch', kind: GULCH_KIND, name: 'Red Static Gulch', title: 'RED STATIC GULCH', home: true,
+      x: p.x + DOOR_OFF.x, z: p.z + DOOR_OFF.z,
+      exit: { x: p.x + DOOR_OFF.x, z: p.z + DOOR_OFF.z - 2.2, yaw: Math.PI }
+    });
+  } catch (e) { console.warn('gulch enter', e); r = null; }
+  if (!r?.ok) return r || { ok: false, msg: 'Get out of the car, then tap Enter the shed.' };
+  toast('Inside the shed. Racks on the back wall. Skiv is on the left. Leave is the door behind you.', 3200);
+  return r;
+}
 function close() { panel?.classList.remove('show'); }
 function otherUp() { return !!document.querySelector('#farmPanel.show, #hvPanel.show, #stillPanel.show, #hvCap.on, #stillCap.on, #dlrSheet, #cqScreen.on, #wormCap.on'); }
 function refreshUi(force) {
-  if (!actBtn) return; const pit = inPit(), here = atGulch() && !pit;
-  const showAct = here && !otherUp() && !panel.classList.contains('show');
+  if (!actBtn) return; const pit = inPit(), yard = onMars() && !inRoom() && !pit && dist(me(), siteW()) < NEAR_R, door = atDoor() && !pit;
+  const showAct = (yard || door) && !otherUp() && !panel.classList.contains('show');
+  const label = door ? 'Enter the shed' : 'Gulch';
+  if (actBtn.textContent !== label) actBtn.textContent = label;
+  actBtn.setAttribute('aria-label', door ? 'Enter the shed' : 'Open the grow op');
   if (force || actBtn.classList.contains('on') !== showAct) actBtn.classList.toggle('on', showAct);
   let cap = '';
-  if (raid && onMars() && !pit) cap = `🚁 ColSec drones sweeping ${K.SITE.name}: ${Math.ceil(raid.t)} s<small>${here ? 'Open 🏴 Gulch and kill the grow lights.' : 'Get back and kill the grow lights.'}</small>`;
+  if (raid && onMars() && !pit) cap = `🚁 ColSec drones sweeping ${K.SITE.name}: ${Math.ceil(raid.t)} s<small>${yard || inRoom() ? 'Kill the grow lights inside the shed.' : 'Get back and kill the grow lights.'}</small>`;
   if (otherUp() || panel.classList.contains('show')) cap = '';
   if (force || cap !== capKey) { capKey = cap; capEl.innerHTML = cap; capEl.classList.toggle('on', !!cap); document.body.classList.toggle('f2CapOn', !!cap); }
 }
@@ -342,7 +375,17 @@ function tick(dt, tc) {
     if (S.clockAt == null || h < S.clockAt) S.clockAt = h;
     const dh = h - S.clockAt; if (dh > 0.05) { S.clockAt = h; const r = K.advance(S, dh); if (S.owned) { save(); rebuild(); if (r.ripe.length) { emit('ripe', { racks: r.ripe }); if (atGulch()) toast(`🌱 Rack ${r.ripe.map(i => i + 1).join(', ')} ripe at the gulch.`); } } }
     const P = game()?.progress?.stats; if (P && fin(P.busted)) { if (lastBusted !== null && P.busted > lastBusted) onBust(); lastBusted = P.busted; }
-    refreshUi(); if (panel?.classList.contains('show') && raid) { const lb = pBody.querySelector('button[data-a="lights"]'); if (lb?.firstChild) lb.firstChild.textContent = `💡 Kill the grow lights · drones in ${Math.ceil(raid.t)} s`; }
+    refreshUi();
+    const d = doorW(), far = d ? dist(me(), d) : Infinity;
+    if (inRoom()) { try { window.SSX?.guide?.clear?.('gulchdoor'); } catch (e) { /* */ } }
+    else if (onMars() && d && far < 160) {
+      try {
+        if (far > 12) window.SSX?.guide?.aimGround?.({ id: 'gulchdoor', x: d.x, z: d.z, label: 'Walk into the shed' });
+        else window.SSX?.guide?.clear?.('gulchdoor');
+      } catch (e) { /* */ }
+      setGulchStep(far < 6 ? 'Tap Enter the shed.' : far < 50 ? 'Walk into the shed.' : '');
+    } else { try { window.SSX?.guide?.clear?.('gulchdoor'); } catch (e) { /* */ } if (!inRoom()) setGulchStep(''); }
+    if (panel?.classList.contains('show') && raid) { const lb = pBody.querySelector('button[data-a="lights"]'); if (lb?.firstChild) lb.firstChild.textContent = `💡 Kill the grow lights · drones in ${Math.ceil(raid.t)} s`; }
   }
 }
 
@@ -353,7 +396,7 @@ function status() {
     ui: { act: actBtn?.classList.contains('on') ? actBtn.textContent : '', caption: capEl?.classList.contains('on') ? capEl.textContent : '', panel: !!panel?.classList.contains('show') } };
 }
 const api = {
-  status, plots, damage, restore, buy, rack, plant, harvest, sell, killLights, open, close,
+  status, plots, damage, restore, buy, rack, plant, harvest, sell, killLights, open, close, enter: enterRoom, inside: inRoom,
   on: f => { if (typeof f !== 'function') return () => {}; subs.add(f); return () => subs.delete(f); },
   PRICES: { ...K.PRICES, starRate: K.STAR_RATE }, CROPS: K.CROPS, SITE: K.SITE,
   get state() { return JSON.parse(JSON.stringify(S)); }, get rows() { return plots(); },
@@ -364,7 +407,7 @@ const api = {
     rng(v) { rng = typeof v === 'function' ? v : (v == null ? Math.random : () => +v); return true; },
     raid() { if (!raid) startRaid(); return status().raid; }, endRaid: () => endRaid(), bust: () => onBust(), setRaidT(t) { if (raid) raid.t = +t; return status().raid; },
     give(crop, n) { if (!K.CROPS[crop]) return false; S.stash[crop] = Math.min(K.LIMITS.stash, (S.stash[crop] | 0) + (n | 0)); save(); return true; },
-    goto(o = {}) { const s = surf(), p = o.post ? postW() : siteW(); if (!s || !p) return false; s.debugMove(p.x + (o.dx ?? 0), p.z + (o.dz ?? 9), o.yaw ?? 0); return p; }
+    goto(o = {}) { const s = surf(), p = o.post ? postW() : (o.door ? doorW() : siteW()); if (!s || !p) return false; s.debugMove(p.x + (o.dx ?? 0), p.z + (o.door ? 0 : (o.dz ?? 9)), o.yaw ?? 0); return p; }
   }
 };
 (function boot() {
