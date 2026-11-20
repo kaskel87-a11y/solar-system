@@ -134,7 +134,7 @@ function roomKit(def) {
   const api = {
     g, cols, spots, ticks, w, d, h, box, wares: [],
     col(x, z, hw, hd, tag) { const c = { x, z, hw, hd, tag, on: true, h: tag === 'wall' ? 99 : tag === 'tall' ? 3.2 : 1.15 }; cols.push(c); return c; }, // h: camera occlusion height (v7.4)
-    spot(s) { spots.push({ r: 1.7, ...s }); return s; },
+    spot(s) { const o = { r: 1.7, ...s }; spots.push(o); return o; }, // return the live hotspot, so later label/position updates reach the context button
     sign(text, color, x, y, z, yaw = 0, sw = 4, opts) { const t = textTex(text, color, opts); disposables.push(t); const m = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: t, transparent: true })); disposables.push(m.material); m.position.set(x, y, z); m.rotation.y = yaw; m.scale.set(sw, sw / 4, 1); g.add(m); return m; },
     person(opts, x, z, yaw, anim, k = 0) { const p = buildHuman(opts); p.group.position.set(x, 0, z); p.group.rotation.y = yaw; g.add(p.group); ticks.push((t, dt) => anim(p, t, k, yaw, dt)); return p; },
     mat, mk, G, disposables
