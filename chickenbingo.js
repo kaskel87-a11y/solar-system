@@ -32,7 +32,7 @@ const CSS = `#csbSheet{position:fixed;left:0;right:0;bottom:0;z-index:64;display
 #csbSheet .row button,#csbSheet .go{min-height:48px;flex:1 1 100px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 15px/1.15 system-ui,sans-serif}
 #csbSheet .row button.on{background:#fff;color:#000}
 #csbSheet .x{position:absolute;top:8px;right:8px;width:44px;height:44px;border-radius:10px;border:2px solid #fff;background:#000;color:#fff;font:700 20px system-ui,sans-serif}
-#csbBanner{position:fixed;z-index:30;left:50%;top:calc(108px + env(safe-area-inset-top));transform:translateX(-50%);display:none;width:max-content;max-width:min(260px,84vw);box-sizing:border-box;padding:8px 14px;border-radius:999px;background:#000;color:#fff;border:2px solid #fff;font:800 16px/1.2 system-ui,sans-serif;text-align:center;pointer-events:none}
+#csbBanner{position:relative;z-index:1;display:none;width:100%;max-width:100%;box-sizing:border-box;padding:8px 14px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 16px/1.2 system-ui,sans-serif;text-align:center;pointer-events:none}
 #csbBanner.on{display:block}`;
 
 function ensureCss() {
@@ -44,7 +44,8 @@ function ensureUi() {
   if (ui) return ui;
   const sheet = document.createElement('div'); sheet.id = 'csbSheet'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Chicken Shit Bingo');
   const banner = document.createElement('div'); banner.id = 'csbBanner';
-  document.body.appendChild(sheet); document.body.appendChild(banner);
+  (document.getElementById('stackR') || document.body).appendChild(banner);
+  document.body.appendChild(sheet);
   panelTap(sheet, onTap);
   ui = { sheet, banner };
   return ui;
@@ -78,10 +79,13 @@ function paintRims() {
     rims[id].material.color.setHex(hex);
   }
 }
+let pillT = 0;
 function showPill(text) {
   const b = ensureUi().banner;
   b.textContent = text;
   b.classList.add('on');
+  const n = ++pillT;
+  setTimeout(() => { if (n !== pillT) return; b.classList.remove('on'); if (round?.phase === 'done') round = null; }, 3000);
 }
 function stakesNow() { return club()?.perk?.().bingoStakes || K.STAKES; }
 
