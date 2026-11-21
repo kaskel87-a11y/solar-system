@@ -18,7 +18,7 @@ const CSS = `
 #cfLayer>#raceResult{max-width:none}
 .cfCard{position:relative}
 .cfOff{display:none!important}
-.cfCard>.cfX,#cfLayer .cfCard>.cfX{all:unset;box-sizing:border-box;position:sticky;top:0;float:right;z-index:2;width:30px;height:30px;margin:-2px -3px 2px 8px;border-radius:50%;background:#000!important;color:#fff!important;border:2px solid #fff!important;min-height:0!important;padding:0!important;flex:none!important;font:900 15px/26px system-ui,sans-serif!important;text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.cfCard>.cfX,#cfLayer .cfCard>.cfX{all:unset;box-sizing:border-box;position:sticky;top:0;float:right;z-index:6;width:44px;height:44px;margin:-2px -3px 2px 8px;border-radius:10px;background:#000!important;color:#fff!important;border:2px solid #fff!important;min-height:44px!important;min-width:44px!important;padding:0!important;flex:none!important;font:900 20px/40px system-ui,sans-serif!important;text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .cfCard>.cfX::before{content:'';position:absolute;inset:-8px}
 #toast>.cfX{width:24px;height:24px;font-size:12px!important;line-height:20px!important;margin:0 0 0 6px}
 #stuckPop{max-height:calc(100dvh - 24px - var(--sat,0px) - var(--sab,0px));overflow-y:auto;overscroll-behavior:contain}
