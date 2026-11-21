@@ -56,13 +56,13 @@ body.hudx #jobHud,body.hudx #turfHud,body.hxQuitAct #actCtxBtn{display:none!impo
 #hxWay .ar{width:26px;height:26px;flex:none;display:block;transition:transform .15s linear}
 #hxWay .ar path{fill:#38e1ff;stroke:#000;stroke-width:1.2}
 #hxWay .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #hxWay .d{color:#9fe8ff}
-body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{left:auto!important;top:auto!important;right:var(--hx-ctx-right,8px)!important;bottom:var(--hx-ctx-bottom,190px)!important;max-width:min(150px,36vw);min-width:96px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (orientation:portrait){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{max-width:84px;min-width:64px!important;white-space:normal;line-height:1.1;font-size:12px;padding:4px 6px;bottom:calc(250px + var(--sab,0px))!important}}
-@media (orientation:landscape) and (max-height:500px){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct{left:calc(8px + var(--sal,0px))!important;right:auto!important;bottom:calc(128px + var(--sab,0px))!important;max-width:120px}}
+body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct,body.hudx #siltAct{left:auto!important;top:auto!important;right:var(--hx-ctx-right,8px)!important;bottom:var(--hx-ctx-bottom,190px)!important;max-width:min(150px,36vw);min-width:96px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (orientation:portrait){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct,body.hudx #siltAct{max-width:84px;min-width:64px!important;white-space:normal;line-height:1.1;font-size:12px;padding:4px 6px;bottom:calc(250px + var(--sab,0px))!important}}
+@media (orientation:landscape) and (max-height:500px){body.hudx #cbBtn,body.hudx #turfAct,body.hudx #jobAct,body.hudx #siltAct{left:calc(8px + var(--sal,0px))!important;right:auto!important;bottom:calc(128px + var(--sab,0px))!important;max-width:120px}}
 body.hudx .hxCtxOff{display:none!important}
 #hxCtxNext{position:fixed;z-index:13;display:none;min-height:44px;min-width:48px;border-radius:12px;background:#000;color:#fff;border:2px solid #fff;font:800 13px/1.1 system-ui,sans-serif;touch-action:manipulation;padding:0 4px}
 body.surface:not(.indoors):not(.cinematic) #hxCtxNext.show{display:block}
-body:has(#roverMenu.show) :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hxMapOpen :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct),body.hidehud #hxCtxNext,body.danger-standoff #hxCtxNext{display:none!important}
+body:has(#roverMenu.show) :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct,#siltAct),body.hxMapOpen :is(#hxCtxNext,#cbBtn,#turfAct,#jobAct,#siltAct),body.hidehud #hxCtxNext,body.danger-standoff #hxCtxNext{display:none!important}
 body.hxFold #ssxDock:not(:has(> :is(#dockRcn,#dockSmg,#dockSmgF,#dockSb):not([style*="display: none"]))){display:none!important} body.hxFold #ssxDock > :not(#dockRcn,#dockSmg,#dockSmgF,#dockSb){display:none!important} /* v7.5.5: on-the-spot actions (Raccoon buy/pick, smuggling pickup, Cinder Vault job) stay as a button on the spot, not in ☰ */
 @media (orientation:portrait){body.hudx #stackR{max-height:calc(25vh - 62px - var(--sat))} body.hudx #stackR:has(> #radio[style*="block"]:not(.mini)){max-height:44vh}}
 /* v7.6 ▤ More (phones): the dock items that aren't already in ☰ live here, left side under the minimap, clear of FIRE/Pet/Jump/Run/joystick */
@@ -120,6 +120,7 @@ export function pois(force) {
     for (const a of A?.list?.() || []) { if (a.deferred || !a.at) continue; const d = pack.find(p => p.id === a.id); add({ id: 'act:' + a.id, cat: a.id.includes('trial') || a.id.includes('drill') || a.id.includes('parkour') ? 'races' : 'missions', icon: ICON[a.id] || '📋', name: a.name, sub: [d?.contact, d?.location?.label].filter(Boolean).join(' · '), act: a.id }, a.at); } } catch (e) { /* no activities */ }
   for (const q of W?.people || []) if (q.kind === 'contact') add({ id: 'contact:' + (q.name || q.id), cat: 'missions', icon: '💬', name: q.name || 'Contact', sub: 'Story contact: walk up and talk' }, { x: q.x, z: q.z });
   try { for (const n of window.SSX?.contraband?.npcs?.() || []) if (n.spot) add({ id: 'cb:' + n.id, cat: 'missions', icon: '🤝', name: n.name || n.id, sub: 'Contraband buyer' }, n.spot); } catch (e) { /* none */ }
+  try { const s = window.SSX?.silt?.place?.(); if (s) add({ id: 'silt', cat: 'missions', icon: '💼', name: 'Silt Venn', sub: 'Collect a debt in Red Tape Flats. Talk, then lean. No ColSec.' }, s); } catch (e) { /* none */ }
   try { const P = window.SSX?.jobs?.places?.(); if (P) {
     (P.taxiStands || []).forEach((a, i) => add({ id: 'taxi:' + i, cat: 'missions', icon: '🚕', name: 'Taxi stand', sub: 'Taxi job: stop here in any car' }, a));
     (P.clinics || []).forEach((c, i) => add({ id: 'clinic:' + i, cat: 'missions', icon: '🚑', name: c.name || 'Clinic', sub: 'Paramedic job' }, c.at || c));

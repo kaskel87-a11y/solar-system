@@ -24,10 +24,13 @@ export const HOW = {
   duel: 'Walk up to the fighter and accept the fight.',
   build: 'Open ☰ → 🏁 Race → Build.',
   buy: 'Go to the ◆ and buy it from the seller.',
-  pay: 'Go to the ◆ and pay up.'
+  pay: 'Go to the ◆ and pay up.',
+  tap: 'Follow the ➤ arrow to the ◆, then tap the button.'
 };
 // original text -> [plain text, step type]
 export const HINTS = {
+  'Find Jory Pell in the west alley of Red Tape Flats': ['Find Jory Pell in the west alley of Red Tape Flats. Tap Lean on him.', 'tap'],
+  'Bring the take back to Silt Venn in Red Tape Flats': ['Bring the take back to Silt Venn in Red Tape Flats. Tap Hand it over.', 'tap'],
   // game.js core quests (all worlds)
   'Find the lost camera': ['Find the lost camera near the old Moon landing zone.', 'goto'],
   'Find the lost camera near the old Moon landing zone': ['Find the lost camera near the old Moon landing zone.', 'goto'],
