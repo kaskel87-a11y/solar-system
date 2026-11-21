@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.131: Silt's debt
+
+Red Tape Flats has a collector named Silt Venn. Open ☰ → Silt's debt and follow the arrow to him. Tap Talk to Silt. The arrow moves to Jory Pell in the west alley. Tap Lean on Jory, then follow the arrow back and tap Hand it over. He pays. ColSec never shows up. The eye button that brings the HUD back no longer opens the menu over the map.
+
 ## v7.5.130: a quieter screen
 
 Notices sit in one column. A mission card hides the pills, and its X is big enough to tap. The bingo result fades after a few seconds. The Velvet level line only shows when you gain XP. A new job waits until you leave the bingo table.

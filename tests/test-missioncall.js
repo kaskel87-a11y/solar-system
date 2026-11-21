@@ -30,7 +30,7 @@ const SIZES = [
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading')));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.130');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.131');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0));
     await sleep(400);

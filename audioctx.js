@@ -21,7 +21,10 @@ function silentWav() {
   let s = ''; for (const x of b) s += String.fromCharCode(x); return 'data:audio/wav;base64,' + btoa(s);
 }
 function keepAlive() {
-  if (session() || !isIOS() || window.__ssxNoKeepAlive) return; // tests: headless Linux WebKit's media stack can't play it
+  // Headless WebKit on Linux reports an iPhone user agent. Playing this element there kills the process (GStreamer).
+  // A real iPhone has platform "iPhone", not "Linux", and usually has navigator.audioSession so we never get here.
+  if (session() || !isIOS() || window.__ssxNoKeepAlive || navigator.webdriver) return;
+  try { if (/Linux/i.test(navigator.platform || '')) return; } catch (e) { return; }
   try {
     if (!silentEl) { silentEl = document.createElement('audio'); silentEl.setAttribute('playsinline', ''); silentEl.setAttribute('x-webkit-airplay', 'deny'); silentEl.loop = true; silentEl.preload = 'auto'; silentEl.src = silentWav(); }
     if (silentEl.paused && !document.hidden) silentEl.play()?.then?.(() => { stats.htmlKeepAlive = true; })?.catch?.(() => {});
