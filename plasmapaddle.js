@@ -23,7 +23,7 @@ const CSS = `#ppGame{position:fixed;inset:0;z-index:66;display:none;background:#
 #ppGame header{display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 8px 8px;box-sizing:border-box}
 #ppGame header b{flex:1;font:800 16px/1.2 system-ui,sans-serif}
 #ppGame header button,.ppStakes button{min-height:48px;min-width:48px;border-radius:12px;border:2px solid #fff;background:#000;color:#fff;font:800 15px system-ui,sans-serif}
-#ppGame canvas{flex:1 1 0;width:100%;min-height:0;height:100%;display:block;touch-action:none}
+#ppGame canvas{position:relative;inset:auto;flex:1 1 0;width:100%;min-height:120px;height:auto;display:block;touch-action:none}
 #ppGame .ppStakes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box}
 #ppGame .ppStakes button{flex:1 1 42%}
 #ppGame .hint{padding:0 10px 6px;font:700 13px/1.3 system-ui,sans-serif;color:#d8c8ff}
@@ -50,7 +50,7 @@ function ensure() {
     const y = (ev.clientY - r.top) / Math.max(1, r.height);
     meY.v = Math.max(8, Math.min(92, y * 100));
   };
-  cv.addEventListener('pointerdown', e => { down = true; cv.setPointerCapture?.(e.pointerId); setY(e); });
+  cv.addEventListener('pointerdown', e => { if (e.cancelable) e.preventDefault(); down = true; try { cv.setPointerCapture(e.pointerId); } catch (err) { /* */ } if (!live || live.over) start(0); setY(e); });
   cv.addEventListener('pointermove', e => { if (down) setY(e); });
   cv.addEventListener('pointerup', () => { down = false; });
   cv.addEventListener('pointercancel', () => { down = false; });

@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.133: Plasma Paddle plays
+
+The Plasma Paddle cabinet takes a touch. Drag the left side and your scoop moves. The match starts. Close is on the screen and brings you back to the club.
+
 ## v7.5.132: job cards you can answer
 
 Accept and Later stay on the job card. You do not have to scroll to reach them. The X stays big. A tap on the ground still closes the card. The street-good hint only shows near the Velvet or the Thin Air. A job you already took points first.

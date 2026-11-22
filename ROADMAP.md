@@ -87,6 +87,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
+- [x] **Plasma Paddle.** **v7.5.133:** a drag moves your scoop, the match starts, and Close brings you back to the club.
 - [x] **Job cards.** **v7.5.132:** Accept and Later stay on the phone card. The street-good hint stays near the Velvet. A taken job points first.
 - [x] **Silt's debt.** **v7.5.131:** a collector in Red Tape Flats. Follow the arrow to Silt Venn, lean on Jory Pell, bring the take back. No ColSec. The Show HUD tap no longer opens the menu over the minimap.
 - [x] **Quieter HUD.** **v7.5.130:** one notice column, a working X on the mission card, bingo result fades, no job offer on the bingo table.
