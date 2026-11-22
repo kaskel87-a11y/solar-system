@@ -69,7 +69,7 @@ function numTex(n) {
 function frameTable() {
   const s = window.__app?.surface;
   if (!s?.debugInside) return false;
-  try { s.setView?.('first'); s.debugInside(K.PIT.x, K.PIT.z + 3.45, 0, -0.52); } catch (e) { return false; }
+  try { window.__bingoEye = 0.6; s.setView?.('first'); s.debugInside(K.PIT.x, K.PIT.z + 4.15, 0, -0.72); } catch (e) { return false; }
   return true;
 }
 function paintRims() {
@@ -184,7 +184,7 @@ function clearMark() {
 }
 function moveBird(t, dt) {
   if (!bird) return;
-  if (!round) { restBird(t); return; }
+  if (!round) { window.__bingoEye = 0; restBird(t); return; }
   const destId = round.hops[round.hop];
   const dest = squareOf(destId);
   if (round.hold) return;
@@ -266,6 +266,7 @@ function place() {
   if (!list.includes(stake) || !K.squares().includes(pick)) return;
   if (credits() < stake) { toast(`You need ${stake} cr.`, 2200); return; }
   if (!spend(stake)) { toast(`You need ${stake} cr.`, 2200); return; }
+  try { club()?.play?.(stake); } catch (e) { /* level chip */ }
   const all = K.squares();
   const end = all[Math.floor(Math.random() * all.length)];
   const npcs = K.npcBets(Math.random, club()?.perk?.().extraNpc || 0);
@@ -293,7 +294,7 @@ function markWinner(id) {
   if (result.hit) { pay(result.pay); save.won++; save.net += result.pay - result.stake; }
   else { save.lost++; save.net -= result.stake; }
   save.played++; persist();
-  try { club()?.play?.(round.player.stake); } catch (e) { /* */ }
+  try { /* XP was granted when the bet was placed */ } catch (e) { /* */ }
   showPill(`Plopped on ${id}!`);
   round.phase = 'done';
 }

@@ -1,4 +1,4 @@
-// v7.5.131 Silt's debt (Red Tape Flats).
+// v7.5.132 Silt's debt (Red Tape Flats).
 // Silt Venn pays you to lean on Jory Pell and bring the take back. Words and a shove. No gun, no ColSec, no stars.
 // Steps say what to do. The quest beam and the edge arrow mark the spot. The button only shows when you are there.
 // window.SSX.silt = { mark(), start(), act(), state(), place(), debug }

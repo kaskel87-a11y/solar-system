@@ -19,6 +19,7 @@ body.hxOne.hudx #stackR:has(#hxCard.on){left:auto!important;right:calc(8px + var
 /* Chatter can stay hidden. A mission call (class mission) and an offer you opened (hxOffer) stay on screen. */
 body.hxOne #stackR > #radio:not(.hxOffer):not(.mission){display:none!important}
 body.hxOne #stackR > #radio.mission{display:block!important;opacity:1!important;visibility:visible!important}
+body.hxOne #stackR > #radio.mission.hxOffer{display:flex!important;flex-direction:column;overflow:hidden}
 body.hxOne #hxCard.on{background:rgba(255,255,255,.94);color:#111;border:1px solid rgba(0,0,0,.55);text-shadow:none;max-width:min(100%,340px)}
 body.hxOne #hxCard.on :is(#hxJob .l1,#hxJob .l2,#questTrack,#questTrack b,.hxTx){color:#111;text-shadow:none}
 body.hxOne #hxCard.on #questTrack{white-space:normal;overflow:visible;text-overflow:clip;max-height:none}
@@ -30,7 +31,7 @@ body.hxOne.hxBusy #obLine{display:none!important}
 body.hxOne #empPing,body.hxOne #dealCard{z-index:40}
 body.hxOne #stackR > #toast.on{max-height:34px;min-height:0;padding:4px 44px 4px 10px;background:rgba(255,255,255,.9);color:#111;overflow:hidden}
 body.hxOne #toast .ssx-t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111;-webkit-line-clamp:1}
-body.hxOne #empPing{display:none!important}
+#stackR > #empPing{order:-8}
 #hxMoreP .hxNote{grid-column:1 / -1;background:rgba(255,255,255,.92);color:#111}
 `;
 const plain = s => String(s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
