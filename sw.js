@@ -34,7 +34,7 @@ const PRECACHE = [
   ...['base', 'basecore', 'basehooks'].map(n => `${n}.js${q}`), // v7.5.72 habitat + landing pad; v7.5.94 call the Ashfall down (same files, cache key is ?v=)
   `habinterior.js${q}`, // v7.5.93 walk-in habitat room
   `mars/lab.js${q}`, `mars/labinterior.js${q}`, // Vat House walk-in room
-  `mars/silt.js${q}`, // v7.5.131 Silt's debt in Red Tape Flats
+  `mars/silt.js${q}`, // v7.5.132 Silt's debt in Red Tape Flats
   ...['time', 'timecore'].map(n => `mars/${n}.js${q}`),
   `mars/fightclub.js${q}`,
   ...['marstracks', 'marstrackcore'].map(n => `${n}.js${q}`),

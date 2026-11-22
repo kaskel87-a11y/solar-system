@@ -1204,7 +1204,7 @@ export function createSurface({ renderer, textures, isMobile, onEvent = () => {}
       }
       viewYaw = player.yaw; camYawS = null;
       if (first) {
-        camera.position.set(player.x, player.y + introY + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
+        camera.position.set(player.x, player.y + introY + (window.__bingoEye || 0) + (player.grounded ? Math.sin(player.bob) * 0.06 : 0), player.z);
         camera.rotation.set(player.pitch - introP, player.yaw, 0);
       } else camT.set(player.x, player.y - EYE + 1.5, player.z);
     }

@@ -300,7 +300,12 @@ function updDock() {
     const name = norm((b.getAttribute('aria-label') || '').replace(/\([^)]*\)\s*$/, ''));
     const twin = [...menu.querySelectorAll('button')].find(x => !x.classList.contains('hxDockItem') && (norm(x.textContent) === norm(b.textContent) || (name && norm(x.textContent).replace(/^\S+\s/, '') === name)));
     if (!m) { m = document.createElement('button'); m.id = id; m.type = 'button'; m.className = 'hxDockItem'; morePanel().appendChild(m);
-      onTap(m, () => { setMore(false); menu.classList.remove('show'); b.click(); }); }
+      onTap(m, () => {
+        setMore(false); menu.classList.remove('show');
+        if (b.id === 'dockLegal' && window.SSX?.consequences?.open) { window.SSX.consequences.open(); return; }
+        b.click();
+      }); }
+    if (b.id === 'dockLegal') m.dataset.hxpick = 'legal';
     let lab = (b.textContent || '').replace(/\s+/g, ' ').trim(); if (!/[a-z]/i.test(lab) && b.getAttribute('aria-label')) lab = `${lab} ${b.getAttribute('aria-label').replace(/\s*\([^)]*\)\s*$/, '')}`.trim(); // icon-only dock buttons (🎯) get their name
     if (m.textContent !== lab) m.textContent = lab;
     const shown = b.style.display !== 'none' && !b.hidden; m.classList.toggle('show', shown);

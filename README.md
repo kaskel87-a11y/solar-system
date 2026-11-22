@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.132: job cards you can answer
+
+Accept and Later stay on the job card. You do not have to scroll to reach them. The X stays big. A tap on the ground still closes the card. The street-good hint only shows near the Velvet or the Thin Air. A job you already took points first.
+
 ## v7.5.131: Silt's debt
 
 Red Tape Flats has a collector named Silt Venn. Open ☰ → Silt's debt and follow the arrow to him. Tap Talk to Silt. The arrow moves to Jory Pell in the west alley. Tap Lean on Jory, then follow the arrow back and tap Hand it over. He pays. ColSec never shows up. The eye button that brings the HUD back no longer opens the menu over the map.

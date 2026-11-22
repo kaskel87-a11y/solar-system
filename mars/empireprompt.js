@@ -50,14 +50,14 @@ function clearPin() {
   pinKey = '';
   try { window.SSX?.hudx?.setWaypoint?.(null, true); } catch (e) { /* */ }
 }
-const PING_CSS = `#empPing{display:none;position:fixed;z-index:12;top:calc(116px + var(--sat,0px));left:calc(108px + var(--sal,0px));right:calc(8px + var(--sar,0px));box-sizing:border-box;padding:8px 52px 8px 10px;border-radius:9px;background:#000;color:#fff;border:1px solid #fff;font:700 14px/1.35 system-ui,sans-serif;text-align:left}#empPing.on{display:block}#empPing .t{display:block}body:has(#empPing.on) #radio.mini{display:none!important}`;
+const PING_CSS = `#empPing{display:none;position:relative;z-index:1;box-sizing:border-box;width:100%;padding:8px 52px 8px 10px;border-radius:9px;background:#000;color:#fff;border:1px solid #fff;font:700 14px/1.35 system-ui,sans-serif;text-align:left}#empPing.on{display:block}#empPing .t{display:block}body:has(#empPing.on) #radio.mini{display:none!important}`;
 function ensurePing() {
   let el = document.getElementById('empPing');
   if (el) return el;
   const st = document.createElement('style'); st.id = 'empPingCss'; st.textContent = PING_CSS; document.head.appendChild(st);
   el = document.createElement('div'); el.id = 'empPing';
   el.innerHTML = '<span class="t"></span><button type="button" class="ssx-x" aria-label="Close">✕</button>';
-  document.body.appendChild(el);
+  (document.getElementById('stackR') || document.body).appendChild(el);
   el.querySelector('.ssx-x').addEventListener('pointerup', e => { e.stopPropagation(); el.classList.remove('on'); });
   el.addEventListener('pointerup', e => { if (e.target.closest('.ssx-x')) return; pin(+el.dataset.ex, +el.dataset.ez, el.dataset.el || 'Empire'); });
   return el;

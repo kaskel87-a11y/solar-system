@@ -458,7 +458,7 @@ function teardown() { if (G) { G.parent?.remove(G); G.traverse(o => { o.geometry
 // ---------- UI ----------
 const css = `
 #cqScreen{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.72);pointer-events:none}
-#cqScreen .ssx-x{pointer-events:auto;position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));width:44px;height:44px;min-width:44px;min-height:44px;border-radius:10px;border:1px solid #fff;background:#000;color:#fff;font:700 22px/40px system-ui,sans-serif;touch-action:manipulation}
+#cqScreen .ssx-x{pointer-events:auto;position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));width:44px;height:44px;min-width:44px;min-height:44px;border-radius:10px;border:1px solid #fff;background:#000;color:#fff;font:700 22px/40px system-ui,sans-serif;touch-action:manipulation}
 #cqScreen.on{display:flex}#cqScreen b{font:900 clamp(54px,14vw,132px)/1 Impact,'Arial Black',system-ui,sans-serif;letter-spacing:.06em;-webkit-text-stroke:3px #fff;text-shadow:0 0 18px #000,4px 4px 0 #000}
 #cqScreen small{margin-top:14px;color:#fff;font:800 20px/1.2 system-ui,sans-serif;text-shadow:0 2px 6px #000}
 #cqPanel{position:fixed;inset:0;z-index:58;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
@@ -469,7 +469,7 @@ const css = `
 #cqPanel .msg{min-height:18px;margin-top:8px;color:#ffd400;font-weight:800}
 #cqPanel .wrap{max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box}
 @media (max-height:500px){#cqPanel .wrap{width:min(720px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));padding:8px 10px 8px;font-size:13px}#cqPanel h2{font-size:17px}#cqPanel p{margin:3px 0}#cqPanel .cqB{display:grid;grid-template-columns:1fr 1fr;column-gap:8px}#cqPanel button{min-height:44px;margin-top:6px;padding:5px 10px;font-size:14px}#cqPanel button small{font-size:11px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}} /* v7.5.23 (m3): landscape phones get the booking choices in two columns so Break out / Decide later stay on screen */
-#cqHud{position:fixed;z-index:14;left:50%;transform:translateX(-50%);top:calc(116px + env(safe-area-inset-top));display:none;align-items:center;gap:8px;max-width:calc(100vw - 20px);background:#000;color:#fff;border:2px solid #fff;border-radius:14px;padding:4px 4px 4px 12px;font:800 14px/1.2 system-ui,sans-serif}
+#cqHud{position:relative;z-index:1;display:none;align-items:center;gap:8px;width:100%;box-sizing:border-box;background:#000;color:#fff;border:2px solid #fff;border-radius:14px;padding:4px 4px 4px 12px;font:800 14px/1.2 system-ui,sans-serif}
 #cqHud.on{display:flex}#cqHud.alarm{border-color:#ff2a2a;background:#2a0000}#cqHud button{min-height:44px;min-width:64px;border-radius:10px;border:2px solid #fff;background:#fff;color:#000;font:900 14px system-ui,sans-serif;touch-action:manipulation}
 `;
 let screenEl, panel, pBody, pMsg, hud, hudTx, hudBtn, dockBtn, screenT = 0;
@@ -480,7 +480,7 @@ function ui() {
   const xb = screenEl.querySelector('button'); xb.addEventListener('click', () => { screenEl.classList.remove('on'); screenEl.dataset.until = ''; });
   panel = document.createElement('div'); panel.id = 'cqPanel'; panel.innerHTML = '<div class="wrap" role="dialog" aria-label="Legal"><div id="cqBody"></div><div class="msg" id="cqMsg"></div></div>'; document.body.appendChild(panel);
   pBody = panel.querySelector('#cqBody'); pMsg = panel.querySelector('#cqMsg');
-  hud = document.createElement('div'); hud.id = 'cqHud'; hud.innerHTML = '<span class="tx"></span><button id="cqHudBtn" type="button">Options</button>'; document.body.appendChild(hud);
+  hud = document.createElement('div'); hud.id = 'cqHud'; hud.innerHTML = '<span class="tx"></span><button id="cqHudBtn" type="button">Options</button>'; (document.getElementById('stackR') || document.body).appendChild(hud);
   hudTx = hud.querySelector('.tx'); hudBtn = hud.querySelector('#cqHudBtn'); tap(hudBtn, () => hudAction());
   addEventListener('keydown', e => { if (e.code !== HOTKEY || e.repeat || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '') || !app()?.state?.onSurface) return; panel.classList.contains('show') ? closePanel() : showPanel(custody?.inCell ? 'booking' : 'legal'); });
   try { window.SSX.registerMenuItem({ id: 'rmLegal', label: '⚖️ Legal', onTap: () => showPanel(custody?.inCell ? 'booking' : 'legal') }); } catch (e) { console.warn('consequences menu', e); }

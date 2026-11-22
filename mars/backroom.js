@@ -218,9 +218,19 @@ function paintFx() {
     veil.style.background = !night ? 'transparent' : fx.phase === 'on' ? 'rgba(40,255,120,0.14)' : 'rgba(0,0,0,0.28)';
   }
 }
+function nearLesson() {
+  const i = info(); if (!i) return false;
+  const loc = localOf();
+  if (loc?.kind === 'club') return true;
+  const club = clubDoor();
+  if (club && Math.hypot(i.x - club.x, i.z - club.z) < 70) return true;
+  const thin = thinDoor();
+  if (thin && Math.hypot(i.x - thin.x, i.z - thin.z) < 70) return true;
+  return false;
+}
 function lessonTick() {
-  if (state.seen || state.deal) { dropLessonWaypoint(); try { window.SSX?.guide?.clear?.('backroom'); } catch (e) { /* */ } return; }
-  const where = boothWorld('velvet') || boothWorld('thin');
+  if (state.seen || state.deal || !nearLesson()) { dropLessonWaypoint(); try { window.SSX?.guide?.clear?.('backroom'); } catch (e) { /* */ } return; }
+  const where = localOf()?.kind === 'club' ? boothWorld('velvet') : (boothWorld('thin') || boothWorld('velvet'));
   if (!where) return;
   const step = B.lesson(state.pack, where);
   pin(step.x, step.z, step.text);

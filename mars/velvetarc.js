@@ -403,7 +403,8 @@ const INES = WING.ines;
 function pointInes() {
   const guide = X().guide; if (!guide?.aim) return;
   const app = APP(), L = app && local(app), busy = !!game()?.info?.quest;
-  if (!L || busy) { try { guide.clear('ines'); } catch (e) { /* */ } return; }
+  const lounge = window.SSX?.bosslounge?.state?.();
+  if (!L || busy || lounge?.job || lounge?.fighter) { try { guide.clear('ines'); } catch (e) { /* */ } return; }
   const dx = INES.x - L.x, dz = INES.z - L.z, dist = Math.hypot(dx, dz);
   if (dist < 4) { guide.clear('ines'); return; }
   const b = bearingNdc(dx, dz, app.surface?.info?.viewYaw || 0);

@@ -1,4 +1,4 @@
-// v7.5.131 Silt's debt, plus a two-finger pinch on the map.
+// v7.5.132 Silt's debt, plus a two-finger pinch on the map.
 // BASE=http://127.0.0.1:8765/ BR=webkit DEV="iPhone 14" node tests/test-silt.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8765/';
@@ -34,7 +34,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.131');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.132');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && window.__app.surface.info?.intro === 0, 120000));
     await sleep(600);

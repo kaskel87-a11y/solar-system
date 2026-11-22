@@ -37,8 +37,12 @@ function shove(node) {
   }
   // Keep the arrow off the mission card. Park it under the minimap, on the left.
   const stack = document.getElementById('stackR')?.getBoundingClientRect();
-  if (stack && stack.width > 8 && r.right > stack.left + 4 && r.left < stack.right - 4 && r.bottom > stack.top + 4 && r.top < stack.bottom - 4) {
-    const y2 = Math.min(Math.max(stack.bottom + 8 + r.height / 2, 168), floor - r.height / 2);
+  const more = document.getElementById('hxMore')?.getBoundingClientRect();
+  const block = Math.max(stack && stack.width > 8 ? stack.bottom : 0, more && more.width > 8 ? more.bottom : 0);
+  const hitsStack = stack && stack.width > 8 && r.right > stack.left + 4 && r.left < stack.right - 4 && r.bottom > stack.top + 4 && r.top < stack.bottom - 4;
+  const hitsMore = more && more.width > 8 && r.right > more.left + 4 && r.left < more.right - 4 && r.bottom > more.top + 4 && r.top < more.bottom - 4;
+  if (hitsStack || hitsMore) {
+    const y2 = Math.min(Math.max(block + 8 + r.height / 2, 72 + r.height / 2), floor - r.height / 2);
     place(margin + r.width / 2, y2);
   }
 }
@@ -62,7 +66,8 @@ function show(spec) {
 }
 function hide() { el?.classList.remove('on'); last = null; }
 
-const HINTS = new Set(['backroom']); // the back-booth lesson. It never outranks a live job.
+const HINTS = new Set(['backroom']); // the street-good lesson. Ines is a live arrow. A taken job outranks both.
+const JOBS = new Set(['lounge', 'silt', 'heist']);
 const pins = new Map();
 function lessonLabel(t) { return /street good|back booth/i.test(String(t || '')); }
 function aim(spec) {
@@ -141,7 +146,18 @@ function freshPin(hint) {
   }
   return best?.spec || null;
 }
+function freshJob() {
+  let best = null;
+  const now = performance.now();
+  for (const [id, p] of pins) {
+    if (!JOBS.has(id) || now - p.at > 900) continue;
+    if (!best || p.at > best.at) best = p;
+  }
+  return best?.spec || null;
+}
 function pick() {
+  const job = freshJob();
+  if (job) return job;
   const live = freshPin(false);
   const indoors = document.body.classList.contains('indoors');
   // Indoors, the room's own arrow (staff room, Pit seat) is in room space. A world waypoint would point the wrong way.
@@ -149,8 +165,10 @@ function pick() {
   const mission = missionPointer();
   if (mission && !indoors) return mission;
   if (live) return live;
+  const hint = freshPin(true);
+  if (indoors && hint) return hint;
   if (realObjective(objectiveNow())) return null;
-  return freshPin(true);
+  return hint;
 }
 function offerUp() {
   const r = document.getElementById('radio'), b = document.getElementById('radioBtns');
