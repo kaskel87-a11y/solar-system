@@ -3,12 +3,13 @@
 // (ACES filmic, sRGB, fog nudged toward the sky, a hemisphere fill where a scene has none).
 // Low is lighter: pixel ratio capped at 1, no shadows, shorter fog, flatter textures.
 // High is opt-in: a sun shadow on nearby meshes, a higher pixel-ratio cap, and a small environment light.
-// A phone is never moved to High on its own. ?gfx=low|medium|high overrides one session.
-// Rules live in gfxcore.js.
+// v7.5.140: Medium and High also dust the big ground and warm the sun a little. High adds a film
+// vignette and grain in CSS (no extra render target). Low does neither. A phone is never moved to High on its own.
+// ?gfx=low|medium|high overrides one session. Rules live in gfxcore.js.
 import * as THREE from 'three';
 import * as G from './gfxcore.js';
 
-const S = { tier: G.DEFAULT, phone: false, cap: 2, start: 2, hemi: false, ibl: false, env: null, casters: 0, aniso: 0 };
+const S = { tier: G.DEFAULT, phone: false, cap: 2, start: 2, hemi: false, ibl: false, env: null, casters: 0, aniso: 0, detail: 0, post: false, sun: 1 };
 const warned = new Set();
 const warnOnce = (k, e) => { if (warned.has(k)) return; warned.add(k); console.warn('[gfx] ' + k, e); };
 const app = () => window.__app;
@@ -246,6 +247,140 @@ function applyEnv(scene, on) {
   }
 }
 
+// ---------- v7.5.140: dust on the big ground, a warmer sun, and a High-only film grade ----------
+const patched = new Set();
+let detailAt = 0, detailScene = null, post = null, grainUrl = null;
+
+function dustHook(shader) {
+  try {
+    const next = G.dustShader(shader.vertexShader, shader.fragmentShader);
+    if (!next) { warnOnce('dust', 'shader'); return; }
+    shader.vertexShader = next.vertex; shader.fragmentShader = next.fragment;
+  } catch (e) { warnOnce('dust', e); }
+}
+function unpatch(m) {
+  if (!m) return;
+  delete m.onBeforeCompile;
+  m.needsUpdate = true;
+  if (m.userData) m.userData.gfxDust = 0;
+  patched.delete(m);
+}
+function clearDetail() {
+  for (const m of [...patched]) unpatch(m);
+  S.detail = 0;
+}
+function patchMat(m) {
+  if (!m || patched.has(m)) return;
+  m.userData.gfxDust = 1;
+  m.onBeforeCompile = dustHook;
+  m.needsUpdate = true;
+  patched.add(m);
+}
+function detailInfo(mesh, m) {
+  const e = m.emissive;
+  const glow = (m.emissiveIntensity || 0) * ((e?.r || 0) + (e?.g || 0) + (e?.b || 0));
+  let bs = mesh.geometry?.boundingSphere;
+  if (!bs && mesh.geometry) { try { mesh.geometry.computeBoundingSphere(); bs = mesh.geometry.boundingSphere; } catch { /* */ } }
+  const radius = bs?.radius || 0;
+  return {
+    basic: !m.isMeshStandardMaterial,
+    transparent: !!(m.transparent || (m.opacity != null && m.opacity < 0.92)),
+    skinned: !!mesh.isSkinnedMesh,
+    emissive: glow,
+    radius,
+    hasMap: !!m.map,
+    terrain: !!m.vertexColors && radius > 12,
+    skip: !!(m.userData?.noGfx || m.userData?.noV8 || mesh.userData?.noGfx || mesh.userData?.noV8)
+  };
+}
+function detailTick(scene, look) {
+  if (!look.detail) { if (patched.size) clearDetail(); detailScene = scene; return; }
+  if (detailScene !== scene) { clearDetail(); detailScene = scene; detailAt = 0; }
+  if (patched.size >= look.patches) { S.detail = patched.size; return; }
+  const now = performance.now();
+  if (detailAt && now - detailAt < 800) return;
+  detailAt = now;
+  const best = new Map();
+  scene.traverse(o => {
+    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      if (!m?.isMeshStandardMaterial || patched.has(m)) continue;
+      const info = detailInfo(o, m);
+      if (!G.wantsDetail(info)) continue;
+      const prev = best.get(m) || 0;
+      if (info.radius > prev) best.set(m, info.radius);
+    }
+  });
+  const ranked = [...best.entries()].sort((a, b) => b[1] - a[1]);
+  const room = look.patches - patched.size;
+  for (let i = 0; i < ranked.length && i < room; i++) patchMat(ranked[i][0]);
+  S.detail = patched.size;
+}
+function gradeOne(light, scale) {
+  if (!light) return;
+  const ud = light.userData;
+  const cur = light.intensity;
+  const wrote = ud.gfxSet != null && Math.abs(cur - ud.gfxSet) < 1e-3;
+  if (!wrote) ud.gfxRaw = cur;
+  if (!(scale > 1.001)) {
+    if (wrote && ud.gfxRaw != null) light.intensity = ud.gfxRaw;
+    ud.gfxRaw = null; ud.gfxSet = null;
+    return;
+  }
+  const next = (ud.gfxRaw == null ? cur : ud.gfxRaw) * scale;
+  light.intensity = next;
+  ud.gfxSet = next;
+}
+function gradeLights(scene, look, on) {
+  if (!scene?.children) return;
+  const sun = on ? look.sun : 1, hemi = on ? look.hemi : 1;
+  gradeOne(sunOf(scene), sun);
+  for (const o of scene.children) if (o.isHemisphereLight && !o.userData?.gfxHemi) { gradeOne(o, hemi); break; }
+  S.sun = on ? look.sun : 1;
+}
+function grainURL() {
+  if (grainUrl) return grainUrl;
+  const cnv = document.createElement('canvas'); cnv.width = 64; cnv.height = 64;
+  const g = cnv.getContext('2d'), img = g.createImageData(64, 64);
+  let x = 12345;
+  for (let i = 0; i < img.data.length; i += 4) {
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    const n = 70 + (x % 150);
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = n; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  grainUrl = cnv.toDataURL('image/png');
+  return grainUrl;
+}
+function postEl() {
+  if (post) return post;
+  post = document.createElement('div');
+  post.id = 'gfxPost'; post.setAttribute('aria-hidden', 'true');
+  post.style.cssText = 'display:none;position:fixed;inset:0;z-index:2;pointer-events:none;';
+  const v = document.createElement('div'); v.id = 'gfxVignette';
+  v.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center, rgba(0,0,0,0) 46%, rgba(12,6,4,0.55) 100%)';
+  const gn = document.createElement('div'); gn.id = 'gfxGrain';
+  gn.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0.22;mix-blend-mode:overlay;background-size:128px 128px;background-image:url("' + grainURL() + '")';
+  post.append(v, gn); document.body.appendChild(post);
+  return post;
+}
+function syncPost(look) {
+  const el = postEl();
+  const on = !!(look.post && document.body.classList.contains('surface'));
+  el.style.display = on ? 'block' : 'none';
+  S.post = on;
+}
+function applyLook() {
+  const look = G.lookOf(S.tier);
+  const surf = app()?.surface?.scene;
+  const inside = !!app()?.surface?.info?.inside;
+  if (surf) gradeLights(surf, look, !inside && (look.sun > 1 || look.hemi > 1));
+  syncPost(look);
+  if (!look.detail) clearDetail();
+  else detailAt = 0;
+}
+
 function applyAniso(c) {
   const roots = [app()?.surface?.scene, spaceScene()].filter(Boolean);
   if (c.aniso == null && !anisoDirty) return;
@@ -266,6 +401,7 @@ function applyAll() {
   applyAniso(c);
   if (surf) hookFog(surf);
   hookTime();
+  try { applyLook(); } catch (e) { warnOnce('look', e); }
   return c;
 }
 
@@ -277,6 +413,10 @@ function tick(dt, ctx) {
   if (performance.now() - anisoAt > 2000) { anisoAt = performance.now(); try { applyAniso(c); } catch (e) { warnOnce('aniso', e); } }
   if (c.ibl && !scene.userData?.gfxEnv) applyEnv(scene, true);
   if (!c.ibl && scene.userData?.gfxEnv) applyEnv(scene, false);
+  const look = G.lookOf(S.tier);
+  try { gradeLights(scene, look, !ctx?.world?.inside); } catch (e) { warnOnce('sun', e); }
+  try { detailTick(scene, look); } catch (e) { warnOnce('detail', e); }
+  try { syncPost(look); } catch (e) { warnOnce('post', e); }
 }
 
 // ---------- ☰ menu ----------
@@ -320,7 +460,7 @@ function open() {
     panel = document.createElement('div'); panel.id = 'gfxPanel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Graphics');
     panel.style.cssText = 'position:fixed;z-index:60;top:calc(58px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));display:none;flex-direction:column;gap:6px;width:min(220px,calc(100vw - 16px));padding:8px;border-radius:12px;background:rgba(8,10,20,0.96);border:1px solid rgba(255,255,255,0.35);color:#fff;font:700 14px system-ui,sans-serif;touch-action:manipulation';
     const h = document.createElement('div'); h.textContent = '🎨 Graphics'; h.style.cssText = 'padding:2px 4px 0';
-    const p = document.createElement('div'); p.textContent = 'Saved on this device. Medium is the usual look.'; p.style.cssText = 'font-weight:400;font-size:12px;opacity:0.8;padding:0 4px 2px';
+    const p = document.createElement('div'); p.textContent = 'Saved on this device. Medium is the usual look, with dust on the ground. High adds a film grade.'; p.style.cssText = 'font-weight:400;font-size:12px;opacity:0.8;padding:0 4px 2px';
     for (const k of G.ORDER) {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.id = 'gfx-' + k;
       b.style.cssText = 'min-height:44px;border-radius:10px;font:700 15px system-ui,sans-serif;text-align:left;padding:8px 12px;background:#111;color:#fff;border:1px solid rgba(255,255,255,0.55)';
@@ -352,6 +492,7 @@ const API = {
       output: R?.outputColorSpace || null,
       fogFar: fog?.far ?? null, fogIn: S.fogIn ?? null, fogOut: S.fogOut ?? null,
       hemi: S.hemi, ibl: S.ibl,
+      detail: S.detail, post: S.post, sun: S.sun, look: G.lookOf(S.tier),
       panel: panel?.style.display === 'flex',
       saved: (() => { try { return localStorage.getItem(G.SAVE_KEY); } catch { return null; } })()
     };
@@ -359,7 +500,8 @@ const API = {
   rules: () => ({
     key: G.SAVE_KEY, order: G.ORDER.slice(), def: G.DEFAULT,
     low: G.caps('low', 3, true), med: G.caps('medium', 3, true), high: G.caps('high', 3, true),
-    medDesk: G.caps('medium', 3, false), highDesk: G.caps('high', 3, false)
+    medDesk: G.caps('medium', 3, false), highDesk: G.caps('high', 3, false),
+    look: { low: G.lookOf('low'), med: G.lookOf('medium'), high: G.lookOf('high') }
   })
 };
 window.__gfx = { S, G, API };
@@ -373,6 +515,10 @@ function boot() {
   try { btn = X.registerMenuItem({ id: 'gfxMenuBtn', label: menuLabel(), onTap: () => open() }); } catch (e) { warnOnce('menu', e); }
   try { applyAll(); } catch (e) { warnOnce('apply', e); }
   try { X.registerSurfaceTick(tick); } catch (e) { warnOnce('tickreg', e); }
+  try {
+    new MutationObserver(() => { try { syncPost(G.lookOf(S.tier)); } catch (e) { warnOnce('post', e); } })
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  } catch (e) { warnOnce('post', e); }
   paint();
 }
 boot();

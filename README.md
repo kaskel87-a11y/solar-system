@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.140: dust and a film grade
+
+The ground on Medium and High looks dustier, and the sun is a little warmer. Medium is still the look a phone starts on. Open ☰ → 🎨 Graphics and pick High for dark corners and a grain over the picture. Low stays the flat, lighter look.
+
 ## v7.5.139: walk up to it
 
 When you get close to a table, a person, or a door, one button sits by your thumb. Talk to Ines, play bingo, start a brawl, ask the corner, see Silt. Press E on a keyboard. The menu keeps those under More places.

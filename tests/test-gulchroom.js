@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.139');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.140');
     await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0 && window.SSX.farm2, 120000));
     await G(() => { window.__app.game.progress.credits = 20000; window.__app.game.progress.xp = 4000; window.__app.game.save(); window.SSX.farm2.debug.reset(); window.SSX.farm2.debug.rng(0.99); window.__app.surface.world.setWanted(0); window.SSX.onboard?.skip?.(); });

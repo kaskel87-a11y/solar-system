@@ -48,3 +48,43 @@ export const matchFog = (fog, horizon, k, dpr, phone) => {
   if (!(m > 0) || fog == null || horizon == null) return fog;
   return mixHex(fog, horizon, m);
 };
+
+// v7.5.140 look slice. Tiers, shadows and the cheap environment light stay as they were.
+// This is the piece the old look-dev left open, cut down so a phone on Medium does no extra pass:
+// dust detail and a slightly hotter sun on Medium and High, and a screen vignette plus grain on High only.
+// Low stays flat. No second render target, no bloom, no ambient occlusion.
+export function lookOf(k) {
+  const key = norm(k);
+  if (key === 'low') return Object.freeze({ tier: key, detail: false, sun: 1, hemi: 1, post: false, grain: 0, vignette: 0, patches: 0 });
+  if (key === 'high') return Object.freeze({ tier: key, detail: true, sun: 1.16, hemi: 1.06, post: true, grain: 0.22, vignette: 0.55, patches: 4 });
+  return Object.freeze({ tier: 'medium', detail: true, sun: 1.1, hemi: 1.04, post: false, grain: 0, vignette: 0, patches: 3 });
+}
+
+// Drop the dust function into a MeshStandard shader. Returns null when the shader shape is not the one we know.
+const DUST_FN = 'float gfxDust(vec3 p){float a=sin(p.x*0.37)*sin(p.z*0.29);float b=sin(p.x*2.15+p.z*1.63)*sin(p.x*0.91-p.z*1.77);return clamp(0.5+a*0.34+b*0.16,0.0,1.0);}';
+function splice(src, needle, extra) {
+  const i = src.indexOf(needle);
+  if (i < 0) return null;
+  return src.slice(0, i + needle.length) + extra + src.slice(i + needle.length);
+}
+export function dustShader(vertex, fragment) {
+  const v1 = splice(vertex, 'varying vec3 vViewPosition;', '\nvarying vec3 vGfxW;');
+  const v = v1 && splice(v1, '#include <skinning_vertex>', '\nvGfxW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  let f = splice(fragment, 'varying vec3 vViewPosition;', '\nvarying vec3 vGfxW;');
+  f = f && splice(f, '#include <common>', '\n' + DUST_FN);
+  f = f && splice(f, '#include <color_fragment>', '\n{float d=gfxDust(vGfxW);diffuseColor.rgb*=mix(vec3(0.70,0.60,0.52),vec3(1.16,1.05,0.90),d);}');
+  f = f && splice(f, '#include <roughnessmap_fragment>', '\nroughnessFactor=clamp(roughnessFactor+(gfxDust(vGfxW)-0.5)*0.22,0.08,1.0);');
+  if (!v || !f) return null;
+  return { vertex: v, fragment: f };
+}
+
+// A big plain surface earns the dust. The shared ground material counts even though it already has a grain map.
+// Glass, skin, glow, and anything with its own picture stay as they are.
+export function wantsDetail(o) {
+  if (!o || o.basic || o.transparent || o.skinned) return false;
+  if ((+o.emissive || 0) > 0.25) return false;
+  if (o.skip) return false;
+  if (o.terrain) return true;
+  if (o.hasMap) return false;
+  return (+o.radius || 0) >= 4;
+}
