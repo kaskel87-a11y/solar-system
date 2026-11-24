@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.134: you get hurt
+
+Hits take 20% more off your shield and your health. A fight can actually put you down.
+
 ## v7.5.133: Plasma Paddle plays
 
 The Plasma Paddle cabinet takes a touch. Drag the left side and your scoop moves. The match starts. Close is on the screen and brings you back to the club.
