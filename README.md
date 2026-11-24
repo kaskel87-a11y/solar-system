@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.137: a fight to the death
+
+Inside the Velvet, open ☰ → Velvet brawl. Pick Vex Kline, Sera Doss, or Brick Moll. Hit. Both health bars move. One of you dies. A win pays double the bet.
+
 ## v7.5.136: take the Velvet
 
 Open ☰ → Take the Velvet. Follow the arrow to Ines. Push her in the argument. Take the floor. She ends up in a work coat behind a counter in Red Tape Flats. Visit her there.

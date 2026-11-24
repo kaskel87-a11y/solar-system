@@ -36,6 +36,7 @@ const PRECACHE = [
   `mars/lab.js${q}`, `mars/labinterior.js${q}`, // Vat House walk-in room
   `mars/silt.js${q}`, // v7.5.132 Silt's debt in Red Tape Flats
   `mars/velvettake.js${q}`, // take the Velvet, then visit Ines in the Flats
+  `mars/velvetbrawl.js${q}`, // fight to the death inside the Velvet
   ...['time', 'timecore'].map(n => `mars/${n}.js${q}`),
   `mars/fightclub.js${q}`,
   ...['marstracks', 'marstrackcore'].map(n => `${n}.js${q}`),
