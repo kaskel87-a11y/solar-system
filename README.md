@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.138: the corner
+
+In a Red Tape Flats alley, or out at Red Static Gulch, tap Ask the corner. The prices run from 100 to 5,000 cr. Everyone there is an adult, and nobody undresses. The screen goes black. You pay, you hear the line, and you walk.
+
 ## v7.5.137: a fight to the death
 
 Inside the Velvet, open ☰ → Velvet brawl. Pick Vex Kline, Sera Doss, or Brick Moll. Hit. Both health bars move. One of you dies. A win pays double the bet.

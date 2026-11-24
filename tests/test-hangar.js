@@ -21,7 +21,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading')));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.137');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.138');
     await G(() => { window.__app.game.progress.credits = 250000; window.__app.game.save(); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
     ok('landed', await wait(() => window.__app.state.onSurface && !window.__app.state.transitioning && window.__app.surface.info?.intro === 0 && !!window.__dealer?.spots));
     await G(() => { const r = document.getElementById('radio'); if (r) { r.style.display = 'none'; r.classList.remove('mission'); } });
