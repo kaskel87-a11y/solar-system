@@ -23,7 +23,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.135');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.136');
     await G(() => { window.__app.game.progress.credits = 200000; window.__app.game.save(); window.SSX.velvetclub?.debug?.reset?.(); window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh); });
     ok('landed', await wait(() => window.__app.state.onSurface && window.__app.surface.info?.intro === 0, 120000));
     const door = await G(() => window.__app.surface.world.doorList().find(d => d.kind === 'club'));

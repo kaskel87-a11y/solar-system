@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.136: take the Velvet
+
+Open ☰ → Take the Velvet. Follow the arrow to Ines. Push her in the argument. Take the floor. She ends up in a work coat behind a counter in Red Tape Flats. Visit her there.
+
 ## v7.5.135: shoot the cop, then run
 
 A shot at a cop, on foot or in the cruiser, raises your wanted level and starts a chase. It does not arrest you. They only pinch you if they beat you or corner you.

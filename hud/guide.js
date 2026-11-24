@@ -67,7 +67,7 @@ function show(spec) {
 function hide() { el?.classList.remove('on'); last = null; }
 
 const HINTS = new Set(['backroom']); // the street-good lesson. Ines is a live arrow. A taken job outranks both.
-const JOBS = new Set(['lounge', 'silt', 'heist']);
+const JOBS = new Set(['lounge', 'silt', 'heist', 'take']);
 const pins = new Map();
 function lessonLabel(t) { return /street good|back booth/i.test(String(t || '')); }
 function aim(spec) {
