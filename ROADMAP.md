@@ -87,6 +87,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
+- [x] **The corner.** **v7.5.138:** street offers in Red Tape Flats and Red Static Gulch, 100 to 5,000 cr. Adults, clothes on, fade to black.
 - [x] **Velvet brawl.** **v7.5.137:** pick a fighter inside the club. Both of you have health. Either of you can die. A win pays double.
 - [x] **Take the Velvet.** **v7.5.136:** push Ines, follow the steps, then visit her at a counter in Red Tape Flats.
 - [x] **Cops in cars.** **v7.5.135:** shoot a cop on foot or in a cruiser. The first shots start a chase. Arrest is only if they beat you or corner you.
