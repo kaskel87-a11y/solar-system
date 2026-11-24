@@ -38,6 +38,7 @@ const PRECACHE = [
   `mars/velvettake.js${q}`, // take the Velvet, then visit Ines in the Flats
   `mars/velvetbrawl.js${q}`, // fight to the death inside the Velvet
   `mars/streetwork.js${q}`, // street offers in the Flats and the Gulch
+  `hud/areaprompt.js${q}`, // one walk-up prompt
   ...['time', 'timecore'].map(n => `mars/${n}.js${q}`),
   `mars/fightclub.js${q}`,
   ...['marstracks', 'marstrackcore'].map(n => `${n}.js${q}`),

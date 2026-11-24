@@ -1172,7 +1172,17 @@ export function createWorld(ctx) {
     // live fix hook (roofs.js): vehicleGround(car) is the ground function updateRover uses (terrain or a roof the car is on);
     // addSolid/removeSolid let modules (myrides.js parked rides) add footprints that collide and can be landed on
     vehicleGround: car => roofGround(car), playerGround, addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
-    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), endPit: (why) => (duel && (duel.pit || duel.tag?.fc) ? endDuel(why || 'ko-lose') : null), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
+    layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot,
+    spotList() {
+      if (!inside) return [];
+      const out = [];
+      for (const s of inside.room.spots) {
+        if (s.cond && !s.cond()) continue;
+        out.push({ id: s.id || s.act || 'spot', label: s.label || '', x: inside.ax + s.x, z: inside.az + s.z, r: (s.r || 1.6) + 2.2, act: s.act, spot: s });
+      }
+      return out;
+    },
+    warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), endPit: (why) => (duel && (duel.pit || duel.tag?.fc) ? endDuel(why || 'ko-lose') : null), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
     doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime, copProvoked,
     colonyAt: p => C ? toW(p) : null,
