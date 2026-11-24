@@ -1,4 +1,4 @@
-// v7.5.138 street offers. BASE=http://127.0.0.1:8771/ node tests/test-streetwork.js
+// v7.5.139 street offers. BASE=http://127.0.0.1:8771/ node tests/test-streetwork.js
 const pw = require('playwright');
 const base = process.env.BASE || 'http://127.0.0.1:8771/';
 const only = process.env.ONLY || 'chromium:iPhone 14,webkit:iPhone 14,chromium:desktop';
@@ -24,7 +24,7 @@ const out = (process.env.OUT || '/opt/cursor/artifacts/').replace(/\/?$/, '/');
       await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
       await wait(() => window.__frames > 3 && !document.getElementById('loading'));
       const ver = await G(() => document.querySelector('meta[name="app-version"]').content);
-      if (ver !== 'v7.5.138') bad.push(tag + ' version ' + ver);
+      if (ver !== 'v7.5.139') bad.push(tag + ' version ' + ver);
       await G(() => window.__app.landOn(window.__app.bodies.find(b => b.name === 'Mars').mesh));
       await wait(() => window.__app.state.onSurface && window.__app.surface.info?.intro === 0);
       await wait(() => !!window.SSX?.streetWork?.buy);

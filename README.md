@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.139: walk up to it
+
+When you get close to a table, a person, or a door, one button sits by your thumb. Talk to Ines, play bingo, start a brawl, ask the corner, see Silt. Press E on a keyboard. The menu keeps those under More places.
+
 ## v7.5.138: the corner
 
 In a Red Tape Flats alley, or out at Red Static Gulch, tap Ask the corner. The prices run from 100 to 5,000 cr. Everyone there is an adult, and nobody undresses. The screen goes black. You pay, you hear the line, and you walk.
