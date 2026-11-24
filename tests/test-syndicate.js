@@ -27,7 +27,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading'), 120000));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.135');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.136');
     ok('title', await G(() => document.title) === 'Solar Syndicate');
     const box = await G(() => {
       const h = document.querySelector('#info h1');
