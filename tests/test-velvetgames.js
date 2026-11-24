@@ -21,7 +21,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   try {
     await page.goto(base + '?t=' + Date.now(), { waitUntil: 'domcontentloaded' });
     ok('booted', await wait(() => window.__frames > 3 && !document.getElementById('loading')));
-    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.133');
+    ok('version', await G(() => document.querySelector('meta[name="app-version"]').content) === 'v7.5.134');
     ok('api', await wait(() => !!window.SSX?.chickenbingo?.open && !!window.SSX?.plasmapaddle?.open, 20000));
     const rules = await G(() => {
       const s = window.SSX.chickenbingo.squares();

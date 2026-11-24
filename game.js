@@ -896,6 +896,7 @@ export function createGame(ctx) {
   const hasUp = id => P.upgrades.includes(id);
   function hurt(dmg, from) {
     if (H.down > 0 || H.inv > 0 || ctx.st().intro > 0) return;
+    dmg *= 1.2; // v7.5.134: you get hurt 20% more easily, from every source
     const st = ctx.st();
     if (st.driving) dmg *= st.own ? (hasUp('roverarmor') ? 0.25 : 0.5) : 0.6; // hull soaks some
     try { const m = globalThis.SSX?.snack?.mitigate?.(); if (m > 0 && m < 1) dmg *= m; } catch (e) { /* no snack buff */ } // Red Dust burger: hits hurt 25% less for 60s
