@@ -4,6 +4,10 @@ Interactive Three.js solar system: drag to orbit, scroll/pinch to zoom, tap or c
 
 Live: https://kaskel87-a11y.github.io/solar-system/
 
+## v7.5.135: shoot the cop, then run
+
+A shot at a cop, on foot or in the cruiser, raises your wanted level and starts a chase. It does not arrest you. They only pinch you if they beat you or corner you.
+
 ## v7.5.134: you get hurt
 
 Hits take 20% more off your shield and your health. A fight can actually put you down.

@@ -189,7 +189,7 @@ export function createWorld(ctx) {
   const height = (x, z) => ctx.height(x, z);
   let C = null, col = null, cx = 0, cz = 0, time = 0;
   let wname = '', duel = null, ringM = null, camBoxes = [], solids = [], vehicles = [], people = [], flick = [], lights = [], security = [], shots = [], signs = [];
-  let wanted = 0, evade = 0, bustT = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
+  let wanted = 0, evade = 0, bustT = 0, copGrace = 0, respawnCd = 0, seen = 0, lastFireCheck = 0;
   let doors = [], rooms = new Map(), inside = null, coverPaid = false, interiorsRoot = null, roomIdx = 0;
   const warm = { age: 0, t: 0, busy: false, built: 0 }; // v7.5.17 interior prewarm (warmRooms)
   const caps = { drones: isMobile ? 2 : 3, buggies: isMobile ? 1 : 2, officers: isMobile ? 2 : 4, heavies: isMobile ? 1 : 2 };
@@ -612,6 +612,7 @@ export function createWorld(ctx) {
     if (s.foot) { s.ssxCop = 1; s.ssxDropDone = 1; } // v7.5.12: never also a 20-80 cr KO drop (economy.js npcDown)
     const zone = copFree(player.x, player.z) || copFree(s.x, s.z);
     let bounty = null;
+    copGrace = Math.max(copGrace, 9); bustT = 0; // killing a cop starts a fight, not a grab
     if (!zone) {
       let raise = true;
       try { if (typeof globalThis.SSX?.mobboss?.raiseHeat === 'function') raise = globalThis.SSX.mobboss.raiseHeat() !== false; } catch (e) { /* */ }
@@ -652,6 +653,8 @@ export function createWorld(ctx) {
   }
   let crimeCd = 0, strikes = 0;
   function crime(min, why) { if (!C || crimeCd > 0) return; if (duel && /colonist|discharging|hit-and-run/.test(why || '')) return; /* v7.4: sanctioned duel, so stray hits on bystanders aren't crimes */ crimeCd = 2.5; const r = CP.escalate(wanted, min, why, strikes); strikes = r.strikes; if (r.to !== wanted) setWanted(r.to, why); } // v7.5.28: minor crimes on top of heat escalate at half speed
+  // v7.5.135: the first shots at a cop raise the heat and start a chase. They do not bust you.
+  function copProvoked(why) { copGrace = Math.max(copGrace, 9); bustT = 0; crime(2, why || 'shot at a cop'); }
   function witnessed(x, z) {
     if (!C) return false;
     if (Math.hypot(x - cx, z - cz) < 70) return true; // colony cameras
@@ -773,6 +776,7 @@ export function createWorld(ctx) {
     if (wanted > 0 && !down && !gulchHold) { // v7.5.74: in the gulch the bust and evade timers both hold
       if (inside) close = false; // they can't see you in here
       if (!st.driving && player.y - 1.7 - height(tx, tz) > 4) close = false; // v7.5.23: up a tower / on a roof (sniper perch) they can shoot at you but can't put hands on you
+      if (copGrace > 0) { copGrace = Math.max(0, copGrace - dt); close = false; } // v7.5.135: opening shots start a chase, not a grab
       bustT = close ? bustT + dt * E : Math.max(0, bustT - dt * 0.5); // mission ease: hands on you takes twice as long
       if (bustT > CP.bustNeed(wanted, st.driving)) { bustT = 0; game.bust(); } // v7.5.28: 1★ takes longer to grab you
       // evading: out of their reach, longer the hotter you are; lying low on foot halves it
@@ -884,11 +888,25 @@ export function createWorld(ctx) {
   function segHit(p0, p1, c, r) { seg.copy(p1).sub(p0); const L2 = seg.lengthSq(); const t = L2 ? Math.max(0, Math.min(1, tv.copy(c).sub(p0).dot(seg) / L2)) : 0; q.copy(p0).addScaledVector(seg, t); return q.distanceTo(c) < r; }
   function hitWorld(p0, p1, b) {
     if (!C) return false;
+    for (const v of traffic) {
+      if (!v.traffic?.cop || v.traffic.wreck > 0) continue;
+      const cab = tv.clone(); cab.set(v.x, v.y + 1.15, v.z);
+      if (!segHit(p0, p1, cab, 1.8)) continue;
+      v.copHp = (v.copHp == null ? 40 : v.copHp) - (b.dmg || 8);
+      ctx.game().gore?.(v.x, v.y + 1.15, v.z, { n: 0.5, spray: true });
+      if (v.copHp <= 0) {
+        v.traffic.cop = false; v.traffic.wreck = 30; v.traffic.v = 0;
+        copGrace = Math.max(copGrace, 9); bustT = 0;
+        setWanted(Math.min(5, Math.max(2, (wanted | 0) + 1)), 'killed a cop in a cruiser');
+        onEvent('secDown', { kind: 'cruiser', wanted });
+      } else copProvoked('shot a cop in a cruiser');
+      return true;
+    }
     for (const s of [...security]) { const air = s.kind === 'drone' || s.kind === 'gunship'; tv.set(s.x, s.y + (air ? 0 : s.foot ? (s.crouch ? 0.75 : 1.2) * s.sc : 1), s.z); const c = tv.clone();
-      if (segHit(p0, p1, c, s.kind === 'gunship' ? 1.8 : air ? 1 : s.foot ? 0.75 * s.sc : 2)) { if (s.foot && behindCover(s, p0)) { onEvent('cover', {}); return true; }
+      if (segHit(p0, p1, c, s.kind === 'gunship' ? 1.8 : air ? 1 : s.foot ? 0.75 * s.sc : 2.2)) { if (s.foot && behindCover(s, p0)) { onEvent('cover', {}); return true; }
         const head = s.foot && q.y > s.y + 1.7 * s.sc && s.kind !== 'heavy', dmg = b.dmg * (head ? 2.5 : 1) * (s.kind === 'heavy' ? 0.6 : 1); s.hp -= dmg;
-        if (s.foot) ctx.game().gore?.(q.x, q.y, q.z, { n: head ? 1.5 : 0.6, spray: true });
-        if (s.hp <= 0) secKill(s, { dmg: b.dmg, head, gib: b.gib || b.rail }); else crime(2, 'shot at security'); return true; } }
+        if (s.foot || s.kind === 'buggy') ctx.game().gore?.(q.x, q.y, q.z, { n: head ? 1.5 : 0.6, spray: true });
+        if (s.hp <= 0) secKill(s, { dmg: b.dmg, head, gib: b.gib || b.rail }); else copProvoked(s.foot ? 'shot a cop' : 'shot a cop in a cruiser'); return true; } }
     for (const p of people) { if (p.stun > 0 || p.on === false) continue; const c = new THREE.Vector3(p.x, height(p.x, p.z) + 1.2, p.z); if (segHit(p0, p1, c, 0.6)) { if (duel && p === duel.p) { if (duel.phase === 'fight' && duel.type === 'pistol') duelHit(); return true; } p.hp -= b.dmg; p.flee = 2; p.fx = Math.sign(p.x - p0.x) || 1; p.fz = Math.sign(p.z - p0.z) || 1; ctx.game().gore?.(p.x, height(p.x, p.z) + 1.2, p.z, { n: 0.6, spray: true }); if (p.kind === 'colonist') civHits++; if (p.hp <= 0) { p.stun = 15; onEvent('thud', {}); } crime(p.kind === 'guard' ? 2 : 1, p.kind === 'guard' ? 'shot a guard' : 'shot a colonist'); return true; } }
     return false;
   }
@@ -1156,7 +1174,7 @@ export function createWorld(ctx) {
     vehicleGround: car => roofGround(car), playerGround, addSolid: s => { if (C && s && !solids.includes(s)) solids.push(s); return s; }, removeSolid: s => { const i = solids.indexOf(s); if (i >= 0) solids.splice(i, 1); },
     layout, enter, exit, update, collide, collidePlayer, nearDoor, doorFor, enterBuilding, exitBuilding, nearSpot, warmState: () => ({ ...warm, rooms: [...rooms.values()].map(r => r.kind) }), camBlockedIn, openVip, clubFx, nearDuelist: () => duelPub(nearDuelist()), challenge, yieldDuel: () => endDuel('yield-lose'), endPit: (why) => (duel && (duel.pit || duel.tag?.fc) ? endDuel(why || 'ko-lose') : null), get duel() { return duelState(); }, get lastDuel() { return lastDuel; }, debugDuelist: (champ) => { const p = people.find(q => q.kind === 'colonist' && !!q.fighter === !!champ && (champ || q.temper >= 0.65)); if (!p) return null; p.x = player.x + 2; p.z = player.z; p.flee = 0; p.stun = 0; p.pts = champ ? null : p.pts; p.wait = 99; return p.name; }, wareTargets, refreshWares, wareList, stores: () => stores().map(d => ({ kind: d.kind, name: d.name, door: d.i, x: d.x, z: d.z })), nearestStore,
     get inside() { return inside ? { kind: inside.door.kind, name: inside.door.name, store: INTERIORS[inside.door.kind].store || null, ax: inside.ax, az: inside.az, floor: inside.ay, x0: inside.ax + inside.room.cx - inside.room.w / 2, x1: inside.ax + inside.room.cx + inside.room.w / 2, z0: inside.az + inside.room.cz - inside.room.d / 2, z1: inside.az + inside.room.cz + inside.room.d / 2, y1: inside.ay + inside.room.h } : null; },
-    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime,
+    doorList: () => doors.map(d => ({ kind: d.kind, name: d.name, x: d.x, z: d.z })), solidAt, camBlocked, nearVehicle, nearestVehicle, take, leave, hitWorld, blast, shotFired, targets, meleeTarget, meleeWorld, scare, nearContact, nearShop, gate, setWanted, crime, copProvoked,
     colonyAt: p => C ? toW(p) : null,
     get wanted() { return wanted; }, get evading() { return wanted > 0 && evade > 0.5; }, get inDuel() { return !!duel; },
     securityList: () => security.map(s => ({ kind: s.kind, x: s.x, y: s.y, z: s.z, hp: s.hp })), // v7.4: stable read-only view for add-on modules (street danger)
@@ -1185,7 +1203,9 @@ export function createWorld(ctx) {
         people: people.filter(p => p.on !== false).map(p => ({ x: p.x, z: p.z, kind: p.kind, name: p.name || null })),
         security: security.map(s => ({ x: s.x, z: s.z, kind: s.kind })), wanted, doors: doors.map(d => ({ x: d.x, z: d.z, kind: d.kind, name: d.name, store: isStore(d) })), shops: stores().map(d => ({ x: d.x, z: d.z, kind: d.kind, name: d.name })) };
     },
-    debug: { activeNPCs: () => activeN, livePeople: () => people.filter(p => p.on).length, traffic: () => traffic.map(v => ({ kind: v.kind, x: v.x, z: v.z, cop: v.traffic.cop, v: v.traffic.v })), corpses: () => corpses.length, spawnSecurity: (k, at) => !!spawnSecurity(k, at), killSec: (k) => { const s = security.find(q => q.kind === k); if (s) secKill(s, { dmg: 50 }); return !!s; }, zones: () => updateZones(true), cps: () => cps.map(c => ({ id: c.id, x: c.x, z: c.z, cool: c.cool })),
-      vehicles: () => vehicles.map(v => ({ kind: v.kind, x: v.x, z: v.z, parked: v.parked })), security: () => security.map(s => ({ kind: s.kind, x: s.x, z: s.z, hp: s.hp, crouch: !!s.crouch, cover: !!s.cover })), people: () => people.map(p => ({ kind: p.kind, x: p.x, z: p.z, name: p.name, zone: p.zone, on: p.on !== false })), evade: () => evade, bustT: () => bustT }
+    debug: { activeNPCs: () => activeN, livePeople: () => people.filter(p => p.on).length, traffic: () => traffic.map(v => ({ kind: v.kind, x: v.x, z: v.z, cop: v.traffic.cop, v: v.traffic.v, hp: v.copHp })), corpses: () => corpses.length, spawnSecurity: (k, at) => !!spawnSecurity(k, at), killSec: (k) => { const s = security.find(q => q.kind === k); if (s) secKill(s, { dmg: 50 }); return !!s; }, zones: () => updateZones(true), cps: () => cps.map(c => ({ id: c.id, x: c.x, z: c.z, cool: c.cool })),
+      plantCruiser: (x, z) => { const v = buildVehicle('buggy', true), spec = VEHICLES.buggy, o = { ...v, kind: 'buggy', spec, x, z, yaw: 0, y: height(x, z), vy: 0, speed: 0, steer: 0, pitch: 0, roll: 0, air: false, prevG: null, susp: 0, stolen: true, parked: false, zone: 'highway', copHp: 40, traffic: { s: 10, dir: 1, lane: 0, vmax: 0, cop: true, wreck: 0, v: 0 } }; scene.add(v.group); v.group.position.set(x, o.y, z); vehicles.push(o); traffic.push(o); return { x, z, hp: 40 }; },
+      copGrace: () => copGrace,
+      vehicles: () => vehicles.map(v => ({ kind: v.kind, x: v.x, z: v.z, parked: v.parked })), security: () => security.map(s => ({ kind: s.kind, x: s.x, y: s.y, z: s.z, hp: s.hp, crouch: !!s.crouch, cover: !!s.cover })), people: () => people.map(p => ({ kind: p.kind, x: p.x, z: p.z, name: p.name, zone: p.zone, on: p.on !== false })), evade: () => evade, bustT: () => bustT }
   };
 }

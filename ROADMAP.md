@@ -87,6 +87,7 @@ These three shipped with the Mars city work. Left here so the next run does not 
 3. [x] **Original mad-scientist duo.** **Oct 25, 2026 (PR #11 and PR #37):** Silas and Tam, junkyard lab, portal missions sci-01..10. No borrowed names or designs.
 
 ## Later (rough order)
+- [x] **Cops in cars.** **v7.5.135:** shoot a cop on foot or in a cruiser. The first shots start a chase. Arrest is only if they beat you or corner you.
 - [x] **Easier to injure.** **v7.5.134:** incoming damage is 20% higher from every source.
 - [x] **Plasma Paddle.** **v7.5.133:** a drag moves your scoop, the match starts, and Close brings you back to the club.
 - [x] **Job cards.** **v7.5.132:** Accept and Later stay on the phone card. The street-good hint stays near the Velvet. A taken job points first.

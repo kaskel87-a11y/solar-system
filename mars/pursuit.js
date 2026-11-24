@@ -131,7 +131,7 @@ function spawnUnit(kind, at = null) {
   if (kind === 'swat') { g.add(mesh(A.box, A.armor, 0, 1.15, 0, 1.95, 0.75, 3.3), mesh(A.box, A.stripe, 0, 1.56, 0, 1.97, 0.08, 3.32), mesh(A.box, A.armor, 0, 0.75, -1.75, 2.0, 0.5, 0.25)); g.scale.setScalar(1.2); }
   else g.add(mesh(A.box, A.stripe, 0, 1.12, 0, 1.75, 0.06, 3.05));
   const light = mesh(A.box, A.red, 0, kind === 'swat' ? 1.7 : 2.45, 0.2, 0.7, 0.12, 0.2); g.add(light);
-  const u = { id: ++uid, kind, group: g, wheels: v.wheels || [], light, x, z, y: groundAt(x, z), yaw: Math.atan2(-(P.x - x), -(P.z - z)), speed: 0, cd: 1.5, hitCd: 0, fireCd: 2, mode: 'chase', stuck: 0, lastX: x, lastZ: z, chk: 0, side: Math.random() < 0.5 ? -1 : 1, seen: false };
+  const u = { id: ++uid, kind, group: g, wheels: v.wheels || [], light, x, z, y: groundAt(x, z), yaw: Math.atan2(-(P.x - x), -(P.z - z)), speed: 0, cd: 1.5, hitCd: 0, fireCd: 2, mode: 'chase', stuck: 0, lastX: x, lastZ: z, chk: 0, side: Math.random() < 0.5 ? -1 : 1, seen: false, hp: kind === 'swat' ? 55 : 36 };
   g.position.set(u.x, u.y, u.z); g.rotation.set(0, u.yaw, 0); r.add(g); units.push(u);
   emit('dispatch', { kind, id: u.id });
   return u;
@@ -220,7 +220,32 @@ function sightCheck(P, drones) {
 }
 
 // ---------- the tick (SSX.registerSurfaceTick: runs inside surface.update) ----------
+let carsHit = false;
+function shotHitsCar(p0, p1, x, z, r) {
+  const dx = p1.x - p0.x, dz = p1.z - p0.z, dy = (p1.y || 0) - (p0.y || 0);
+  const L2 = dx * dx + dy * dy + dz * dz || 1;
+  const t = Math.max(0, Math.min(1, ((x - p0.x) * dx + ((p0.y || 1) - (p0.y || 0)) * dy + (z - p0.z) * dz) / L2));
+  const qx = p0.x + dx * t, qz = p0.z + dz * t;
+  return Math.hypot(qx - x, qz - z) < r;
+}
+function armCarHits() {
+  const w = world();
+  if (!w || carsHit || typeof w.hitWorld !== 'function') return;
+  carsHit = true;
+  const prev = w.hitWorld.bind(w);
+  w.hitWorld = (p0, p1, b) => {
+    if (p0 && p1) for (const u of [...units]) {
+      if (!u || u.dead || !shotHitsCar(p0, p1, u.x, u.z, 2.2)) continue;
+      u.hp = (u.hp == null ? 36 : u.hp) - (b?.dmg || 8);
+      try { w.copProvoked?.('shot a cop in a cruiser'); } catch (e) { /* */ }
+      if (u.hp <= 0) { u.dead = true; dropUnit(u); try { w.setWanted?.(Math.min(5, Math.max(2, (w.wanted | 0) + 1)), 'killed a cop in a cruiser'); } catch (e) { /* */ } }
+      return true;
+    }
+    return prev(p0, p1, b);
+  };
+}
 function tick(dt, tc) {
+  try { armCarHits(); } catch (e) { /* world not ready */ }
   T = tc; onMars = tc?.name === 'Mars'; if (!fin(dt) || dt <= 0) return; dt = Math.min(dt, 0.1); tNow += dt;
   const w = world(), g = game(); if (!onMars || !w || !g) { if (units.length || blocks.length) { clearUnits(); syncBlocks(0); } return; }
   ensureRoot(); buildSites();
@@ -460,6 +485,7 @@ const API = {
     volley(n = 3, dmg = 40) { const P = me(); if (!P) return 0; const u = units.find(q => q.kind === 'swat') || spawnUnit('swat', { x: P.x + 10, z: P.z }); if (!u) return 0; let k = 0; for (let i = 0; i < n; i++) { const r = Math.random; Math.random = () => 0; try { if (fire(u, P, dmg)) k++; } finally { Math.random = r; } } return k; },
     float(h = 30, sec = 8) { if (!T?.car) return false; floatHold = { h, t: sec }; return true; },
     pit: () => pitAt(), units: unitsPub, sites: () => ({ ...sites }),
+    plantCar(x, z) { armCarHits(); const u = spawnUnit('rover', { x, z }); return u ? { id: u.id, hp: u.hp, x: u.x, z: u.z } : null; },
     state: () => ({ stars: heat(), seen: seenNow, search: API.searching(), forceLOS, boxT, hideT, units: units.length, blocks: blocks.length, cones: cones.filter(c => c.beam.visible).length, float: !!floatHold, me: (() => { const P = me(); return P ? { x: P.x, z: P.z, y: P.y, gy: P.gy, floating: P.floating, driving: P.driving, speed: P.speed } : null; })(), nan: units.some(u => !fin(u.x) || !fin(u.z) || !fin(u.y) || !fin(u.yaw) || !fin(u.speed)), stats }),
     reset() { clearUnits(); syncBlocks(0); search = null; forceLOS = null; floatHold = null; boxT = 0; hideT = 0; S = { v: 1, plate: newPlate(), resprays: 0 }; save(); spikes = []; stats = { rams: 0, pits: 0, shots: 0, busts: 0, wasted: 0, lost: {} }; return true; }
   }
